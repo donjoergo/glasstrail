@@ -100,7 +100,8 @@ class FeedPage extends StatelessWidget {
                     return _DrinkFeedCard(
                       item: item,
                       controller: controller,
-                      onCommentTap: () => _openCommentDialog(context, item.log!),
+                      onCommentTap: () =>
+                          _openCommentDialog(context, item.log!),
                     );
                   },
                 ),
@@ -127,8 +128,7 @@ class _DrinkFeedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final log = item.log!;
-    final formatter = DateFormat.yMMMd(controller.locale.languageCode)
-        .add_Hm();
+    final formatter = DateFormat.yMMMd(controller.locale.languageCode).add_Hm();
     final hasImage = log.imageUrl != null && log.imageUrl!.trim().isNotEmpty;
 
     return Card(

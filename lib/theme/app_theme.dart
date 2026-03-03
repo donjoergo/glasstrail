@@ -138,8 +138,7 @@ class AppTheme {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color:
-                selected ? const Color(0xFF8AD1E0) : const Color(0xFF9CA3AF),
+            color: selected ? const Color(0xFF8AD1E0) : const Color(0xFF9CA3AF),
           );
         }),
       ),

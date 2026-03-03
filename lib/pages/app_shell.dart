@@ -62,7 +62,8 @@ class AppShell extends StatelessWidget {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
-        onDestinationSelected: (index) => _onDestinationSelected(context, index),
+        onDestinationSelected: (index) =>
+            _onDestinationSelected(context, index),
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.dynamic_feed_outlined),

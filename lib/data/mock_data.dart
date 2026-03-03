@@ -41,77 +41,88 @@ class MockData {
         id: 'beer_pils',
         name: 'Pils',
         category: DrinkCategory.beer,
-        imageUrl: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=1200',
         volumeMl: 500,
       ),
       DrinkType(
         id: 'beer_ipa',
         name: 'IPA',
         category: DrinkCategory.beer,
-        imageUrl: 'https://images.unsplash.com/photo-1514361892635-6b07e31e75f9?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1514361892635-6b07e31e75f9?w=1200',
         volumeMl: 500,
       ),
       DrinkType(
         id: 'wine_red',
         name: 'Red Wine',
         category: DrinkCategory.wine,
-        imageUrl: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=1200',
         volumeMl: 200,
       ),
       DrinkType(
         id: 'wine_sparkling',
         name: 'Sparkling Wine',
         category: DrinkCategory.wine,
-        imageUrl: 'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=1200',
         volumeMl: 200,
       ),
       DrinkType(
         id: 'spirits_gin',
         name: 'Gin',
         category: DrinkCategory.spirits,
-        imageUrl: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=1200',
         volumeMl: 40,
       ),
       DrinkType(
         id: 'spirits_whiskey',
         name: 'Whiskey',
         category: DrinkCategory.spirits,
-        imageUrl: 'https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=1200',
         volumeMl: 40,
       ),
       DrinkType(
         id: 'cocktail_mojito',
         name: 'Mojito',
         category: DrinkCategory.cocktails,
-        imageUrl: 'https://images.unsplash.com/photo-1560508179-b2c9a2f8f4f8?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1560508179-b2c9a2f8f4f8?w=1200',
         volumeMl: 300,
       ),
       DrinkType(
         id: 'cocktail_martini',
         name: 'Martini',
         category: DrinkCategory.cocktails,
-        imageUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=1200',
         volumeMl: 180,
       ),
       DrinkType(
         id: 'non_water',
         name: 'Water',
         category: DrinkCategory.nonAlcoholic,
-        imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=1200',
         volumeMl: 400,
       ),
       DrinkType(
         id: 'non_coffee',
         name: 'Coffee',
         category: DrinkCategory.nonAlcoholic,
-        imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1200',
         volumeMl: 250,
       ),
       DrinkType(
         id: 'non_energy',
         name: 'Energy Drink',
         category: DrinkCategory.nonAlcoholic,
-        imageUrl: 'https://images.unsplash.com/photo-1622484212850-eb596d769edc?w=1200',
+        imageUrl:
+            'https://images.unsplash.com/photo-1622484212850-eb596d769edc?w=1200',
         volumeMl: 330,
       ),
     ];

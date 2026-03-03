@@ -98,7 +98,8 @@ class _StatsOverviewTab extends StatelessWidget {
                           LineChartBarData(
                             spots: List<FlSpot>.generate(
                               series.length,
-                              (index) => FlSpot(index.toDouble(), series[index].toDouble()),
+                              (index) => FlSpot(
+                                  index.toDouble(), series[index].toDouble()),
                             ),
                             isCurved: true,
                             barWidth: 3,
@@ -117,8 +118,8 @@ class _StatsOverviewTab extends StatelessWidget {
                               showTitles: true,
                               interval: 1,
                               getTitlesWidget: (value, meta) {
-                                final day = DateTime.now()
-                                    .subtract(Duration(days: 6 - value.toInt()));
+                                final day = DateTime.now().subtract(
+                                    Duration(days: 6 - value.toInt()));
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 4),
                                   child: Text(DateFormat.E().format(day)),
@@ -203,7 +204,9 @@ class _StatsOverviewTab extends StatelessWidget {
                       Text(l10n.streakProgress),
                       const SizedBox(height: 6),
                       LinearProgressIndicator(
-                        value: streak.best == 0 ? 0 : (streak.current / streak.best),
+                        value: streak.best == 0
+                            ? 0
+                            : (streak.current / streak.best),
                       ),
                     ],
                   ),
@@ -239,7 +242,8 @@ class _StatsOverviewTab extends StatelessWidget {
                                     toY: entry.value.value.toDouble(),
                                     width: 18,
                                     borderRadius: BorderRadius.circular(6),
-                                    color: _categoryColor(entry.value.key, context),
+                                    color: _categoryColor(
+                                        entry.value.key, context),
                                   ),
                                 ],
                               ),
@@ -257,11 +261,13 @@ class _StatsOverviewTab extends StatelessWidget {
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
                                 final idx = value.toInt();
-                                if (idx < 0 || idx >= DrinkCategory.values.length) {
+                                if (idx < 0 ||
+                                    idx >= DrinkCategory.values.length) {
                                   return const SizedBox.shrink();
                                 }
                                 final category = DrinkCategory.values[idx];
-                                return Text(category.defaultLabel.substring(0, 3));
+                                return Text(
+                                    category.defaultLabel.substring(0, 3));
                               },
                             ),
                           ),
@@ -426,17 +432,20 @@ class _StatsMapTabState extends State<_StatsMapTab> {
   }
 
   bool _isInsideRange(DrinkLog log) {
-    final date = DateTime(log.loggedAt.year, log.loggedAt.month, log.loggedAt.day);
+    final date =
+        DateTime(log.loggedAt.year, log.loggedAt.month, log.loggedAt.day);
     final now = DateTime.now();
 
     switch (_range) {
       case _StatsMapRange.sevenDays:
         return !date.isBefore(
-          DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6)),
+          DateTime(now.year, now.month, now.day)
+              .subtract(const Duration(days: 6)),
         );
       case _StatsMapRange.thirtyDays:
         return !date.isBefore(
-          DateTime(now.year, now.month, now.day).subtract(const Duration(days: 29)),
+          DateTime(now.year, now.month, now.day)
+              .subtract(const Duration(days: 29)),
         );
       case _StatsMapRange.all:
         return true;
@@ -483,11 +492,13 @@ class _StatsListTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final myLogs =
-        controller.logs.where((log) => log.userId == controller.currentUser.id).toList();
+    final myLogs = controller.logs
+        .where((log) => log.userId == controller.currentUser.id)
+        .toList();
     final groupedByMonth = <String, List<DrinkLog>>{};
     for (final log in myLogs) {
-      final key = DateFormat.yMMMM(controller.locale.languageCode).format(log.loggedAt);
+      final key =
+          DateFormat.yMMMM(controller.locale.languageCode).format(log.loggedAt);
       groupedByMonth.putIfAbsent(key, () => <DrinkLog>[]).add(log);
     }
 

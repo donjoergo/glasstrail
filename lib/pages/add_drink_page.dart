@@ -232,7 +232,8 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(_selectedDrink?.name ?? '-'),
-                    subtitle: Text(_selectedDrink?.category.defaultLabel ?? '-'),
+                    subtitle:
+                        Text(_selectedDrink?.category.defaultLabel ?? '-'),
                   ),
                   if (_commentController.text.trim().isNotEmpty)
                     ListTile(

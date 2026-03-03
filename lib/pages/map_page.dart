@@ -46,14 +46,14 @@ class _MapPageState extends State<MapPage> {
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'app.glasstrail',
                 tileProvider: CancellableNetworkTileProvider(),
               ),
               CircleLayer(
                 circles: logs
-                    .where((log) => log.userId == widget.controller.currentUser.id)
+                    .where(
+                        (log) => log.userId == widget.controller.currentUser.id)
                     .map(
                       (log) => CircleMarker(
                         point: LatLng(log.latitude, log.longitude),
@@ -80,9 +80,10 @@ class _MapPageState extends State<MapPage> {
                           child: Icon(
                             Icons.location_on,
                             size: 36,
-                            color: log.userId == widget.controller.currentUser.id
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.tertiary,
+                            color:
+                                log.userId == widget.controller.currentUser.id
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.tertiary,
                           ),
                         ),
                       ),
@@ -240,7 +241,8 @@ class _MapPageState extends State<MapPage> {
                       Wrap(
                         spacing: 8,
                         children: [
-                          Chip(label: Text(_selectedLog!.category.defaultLabel)),
+                          Chip(
+                              label: Text(_selectedLog!.category.defaultLabel)),
                           Chip(
                             avatar: const Icon(Icons.celebration, size: 16),
                             label: Text('${_selectedLog!.cheersCount}'),

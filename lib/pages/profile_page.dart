@@ -22,7 +22,8 @@ class ProfilePage extends StatelessWidget {
             pinned: true,
             expandedHeight: 220,
             flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsetsDirectional.only(start: 16, bottom: 16),
+              titlePadding:
+                  const EdgeInsetsDirectional.only(start: 16, bottom: 16),
               title: Text(controller.currentUser.displayName),
               background: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 90, 16, 12),
@@ -31,7 +32,8 @@ class ProfilePage extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 36,
-                      backgroundImage: _imageProvider(controller.currentUser.avatarUrl),
+                      backgroundImage:
+                          _imageProvider(controller.currentUser.avatarUrl),
                     ),
                     const SizedBox(height: 10),
                     Text('@${controller.currentUser.nickname}'),
