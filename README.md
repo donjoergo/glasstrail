@@ -1,17 +1,47 @@
-# glasstrail
+# GlassTrail
 
-A new Flutter project.
+Flutter app for drink tracking, feed, map, stats, friends, onboarding, and settings.
 
-## Getting Started
+## Run Locally
 
-This project is a starting point for a Flutter application.
+```bash
+flutter pub get
+flutter run -d chrome
+```
 
-A few resources to get you started if this is your first Flutter project:
+By default the app runs with local mock data.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Enable Backend API Wiring
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+API integration is implemented in `lib/api/backend_api.dart` and consumed by
+`lib/state/app_controller.dart`.
+
+Enable remote backend calls with Dart defines:
+
+```bash
+flutter run -d chrome \
+  --dart-define=USE_REMOTE_API=true \
+  --dart-define=API_BASE_URL=http://localhost:3000
+```
+
+Optional invite token for onboarding/register:
+
+```bash
+--dart-define=INVITE_TOKEN=<token>
+```
+
+## Wired Endpoints
+
+- `POST /v1/auth/register`
+- `POST /v1/auth/login`
+- `GET /v1/feed`
+- `POST /v1/drinks/log`
+- `POST /v1/posts/{postId}/cheers`
+- `POST /v1/posts/{postId}/comments`
+- `GET /v1/friends`
+- `POST /v1/friends/requests`
+- `POST /v1/friends/requests/{id}/accept`
+- `POST /v1/friends/requests/{id}/reject`
+- `DELETE /v1/friends/{id}`
+- `PATCH /v1/notifications/preferences`
+- `POST /v1/devices/register`

@@ -27,6 +27,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final _nicknameController = TextEditingController();
   final _displayNameController = TextEditingController();
   String? _avatarPath;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -59,11 +60,23 @@ class _OnboardingPageState extends State<OnboardingPage> {
       return;
     }
 
-    widget.controller.completeOnboarding(
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    await widget.controller.completeOnboarding(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
       nickname: _nicknameController.text.trim(),
       displayName: _displayNameController.text.trim(),
       avatarUrl: _avatarPath,
     );
+
+    if (mounted) {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
 
     if (!mounted) {
       return;
@@ -141,8 +154,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   ),
                 const Spacer(),
                 FilledButton(
-                  onPressed: _next,
-                  child: Text(_page == 2 ? l10n.finish : l10n.next),
+                  onPressed: _isSubmitting ? null : _next,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(_page == 2 ? l10n.finish : l10n.next),
                 ),
               ],
             ),

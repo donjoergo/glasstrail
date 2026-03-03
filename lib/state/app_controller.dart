@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:glasstrail/api/backend_api.dart';
 import 'package:glasstrail/data/mock_data.dart';
 import 'package:glasstrail/models/app_models.dart';
 
@@ -13,7 +15,8 @@ class StreakMetrics {
 }
 
 class AppController extends ChangeNotifier {
-  AppController() {
+  AppController({BackendApi? api})
+      : _api = api ?? BackendApi.fromEnvironment() {
     _drinkCatalog = [...MockData.globalCatalog()];
     _friends = MockData.friends();
     _logs = MockData.initialLogs()
@@ -23,6 +26,8 @@ class AppController extends ChangeNotifier {
     _feed = MockData.initialFeed(_logs, _badges)
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
+
+  final BackendApi _api;
 
   ThemeMode _themeMode = ThemeMode.system;
   Locale _locale = const Locale('en');
@@ -38,6 +43,8 @@ class AppController extends ChangeNotifier {
   bool _friendDrinkNotifications = true;
   TimeOfDay _quietHoursStart = const TimeOfDay(hour: 22, minute: 0);
   TimeOfDay _quietHoursEnd = const TimeOfDay(hour: 7, minute: 0);
+  String? _lastSyncError;
+  bool _isRemoteSyncing = false;
 
   final Set<String> _cheeredLogIds = <String>{};
   LegacyImportResult? _lastImportResult;
@@ -46,12 +53,17 @@ class AppController extends ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
   Locale get locale => _locale;
   bool get onboardingComplete => _onboardingComplete;
+  bool get usingRemoteApi => _api.enabled;
+  String get apiBaseUrl => _api.baseUrl;
+  String? get lastSyncError => _lastSyncError;
+  bool get isRemoteSyncing => _isRemoteSyncing;
 
   AppUser get currentUser => _currentUser;
   List<Friend> get friends => List<Friend>.unmodifiable(_friends);
   List<Friend> get acceptedFriends =>
       _friends.where((f) => f.status == FriendshipStatus.accepted).toList();
-  List<DrinkType> get drinkCatalog => List<DrinkType>.unmodifiable(_drinkCatalog);
+  List<DrinkType> get drinkCatalog =>
+      List<DrinkType>.unmodifiable(_drinkCatalog);
   List<DrinkLog> get logs => List<DrinkLog>.unmodifiable(_logs);
   List<BadgeAward> get badges => List<BadgeAward>.unmodifiable(_badges);
   List<FeedItem> get feed => List<FeedItem>.unmodifiable(_feed);
@@ -69,41 +81,93 @@ class AppController extends ChangeNotifier {
 
   void setLocale(Locale locale) {
     _locale = locale;
+    unawaited(_pushNotificationPrefs());
     notifyListeners();
   }
 
   void setFriendDrinkNotifications(bool enabled) {
     _friendDrinkNotifications = enabled;
+    unawaited(_pushNotificationPrefs());
     notifyListeners();
   }
 
   void setQuietHours(TimeOfDay start, TimeOfDay end) {
     _quietHoursStart = start;
     _quietHoursEnd = end;
+    unawaited(_pushNotificationPrefs());
     notifyListeners();
   }
 
-  void completeOnboarding({
+  Future<void> completeOnboarding({
+    required String email,
+    required String password,
     required String nickname,
     required String displayName,
     String? avatarUrl,
-  }) {
+  }) async {
     _currentUser = _currentUser.copyWith(
       nickname: nickname,
       displayName: displayName,
       avatarUrl: avatarUrl,
     );
+
+    if (_api.enabled) {
+      try {
+        var session = await _api.register(
+          email: email,
+          password: password,
+          nickname: nickname,
+          displayName: displayName,
+        );
+        session ??= await _api.login(email: email, password: password);
+        if (session != null) {
+          _api.setAuthToken(session.accessToken);
+          _currentUser = session.user;
+          _lastSyncError = null;
+        }
+      } catch (error) {
+        _lastSyncError = 'Registration sync failed: $error';
+      }
+    }
+
     _onboardingComplete = true;
     notifyListeners();
+
+    if (_api.enabled) {
+      unawaited(_bootstrapFromApi());
+    }
   }
 
   void logOut() {
+    _api.setAuthToken(null);
     _onboardingComplete = false;
     notifyListeners();
   }
 
   Future<void> refreshFeed() async {
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (_api.enabled) {
+      try {
+        final remoteFeed = await _api.fetchFeed();
+        if (remoteFeed.isNotEmpty) {
+          _feed = remoteFeed
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          final remoteLogs = _feed
+              .where((item) => item.log != null)
+              .map((item) => item.log!)
+              .toList();
+          if (remoteLogs.isNotEmpty) {
+            _logs = remoteLogs
+              ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
+          }
+        }
+        _lastSyncError = null;
+      } catch (error) {
+        _lastSyncError = 'Feed sync failed: $error';
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+      }
+    } else {
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+    }
     _feed.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     notifyListeners();
   }
@@ -161,6 +225,23 @@ class AppController extends ChangeNotifier {
       );
     }
 
+    if (_api.enabled) {
+      try {
+        final remoteLog = await _api.logDrink(
+          drink: drink,
+          comment: comment,
+          imagePath: imagePath,
+          taggedFriendIds: taggedFriendIds,
+        );
+        if (remoteLog != null) {
+          _replaceLog(tempId: id, remoteLog: remoteLog);
+        }
+        _lastSyncError = null;
+      } catch (error) {
+        _lastSyncError = 'Drink upload failed: $error';
+      }
+    }
+
     notifyListeners();
   }
 
@@ -179,6 +260,16 @@ class AppController extends ChangeNotifier {
       _cheeredLogIds.remove(logId);
     } else {
       _cheeredLogIds.add(logId);
+      if (_api.enabled) {
+        unawaited(
+          _api.cheerPost(postId: logId).then((_) {
+            _lastSyncError = null;
+          }).catchError((error) {
+            _lastSyncError = 'Cheer sync failed: $error';
+            notifyListeners();
+          }),
+        );
+      }
     }
 
     final updated = _logs[logIndex].copyWith(cheersCount: updatedCount);
@@ -199,10 +290,22 @@ class AppController extends ChangeNotifier {
       return;
     }
 
-    final updated =
-        _logs[logIndex].copyWith(commentCount: _logs[logIndex].commentCount + 1);
+    final updated = _logs[logIndex]
+        .copyWith(commentCount: _logs[logIndex].commentCount + 1);
     _logs[logIndex] = updated;
     _syncFeedLog(updated);
+
+    if (_api.enabled) {
+      unawaited(
+        _api.commentPost(postId: logId, comment: comment.trim()).then((_) {
+          _lastSyncError = null;
+        }).catchError((error) {
+          _lastSyncError = 'Comment sync failed: $error';
+          notifyListeners();
+        }),
+      );
+    }
+
     notifyListeners();
   }
 
@@ -214,16 +317,52 @@ class AppController extends ChangeNotifier {
               : friend,
         )
         .toList();
+
+    if (_api.enabled) {
+      unawaited(
+        _api.acceptFriendRequest(requestId: friendId).then((_) {
+          _lastSyncError = null;
+        }).catchError((error) {
+          _lastSyncError = 'Accept friend request failed: $error';
+          notifyListeners();
+        }),
+      );
+    }
+
     notifyListeners();
   }
 
   void rejectFriendRequest(String friendId) {
     _friends.removeWhere((friend) => friend.id == friendId);
+
+    if (_api.enabled) {
+      unawaited(
+        _api.rejectFriendRequest(requestId: friendId).then((_) {
+          _lastSyncError = null;
+        }).catchError((error) {
+          _lastSyncError = 'Reject friend request failed: $error';
+          notifyListeners();
+        }),
+      );
+    }
+
     notifyListeners();
   }
 
   void removeFriend(String friendId) {
     _friends.removeWhere((friend) => friend.id == friendId);
+
+    if (_api.enabled) {
+      unawaited(
+        _api.removeFriend(friendId: friendId).then((_) {
+          _lastSyncError = null;
+        }).catchError((error) {
+          _lastSyncError = 'Remove friend failed: $error';
+          notifyListeners();
+        }),
+      );
+    }
+
     notifyListeners();
   }
 
@@ -324,13 +463,97 @@ class AppController extends ChangeNotifier {
         case DateFilter.today:
           return date == _dateOnly(now);
         case DateFilter.sevenDays:
-          return !date.isBefore(_dateOnly(now.subtract(const Duration(days: 6))));
+          return !date
+              .isBefore(_dateOnly(now.subtract(const Duration(days: 6))));
         case DateFilter.thirtyDays:
-          return !date.isBefore(_dateOnly(now.subtract(const Duration(days: 29))));
+          return !date
+              .isBefore(_dateOnly(now.subtract(const Duration(days: 29))));
         case DateFilter.all:
           return true;
       }
     }).toList();
+  }
+
+  Future<void> _bootstrapFromApi() async {
+    if (!_api.enabled) {
+      return;
+    }
+
+    _isRemoteSyncing = true;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait<dynamic>(<Future<dynamic>>[
+        _api.fetchFeed(),
+        _api.fetchFriends(),
+      ]);
+
+      final remoteFeed = results[0] as List<FeedItem>;
+      final remoteFriends = results[1] as List<Friend>;
+
+      if (remoteFeed.isNotEmpty) {
+        _feed = remoteFeed..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        _logs = _feed
+            .where((item) => item.log != null)
+            .map((item) => item.log!)
+            .toList()
+          ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
+      }
+
+      if (remoteFriends.isNotEmpty) {
+        _friends = remoteFriends;
+      }
+
+      _lastSyncError = null;
+    } catch (error) {
+      _lastSyncError = 'Initial API sync failed: $error';
+    } finally {
+      _isRemoteSyncing = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _pushNotificationPrefs() async {
+    if (!_api.enabled) {
+      return;
+    }
+
+    try {
+      await _api.patchNotificationPreferences(
+        friendDrinkNotifications: _friendDrinkNotifications,
+        quietHoursStart: _quietHoursStart,
+        quietHoursEnd: _quietHoursEnd,
+        language: _locale.languageCode,
+      );
+      _lastSyncError = null;
+    } catch (error) {
+      _lastSyncError = 'Notification preferences sync failed: $error';
+      notifyListeners();
+    }
+  }
+
+  void _replaceLog({required String tempId, required DrinkLog remoteLog}) {
+    final logIndex = _logs.indexWhere((log) => log.id == tempId);
+    if (logIndex >= 0) {
+      _logs[logIndex] = remoteLog;
+    } else {
+      _logs.insert(0, remoteLog);
+    }
+
+    final feedIndex = _feed.indexWhere(
+      (item) =>
+          item.type == FeedEventType.drinkLogged && item.log?.id == tempId,
+    );
+
+    if (feedIndex >= 0) {
+      final existing = _feed[feedIndex];
+      _feed[feedIndex] = FeedItem(
+        id: existing.id,
+        type: existing.type,
+        createdAt: existing.createdAt,
+        log: remoteLog,
+      );
+    }
   }
 
   LegacyImportResult validateLegacyImport(String content) {
@@ -495,7 +718,8 @@ class AppController extends ChangeNotifier {
   List<BadgeAward> _evaluateBadges() {
     final newBadges = <BadgeAward>[];
 
-    final myDrinkCount = _logs.where((log) => log.userId == _currentUser.id).length;
+    final myDrinkCount =
+        _logs.where((log) => log.userId == _currentUser.id).length;
     const drinkMilestones = <int, String>{
       1: 'First Sip',
       10: 'Social Sipper',
@@ -670,7 +894,8 @@ class AppController extends ChangeNotifier {
     return DrinkCategory.nonAlcoholic;
   }
 
-  DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
+  DateTime _dateOnly(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
 }
 
 class _PendingImportEntry {

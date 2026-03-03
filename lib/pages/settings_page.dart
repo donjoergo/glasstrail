@@ -66,7 +66,9 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(result.errors.isEmpty ? l10n.importPreview : l10n.validationErrors),
+          title: Text(result.errors.isEmpty
+              ? l10n.importPreview
+              : l10n.validationErrors),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -148,7 +150,8 @@ class _SettingsPageState extends State<SettingsPage> {
     if (start) {
       widget.controller.setQuietHours(picked, widget.controller.quietHoursEnd);
     } else {
-      widget.controller.setQuietHours(widget.controller.quietHoursStart, picked);
+      widget.controller
+          .setQuietHours(widget.controller.quietHoursStart, picked);
     }
   }
 
@@ -168,7 +171,77 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l10n.themeMode, style: Theme.of(context).textTheme.titleMedium),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      widget.controller.usingRemoteApi
+                          ? Icons.cloud_done_outlined
+                          : Icons.cloud_off_outlined,
+                    ),
+                    title: Text(
+                      widget.controller.usingRemoteApi
+                          ? 'Backend API enabled'
+                          : 'Backend API disabled',
+                    ),
+                    subtitle: Text(
+                      widget.controller.usingRemoteApi
+                          ? widget.controller.apiBaseUrl
+                          : 'Using local mock data. Start with '
+                              '--dart-define=USE_REMOTE_API=true and '
+                              '--dart-define=API_BASE_URL=http://localhost:3000.',
+                    ),
+                  ),
+                  if (widget.controller.usingRemoteApi) ...[
+                    FilledButton.tonalIcon(
+                      onPressed: widget.controller.isRemoteSyncing
+                          ? null
+                          : () async {
+                              await widget.controller.refreshFeed();
+                              if (!context.mounted) {
+                                return;
+                              }
+                              final error = widget.controller.lastSyncError;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    error ?? 'Remote feed sync completed.',
+                                  ),
+                                ),
+                              );
+                            },
+                      icon: widget.controller.isRemoteSyncing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.sync),
+                      label: const Text('Sync feed now'),
+                    ),
+                    if (widget.controller.lastSyncError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.controller.lastSyncError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.themeMode,
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 10),
                   SegmentedButton<ThemeMode>(
                     segments: [
@@ -191,7 +264,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  Text(l10n.language, style: Theme.of(context).textTheme.titleMedium),
+                  Text(l10n.language,
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 10),
                   SegmentedButton<Locale>(
                     segments: [
@@ -228,13 +302,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.dark_mode_outlined),
                   title: const Text('Quiet hours start'),
-                  subtitle: Text(widget.controller.quietHoursStart.format(context)),
+                  subtitle:
+                      Text(widget.controller.quietHoursStart.format(context)),
                   onTap: () => _pickQuietHours(start: true),
                 ),
                 ListTile(
                   leading: const Icon(Icons.light_mode_outlined),
                   title: const Text('Quiet hours end'),
-                  subtitle: Text(widget.controller.quietHoursEnd.format(context)),
+                  subtitle:
+                      Text(widget.controller.quietHoursEnd.format(context)),
                   onTap: () => _pickQuietHours(start: false),
                 ),
               ],
