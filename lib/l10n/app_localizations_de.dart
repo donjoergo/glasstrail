@@ -9,7 +9,7 @@ class AppLocalizationsDe extends AppLocalizations {
   AppLocalizationsDe([String locale = 'de']) : super(locale);
 
   @override
-  String get appTitle => 'GlassTrail';
+  String get appTitle => 'Glass Trail';
 
   @override
   String get navFeed => 'Feed';
@@ -260,7 +260,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get langGerman => 'Deutsch';
 
   @override
-  String get onboardingTitle => 'Willkommen bei GlassTrail';
+  String get onboardingTitle => 'Willkommen bei Glass Trail';
 
   @override
   String get onboardingAccount => 'Konto erstellen';

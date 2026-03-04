@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'GlassTrail'**
+  /// **'Glass Trail'**
   String get appTitle;
 
   /// No description provided for @navFeed.
@@ -599,7 +599,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingTitle.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to GlassTrail'**
+  /// **'Welcome to Glass Trail'**
   String get onboardingTitle;
 
   /// No description provided for @onboardingAccount.

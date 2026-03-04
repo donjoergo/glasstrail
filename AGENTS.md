@@ -19,6 +19,8 @@ Codex work in this project.
 - Static checks: `flutter analyze`
 - Tests: `flutter test`
 - Format before finalizing: `dart format .`
+- After replacing `assets/icon/app_icon.png`, regenerate launcher icons:
+  `dart run flutter_launcher_icons`
 - Pre-PR baseline: `flutter analyze && flutter test`
 
 ## Coding Standards

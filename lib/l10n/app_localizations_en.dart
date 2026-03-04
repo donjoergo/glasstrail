@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'GlassTrail';
+  String get appTitle => 'Glass Trail';
 
   @override
   String get navFeed => 'Feed';
@@ -258,7 +258,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get langGerman => 'German';
 
   @override
-  String get onboardingTitle => 'Welcome to GlassTrail';
+  String get onboardingTitle => 'Welcome to Glass Trail';
 
   @override
   String get onboardingAccount => 'Create account';

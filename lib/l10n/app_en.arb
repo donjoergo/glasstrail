@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "GlassTrail",
+  "appTitle": "Glass Trail",
   "navFeed": "Feed",
   "navMap": "Map",
   "navAdd": "Add",
@@ -83,7 +83,7 @@
   "themeDark": "Dark",
   "langEnglish": "English",
   "langGerman": "German",
-  "onboardingTitle": "Welcome to GlassTrail",
+  "onboardingTitle": "Welcome to Glass Trail",
   "onboardingAccount": "Create account",
   "onboardingProfile": "Profile setup",
   "onboardingDone": "You're ready",
