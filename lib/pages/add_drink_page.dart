@@ -8,9 +8,14 @@ import 'package:glasstrail/models/app_models.dart';
 import 'package:glasstrail/state/app_controller.dart';
 
 class AddDrinkPage extends StatefulWidget {
-  const AddDrinkPage({required this.controller, super.key});
+  const AddDrinkPage({
+    required this.controller,
+    this.returnPath,
+    super.key,
+  });
 
   final AppController controller;
+  final String? returnPath;
 
   @override
   State<AddDrinkPage> createState() => _AddDrinkPageState();
@@ -77,7 +82,17 @@ class _AddDrinkPageState extends State<AddDrinkPage> {
 
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(l10n.drinkSavedSnack)));
-    context.pop();
+    final returnPath = widget.returnPath;
+    if (returnPath != null && returnPath.isNotEmpty) {
+      context.go(returnPath);
+      return;
+    }
+
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go('/feed');
   }
 
   @override
