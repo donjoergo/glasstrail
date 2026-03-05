@@ -83,7 +83,10 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
         ),
         GoRoute(
           path: '/drink/new',
-          builder: (context, state) => AddDrinkPage(controller: _controller),
+          builder: (context, state) => AddDrinkPage(
+            controller: _controller,
+            returnPath: state.uri.queryParameters['from'],
+          ),
         ),
         GoRoute(
           path: '/settings',

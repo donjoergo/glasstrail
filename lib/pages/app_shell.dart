@@ -28,6 +28,10 @@ class AppShell extends StatelessWidget {
     return 0;
   }
 
+  String _addDrinkRoute() {
+    return '/drink/new?from=${Uri.encodeComponent(location)}';
+  }
+
   void _onDestinationSelected(BuildContext context, int index) {
     switch (index) {
       case 0:
@@ -37,7 +41,7 @@ class AppShell extends StatelessWidget {
         context.go('/map');
         return;
       case 2:
-        context.push('/drink/new');
+        context.go(_addDrinkRoute());
         return;
       case 3:
         context.go('/stats');
@@ -56,10 +60,10 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       body: child,
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/drink/new'),
+        onPressed: () => context.go(_addDrinkRoute()),
         child: const Icon(Icons.add),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) =>
