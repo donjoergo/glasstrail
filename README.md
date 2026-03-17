@@ -1,11 +1,13 @@
 # GlassTrail
 
-GlassTrail is a Flutter-based drink tracking app. This repository now supports two backend modes:
+GlassTrail is a Flutter-based drink tracking app. This repository now defaults to the live Supabase backend for the `GlassTrail Codex` project.
 
-- `Supabase` when `SUPABASE_URL` and `SUPABASE_ANON_KEY` are provided
-- `Local fallback` via `SharedPreferences` when Supabase is not configured
+Two backend modes still exist:
 
-The local fallback keeps the app runnable and fully testable in this environment. The production-oriented backend path is implemented with Supabase Auth, Postgres, row-level security, and Storage.
+- `Supabase` by default, using the hardcoded project URL and publishable key in [backend_config.dart](/home/joerg/Dokumente/_Code/glasstrail_codex/lib/src/backend_config.dart)
+- `Local fallback` via `SharedPreferences` when a test or a custom bootstrap path injects [BackendConfig.empty](/home/joerg/Dokumente/_Code/glasstrail_codex/lib/src/backend_config.dart)
+
+The local fallback remains useful for automated tests. The production backend path uses Supabase Auth, Postgres, row-level security, and Storage.
 
 ## Implemented Scope
 
@@ -19,13 +21,13 @@ The local fallback keeps the app runnable and fully testable in this environment
 - Theme, language, and unit settings
 - English and German UI support
 - Mobile-first shell with desktop-safe layout
-- Supabase-ready backend integration with automatic local fallback
+- Live Supabase backend integration with a test-only local fallback
 
 ## Backend Architecture
 
 ### Supabase
 
-When configured, the app uses:
+By default, the app uses:
 
 - `supabase_flutter` for client bootstrapping and auth session persistence
 - Postgres tables for profiles, settings, custom drinks, and drink entries
@@ -39,10 +41,11 @@ The repository implementation is in:
 The schema and policies are in:
 
 - [202603180001_initial_schema.sql](/home/joerg/Dokumente/_Code/glasstrail_codex/supabase/migrations/202603180001_initial_schema.sql)
+- [202603180002_optimize_policies.sql](/home/joerg/Dokumente/_Code/glasstrail_codex/supabase/migrations/202603180002_optimize_policies.sql)
 
 ### Local Fallback
 
-If no Supabase environment is provided, the app uses:
+Automated tests and explicitly injected empty backend configs use:
 
 - [local_app_repository.dart](/home/joerg/Dokumente/_Code/glasstrail_codex/lib/src/repository/local_app_repository.dart)
 
@@ -50,18 +53,17 @@ This is what the automated tests use.
 
 ## Supabase Setup
 
-1. Create a Supabase project.
-2. Apply the SQL migration from [202603180001_initial_schema.sql](/home/joerg/Dokumente/_Code/glasstrail_codex/supabase/migrations/202603180001_initial_schema.sql).
-3. Copy your project URL and anon key from the Supabase dashboard.
-4. Run the app with Dart defines:
+The repository is already wired to the hosted `GlassTrail Codex` project and will connect to it by default.
+
+You only need Dart defines if you want to override the baked-in project URL or public key:
 
 ```bash
 /home/joerg/.local/lib/flutter/bin/flutter run -d linux \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=YOUR_ANON_KEY
+  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_KEY
 ```
 
-If you do not pass those defines, the app will start in local fallback mode.
+If you want a fully local run, keep using the test harness or inject `BackendConfig.empty` in code.
 
 ## Local Tooling
 
@@ -88,18 +90,18 @@ Use those binaries if the tools are not on your `PATH`.
 
 ## Run The App
 
-Without Supabase:
+With the baked-in live Supabase project:
 
 ```bash
 /home/joerg/.local/lib/flutter/bin/flutter run -d linux
 ```
 
-With Supabase:
+With an override Supabase project:
 
 ```bash
 /home/joerg/.local/lib/flutter/bin/flutter run -d linux \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=YOUR_ANON_KEY
+  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_KEY
 ```
 
 ## Verification
@@ -131,5 +133,6 @@ The work is split into logical commits:
 3. `test: add automated app coverage`
 4. `docs: add project README`
 5. `docs: clarify e2e test command`
-
-The next commit adds Supabase integration and backend setup documentation.
+6. `feat: integrate Supabase backend support`
+7. `docs: document Supabase setup`
+8. `fix(supabase): optimize policies and indexes`

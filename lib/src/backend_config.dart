@@ -4,6 +4,10 @@ class BackendConfig {
     required this.supabaseAnonKey,
   });
 
+  static const defaultSupabaseUrl = 'https://lzuxlcfjnekgjukqxoza.supabase.co';
+  static const defaultSupabaseAnonKey =
+      'sb_publishable_VInDXR9KppRTFuR_lgcUyw_ZHx8f3-o';
+
   final String supabaseUrl;
   final String supabaseAnonKey;
 
@@ -17,9 +21,14 @@ class BackendConfig {
 
   static BackendConfig fromEnvironment() {
     return const BackendConfig(
-      supabaseUrl: String.fromEnvironment('SUPABASE_URL'),
-      supabaseAnonKey: String.fromEnvironment('SUPABASE_ANON_KEY'),
+      supabaseUrl: String.fromEnvironment(
+        'SUPABASE_URL',
+        defaultValue: defaultSupabaseUrl,
+      ),
+      supabaseAnonKey: String.fromEnvironment(
+        'SUPABASE_ANON_KEY',
+        defaultValue: defaultSupabaseAnonKey,
+      ),
     );
   }
 }
-
