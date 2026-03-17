@@ -55,7 +55,7 @@ Unit, widget, and repository integration tests:
 End-to-end journey test:
 
 ```bash
-/home/joerg/.local/lib/flutter/bin/flutter test integration_test
+/home/joerg/.local/lib/flutter/bin/flutter test integration_test -d linux
 ```
 
 Static analysis:
