@@ -53,65 +53,71 @@ This document turns the raw requirements from `docs_initial_draft.md` into a pri
 - `Should have`: important expansion after V1
 - `Nice to have`: valuable polish or advanced functionality
 
+## Status Legend
+
+- `✅` implemented
+- `⚠️` partially implemented
+- `⬜` not implemented yet
+
 ## Prioritized Task Backlog
 
-| ID | Task | Priority | Target | Notes |
-| --- | --- | --- | --- | --- |
-| GT-001 | Define release scope, success criteria, and feature cut line for V1 | Must have | V1 | Lock V1 as personal tracker MVP |
-| GT-002 | Create brand kit, color tokens, typography, icon direction, and component style rules | Must have | V1 | Supports consistent Flutter UI implementation |
-| GT-003 | Bootstrap Flutter app structure with navigation shell and bottom navigation | Must have | V1 | Feed/history, add drink, statistics, profile |
-| GT-004 | Implement global floating action button behavior on all main screens except add drink | Must have | V1 | Matches app navigation requirement |
-| GT-005 | Set up light, dark, and system theme modes with persistent preference | Must have | V1 | Settings requirement |
-| GT-006 | Add English and German localization framework and translated base UI strings | Must have | V1 | Internationalization foundation |
-| GT-007 | Create responsive layouts for mobile first with desktop-safe adaptations | Must have | V1 | Desktop considered, mobile prioritized |
-| GT-008 | Provision Supabase project, environments, auth, database, and storage | Must have | V1 | Backend foundation |
-| GT-009 | Design database schema for users, profiles, drinks, drink entries, settings, and stats | Must have | V1 | Core data model |
-| GT-010 | Implement row-level security and per-user data isolation | Must have | V1 | Multi-tenant requirement |
-| GT-011 | Implement email and password sign-up, sign-in, sign-out, and session handling | Must have | V1 | Basic onboarding for first release |
-| GT-012 | Implement profile setup and editing for nickname, display name, picture, and birthday | Must have | V1 | Birthday stays optional |
-| GT-013 | Seed the global drink catalog with categories and starter drink list | Must have | V1 | Shared default catalog |
-| GT-014 | Implement user-managed custom drink creation and editing | Must have | V1 | User-specific drink list extension |
-| GT-015 | Build drink picker with recent drinks first, grouped categories, and easy selection UX | Must have | V1 | Core add-drink usability |
-| GT-016 | Implement add-drink form with optional photo, optional comment, and confirm action | Must have | V1 | Core logging flow |
-| GT-017 | Support drink image upload and storage for drink entries | Must have | V1 | Media handling |
-| GT-018 | Implement personal drink history list as the V1 version of the feed | Must have | V1 | Social feed deferred |
-| GT-019 | Implement statistics overview with weekly, monthly, and yearly totals | Must have | V1 | Core consumption insight |
-| GT-020 | Implement current streak and best streak calculation | Must have | V1 | Statistics requirement |
-| GT-021 | Implement category distribution chart for consumption by category | Must have | V1 | Pie chart requirement |
-| GT-022 | Implement statistics list view with all drinks and category filtering | Must have | V1 | History analysis |
-| GT-023 | Implement settings for language, theme, and units (`ml`/`oz`) | Must have | V1 | Required settings |
-| GT-024 | Add validation, empty states, error handling, and loading states across the app | Must have | V1 | Essential UX hardening |
-| GT-025 | Add analytics, crash/error logging, and basic release configuration | Must have | V1 | Release readiness |
-| GT-026 | Create automated tests for auth, drink logging, stats, settings, and data isolation | Must have | V1 | Quality gate for first release |
-| GT-027 | Implement user discovery and search for adding friends | Should have | Later | Needed before social graph can scale |
-| GT-028 | Implement friend requests with send, accept, reject, and pending states | Should have | Later | Social graph foundation |
-| GT-029 | Implement friends list management on the profile screen | Should have | Later | Social profile completion |
-| GT-030 | Implement social feed with user and friend drink posts | Should have | Later | Expands V1 personal history |
-| GT-031 | Add cheers/likes to feed posts | Should have | Later | Feed interaction |
-| GT-032 | Add comments on feed posts | Should have | Later | Feed interaction |
-| GT-033 | Add push notifications for friend drink logs | Should have | Later | Highest-priority notification feature |
-| GT-034 | Add push notifications for friend requests and request responses | Should have | Later | Social notification set |
-| GT-035 | Add invite-link onboarding flow | Should have | Later | Deferred from V1 |
-| GT-036 | Add notify-friends toggle to the add-drink form | Should have | Later | Only useful once social notifications exist |
-| GT-037 | Design achievement definitions, categories, levels, and naming system | Should have | Later | Gamification foundation |
-| GT-038 | Implement achievement evaluation when logging drinks | Should have | Later | Unlock logic |
-| GT-039 | Show earned and locked achievements in the profile with detail views | Should have | Later | Profile enhancement |
-| GT-040 | Show achievement unlocks in the feed and condense multiple unlocks into one entry | Should have | Later | Feed enhancement |
-| GT-041 | Add achievement celebration animation and in-app unlock notification | Should have | Later | UX polish tied to achievements |
-| GT-042 | Implement BeerWithMe import parser and JSON validation | Should have | Later | Needs sample import file |
-| GT-043 | Map BeerWithMe glass types to GlassTrail default glass types | Should have | Later | Import conversion logic |
-| GT-044 | Build import UI, progress reporting, and validation error summary | Should have | Later | Settings import feature |
-| GT-045 | Add optional import prompt during onboarding | Should have | Later | Depends on import flow |
-| GT-046 | Add feedback/report issue form | Should have | Later | Product feedback loop |
-| GT-047 | Add suggest-a-feature form | Should have | Later | Product feedback loop |
-| GT-048 | Add suggest-a-drink flow for the global drink list | Should have | Later | Content growth |
-| GT-049 | Build admin workflow for reviewing suggested global drinks | Should have | Later | Backoffice/content moderation |
-| GT-050 | Implement live map with current user location and active drink markers | Nice to have | Later | Requires location permissions |
-| GT-051 | Show friend drink markers on the live map | Nice to have | Later | Depends on social graph and privacy rules |
-| GT-052 | Fade out and remove map markers after a configured time window | Nice to have | Later | Temporal map behavior |
-| GT-053 | Build statistics map with all historical drink locations | Nice to have | Later | Separate from live map |
-| GT-054 | Add special-occasion achievements and notifications | Nice to have | Later | Birthday, holidays, seasonal events |
-| GT-055 | Add richer desktop layouts beyond responsive safety | Nice to have | Later | Post-mobile polish |
+| ID | Status | Task | Priority | Target | Notes |
+| --- | --- | --- | --- | --- | --- |
+| GT-001 | ✅ | Define release scope, success criteria, and feature cut line for V1 | Must have | V1 | Lock V1 as personal tracker MVP |
+| GT-002 | ⚠️ | Create brand kit, color tokens, typography, icon direction, and component style rules | Must have | V1 | Supports consistent Flutter UI implementation |
+| GT-003 | ✅ | Bootstrap Flutter app structure with navigation shell and bottom navigation | Must have | V1 | Feed/history, add drink, statistics, profile |
+| GT-004 | ✅ | Implement global floating action button behavior on all main screens except add drink | Must have | V1 | Matches app navigation requirement |
+| GT-005 | ✅ | Set up light, dark, and system theme modes with persistent preference | Must have | V1 | Settings requirement |
+| GT-006 | ✅ | Add English and German localization framework and translated base UI strings | Must have | V1 | Internationalization foundation |
+| GT-007 | ✅ | Create responsive layouts for mobile first with desktop-safe adaptations | Must have | V1 | Desktop considered, mobile prioritized |
+| GT-008 | ⚠️ | Provision Supabase project, environments, auth, database, and storage | Must have | V1 | Backend foundation |
+| GT-009 | ✅ | Design database schema for users, profiles, drinks, drink entries, settings, and stats | Must have | V1 | Core data model |
+| GT-010 | ✅ | Implement row-level security and per-user data isolation | Must have | V1 | Multi-tenant requirement |
+| GT-011 | ✅ | Implement email and password sign-up, sign-in, sign-out, and session handling | Must have | V1 | Basic onboarding for first release |
+| GT-012 | ✅ | Implement profile setup and editing for nickname, display name, picture, and birthday | Must have | V1 | Birthday stays optional |
+| GT-013 | ✅ | Seed the global drink catalog with categories and starter drink list | Must have | V1 | Shared default catalog |
+| GT-014 | ✅ | Implement user-managed custom drink creation and editing | Must have | V1 | User-specific drink list extension |
+| GT-015 | ✅ | Build drink picker with recent drinks first, grouped categories, and easy selection UX | Must have | V1 | Core add-drink usability |
+| GT-016 | ✅ | Implement add-drink form with optional photo, optional comment, and confirm action | Must have | V1 | Core logging flow |
+| GT-017 | ✅ | Support drink image upload and storage for drink entries | Must have | V1 | Media handling |
+| GT-018 | ✅ | Implement personal drink history list as the V1 version of the feed | Must have | V1 | Social feed deferred |
+| GT-019 | ✅ | Implement statistics overview with weekly, monthly, and yearly totals | Must have | V1 | Core consumption insight |
+| GT-020 | ✅ | Implement current streak and best streak calculation | Must have | V1 | Statistics requirement |
+| GT-021 | ✅ | Implement category distribution chart for consumption by category | Must have | V1 | Pie chart requirement |
+| GT-022 | ✅ | Implement statistics list view with all drinks and category filtering | Must have | V1 | History analysis |
+| GT-023 | ✅ | Implement settings for language, theme, and units (`ml`/`oz`) | Must have | V1 | Required settings |
+| GT-024 | ⚠️ | Add validation, empty states, error handling, and loading states across the app | Must have | V1 | Essential UX hardening |
+| GT-025 | ⬜ | Add analytics, crash/error logging, and basic release configuration | Must have | V1 | Release readiness |
+| GT-026 | ⚠️ | Create automated tests for auth, drink logging, stats, settings, and data isolation | Must have | V1 | Quality gate for first release |
+| GT-027 | ⬜ | Implement user discovery and search for adding friends | Should have | Later | Needed before social graph can scale |
+| GT-028 | ⬜ | Implement friend requests with send, accept, reject, and pending states | Should have | Later | Social graph foundation |
+| GT-029 | ⬜ | Implement friends list management on the profile screen | Should have | Later | Social profile completion |
+| GT-030 | ⬜ | Implement social feed with user and friend drink posts | Should have | Later | Expands V1 personal history |
+| GT-031 | ⬜ | Add cheers/likes to feed posts | Should have | Later | Feed interaction |
+| GT-032 | ⬜ | Add comments on feed posts | Should have | Later | Feed interaction |
+| GT-033 | ⬜ | Add push notifications for friend drink logs | Should have | Later | Highest-priority notification feature |
+| GT-034 | ⬜ | Add push notifications for friend requests and request responses | Should have | Later | Social notification set |
+| GT-035 | ⬜ | Add invite-link onboarding flow | Should have | Later | Deferred from V1 |
+| GT-036 | ⬜ | Add notify-friends toggle to the add-drink form | Should have | Later | Only useful once social notifications exist |
+| GT-037 | ⬜ | Design achievement definitions, categories, levels, and naming system | Should have | Later | Gamification foundation |
+| GT-038 | ⬜ | Implement achievement evaluation when logging drinks | Should have | Later | Unlock logic |
+| GT-039 | ⬜ | Show earned and locked achievements in the profile with detail views | Should have | Later | Profile enhancement |
+| GT-040 | ⬜ | Show achievement unlocks in the feed and condense multiple unlocks into one entry | Should have | Later | Feed enhancement |
+| GT-041 | ⬜ | Add achievement celebration animation and in-app unlock notification | Should have | Later | UX polish tied to achievements |
+| GT-042 | ⬜ | Implement BeerWithMe import parser and JSON validation | Should have | Later | Needs sample import file |
+| GT-043 | ⬜ | Map BeerWithMe glass types to GlassTrail default glass types | Should have | Later | Import conversion logic |
+| GT-044 | ⬜ | Build import UI, progress reporting, and validation error summary | Should have | Later | Settings import feature |
+| GT-045 | ⬜ | Add optional import prompt during onboarding | Should have | Later | Depends on import flow |
+| GT-046 | ⬜ | Add feedback/report issue form | Should have | Later | Product feedback loop |
+| GT-047 | ⬜ | Add suggest-a-feature form | Should have | Later | Product feedback loop |
+| GT-048 | ⬜ | Add suggest-a-drink flow for the global drink list | Should have | Later | Content growth |
+| GT-049 | ⬜ | Build admin workflow for reviewing suggested global drinks | Should have | Later | Backoffice/content moderation |
+| GT-050 | ⬜ | Implement live map with current user location and active drink markers | Nice to have | Later | Requires location permissions |
+| GT-051 | ⬜ | Show friend drink markers on the live map | Nice to have | Later | Depends on social graph and privacy rules |
+| GT-052 | ⬜ | Fade out and remove map markers after a configured time window | Nice to have | Later | Temporal map behavior |
+| GT-053 | ⬜ | Build statistics map with all historical drink locations | Nice to have | Later | Separate from live map |
+| GT-054 | ⬜ | Add special-occasion achievements and notifications | Nice to have | Later | Birthday, holidays, seasonal events |
+| GT-055 | ⬜ | Add richer desktop layouts beyond responsive safety | Nice to have | Later | Post-mobile polish |
 
 ## V1 Scope
 
