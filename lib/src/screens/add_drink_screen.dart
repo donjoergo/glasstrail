@@ -280,6 +280,7 @@ class _DrinkCategorySection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
+        initiallyExpanded: true,
         tilePadding: EdgeInsets.zero,
         title: Text(label),
         children: drinks

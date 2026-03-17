@@ -155,11 +155,17 @@ class _AuthScreenState extends State<AuthScreen> {
                           segments: <ButtonSegment<_AuthMode>>[
                             ButtonSegment<_AuthMode>(
                               value: _AuthMode.signIn,
-                              label: Text(l10n.signIn),
+                              label: Text(
+                                l10n.signIn,
+                                key: const Key('auth-mode-sign-in'),
+                              ),
                             ),
                             ButtonSegment<_AuthMode>(
                               value: _AuthMode.signUp,
-                              label: Text(l10n.signUp),
+                              label: Text(
+                                l10n.signUp,
+                                key: const Key('auth-mode-sign-up'),
+                              ),
                             ),
                           ],
                           selected: <_AuthMode>{_mode},

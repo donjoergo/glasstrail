@@ -41,6 +41,7 @@ class _HomeShellState extends State<HomeShell> {
       return Scaffold(
         appBar: AppBar(title: Text(titles[_currentIndex])),
         floatingActionButton: FloatingActionButton.extended(
+          key: const Key('global-add-drink-fab'),
           onPressed: _openAddDrink,
           icon: const Icon(Icons.add_rounded),
           label: Text(l10n.addDrink),
