@@ -1,13 +1,15 @@
 import 'package:flutter/foundation.dart';
 
+import 'backend_config.dart';
 import 'models.dart';
-import 'repository/local_app_repository.dart';
+import 'repository/app_repository.dart';
+import 'repository/repository_factory.dart';
 import 'stats_calculator.dart';
 
 class AppController extends ChangeNotifier {
   AppController._(this._repository);
 
-  final LocalAppRepository _repository;
+  final AppRepository _repository;
 
   AppUser? _currentUser;
   UserSettings _settings = UserSettings.defaults();
@@ -17,15 +19,19 @@ class AppController extends ChangeNotifier {
   bool _isBusy = false;
   String? _flashMessage;
 
-  static Future<AppController> bootstrap() async {
-    final repository = await LocalAppRepository.create();
+  static Future<AppController> bootstrap({
+    BackendConfig? backendConfig,
+  }) async {
+    final repository = await createRepository(
+      backendConfig: backendConfig,
+    );
     final controller = AppController._(repository);
     await controller._initialize();
     return controller;
   }
 
   static Future<AppController> bootstrapWithRepository(
-    LocalAppRepository repository,
+    AppRepository repository,
   ) async {
     final controller = AppController._(repository);
     await controller._initialize();
@@ -39,6 +45,8 @@ class AppController extends ChangeNotifier {
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
   bool get isBusy => _isBusy;
   bool get isAuthenticated => _currentUser != null;
+  String get backendLabel => _repository.backendLabel;
+  bool get usesRemoteBackend => _repository.usesRemoteBackend;
   AppStatistics get statistics => StatsCalculator.fromEntries(_entries);
 
   List<DrinkDefinition> get availableDrinks {
@@ -221,7 +229,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
-    _defaultCatalog = _repository.loadDefaultCatalog();
+    _defaultCatalog = await _repository.loadDefaultCatalog();
     _currentUser = await _repository.restoreSession();
     if (_currentUser != null) {
       await _reloadUserScope();

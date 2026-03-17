@@ -249,6 +249,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Icon(
+                      controller.usesRemoteBackend
+                          ? Icons.cloud_done_rounded
+                          : Icons.sd_storage_rounded,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            '${l10n.backend}: ${controller.backendLabel}',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            controller.usesRemoteBackend
+                                ? l10n.backendRemoteBody
+                                : l10n.backendLocalBody,
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               DropdownButtonFormField<AppThemePreference>(
                 key: ValueKey<String>('theme-${controller.settings.themePreference.name}'),
                 initialValue: controller.settings.themePreference,

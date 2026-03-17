@@ -4,8 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models.dart';
+import 'app_repository.dart';
 
-class LocalAppRepository {
+class LocalAppRepository implements AppRepository {
   LocalAppRepository(this._preferences, {Uuid? uuid}) : _uuid = uuid ?? const Uuid();
 
   static const _usersKey = 'glasstrail.users';
@@ -17,11 +18,18 @@ class LocalAppRepository {
   final SharedPreferences _preferences;
   final Uuid _uuid;
 
+  @override
+  String get backendLabel => 'Local fallback';
+
+  @override
+  bool get usesRemoteBackend => false;
+
   static Future<LocalAppRepository> create() async {
     final preferences = await SharedPreferences.getInstance();
     return LocalAppRepository(preferences);
   }
 
+  @override
   Future<AppUser?> restoreSession() async {
     final currentUserId = _preferences.getString(_sessionUserIdKey);
     if (currentUserId == null) {
@@ -35,6 +43,7 @@ class LocalAppRepository {
     return null;
   }
 
+  @override
   Future<AppUser> signUp({
     required String email,
     required String password,
@@ -65,6 +74,7 @@ class LocalAppRepository {
     return user;
   }
 
+  @override
   Future<AppUser> signIn({
     required String email,
     required String password,
@@ -79,10 +89,12 @@ class LocalAppRepository {
     throw const AppException('The email or password is incorrect.');
   }
 
+  @override
   Future<void> signOut() async {
     await _preferences.remove(_sessionUserIdKey);
   }
 
+  @override
   Future<AppUser> updateProfile(AppUser user) async {
     final users = _loadUsers();
     final index = users.indexWhere((candidate) => candidate.id == user.id);
@@ -94,8 +106,10 @@ class LocalAppRepository {
     return user;
   }
 
-  List<DrinkDefinition> loadDefaultCatalog() => buildDefaultDrinkCatalog();
+  @override
+  Future<List<DrinkDefinition>> loadDefaultCatalog() async => buildDefaultDrinkCatalog();
 
+  @override
   Future<List<DrinkDefinition>> loadCustomDrinks(String userId) async {
     final map = _readJsonMap(_customDrinksKey);
     final raw = (map[userId] as List?) ?? const <dynamic>[];
@@ -106,6 +120,7 @@ class LocalAppRepository {
     return list;
   }
 
+  @override
   Future<DrinkDefinition> saveCustomDrink({
     required String userId,
     String? drinkId,
@@ -148,6 +163,7 @@ class LocalAppRepository {
     return drink;
   }
 
+  @override
   Future<List<DrinkEntry>> loadEntries(String userId) async {
     final map = _readJsonMap(_entriesKey);
     final raw = (map[userId] as List?) ?? const <dynamic>[];
@@ -158,6 +174,7 @@ class LocalAppRepository {
     return entries;
   }
 
+  @override
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,
@@ -188,6 +205,7 @@ class LocalAppRepository {
     return entry;
   }
 
+  @override
   Future<UserSettings> loadSettings(String userId) async {
     final map = _readJsonMap(_settingsKey);
     final raw = map[userId];
@@ -197,6 +215,7 @@ class LocalAppRepository {
     return UserSettings.fromJson(Map<String, dynamic>.from(raw as Map));
   }
 
+  @override
   Future<UserSettings> saveSettings(String userId, UserSettings settings) async {
     final map = _readJsonMap(_settingsKey);
     map[userId] = settings.toJson();

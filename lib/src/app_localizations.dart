@@ -74,6 +74,10 @@ class AppLocalizations {
       'history': 'History',
       'totalDrinks': 'Total drinks',
       'settings': 'Settings',
+      'backend': 'Backend',
+      'backendRemoteBody': 'Supabase is configured and remote sync is active.',
+      'backendLocalBody':
+          'No Supabase configuration was provided, so the app is using the local fallback backend.',
       'theme': 'Theme',
       'language': 'Language',
       'units': 'Units',
@@ -146,6 +150,10 @@ class AppLocalizations {
       'history': 'Historie',
       'totalDrinks': 'Getränke gesamt',
       'settings': 'Einstellungen',
+      'backend': 'Backend',
+      'backendRemoteBody': 'Supabase ist konfiguriert und die Remote-Synchronisierung ist aktiv.',
+      'backendLocalBody':
+          'Es wurde keine Supabase-Konfiguration gesetzt, daher nutzt die App das lokale Fallback-Backend.',
       'theme': 'Design',
       'language': 'Sprache',
       'units': 'Einheiten',
@@ -218,6 +226,9 @@ class AppLocalizations {
   String get history => _text('history');
   String get totalDrinks => _text('totalDrinks');
   String get settings => _text('settings');
+  String get backend => _text('backend');
+  String get backendRemoteBody => _text('backendRemoteBody');
+  String get backendLocalBody => _text('backendLocalBody');
   String get theme => _text('theme');
   String get language => _text('language');
   String get units => _text('units');

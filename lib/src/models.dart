@@ -89,7 +89,7 @@ class AppUser {
   const AppUser({
     required this.id,
     required this.email,
-    required this.password,
+    this.password,
     required this.nickname,
     required this.displayName,
     this.profileImagePath,
@@ -98,7 +98,7 @@ class AppUser {
 
   final String id;
   final String email;
-  final String password;
+  final String? password;
   final String nickname;
   final String displayName;
   final String? profileImagePath;
@@ -150,7 +150,7 @@ class AppUser {
     return AppUser(
       id: json['id'] as String,
       email: json['email'] as String,
-      password: json['password'] as String,
+      password: json['password'] as String?,
       nickname: json['nickname'] as String,
       displayName: json['displayName'] as String,
       profileImagePath: json['profileImagePath'] as String?,
