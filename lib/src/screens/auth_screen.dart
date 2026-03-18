@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
 import '../app_localizations.dart';
@@ -98,6 +99,7 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     if (success) {
       FocusScope.of(context).unfocus();
+      TextInput.finishAutofillContext();
       Navigator.of(context).pushReplacementNamed(AppRoutes.feed);
     }
   }
@@ -219,136 +221,149 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildSignInForm(AppLocalizations l10n, bool isBusy) {
-    return Form(
-      key: _signInKey,
-      child: Column(
-        children: <Widget>[
-          TextFormField(
-            key: const Key('signin-email-field'),
-            controller: _signInEmailController,
-            decoration: InputDecoration(labelText: l10n.email),
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-            validator: (value) => value == null || value.trim().isEmpty
-                ? l10n.invalidRequired
-                : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            key: const Key('signin-password-field'),
-            controller: _signInPasswordController,
-            decoration: InputDecoration(labelText: l10n.password),
-            obscureText: true,
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) {
-              if (isBusy) {
-                return;
-              }
-              _submit();
-            },
-            validator: (value) => value == null || value.trim().isEmpty
-                ? l10n.invalidRequired
-                : null,
-          ),
-        ],
+    return AutofillGroup(
+      child: Form(
+        key: _signInKey,
+        child: Column(
+          children: <Widget>[
+            TextFormField(
+              key: const Key('signin-email-field'),
+              controller: _signInEmailController,
+              decoration: InputDecoration(labelText: l10n.email),
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const <String>[AutofillHints.email],
+              autocorrect: false,
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? l10n.invalidRequired
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key: const Key('signin-password-field'),
+              controller: _signInPasswordController,
+              decoration: InputDecoration(labelText: l10n.password),
+              obscureText: true,
+              autofillHints: const <String>[AutofillHints.password],
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {
+                if (isBusy) {
+                  return;
+                }
+                _submit();
+              },
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? l10n.invalidRequired
+                  : null,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildSignUpForm(AppLocalizations l10n, String localeCode) {
-    return Form(
-      key: _signUpKey,
-      child: Column(
-        children: <Widget>[
-          TextFormField(
-            key: const Key('signup-email-field'),
-            controller: _signUpEmailController,
-            decoration: InputDecoration(labelText: l10n.email),
-            keyboardType: TextInputType.emailAddress,
-            validator: (value) => value == null || value.trim().isEmpty
-                ? l10n.invalidRequired
-                : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            key: const Key('signup-password-field'),
-            controller: _signUpPasswordController,
-            decoration: InputDecoration(labelText: l10n.password),
-            obscureText: true,
-            validator: (value) => value == null || value.trim().isEmpty
-                ? l10n.invalidRequired
-                : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            key: const Key('signup-display-name-field'),
-            controller: _displayNameController,
-            decoration: InputDecoration(labelText: l10n.displayName),
-            validator: (value) => value == null || value.trim().isEmpty
-                ? l10n.invalidRequired
-                : null,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: _pickBirthday,
-                  icon: const Icon(Icons.cake_outlined),
-                  label: Text(
-                    _birthday == null
-                        ? '${l10n.birthday} (${l10n.optional})'
-                        : formatBirthdayMonthDay(_birthday!, localeCode),
-                  ),
-                ),
-              ),
-              if (_birthday != null) ...<Widget>[
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _birthday = null;
-                    });
-                  },
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: l10n.removeBirthday,
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              FilledButton.tonalIcon(
-                onPressed: _pickPhoto,
-                icon: const Icon(Icons.account_circle_outlined),
-                label: Text(
-                  _profileImagePath == null ? l10n.pickPhoto : l10n.changePhoto,
-                ),
-              ),
-              if (_profileImagePath != null) ...<Widget>[
-                const SizedBox(width: 8),
+    return AutofillGroup(
+      child: Form(
+        key: _signUpKey,
+        child: Column(
+          children: <Widget>[
+            TextFormField(
+              key: const Key('signup-email-field'),
+              controller: _signUpEmailController,
+              decoration: InputDecoration(labelText: l10n.email),
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const <String>[AutofillHints.email],
+              autocorrect: false,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? l10n.invalidRequired
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key: const Key('signup-password-field'),
+              controller: _signUpPasswordController,
+              decoration: InputDecoration(labelText: l10n.password),
+              obscureText: true,
+              autofillHints: const <String>[AutofillHints.newPassword],
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? l10n.invalidRequired
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key: const Key('signup-display-name-field'),
+              controller: _displayNameController,
+              decoration: InputDecoration(labelText: l10n.displayName),
+              autofillHints: const <String>[AutofillHints.name],
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? l10n.invalidRequired
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: <Widget>[
                 Expanded(
-                  child: Text(
-                    _profileImagePath!.split(RegExp(r'[\\/]')).last,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: FilledButton.tonalIcon(
+                    onPressed: _pickBirthday,
+                    icon: const Icon(Icons.cake_outlined),
+                    label: Text(
+                      _birthday == null
+                          ? '${l10n.birthday} (${l10n.optional})'
+                          : formatBirthdayMonthDay(_birthday!, localeCode),
+                    ),
                   ),
                 ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _profileImagePath = null;
-                    });
-                  },
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: l10n.removePhoto,
-                ),
+                if (_birthday != null) ...<Widget>[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _birthday = null;
+                      });
+                    },
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: l10n.removeBirthday,
+                  ),
+                ],
               ],
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: <Widget>[
+                FilledButton.tonalIcon(
+                  onPressed: _pickPhoto,
+                  icon: const Icon(Icons.account_circle_outlined),
+                  label: Text(
+                    _profileImagePath == null
+                        ? l10n.pickPhoto
+                        : l10n.changePhoto,
+                  ),
+                ),
+                if (_profileImagePath != null) ...<Widget>[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _profileImagePath!.split(RegExp(r'[\\/]')).last,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _profileImagePath = null;
+                      });
+                    },
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: l10n.removePhoto,
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

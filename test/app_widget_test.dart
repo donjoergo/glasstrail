@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_routes.dart';
@@ -43,6 +44,41 @@ void main() {
 
     expect(find.text('Track every glass'), findsOneWidget);
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+  });
+
+  testWidgets('configures browser autofill hints for auth fields', (
+    tester,
+  ) async {
+    final app = await buildTestApp();
+
+    await tester.pumpWidget(app);
+    await tester.pumpAndSettle();
+
+    TextField fieldByLabel(String labelText) {
+      return tester
+          .widgetList<TextField>(find.byType(TextField))
+          .firstWhere((field) => field.decoration?.labelText == labelText);
+    }
+
+    final signInEmailField = fieldByLabel('Email');
+    final signInPasswordField = fieldByLabel('Password');
+
+    expect(signInEmailField.autofillHints, contains(AutofillHints.email));
+    expect(signInPasswordField.autofillHints, contains(AutofillHints.password));
+
+    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
+    await tester.pumpAndSettle();
+
+    final signUpEmailField = fieldByLabel('Email');
+    final signUpPasswordField = fieldByLabel('Password');
+    final signUpDisplayNameField = fieldByLabel('Display name');
+
+    expect(signUpEmailField.autofillHints, contains(AutofillHints.email));
+    expect(
+      signUpPasswordField.autofillHints,
+      contains(AutofillHints.newPassword),
+    );
+    expect(signUpDisplayNameField.autofillHints, contains(AutofillHints.name));
   });
 
   testWidgets('submits sign-in on enter from the password field', (
