@@ -9,16 +9,12 @@ abstract class AppRepository {
   Future<AppUser> signUp({
     required String email,
     required String password,
-    required String nickname,
     required String displayName,
     DateTime? birthday,
     String? profileImagePath,
   });
 
-  Future<AppUser> signIn({
-    required String email,
-    required String password,
-  });
+  Future<AppUser> signIn({required String email, required String password});
 
   Future<void> signOut();
 

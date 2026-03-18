@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'backend_config.dart';
+import 'birthday.dart';
 import 'models.dart';
 import 'repository/app_repository.dart';
 import 'repository/repository_factory.dart';
@@ -19,12 +20,8 @@ class AppController extends ChangeNotifier {
   bool _isBusy = false;
   String? _flashMessage;
 
-  static Future<AppController> bootstrap({
-    BackendConfig? backendConfig,
-  }) async {
-    final repository = await createRepository(
-      backendConfig: backendConfig,
-    );
+  static Future<AppController> bootstrap({BackendConfig? backendConfig}) async {
+    final repository = await createRepository(backendConfig: backendConfig);
     final controller = AppController._(repository);
     await controller._initialize();
     return controller;
@@ -40,7 +37,8 @@ class AppController extends ChangeNotifier {
 
   AppUser? get currentUser => _currentUser;
   UserSettings get settings => _settings;
-  List<DrinkDefinition> get defaultCatalog => List.unmodifiable(_defaultCatalog);
+  List<DrinkDefinition> get defaultCatalog =>
+      List.unmodifiable(_defaultCatalog);
   List<DrinkDefinition> get customDrinks => List.unmodifiable(_customDrinks);
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
   bool get isBusy => _isBusy;
@@ -52,7 +50,9 @@ class AppController extends ChangeNotifier {
   List<DrinkDefinition> get availableDrinks {
     final drinks = <DrinkDefinition>[..._defaultCatalog, ..._customDrinks];
     drinks.sort((left, right) {
-      final categoryComparison = left.category.index.compareTo(right.category.index);
+      final categoryComparison = left.category.index.compareTo(
+        right.category.index,
+      );
       if (categoryComparison != 0) {
         return categoryComparison;
       }
@@ -62,9 +62,7 @@ class AppController extends ChangeNotifier {
   }
 
   List<DrinkDefinition> get recentDrinks {
-    final byId = {
-      for (final drink in availableDrinks) drink.id: drink,
-    };
+    final byId = {for (final drink in availableDrinks) drink.id: drink};
     final seen = <String>{};
     final result = <DrinkDefinition>[];
     for (final entry in _entries) {
@@ -91,7 +89,6 @@ class AppController extends ChangeNotifier {
   Future<bool> signUp({
     required String email,
     required String password,
-    required String nickname,
     required String displayName,
     DateTime? birthday,
     String? profileImagePath,
@@ -100,9 +97,8 @@ class AppController extends ChangeNotifier {
       _currentUser = await _repository.signUp(
         email: email,
         password: password,
-        nickname: nickname,
         displayName: displayName,
-        birthday: birthday,
+        birthday: normalizeBirthdayOrNull(birthday),
         profileImagePath: profileImagePath,
       );
       await _reloadUserScope();
@@ -110,10 +106,7 @@ class AppController extends ChangeNotifier {
     });
   }
 
-  Future<bool> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<bool> signIn({required String email, required String password}) async {
     return _guard(() async {
       _currentUser = await _repository.signIn(email: email, password: password);
       await _reloadUserScope();
@@ -127,12 +120,10 @@ class AppController extends ChangeNotifier {
       _currentUser = null;
       _customDrinks = const <DrinkDefinition>[];
       _entries = const <DrinkEntry>[];
-      _settings = UserSettings.defaults();
     });
   }
 
   Future<bool> updateProfile({
-    required String nickname,
     required String displayName,
     DateTime? birthday,
     String? profileImagePath,
@@ -146,9 +137,8 @@ class AppController extends ChangeNotifier {
     return _guard(() async {
       _currentUser = await _repository.updateProfile(
         user.copyWith(
-          nickname: nickname.trim(),
           displayName: displayName.trim(),
-          birthday: birthday,
+          birthday: normalizeBirthdayOrNull(birthday),
           clearBirthday: clearBirthday,
           profileImagePath: profileImagePath,
           clearProfileImage: clearProfileImage,

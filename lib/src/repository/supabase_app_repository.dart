@@ -2,11 +2,13 @@ import 'package:file_selector/file_selector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../birthday.dart';
 import '../models.dart';
 import 'app_repository.dart';
 
 class SupabaseAppRepository implements AppRepository {
-  SupabaseAppRepository(this._client, {Uuid? uuid}) : _uuid = uuid ?? const Uuid();
+  SupabaseAppRepository(this._client, {Uuid? uuid})
+    : _uuid = uuid ?? const Uuid();
 
   static const _mediaBucket = 'user-media';
 
@@ -32,7 +34,6 @@ class SupabaseAppRepository implements AppRepository {
   Future<AppUser> signUp({
     required String email,
     required String password,
-    required String nickname,
     required String displayName,
     DateTime? birthday,
     String? profileImagePath,
@@ -42,7 +43,6 @@ class SupabaseAppRepository implements AppRepository {
         email: email.trim(),
         password: password,
         data: <String, dynamic>{
-          'nickname': nickname.trim(),
           'display_name': displayName.trim(),
           if (birthday != null) 'birthday': _toDateString(birthday),
           if (profileImagePath != null && profileImagePath.trim().isNotEmpty)
@@ -63,7 +63,6 @@ class SupabaseAppRepository implements AppRepository {
 
       return _ensureProfile(
         user,
-        preferredNickname: nickname.trim(),
         preferredDisplayName: displayName.trim(),
         preferredBirthday: birthday,
         preferredProfileImagePath: profileImagePath,
@@ -120,9 +119,10 @@ class SupabaseAppRepository implements AppRepository {
       await _client.auth.updateUser(
         UserAttributes(
           data: <String, dynamic>{
-            'nickname': user.nickname,
             'display_name': user.displayName,
-            'birthday': user.birthday == null ? null : _toDateString(user.birthday!),
+            'birthday': user.birthday == null
+                ? null
+                : _toDateString(user.birthday!),
             'profile_image_path': finalImagePath,
           },
         ),
@@ -130,17 +130,15 @@ class SupabaseAppRepository implements AppRepository {
 
       final row = await _client
           .from('profiles')
-          .upsert(
-            <String, dynamic>{
-              'id': user.id,
-              'email': user.email,
-              'nickname': user.nickname,
-              'display_name': user.displayName,
-              'birthday': user.birthday == null ? null : _toDateString(user.birthday!),
-              'profile_image_path': finalImagePath,
-            },
-            onConflict: 'id',
-          )
+          .upsert(<String, dynamic>{
+            'id': user.id,
+            'email': user.email,
+            'display_name': user.displayName,
+            'birthday': user.birthday == null
+                ? null
+                : _toDateString(user.birthday!),
+            'profile_image_path': finalImagePath,
+          }, onConflict: 'id')
           .select()
           .single();
 
@@ -168,7 +166,10 @@ class SupabaseAppRepository implements AppRepository {
           .order('name_en');
 
       final drinks = (rows as List<dynamic>)
-          .map((row) => _globalDrinkToDefinition(Map<String, dynamic>.from(row as Map)))
+          .map(
+            (row) =>
+                _globalDrinkToDefinition(Map<String, dynamic>.from(row as Map)),
+          )
           .toList();
 
       if (drinks.isEmpty) {
@@ -190,7 +191,10 @@ class SupabaseAppRepository implements AppRepository {
           .order('name');
 
       return (rows as List<dynamic>)
-          .map((row) => _userDrinkToDefinition(Map<String, dynamic>.from(row as Map)))
+          .map(
+            (row) =>
+                _userDrinkToDefinition(Map<String, dynamic>.from(row as Map)),
+          )
           .toList();
     } on PostgrestException catch (error) {
       throw AppException(error.message);
@@ -216,17 +220,14 @@ class SupabaseAppRepository implements AppRepository {
 
       final row = await _client
           .from('user_drinks')
-          .upsert(
-            <String, dynamic>{
-              'id': id,
-              'user_id': userId,
-              'name': name.trim(),
-              'category_slug': category.storageValue,
-              'volume_ml': volumeMl,
-              'image_path': finalImagePath,
-            },
-            onConflict: 'id',
-          )
+          .upsert(<String, dynamic>{
+            'id': id,
+            'user_id': userId,
+            'name': name.trim(),
+            'category_slug': category.storageValue,
+            'volume_ml': volumeMl,
+            'image_path': finalImagePath,
+          }, onConflict: 'id')
           .select()
           .single();
 
@@ -283,7 +284,9 @@ class SupabaseAppRepository implements AppRepository {
             'volume_ml': volumeMl,
             'comment': comment?.trim().isEmpty ?? true ? null : comment?.trim(),
             'image_path': finalImagePath,
-            'consumed_at': (consumedAt ?? DateTime.now()).toUtc().toIso8601String(),
+            'consumed_at': (consumedAt ?? DateTime.now())
+                .toUtc()
+                .toIso8601String(),
           })
           .select()
           .single();
@@ -315,19 +318,20 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<UserSettings> saveSettings(String userId, UserSettings settings) async {
+  Future<UserSettings> saveSettings(
+    String userId,
+    UserSettings settings,
+  ) async {
     try {
       final row = await _client
           .from('user_settings')
-          .upsert(
-            <String, dynamic>{
-              'user_id': userId,
-              'theme_preference': settings.themePreference.storageValue,
-              'locale_code': settings.localeCode,
-              'unit': settings.unit.storageValue,
-            },
-            onConflict: 'user_id',
-          )
+          .upsert(<String, dynamic>{
+            'user_id': userId,
+            'theme_preference': settings.themePreference.storageValue,
+            'locale_code': settings.localeCode,
+            'unit': settings.unit.storageValue,
+            'handedness': settings.handedness.storageValue,
+          }, onConflict: 'user_id')
           .select()
           .single();
 
@@ -339,7 +343,6 @@ class SupabaseAppRepository implements AppRepository {
 
   Future<AppUser> _ensureProfile(
     User authUser, {
-    String? preferredNickname,
     String? preferredDisplayName,
     DateTime? preferredBirthday,
     String? preferredProfileImagePath,
@@ -359,23 +362,25 @@ class SupabaseAppRepository implements AppRepository {
       );
     }
 
-    final metadata = Map<String, dynamic>.from(authUser.userMetadata ?? const <String, dynamic>{});
+    final metadata = Map<String, dynamic>.from(
+      authUser.userMetadata ?? const <String, dynamic>{},
+    );
     final row = await _client
         .from('profiles')
         .insert(<String, dynamic>{
           'id': authUser.id,
           'email': authUser.email,
-          'nickname': preferredNickname ??
-              (metadata['nickname'] as String?) ??
-              _fallbackNickname(authUser.email),
-          'display_name': preferredDisplayName ??
+          'display_name':
+              preferredDisplayName ??
               (metadata['display_name'] as String?) ??
-              _fallbackNickname(authUser.email),
+              (metadata['nickname'] as String?) ??
+              _fallbackDisplayName(authUser.email),
           'birthday': preferredBirthday == null
               ? metadata['birthday']
               : _toDateString(preferredBirthday),
           'profile_image_path':
-              preferredProfileImagePath ?? (metadata['profile_image_path'] as String?),
+              preferredProfileImagePath ??
+              (metadata['profile_image_path'] as String?),
         })
         .select()
         .single();
@@ -389,15 +394,19 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   Future<void> _ensureSettingsRow(String userId) async {
-    await _client.from('user_settings').upsert(
-      <String, dynamic>{
-        'user_id': userId,
-        'theme_preference': AppThemePreference.system.storageValue,
-        'locale_code': 'en',
-        'unit': AppUnit.ml.storageValue,
-      },
-      onConflict: 'user_id',
-    );
+    await _client
+        .from('user_settings')
+        .upsert(
+          <String, dynamic>{
+            'user_id': userId,
+            'theme_preference': AppThemePreference.system.storageValue,
+            'locale_code': 'en',
+            'unit': AppUnit.ml.storageValue,
+            'handedness': AppHandedness.right.storageValue,
+          },
+          onConflict: 'user_id',
+          ignoreDuplicates: true,
+        );
   }
 
   AppUser _profileToUser(
@@ -409,10 +418,14 @@ class SupabaseAppRepository implements AppRepository {
     return AppUser(
       id: userId,
       email: (row['email'] as String?) ?? email,
-      nickname: (row['nickname'] as String?) ?? _fallbackNickname(email),
-      displayName: (row['display_name'] as String?) ?? _fallbackNickname(email),
+      displayName:
+          (row['display_name'] as String?) ??
+          (row['nickname'] as String?) ??
+          _fallbackDisplayName(email),
       profileImagePath: row['profile_image_path'] as String?,
-      birthday: birthdayRaw == null ? null : DateTime.parse(birthdayRaw as String),
+      birthday: normalizeBirthdayOrNull(
+        birthdayRaw == null ? null : DateTime.parse(birthdayRaw as String),
+      ),
     );
   }
 
@@ -465,17 +478,20 @@ class SupabaseAppRepository implements AppRepository {
 
     final bytes = await XFile(normalized).readAsBytes();
     final fileName = normalized.split(RegExp(r'[\\/]')).last;
-    final sanitized = '${DateTime.now().millisecondsSinceEpoch}-${fileName.replaceAll(' ', '-')}';
+    final sanitized =
+        '${DateTime.now().millisecondsSinceEpoch}-${fileName.replaceAll(' ', '-')}';
     final storagePath = '$userId/$folder/$sanitized';
 
-    await _client.storage.from(_mediaBucket).uploadBinary(
-      storagePath,
-      bytes,
-      fileOptions: FileOptions(
-        upsert: true,
-        contentType: _guessMimeType(fileName),
-      ),
-    );
+    await _client.storage
+        .from(_mediaBucket)
+        .uploadBinary(
+          storagePath,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: _guessMimeType(fileName),
+          ),
+        );
 
     return storagePath;
   }
@@ -504,16 +520,16 @@ class SupabaseAppRepository implements AppRepository {
     return 'image/jpeg';
   }
 
-  String _fallbackNickname(String? email) {
+  String _fallbackDisplayName(String? email) {
     final value = email?.trim();
     if (value == null || value.isEmpty) {
-      return 'glasstrail-user';
+      return 'GlassTrail User';
     }
     return value.split('@').first;
   }
 
   String _toDateString(DateTime value) {
-    final normalized = DateTime(value.year, value.month, value.day);
+    final normalized = normalizeBirthday(value);
     return normalized.toIso8601String().split('T').first;
   }
 }

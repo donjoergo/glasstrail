@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'birthday.dart';
+
 class AppException implements Exception {
   const AppException(this.message);
 
@@ -13,10 +15,10 @@ enum AppThemePreference { system, light, dark }
 
 extension AppThemePreferenceX on AppThemePreference {
   ThemeMode get themeMode => switch (this) {
-        AppThemePreference.system => ThemeMode.system,
-        AppThemePreference.light => ThemeMode.light,
-        AppThemePreference.dark => ThemeMode.dark,
-      };
+    AppThemePreference.system => ThemeMode.system,
+    AppThemePreference.light => ThemeMode.light,
+    AppThemePreference.dark => ThemeMode.dark,
+  };
 
   String get storageValue => name;
 
@@ -64,6 +66,21 @@ extension AppUnitX on AppUnit {
   }
 }
 
+enum AppHandedness { right, left }
+
+extension AppHandednessX on AppHandedness {
+  String get storageValue => name;
+
+  bool get isLeft => this == AppHandedness.left;
+
+  static AppHandedness fromStorage(String? value) {
+    return AppHandedness.values.firstWhere(
+      (candidate) => candidate.name == value,
+      orElse: () => AppHandedness.right,
+    );
+  }
+}
+
 enum DrinkCategory { beer, wine, spirits, cocktails, nonAlcoholic }
 
 extension DrinkCategoryX on DrinkCategory {
@@ -77,12 +94,12 @@ extension DrinkCategoryX on DrinkCategory {
   }
 
   IconData get icon => switch (this) {
-        DrinkCategory.beer => Icons.sports_bar_rounded,
-        DrinkCategory.wine => Icons.wine_bar_rounded,
-        DrinkCategory.spirits => Icons.local_bar_rounded,
-        DrinkCategory.cocktails => Icons.celebration_rounded,
-        DrinkCategory.nonAlcoholic => Icons.water_drop_rounded,
-      };
+    DrinkCategory.beer => Icons.sports_bar_rounded,
+    DrinkCategory.wine => Icons.wine_bar_rounded,
+    DrinkCategory.spirits => Icons.local_bar_rounded,
+    DrinkCategory.cocktails => Icons.celebration_rounded,
+    DrinkCategory.nonAlcoholic => Icons.water_drop_rounded,
+  };
 }
 
 class AppUser {
@@ -90,7 +107,6 @@ class AppUser {
     required this.id,
     required this.email,
     this.password,
-    required this.nickname,
     required this.displayName,
     this.profileImagePath,
     this.birthday,
@@ -99,7 +115,6 @@ class AppUser {
   final String id;
   final String email;
   final String? password;
-  final String nickname;
   final String displayName;
   final String? profileImagePath;
   final DateTime? birthday;
@@ -111,12 +126,13 @@ class AppUser {
     }
     final parts = trimmed.split(RegExp(r'\s+'));
     final first = parts.first.characters.first.toUpperCase();
-    final second = parts.length > 1 ? parts[1].characters.first.toUpperCase() : '';
+    final second = parts.length > 1
+        ? parts[1].characters.first.toUpperCase()
+        : '';
     return '$first$second';
   }
 
   AppUser copyWith({
-    String? nickname,
     String? displayName,
     String? profileImagePath,
     bool clearProfileImage = false,
@@ -127,10 +143,13 @@ class AppUser {
       id: id,
       email: email,
       password: password,
-      nickname: nickname ?? this.nickname,
       displayName: displayName ?? this.displayName,
-      profileImagePath: clearProfileImage ? null : profileImagePath ?? this.profileImagePath,
-      birthday: clearBirthday ? null : birthday ?? this.birthday,
+      profileImagePath: clearProfileImage
+          ? null
+          : profileImagePath ?? this.profileImagePath,
+      birthday: clearBirthday
+          ? null
+          : normalizeBirthdayOrNull(birthday ?? this.birthday),
     );
   }
 
@@ -139,10 +158,9 @@ class AppUser {
       'id': id,
       'email': email,
       'password': password,
-      'nickname': nickname,
       'displayName': displayName,
       'profileImagePath': profileImagePath,
-      'birthday': birthday?.toIso8601String(),
+      'birthday': normalizeBirthdayOrNull(birthday)?.toIso8601String(),
     };
   }
 
@@ -151,12 +169,32 @@ class AppUser {
       id: json['id'] as String,
       email: json['email'] as String,
       password: json['password'] as String?,
-      nickname: json['nickname'] as String,
-      displayName: json['displayName'] as String,
+      displayName: _displayNameFromJson(json),
       profileImagePath: json['profileImagePath'] as String?,
-      birthday: json['birthday'] == null ? null : DateTime.parse(json['birthday'] as String),
+      birthday: normalizeBirthdayOrNull(
+        json['birthday'] == null
+            ? null
+            : DateTime.parse(json['birthday'] as String),
+      ),
     );
   }
+}
+
+String _displayNameFromJson(Map<String, dynamic> json) {
+  final displayName =
+      (json['displayName'] as String?) ?? (json['display_name'] as String?);
+  if (displayName != null && displayName.trim().isNotEmpty) {
+    return displayName.trim();
+  }
+
+  final legacyNickname = json['nickname'] as String?;
+  if (legacyNickname != null && legacyNickname.trim().isNotEmpty) {
+    return legacyNickname.trim();
+  }
+
+  final email = (json['email'] as String?)?.trim() ?? '';
+  final localPart = email.split('@').first.trim();
+  return localPart.isEmpty ? 'GlassTrail User' : localPart;
 }
 
 class DrinkDefinition {
@@ -258,6 +296,7 @@ class UserSettings {
     required this.themePreference,
     required this.localeCode,
     required this.unit,
+    required this.handedness,
   });
 
   factory UserSettings.defaults() {
@@ -265,22 +304,26 @@ class UserSettings {
       themePreference: AppThemePreference.system,
       localeCode: 'en',
       unit: AppUnit.ml,
+      handedness: AppHandedness.right,
     );
   }
 
   final AppThemePreference themePreference;
   final String localeCode;
   final AppUnit unit;
+  final AppHandedness handedness;
 
   UserSettings copyWith({
     AppThemePreference? themePreference,
     String? localeCode,
     AppUnit? unit,
+    AppHandedness? handedness,
   }) {
     return UserSettings(
       themePreference: themePreference ?? this.themePreference,
       localeCode: localeCode ?? this.localeCode,
       unit: unit ?? this.unit,
+      handedness: handedness ?? this.handedness,
     );
   }
 
@@ -289,16 +332,35 @@ class UserSettings {
       'themePreference': themePreference.storageValue,
       'localeCode': localeCode,
       'unit': unit.storageValue,
+      'handedness': handedness.storageValue,
     };
   }
 
   factory UserSettings.fromJson(Map<String, dynamic> json) {
     return UserSettings(
-      themePreference: AppThemePreferenceX.fromStorage(json['themePreference'] as String?),
-      localeCode: (json['localeCode'] as String?) ?? 'en',
-      unit: AppUnitX.fromStorage(json['unit'] as String?),
+      themePreference: AppThemePreferenceX.fromStorage(
+        _readString(json, 'themePreference', 'theme_preference'),
+      ),
+      localeCode: _readString(json, 'localeCode', 'locale_code') ?? 'en',
+      unit: AppUnitX.fromStorage(_readString(json, 'unit')),
+      handedness: AppHandednessX.fromStorage(_readString(json, 'handedness')),
     );
   }
+}
+
+String? _readString(
+  Map<String, dynamic> json,
+  String primary, [
+  String? fallback,
+]) {
+  final primaryValue = json[primary] as String?;
+  if (primaryValue != null) {
+    return primaryValue;
+  }
+  if (fallback == null) {
+    return null;
+  }
+  return json[fallback] as String?;
 }
 
 List<DrinkDefinition> buildDefaultDrinkCatalog() {

@@ -7,7 +7,8 @@ import '../models.dart';
 import 'app_repository.dart';
 
 class LocalAppRepository implements AppRepository {
-  LocalAppRepository(this._preferences, {Uuid? uuid}) : _uuid = uuid ?? const Uuid();
+  LocalAppRepository(this._preferences, {Uuid? uuid})
+    : _uuid = uuid ?? const Uuid();
 
   static const _usersKey = 'glasstrail.users';
   static const _sessionUserIdKey = 'glasstrail.session_user_id';
@@ -47,7 +48,6 @@ class LocalAppRepository implements AppRepository {
   Future<AppUser> signUp({
     required String email,
     required String password,
-    required String nickname,
     required String displayName,
     DateTime? birthday,
     String? profileImagePath,
@@ -62,7 +62,6 @@ class LocalAppRepository implements AppRepository {
       id: _uuid.v4(),
       email: normalizedEmail,
       password: password,
-      nickname: nickname.trim(),
       displayName: displayName.trim(),
       birthday: birthday,
       profileImagePath: profileImagePath,
@@ -81,7 +80,8 @@ class LocalAppRepository implements AppRepository {
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
     for (final user in _loadUsers()) {
-      if (user.email.toLowerCase() == normalizedEmail && user.password == password) {
+      if (user.email.toLowerCase() == normalizedEmail &&
+          user.password == password) {
         await _preferences.setString(_sessionUserIdKey, user.id);
         return user;
       }
@@ -107,14 +107,18 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<DrinkDefinition>> loadDefaultCatalog() async => buildDefaultDrinkCatalog();
+  Future<List<DrinkDefinition>> loadDefaultCatalog() async =>
+      buildDefaultDrinkCatalog();
 
   @override
   Future<List<DrinkDefinition>> loadCustomDrinks(String userId) async {
     final map = _readJsonMap(_customDrinksKey);
     final raw = (map[userId] as List?) ?? const <dynamic>[];
     final list = raw
-        .map((item) => DrinkDefinition.fromJson(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) =>
+              DrinkDefinition.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
     list.sort((left, right) => left.name.compareTo(right.name));
     return list;
@@ -135,11 +139,14 @@ class LocalAppRepository implements AppRepository {
 
     final hasDuplicate = raw.any((item) {
       final candidate = Map<String, dynamic>.from(item as Map);
-      return (candidate['name'] as String).toLowerCase() == normalizedName.toLowerCase() &&
+      return (candidate['name'] as String).toLowerCase() ==
+              normalizedName.toLowerCase() &&
           candidate['id'] != drinkId;
     });
     if (hasDuplicate) {
-      throw const AppException('You already have a custom drink with that name.');
+      throw const AppException(
+        'You already have a custom drink with that name.',
+      );
     }
 
     final drink = DrinkDefinition(
@@ -168,7 +175,9 @@ class LocalAppRepository implements AppRepository {
     final map = _readJsonMap(_entriesKey);
     final raw = (map[userId] as List?) ?? const <dynamic>[];
     final entries = raw
-        .map((item) => DrinkEntry.fromJson(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) => DrinkEntry.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
     entries.sort((left, right) => right.consumedAt.compareTo(left.consumedAt));
     return entries;
@@ -184,7 +193,9 @@ class LocalAppRepository implements AppRepository {
     DateTime? consumedAt,
   }) async {
     final map = _readJsonMap(_entriesKey);
-    final raw = List<dynamic>.from((map[user.id] as List?) ?? const <dynamic>[]);
+    final raw = List<dynamic>.from(
+      (map[user.id] as List?) ?? const <dynamic>[],
+    );
     final trimmedComment = comment?.trim();
 
     final entry = DrinkEntry(
@@ -195,7 +206,9 @@ class LocalAppRepository implements AppRepository {
       category: drink.category,
       consumedAt: consumedAt ?? DateTime.now(),
       volumeMl: volumeMl,
-      comment: trimmedComment == null || trimmedComment.isEmpty ? null : trimmedComment,
+      comment: trimmedComment == null || trimmedComment.isEmpty
+          ? null
+          : trimmedComment,
       imagePath: imagePath,
     );
 
@@ -216,7 +229,10 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
-  Future<UserSettings> saveSettings(String userId, UserSettings settings) async {
+  Future<UserSettings> saveSettings(
+    String userId,
+    UserSettings settings,
+  ) async {
     final map = _readJsonMap(_settingsKey);
     map[userId] = settings.toJson();
     await _writeJsonMap(_settingsKey, map);

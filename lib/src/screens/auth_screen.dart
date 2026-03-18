@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_localizations.dart';
+import '../birthday.dart';
 import '../app_scope.dart';
 
 enum _AuthMode { signIn, signUp }
@@ -20,7 +21,6 @@ class _AuthScreenState extends State<AuthScreen> {
   final _signInPasswordController = TextEditingController();
   final _signUpEmailController = TextEditingController();
   final _signUpPasswordController = TextEditingController();
-  final _nicknameController = TextEditingController();
   final _displayNameController = TextEditingController();
 
   _AuthMode _mode = _AuthMode.signIn;
@@ -33,7 +33,6 @@ class _AuthScreenState extends State<AuthScreen> {
     _signInPasswordController.dispose();
     _signUpEmailController.dispose();
     _signUpPasswordController.dispose();
-    _nicknameController.dispose();
     _displayNameController.dispose();
     super.dispose();
   }
@@ -49,11 +48,9 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _pickBirthday() async {
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: _birthday ?? DateTime(1995, 1, 1),
-      firstDate: DateTime(1920),
-      lastDate: DateTime.now(),
+    final selected = await pickMonthDayBirthday(
+      context,
+      initialValue: _birthday,
     );
     if (!mounted || selected == null) {
       return;
@@ -69,9 +66,9 @@ class _AuthScreenState extends State<AuthScreen> {
         ? _signInKey.currentState
         : _signUpKey.currentState;
     if (formState == null || !formState.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.invalidRequired)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.invalidRequired)));
       return;
     }
 
@@ -84,7 +81,6 @@ class _AuthScreenState extends State<AuthScreen> {
         : await controller.signUp(
             email: _signUpEmailController.text,
             password: _signUpPasswordController.text,
-            nickname: _nicknameController.text,
             displayName: _displayNameController.text,
             birthday: _birthday,
             profileImagePath: _profileImagePath,
@@ -95,9 +91,9 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     final message = controller.takeFlashMessage();
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
     if (success) {
       FocusScope.of(context).unfocus();
@@ -109,6 +105,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
+    final localeCode = controller.settings.localeCode;
 
     return Scaffold(
       body: Container(
@@ -183,7 +180,10 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        if (_mode == _AuthMode.signIn) _buildSignInForm(l10n) else _buildSignUpForm(l10n),
+                        if (_mode == _AuthMode.signIn)
+                          _buildSignInForm(l10n)
+                        else
+                          _buildSignUpForm(l10n, localeCode),
                         const SizedBox(height: 20),
                         SizedBox(
                           width: double.infinity,
@@ -193,9 +193,15 @@ class _AuthScreenState extends State<AuthScreen> {
                             child: controller.isBusy
                                 ? const SizedBox.square(
                                     dimension: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   )
-                                : Text(_mode == _AuthMode.signIn ? l10n.signIn : l10n.signUp),
+                                : Text(
+                                    _mode == _AuthMode.signIn
+                                        ? l10n.signIn
+                                        : l10n.signUp,
+                                  ),
                           ),
                         ),
                       ],
@@ -220,8 +226,9 @@ class _AuthScreenState extends State<AuthScreen> {
             controller: _signInEmailController,
             decoration: InputDecoration(labelText: l10n.email),
             keyboardType: TextInputType.emailAddress,
-            validator: (value) =>
-                value == null || value.trim().isEmpty ? l10n.invalidRequired : null,
+            validator: (value) => value == null || value.trim().isEmpty
+                ? l10n.invalidRequired
+                : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -229,15 +236,16 @@ class _AuthScreenState extends State<AuthScreen> {
             controller: _signInPasswordController,
             decoration: InputDecoration(labelText: l10n.password),
             obscureText: true,
-            validator: (value) =>
-                value == null || value.trim().isEmpty ? l10n.invalidRequired : null,
+            validator: (value) => value == null || value.trim().isEmpty
+                ? l10n.invalidRequired
+                : null,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSignUpForm(AppLocalizations l10n) {
+  Widget _buildSignUpForm(AppLocalizations l10n, String localeCode) {
     return Form(
       key: _signUpKey,
       child: Column(
@@ -247,8 +255,9 @@ class _AuthScreenState extends State<AuthScreen> {
             controller: _signUpEmailController,
             decoration: InputDecoration(labelText: l10n.email),
             keyboardType: TextInputType.emailAddress,
-            validator: (value) =>
-                value == null || value.trim().isEmpty ? l10n.invalidRequired : null,
+            validator: (value) => value == null || value.trim().isEmpty
+                ? l10n.invalidRequired
+                : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -256,24 +265,18 @@ class _AuthScreenState extends State<AuthScreen> {
             controller: _signUpPasswordController,
             decoration: InputDecoration(labelText: l10n.password),
             obscureText: true,
-            validator: (value) =>
-                value == null || value.trim().isEmpty ? l10n.invalidRequired : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            key: const Key('signup-nickname-field'),
-            controller: _nicknameController,
-            decoration: InputDecoration(labelText: l10n.nickname),
-            validator: (value) =>
-                value == null || value.trim().isEmpty ? l10n.invalidRequired : null,
+            validator: (value) => value == null || value.trim().isEmpty
+                ? l10n.invalidRequired
+                : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             key: const Key('signup-display-name-field'),
             controller: _displayNameController,
             decoration: InputDecoration(labelText: l10n.displayName),
-            validator: (value) =>
-                value == null || value.trim().isEmpty ? l10n.invalidRequired : null,
+            validator: (value) => value == null || value.trim().isEmpty
+                ? l10n.invalidRequired
+                : null,
           ),
           const SizedBox(height: 12),
           Row(
@@ -285,7 +288,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   label: Text(
                     _birthday == null
                         ? '${l10n.birthday} (${l10n.optional})'
-                        : '${_birthday!.year}-${_birthday!.month.toString().padLeft(2, '0')}-${_birthday!.day.toString().padLeft(2, '0')}',
+                        : formatBirthdayMonthDay(_birthday!, localeCode),
                   ),
                 ),
               ),
@@ -298,7 +301,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     });
                   },
                   icon: const Icon(Icons.close_rounded),
-                  tooltip: l10n.removePhoto,
+                  tooltip: l10n.removeBirthday,
                 ),
               ],
             ],
@@ -309,7 +312,9 @@ class _AuthScreenState extends State<AuthScreen> {
               FilledButton.tonalIcon(
                 onPressed: _pickPhoto,
                 icon: const Icon(Icons.account_circle_outlined),
-                label: Text(_profileImagePath == null ? l10n.pickPhoto : l10n.changePhoto),
+                label: Text(
+                  _profileImagePath == null ? l10n.pickPhoto : l10n.changePhoto,
+                ),
               ),
               if (_profileImagePath != null) ...<Widget>[
                 const SizedBox(width: 8),

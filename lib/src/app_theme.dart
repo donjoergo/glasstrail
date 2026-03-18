@@ -9,35 +9,49 @@ class AppTheme {
   static const _tertiary = Color(0xFFE9C46A);
 
   static ThemeData get lightTheme {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _primary,
-      brightness: Brightness.light,
-    ).copyWith(
-      primary: _primary,
-      secondary: _secondary,
-      tertiary: _tertiary,
-      surface: Colors.white,
-      error: const Color(0xFFC44536),
-    );
-    return _buildTheme(scheme).copyWith(
-      scaffoldBackgroundColor: const Color(0xFFF6F7F4),
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: _primary,
+          brightness: Brightness.light,
+        ).copyWith(
+          primary: _primary,
+          secondary: _secondary,
+          tertiary: _tertiary,
+          surface: const Color(0xFFFFFCF8),
+          surfaceContainerHighest: const Color(0xFFE7ECE8),
+          onSurface: const Color(0xFF17201A),
+          onSurfaceVariant: const Color(0xFF4F5C56),
+          outline: const Color(0xFF7C8A84),
+          inverseSurface: const Color(0xFF1B241E),
+          onInverseSurface: const Color(0xFFF5FBF6),
+          error: const Color(0xFFC44536),
+        );
+    return _buildTheme(
+      scheme,
+    ).copyWith(scaffoldBackgroundColor: const Color(0xFFF6F7F4));
   }
 
   static ThemeData get darkTheme {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: _primary,
-      brightness: Brightness.dark,
-    ).copyWith(
-      primary: const Color(0xFF68B38D),
-      secondary: const Color(0xFF73BBB3),
-      tertiary: _tertiary,
-      surface: const Color(0xFF182028),
-      error: const Color(0xFFFF7B72),
-    );
-    return _buildTheme(scheme).copyWith(
-      scaffoldBackgroundColor: const Color(0xFF101418),
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: _primary,
+          brightness: Brightness.dark,
+        ).copyWith(
+          primary: const Color(0xFF82CCA5),
+          secondary: const Color(0xFF91D6CF),
+          tertiary: _tertiary,
+          surface: const Color(0xFF151B18),
+          surfaceContainerHighest: const Color(0xFF25302B),
+          onSurface: const Color(0xFFF4FBF6),
+          onSurfaceVariant: const Color(0xFFD6E2DB),
+          outline: const Color(0xFF93A39A),
+          inverseSurface: const Color(0xFFE8F1EB),
+          onInverseSurface: const Color(0xFF16201A),
+          error: const Color(0xFFFF7B72),
+        );
+    return _buildTheme(
+      scheme,
+    ).copyWith(scaffoldBackgroundColor: const Color(0xFF0D1210));
   }
 
   static ThemeData _buildTheme(ColorScheme scheme) {
@@ -58,7 +72,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surface,
+        fillColor: scheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide.none,
@@ -68,19 +82,49 @@ class AppTheme {
           vertical: 16,
         ),
       ),
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         margin: EdgeInsets.zero,
         elevation: 0,
+        color: scheme.surface,
       ),
       snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
+        behavior: SnackBarBehavior.fixed,
         backgroundColor: scheme.inverseSurface,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
           color: scheme.onInverseSurface,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: scheme.surface,
         indicatorColor: scheme.primary.withValues(alpha: 0.14),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          textStyle: WidgetStatePropertyAll<TextStyle?>(
+            textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          padding: const WidgetStatePropertyAll<EdgeInsetsGeometry>(
+            EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          ),
+          side: WidgetStateProperty.resolveWith<BorderSide?>((states) {
+            if (states.contains(WidgetState.selected)) {
+              return BorderSide(color: scheme.primary, width: 1.4);
+            }
+            return BorderSide(color: scheme.outline.withValues(alpha: 0.6));
+          }),
+          backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+            if (states.contains(WidgetState.selected)) {
+              return scheme.primary.withValues(alpha: 0.18);
+            }
+            return scheme.surface;
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+            if (states.contains(WidgetState.selected)) {
+              return scheme.onSurface;
+            }
+            return scheme.onSurfaceVariant;
+          }),
+        ),
       ),
     );
   }

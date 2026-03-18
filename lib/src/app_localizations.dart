@@ -7,10 +7,7 @@ class AppLocalizations {
 
   final Locale locale;
 
-  static const supportedLocales = <Locale>[
-    Locale('en'),
-    Locale('de'),
-  ];
+  static const supportedLocales = <Locale>[Locale('en'), Locale('de')];
 
   static const LocalizationsDelegate<AppLocalizations> delegate =
       _AppLocalizationsDelegate();
@@ -37,10 +34,10 @@ class AppLocalizations {
       'signUp': 'Create account',
       'email': 'Email',
       'password': 'Password',
-      'nickname': 'Nickname',
       'displayName': 'Display name',
       'birthday': 'Birthday',
       'optional': 'Optional',
+      'removeBirthday': 'Remove birthday',
       'pickPhoto': 'Pick photo',
       'changePhoto': 'Change photo',
       'removePhoto': 'Remove photo',
@@ -81,6 +78,7 @@ class AppLocalizations {
       'theme': 'Theme',
       'language': 'Language',
       'units': 'Units',
+      'handedness': 'Handedness',
       'logout': 'Log out',
       'editProfile': 'Edit profile',
       'customDrinks': 'My custom drinks',
@@ -93,6 +91,8 @@ class AppLocalizations {
       'themeDark': 'Dark',
       'english': 'English',
       'german': 'German',
+      'handednessRight': 'Right',
+      'handednessLeft': 'Left',
       'invalidRequired': 'Please fill in all required fields.',
       'emptyFilter': 'No drinks match the current filter.',
       'beer': 'Beer',
@@ -113,10 +113,10 @@ class AppLocalizations {
       'signUp': 'Konto erstellen',
       'email': 'E-Mail',
       'password': 'Passwort',
-      'nickname': 'Spitzname',
       'displayName': 'Anzeigename',
       'birthday': 'Geburtstag',
       'optional': 'Optional',
+      'removeBirthday': 'Geburtstag entfernen',
       'pickPhoto': 'Foto wählen',
       'changePhoto': 'Foto ändern',
       'removePhoto': 'Foto entfernen',
@@ -151,12 +151,14 @@ class AppLocalizations {
       'totalDrinks': 'Getränke gesamt',
       'settings': 'Einstellungen',
       'backend': 'Backend',
-      'backendRemoteBody': 'Supabase ist konfiguriert und die Remote-Synchronisierung ist aktiv.',
+      'backendRemoteBody':
+          'Supabase ist konfiguriert und die Remote-Synchronisierung ist aktiv.',
       'backendLocalBody':
           'Es wurde keine Supabase-Konfiguration gesetzt, daher nutzt die App das lokale Fallback-Backend.',
       'theme': 'Design',
       'language': 'Sprache',
       'units': 'Einheiten',
+      'handedness': 'Bedienseite',
       'logout': 'Abmelden',
       'editProfile': 'Profil bearbeiten',
       'customDrinks': 'Meine eigenen Getränke',
@@ -169,6 +171,8 @@ class AppLocalizations {
       'themeDark': 'Dunkel',
       'english': 'Englisch',
       'german': 'Deutsch',
+      'handednessRight': 'Rechts',
+      'handednessLeft': 'Links',
       'invalidRequired': 'Bitte alle Pflichtfelder ausfüllen.',
       'emptyFilter': 'Keine Getränke für den aktuellen Filter gefunden.',
       'beer': 'Bier',
@@ -191,10 +195,10 @@ class AppLocalizations {
   String get signUp => _text('signUp');
   String get email => _text('email');
   String get password => _text('password');
-  String get nickname => _text('nickname');
   String get displayName => _text('displayName');
   String get birthday => _text('birthday');
   String get optional => _text('optional');
+  String get removeBirthday => _text('removeBirthday');
   String get pickPhoto => _text('pickPhoto');
   String get changePhoto => _text('changePhoto');
   String get removePhoto => _text('removePhoto');
@@ -232,6 +236,7 @@ class AppLocalizations {
   String get theme => _text('theme');
   String get language => _text('language');
   String get units => _text('units');
+  String get handedness => _text('handedness');
   String get logout => _text('logout');
   String get editProfile => _text('editProfile');
   String get customDrinks => _text('customDrinks');
@@ -243,24 +248,31 @@ class AppLocalizations {
   String get themeDark => _text('themeDark');
   String get english => _text('english');
   String get german => _text('german');
+  String get handednessRight => _text('handednessRight');
+  String get handednessLeft => _text('handednessLeft');
   String get invalidRequired => _text('invalidRequired');
   String get emptyFilter => _text('emptyFilter');
 
   String categoryLabel(DrinkCategory category) => switch (category) {
-        DrinkCategory.beer => _text('beer'),
-        DrinkCategory.wine => _text('wine'),
-        DrinkCategory.spirits => _text('spirits'),
-        DrinkCategory.cocktails => _text('cocktails'),
-        DrinkCategory.nonAlcoholic => _text('nonAlcoholic'),
-      };
+    DrinkCategory.beer => _text('beer'),
+    DrinkCategory.wine => _text('wine'),
+    DrinkCategory.spirits => _text('spirits'),
+    DrinkCategory.cocktails => _text('cocktails'),
+    DrinkCategory.nonAlcoholic => _text('nonAlcoholic'),
+  };
 
   String themeLabel(AppThemePreference preference) => switch (preference) {
-        AppThemePreference.system => themeSystem,
-        AppThemePreference.light => themeLight,
-        AppThemePreference.dark => themeDark,
-      };
+    AppThemePreference.system => themeSystem,
+    AppThemePreference.light => themeLight,
+    AppThemePreference.dark => themeDark,
+  };
 
   String unitLabel(AppUnit unit) => unit.name;
+
+  String handednessLabel(AppHandedness handedness) => switch (handedness) {
+    AppHandedness.right => handednessRight,
+    AppHandedness.left => handednessLeft,
+  };
 }
 
 class _AppLocalizationsDelegate
@@ -269,8 +281,9 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) {
-    return AppLocalizations.supportedLocales
-        .any((candidate) => candidate.languageCode == locale.languageCode);
+    return AppLocalizations.supportedLocales.any(
+      (candidate) => candidate.languageCode == locale.languageCode,
+    );
   }
 
   @override
@@ -279,9 +292,7 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool shouldReload(
-    covariant LocalizationsDelegate<AppLocalizations> old,
-  ) {
+  bool shouldReload(covariant LocalizationsDelegate<AppLocalizations> old) {
     return false;
   }
 }

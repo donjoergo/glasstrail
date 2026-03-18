@@ -19,7 +19,6 @@ void main() {
       final userOne = await repository.signUp(
         email: 'one@example.com',
         password: 'secret',
-        nickname: 'one',
         displayName: 'User One',
       );
       await repository.saveCustomDrink(
@@ -43,7 +42,6 @@ void main() {
       final userTwo = await repository.signUp(
         email: 'two@example.com',
         password: 'secret',
-        nickname: 'two',
         displayName: 'User Two',
       );
 
@@ -62,7 +60,6 @@ void main() {
       final user = await repository.signUp(
         email: 'duplicate@example.com',
         password: 'secret',
-        nickname: 'dup',
         displayName: 'Duplicate',
       );
 
@@ -73,11 +70,35 @@ void main() {
         () => repository.signUp(
           email: 'duplicate@example.com',
           password: 'secret',
-          nickname: 'dup-2',
           displayName: 'Duplicate Two',
         ),
         throwsA(isA<AppException>()),
       );
+    });
+
+    test('persists all settings options for a user', () async {
+      final user = await repository.signUp(
+        email: 'settings@example.com',
+        password: 'secret',
+        displayName: 'Settings User',
+      );
+
+      await repository.saveSettings(
+        user.id,
+        const UserSettings(
+          themePreference: AppThemePreference.dark,
+          localeCode: 'de',
+          unit: AppUnit.oz,
+          handedness: AppHandedness.left,
+        ),
+      );
+
+      final restored = await repository.loadSettings(user.id);
+
+      expect(restored.themePreference, AppThemePreference.dark);
+      expect(restored.localeCode, 'de');
+      expect(restored.unit, AppUnit.oz);
+      expect(restored.handedness, AppHandedness.left);
     });
   });
 }
