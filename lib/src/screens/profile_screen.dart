@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../app_localizations.dart';
+import '../app_routes.dart';
 import '../app_scope.dart';
 import '../birthday.dart';
 import '../models.dart';
 import 'custom_drink_dialog.dart';
-import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -30,9 +30,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _openEditProfile() async {
-    final message = await Navigator.of(context).push<String>(
-      MaterialPageRoute<String>(builder: (_) => const EditProfileScreen()),
-    );
+    final result = await Navigator.of(context).pushNamed(AppRoutes.editProfile);
+    final message = result is String ? result : null;
     if (!mounted || message == null || message.isEmpty) {
       return;
     }

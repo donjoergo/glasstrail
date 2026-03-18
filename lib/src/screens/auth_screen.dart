@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_localizations.dart';
+import '../app_routes.dart';
 import '../birthday.dart';
 import '../app_scope.dart';
 
@@ -97,6 +98,10 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     if (success) {
       FocusScope.of(context).unfocus();
+      final routeName = ModalRoute.of(context)?.settings.name;
+      if (routeName == AppRoutes.auth) {
+        Navigator.of(context).pushReplacementNamed(AppRoutes.feed);
+      }
     }
   }
 

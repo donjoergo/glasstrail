@@ -1,22 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../app_localizations.dart';
+import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';
-import 'add_drink_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'statistics_screen.dart';
 
-class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+class HomeShell extends StatelessWidget {
+  const HomeShell({super.key, required this.routeName});
 
-  @override
-  State<HomeShell> createState() => _HomeShellState();
-}
-
-class _HomeShellState extends State<HomeShell> {
-  int _currentIndex = 0;
+  final String routeName;
 
   static const _pages = <Widget>[
     HistoryScreen(),
@@ -24,14 +19,24 @@ class _HomeShellState extends State<HomeShell> {
     ProfileScreen(),
   ];
 
-  Future<void> _openAddDrink() async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (_) => const AddDrinkScreen()),
+  Future<void> _openAddDrink(BuildContext context) async {
+    await Navigator.of(context).pushNamed(AppRoutes.addDrink);
+  }
+
+  void _openHomeRoute(BuildContext context, int index) {
+    final targetRoute = AppRoutes.homeRouteForIndex(index);
+    final currentRoute = AppRoutes.homeRouteForIndex(
+      AppRoutes.homeTabIndex(routeName),
     );
+    if (targetRoute == currentRoute) {
+      return;
+    }
+    Navigator.of(context).pushReplacementNamed(targetRoute);
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = AppRoutes.homeTabIndex(routeName);
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
@@ -41,14 +46,14 @@ class _HomeShellState extends State<HomeShell> {
     final isWide = MediaQuery.sizeOf(context).width >= 900;
     final fab = FloatingActionButton.extended(
       key: const Key('global-add-drink-fab'),
-      onPressed: _openAddDrink,
+      onPressed: () => _openAddDrink(context),
       icon: const Icon(Icons.add_rounded),
       label: Text(l10n.addDrink),
     );
 
     if (isWide) {
       return Scaffold(
-        appBar: AppBar(title: Text(titles[_currentIndex])),
+        appBar: AppBar(title: Text(titles[currentIndex])),
         body: Stack(
           children: <Widget>[
             Row(
@@ -61,13 +66,10 @@ class _HomeShellState extends State<HomeShell> {
                     borderRadius: BorderRadius.circular(28),
                   ),
                   child: NavigationRail(
-                    selectedIndex: _currentIndex,
+                    selectedIndex: currentIndex,
                     useIndicator: true,
-                    onDestinationSelected: (index) {
-                      setState(() {
-                        _currentIndex = index;
-                      });
-                    },
+                    onDestinationSelected: (index) =>
+                        _openHomeRoute(context, index),
                     destinations: <NavigationRailDestination>[
                       NavigationRailDestination(
                         icon: const Icon(Icons.view_timeline_outlined),
@@ -87,9 +89,7 @@ class _HomeShellState extends State<HomeShell> {
                     ],
                   ),
                 ),
-                Expanded(
-                  child: IndexedStack(index: _currentIndex, children: _pages),
-                ),
+                Expanded(child: _pages[currentIndex]),
               ],
             ),
             PositionedDirectional(
@@ -104,19 +104,15 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(titles[_currentIndex])),
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      appBar: AppBar(title: Text(titles[currentIndex])),
+      body: _pages[currentIndex],
       floatingActionButton: fab,
       floatingActionButtonLocation: isLeftHanded
           ? FloatingActionButtonLocation.startFloat
           : FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        selectedIndex: currentIndex,
+        onDestinationSelected: (index) => _openHomeRoute(context, index),
         destinations: <NavigationDestination>[
           NavigationDestination(
             icon: const Icon(Icons.view_timeline_outlined),

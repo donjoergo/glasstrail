@@ -27,10 +27,12 @@ Future<AppController> buildTestController({
 
 Future<GlassTrailApp> buildTestApp({
   Map<String, Object> initialValues = const <String, Object>{},
+  String? initialRoute,
 }) async {
   final controller = await buildTestController(initialValues: initialValues);
   return GlassTrailApp(
     controller: controller,
     photoService: const TestPhotoService(),
+    initialRoute: initialRoute,
   );
 }
