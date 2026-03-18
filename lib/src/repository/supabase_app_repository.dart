@@ -433,6 +433,7 @@ class SupabaseAppRepository implements AppRepository {
     return DrinkDefinition(
       id: row['id'] as String,
       name: row['name_en'] as String,
+      localizedNameDe: row['name_de'] as String?,
       category: DrinkCategoryX.fromStorage(row['category_slug'] as String),
       volumeMl: (row['default_volume_ml'] as num?)?.toDouble(),
     );

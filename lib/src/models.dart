@@ -218,6 +218,7 @@ class DrinkDefinition {
     required this.id,
     required this.name,
     required this.category,
+    this.localizedNameDe,
     this.volumeMl,
     this.imagePath,
     this.ownerUserId,
@@ -226,17 +227,29 @@ class DrinkDefinition {
   final String id;
   final String name;
   final DrinkCategory category;
+  final String? localizedNameDe;
   final double? volumeMl;
   final String? imagePath;
   final String? ownerUserId;
 
   bool get isCustom => ownerUserId != null;
 
+  String displayName(String localeCode) {
+    if (localeCode == 'de') {
+      final german = localizedNameDe?.trim();
+      if (german != null && german.isNotEmpty) {
+        return german;
+      }
+    }
+    return name;
+  }
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'id': id,
       'name': name,
       'category': category.storageValue,
+      'localizedNameDe': localizedNameDe,
       'volumeMl': volumeMl,
       'imagePath': imagePath,
       'ownerUserId': ownerUserId,
@@ -248,6 +261,9 @@ class DrinkDefinition {
       id: json['id'] as String,
       name: json['name'] as String,
       category: DrinkCategoryX.fromStorage(json['category'] as String),
+      localizedNameDe:
+          (json['localizedNameDe'] as String?) ??
+          (json['localized_name_de'] as String?),
       volumeMl: (json['volumeMl'] as num?)?.toDouble(),
       imagePath: json['imagePath'] as String?,
       ownerUserId: json['ownerUserId'] as String?,
@@ -380,35 +396,35 @@ String? _readString(
 }
 
 List<DrinkDefinition> buildDefaultDrinkCatalog() {
-  const defaults = <(DrinkCategory, String, double?)>[
-    (DrinkCategory.beer, 'Pils', 330),
-    (DrinkCategory.beer, 'Helles', 500),
-    (DrinkCategory.beer, 'Weizen', 500),
-    (DrinkCategory.beer, 'Kellerbier', 500),
-    (DrinkCategory.beer, 'Kölsch', 200),
-    (DrinkCategory.beer, 'Alt', 250),
-    (DrinkCategory.beer, 'IPA', 330),
-    (DrinkCategory.wine, 'Red Wine', 150),
-    (DrinkCategory.wine, 'White Wine', 150),
-    (DrinkCategory.wine, 'Rosé Wine', 150),
-    (DrinkCategory.wine, 'Sparkling Wine', 120),
-    (DrinkCategory.wine, 'Aperol Spritz', 200),
-    (DrinkCategory.spirits, 'Vodka', 40),
-    (DrinkCategory.spirits, 'Gin', 40),
-    (DrinkCategory.spirits, 'Rum', 40),
-    (DrinkCategory.spirits, 'Whiskey', 40),
-    (DrinkCategory.spirits, 'Tequila', 40),
-    (DrinkCategory.cocktails, 'Mojito', 250),
-    (DrinkCategory.cocktails, 'Margarita', 180),
-    (DrinkCategory.cocktails, 'Martini', 160),
-    (DrinkCategory.nonAlcoholic, 'Water', 250),
-    (DrinkCategory.nonAlcoholic, 'Juice', 250),
-    (DrinkCategory.nonAlcoholic, 'Sparkling Water', 250),
-    (DrinkCategory.nonAlcoholic, 'Tea', 300),
-    (DrinkCategory.nonAlcoholic, 'Coffee', 200),
-    (DrinkCategory.nonAlcoholic, 'Energy Drink', 250),
-    (DrinkCategory.nonAlcoholic, 'Cola', 330),
-    (DrinkCategory.nonAlcoholic, 'Lemonade', 330),
+  const defaults = <(DrinkCategory, String, String, double?)>[
+    (DrinkCategory.beer, 'Pils', 'Pils', 330),
+    (DrinkCategory.beer, 'Helles', 'Helles', 500),
+    (DrinkCategory.beer, 'Weizen', 'Weizen', 500),
+    (DrinkCategory.beer, 'Kellerbier', 'Kellerbier', 500),
+    (DrinkCategory.beer, 'Kölsch', 'Kölsch', 200),
+    (DrinkCategory.beer, 'Alt', 'Alt', 250),
+    (DrinkCategory.beer, 'IPA', 'IPA', 330),
+    (DrinkCategory.wine, 'Red Wine', 'Rotwein', 150),
+    (DrinkCategory.wine, 'White Wine', 'Weißwein', 150),
+    (DrinkCategory.wine, 'Rosé Wine', 'Roséwein', 150),
+    (DrinkCategory.wine, 'Sparkling Wine', 'Sekt', 120),
+    (DrinkCategory.wine, 'Aperol Spritz', 'Aperol Spritz', 200),
+    (DrinkCategory.spirits, 'Vodka', 'Wodka', 40),
+    (DrinkCategory.spirits, 'Gin', 'Gin', 40),
+    (DrinkCategory.spirits, 'Rum', 'Rum', 40),
+    (DrinkCategory.spirits, 'Whiskey', 'Whiskey', 40),
+    (DrinkCategory.spirits, 'Tequila', 'Tequila', 40),
+    (DrinkCategory.cocktails, 'Mojito', 'Mojito', 250),
+    (DrinkCategory.cocktails, 'Margarita', 'Margarita', 180),
+    (DrinkCategory.cocktails, 'Martini', 'Martini', 160),
+    (DrinkCategory.nonAlcoholic, 'Water', 'Wasser', 250),
+    (DrinkCategory.nonAlcoholic, 'Juice', 'Saft', 250),
+    (DrinkCategory.nonAlcoholic, 'Sparkling Water', 'Sprudelwasser', 250),
+    (DrinkCategory.nonAlcoholic, 'Tea', 'Tee', 300),
+    (DrinkCategory.nonAlcoholic, 'Coffee', 'Kaffee', 200),
+    (DrinkCategory.nonAlcoholic, 'Energy Drink', 'Energy Drink', 250),
+    (DrinkCategory.nonAlcoholic, 'Cola', 'Cola', 330),
+    (DrinkCategory.nonAlcoholic, 'Lemonade', 'Limonade', 330),
   ];
 
   return defaults
@@ -416,8 +432,9 @@ List<DrinkDefinition> buildDefaultDrinkCatalog() {
         (item) => DrinkDefinition(
           id: '${item.$1.storageValue}-${item.$2.toLowerCase().replaceAll(' ', '-')}',
           name: item.$2,
+          localizedNameDe: item.$3,
           category: item.$1,
-          volumeMl: item.$3,
+          volumeMl: item.$4,
         ),
       )
       .toList(growable: false);

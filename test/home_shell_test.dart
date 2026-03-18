@@ -132,4 +132,42 @@ void main() {
     expect(controller.entries, hasLength(1));
     expect(controller.entries.single.volumeMl, closeTo(330, 0.2));
   });
+
+  testWidgets('shows localized global drink names on the add-drink screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'de@example.com',
+      password: 'password123',
+      displayName: 'Deutsch Beispiel',
+    );
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('drink-search-field')), 'rot');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rotwein'), findsOneWidget);
+    expect(find.text('Red Wine'), findsNothing);
+  });
 }

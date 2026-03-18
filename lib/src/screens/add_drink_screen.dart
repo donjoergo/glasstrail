@@ -105,13 +105,14 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
+    final localeCode = controller.settings.localeCode;
     final unit = controller.settings.unit;
     final search = _searchController.text.trim().toLowerCase();
     final filteredDrinks = controller.availableDrinks.where((drink) {
       if (search.isEmpty) {
         return true;
       }
-      return drink.name.toLowerCase().contains(search);
+      return drink.displayName(localeCode).toLowerCase().contains(search);
     }).toList();
     final grouped = <DrinkCategory, List<DrinkDefinition>>{
       for (final category in DrinkCategory.values)
@@ -119,6 +120,13 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     };
     for (final drink in filteredDrinks) {
       grouped[drink.category]!.add(drink);
+    }
+    for (final drinks in grouped.values) {
+      drinks.sort(
+        (left, right) => left
+            .displayName(localeCode)
+            .compareTo(right.displayName(localeCode)),
+      );
     }
 
     return Scaffold(
@@ -156,7 +164,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                         .map(
                           (drink) => ChoiceChip(
                             selected: _selectedDrink?.id == drink.id,
-                            label: Text(drink.name),
+                            label: Text(drink.displayName(localeCode)),
                             onSelected: (_) => _selectDrink(drink),
                           ),
                         )
@@ -164,27 +172,44 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                   ),
                   const SizedBox(height: 20),
                 ],
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        l10n.catalog,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final heading = Text(
+                      l10n.catalog,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                    ),
-                    FilledButton.tonal(
+                    );
+                    final action = FilledButton.tonal(
                       onPressed: _openCustomDrinkDialog,
                       child: Text(l10n.createCustomDrink),
-                    ),
-                  ],
+                    );
+
+                    if (constraints.maxWidth < 480) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          heading,
+                          const SizedBox(height: 12),
+                          action,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: <Widget>[
+                        Expanded(child: heading),
+                        action,
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 ...DrinkCategory.values.map(
                   (category) => _DrinkCategorySection(
                     label: l10n.categoryLabel(category),
                     drinks: grouped[category]!,
+                    localeCode: localeCode,
                     unit: unit,
                     selectedDrink: _selectedDrink,
                     onSelect: _selectDrink,
@@ -203,7 +228,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          _selectedDrink!.name,
+                          _selectedDrink!.displayName(localeCode),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -292,6 +317,7 @@ class _DrinkCategorySection extends StatelessWidget {
   const _DrinkCategorySection({
     required this.label,
     required this.drinks,
+    required this.localeCode,
     required this.unit,
     required this.selectedDrink,
     required this.onSelect,
@@ -299,6 +325,7 @@ class _DrinkCategorySection extends StatelessWidget {
 
   final String label;
   final List<DrinkDefinition> drinks;
+  final String localeCode;
   final AppUnit unit;
   final DrinkDefinition? selectedDrink;
   final ValueChanged<DrinkDefinition> onSelect;
@@ -319,7 +346,7 @@ class _DrinkCategorySection extends StatelessWidget {
               (drink) => ListTile(
                 dense: true,
                 leading: Icon(drink.category.icon),
-                title: Text(drink.name),
+                title: Text(drink.displayName(localeCode)),
                 subtitle: drink.volumeMl == null
                     ? null
                     : Text(unit.formatVolume(drink.volumeMl)),
