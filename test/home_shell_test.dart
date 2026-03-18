@@ -137,9 +137,9 @@ void main() {
     expect(controller.entries.single.volumeMl, closeTo(330, 0.2));
   });
 
-  testWidgets('shows localized global drink names on the add-drink screen', (
-    tester,
-  ) async {
+  testWidgets(
+    'shows localized global drink names on the add-drink screen during search',
+    (tester) async {
     tester.view.physicalSize = const Size(430, 1000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
@@ -169,9 +169,6 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byKey(const Key('drink-search-field')), 'rot');
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('drink-category-title-wine')));
     await tester.pumpAndSettle();
 
     expect(find.text('Rotwein'), findsOneWidget);
@@ -206,10 +203,11 @@ void main() {
     await tester.tap(find.byKey(const Key('global-add-drink-fab')));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('drink-search-field')), 'rot');
+    await tester.enterText(find.byKey(const Key('drink-search-field')), 'red');
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('drink-category-title-beer')), findsNothing);
+    expect(find.text('Red Wine'), findsOneWidget);
     expect(
       find.byKey(const Key('drink-search-clear-button')),
       findsOneWidget,
@@ -223,6 +221,7 @@ void main() {
     );
     expect(searchField.controller?.text, isEmpty);
     expect(find.byKey(const Key('drink-category-title-beer')), findsOneWidget);
+    expect(find.text('Red Wine'), findsNothing);
     expect(
       find.byKey(const Key('drink-search-clear-button')),
       findsNothing,

@@ -21,6 +21,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
   DrinkDefinition? _selectedDrink;
   DrinkCategory? _expandedCategory;
   String? _imagePath;
+  bool _autoExpandSearchResults = false;
   bool _volumeEditedManually = false;
 
   @override
@@ -60,6 +61,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
   void _clearSearch() {
     setState(() {
       _searchController.clear();
+      _expandedCategory = null;
+      _autoExpandSearchResults = false;
     });
   }
 
@@ -68,6 +71,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     setState(() {
       _selectedDrink = drink;
       _expandedCategory = null;
+      _autoExpandSearchResults = false;
       _volumeEditedManually = false;
       _volumeController.text = unit.formatVolumeInput(drink.volumeMl);
     });
@@ -116,6 +120,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     final localeCode = controller.settings.localeCode;
     final unit = controller.settings.unit;
     final search = _searchController.text.trim().toLowerCase();
+    final isSearchActive = search.isNotEmpty;
+    final expandsFromSearch = isSearchActive && _autoExpandSearchResults;
     final filteredDrinks = controller.availableDrinks.where((drink) {
       if (search.isEmpty) {
         return true;
@@ -161,7 +167,14 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                             icon: const Icon(Icons.close_rounded),
                           ),
                   ),
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (_) {
+                    setState(() {
+                      _expandedCategory = null;
+                      _autoExpandSearchResults = _searchController.text
+                          .trim()
+                          .isNotEmpty;
+                    });
+                  },
                 ),
                 const SizedBox(height: 20),
                 if (controller.recentDrinks.isNotEmpty) ...<Widget>[
@@ -232,7 +245,10 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                     drinks: grouped[category]!,
                     localeCode: localeCode,
                     unit: unit,
-                    isExpanded: _expandedCategory == category,
+                    isExpanded: expandsFromSearch
+                        ? grouped[category]!.isNotEmpty
+                        : _expandedCategory == category,
+                    isInteractive: !expandsFromSearch,
                     onExpansionChanged: (isExpanded) {
                       setState(() {
                         _expandedCategory = isExpanded ? category : null;
@@ -348,6 +364,7 @@ class _DrinkCategorySection extends StatelessWidget {
     required this.localeCode,
     required this.unit,
     required this.isExpanded,
+    required this.isInteractive,
     required this.onExpansionChanged,
     required this.selectedDrink,
     required this.onSelect,
@@ -359,6 +376,7 @@ class _DrinkCategorySection extends StatelessWidget {
   final String localeCode;
   final AppUnit unit;
   final bool isExpanded;
+  final bool isInteractive;
   final ValueChanged<bool> onExpansionChanged;
   final DrinkDefinition? selectedDrink;
   final ValueChanged<DrinkDefinition> onSelect;
@@ -373,6 +391,7 @@ class _DrinkCategorySection extends StatelessWidget {
       child: ExpansionTile(
         key: Key('drink-category-section-${category.name}-$isExpanded'),
         initiallyExpanded: isExpanded,
+        enabled: isInteractive,
         onExpansionChanged: onExpansionChanged,
         tilePadding: EdgeInsets.zero,
         title: Text(label, key: Key('drink-category-title-${category.name}')),
