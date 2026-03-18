@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:glasstrail/src/app.dart';
+import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:flutter/widgets.dart';
@@ -7,6 +11,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/test_harness.dart';
 
 void main() {
+  testWidgets('shows a bootstrap screen until the controller is ready', (
+    tester,
+  ) async {
+    final controllerCompleter = Completer<AppController>();
+
+    await tester.pumpWidget(
+      GlassTrailBootstrapApp(
+        controllerFuture: controllerCompleter.future,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('GlassTrail'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    controllerCompleter.complete(await buildTestController());
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Track every glass'), findsOneWidget);
+    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+  });
+
   testWidgets('boots into authentication flow', (tester) async {
     final app = await buildTestApp();
 

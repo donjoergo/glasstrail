@@ -96,6 +96,7 @@ class AppLocalizations {
       'handednessLeft': 'Left',
       'invalidRequired': 'Please fill in all required fields.',
       'emptyFilter': 'No drinks match the current filter.',
+      'launchingApp': 'Loading your drinks and settings.',
       'welcomeToGlassTrail': 'Welcome to GlassTrail.',
       'welcomeBack': 'Welcome back.',
       'profileUpdated': 'Profile updated.',
@@ -191,6 +192,7 @@ class AppLocalizations {
       'handednessLeft': 'Links',
       'invalidRequired': 'Bitte alle Pflichtfelder ausfüllen.',
       'emptyFilter': 'Keine Getränke für den aktuellen Filter gefunden.',
+      'launchingApp': 'Getränke und Einstellungen werden geladen.',
       'welcomeToGlassTrail': 'Willkommen bei GlassTrail.',
       'welcomeBack': 'Willkommen zurück.',
       'profileUpdated': 'Profil aktualisiert.',
@@ -284,6 +286,7 @@ class AppLocalizations {
   String get handednessLeft => _text('handednessLeft');
   String get invalidRequired => _text('invalidRequired');
   String get emptyFilter => _text('emptyFilter');
+  String get launchingApp => _text('launchingApp');
   String get welcomeToGlassTrail => _text('welcomeToGlassTrail');
   String get welcomeBack => _text('welcomeBack');
   String get profileUpdated => _text('profileUpdated');

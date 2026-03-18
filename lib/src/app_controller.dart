@@ -300,8 +300,11 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
-    _defaultCatalog = await _repository.loadDefaultCatalog();
-    _currentUser = await _repository.restoreSession();
+    final defaultCatalogFuture = _repository.loadDefaultCatalog();
+    final currentUserFuture = _repository.restoreSession();
+
+    _defaultCatalog = await defaultCatalogFuture;
+    _currentUser = await currentUserFuture;
     if (_currentUser != null) {
       await _reloadUserScope();
     }
@@ -312,9 +315,13 @@ class AppController extends ChangeNotifier {
     if (user == null) {
       return;
     }
-    _customDrinks = await _repository.loadCustomDrinks(user.id);
-    _entries = await _repository.loadEntries(user.id);
-    _settings = await _repository.loadSettings(user.id);
+    final customDrinksFuture = _repository.loadCustomDrinks(user.id);
+    final entriesFuture = _repository.loadEntries(user.id);
+    final settingsFuture = _repository.loadSettings(user.id);
+
+    _customDrinks = await customDrinksFuture;
+    _entries = await entriesFuture;
+    _settings = await settingsFuture;
   }
 
   Future<bool> _guard(Future<void> Function() action) async {

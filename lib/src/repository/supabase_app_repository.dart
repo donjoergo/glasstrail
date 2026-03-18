@@ -27,7 +27,7 @@ class SupabaseAppRepository implements AppRepository {
     if (authUser == null) {
       return null;
     }
-    return _ensureProfile(authUser);
+    return _authUserToUser(authUser);
   }
 
   @override
@@ -425,6 +425,26 @@ class SupabaseAppRepository implements AppRepository {
       profileImagePath: row['profile_image_path'] as String?,
       birthday: normalizeBirthdayOrNull(
         birthdayRaw == null ? null : DateTime.parse(birthdayRaw as String),
+      ),
+    );
+  }
+
+  AppUser _authUserToUser(User authUser) {
+    final metadata = Map<String, dynamic>.from(
+      authUser.userMetadata ?? const <String, dynamic>{},
+    );
+    final birthdayRaw = metadata['birthday'] as String?;
+
+    return AppUser(
+      id: authUser.id,
+      email: authUser.email ?? '',
+      displayName:
+          (metadata['display_name'] as String?) ??
+          (metadata['nickname'] as String?) ??
+          _fallbackDisplayName(authUser.email),
+      profileImagePath: metadata['profile_image_path'] as String?,
+      birthday: normalizeBirthdayOrNull(
+        birthdayRaw == null ? null : DateTime.parse(birthdayRaw),
       ),
     );
   }
