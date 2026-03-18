@@ -3,6 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/src/models.dart';
 
 void main() {
+  group('AppUnit', () {
+    test('rounds ml display values to whole milliliters', () {
+      expect(AppUnit.ml.formatVolume(42.2), '42 ml');
+      expect(AppUnit.ml.formatVolume(42.8), '43 ml');
+      expect(AppUnit.ml.formatVolumeInput(42.2), '42');
+      expect(AppUnit.ml.formatVolumeInput(42.8), '43');
+    });
+
+    test('keeps oz display values fractional when needed', () {
+      expect(AppUnit.oz.formatVolume(330), '11.2 oz');
+      expect(AppUnit.oz.formatVolumeInput(330), '11.2');
+    });
+  });
+
   group('UserSettings', () {
     test('reads snake_case keys from remote rows', () {
       final settings = UserSettings.fromJson(<String, dynamic>{

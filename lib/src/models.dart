@@ -61,7 +61,7 @@ extension AppUnitX on AppUnit {
       return '--';
     }
     final converted = convertFromMl(volumeMl);
-    final digits = converted >= 100 ? 0 : 1;
+    final digits = _displayFractionDigits(converted);
     return '${converted.toStringAsFixed(digits)} $name';
   }
 
@@ -70,8 +70,15 @@ extension AppUnitX on AppUnit {
       return '';
     }
     final converted = convertFromMl(volumeMl);
-    final digits = converted >= 100 ? 0 : 1;
+    final digits = _displayFractionDigits(converted);
     return converted.toStringAsFixed(digits).replaceFirst(RegExp(r'\.0$'), '');
+  }
+
+  int _displayFractionDigits(double convertedValue) {
+    return switch (this) {
+      AppUnit.ml => 0,
+      AppUnit.oz => convertedValue >= 100 ? 0 : 1,
+    };
   }
 }
 
