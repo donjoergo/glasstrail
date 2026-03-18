@@ -77,4 +77,59 @@ void main() {
     );
     expect(leftRect.center.dx, lessThan(tester.view.physicalSize.width / 2));
   });
+
+  testWidgets('shows and saves add-drink volumes in selected units', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'oz@example.com',
+      password: 'password123',
+      displayName: 'Oz Example',
+    );
+    await controller.updateSettings(
+      controller.settings.copyWith(unit: AppUnit.oz),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('330 ml'), findsNothing);
+    expect(find.text('11.2 oz'), findsWidgets);
+
+    final pilsTile = find.widgetWithText(ListTile, 'Pils');
+    await tester.ensureVisible(pilsTile);
+    await tester.tap(pilsTile);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Volume (oz)'), findsOneWidget);
+
+    final volumeField = tester.widget<TextFormField>(
+      find.byKey(const Key('drink-volume-field')),
+    );
+    expect(volumeField.controller?.text, '11.2');
+
+    await tester.drag(find.byType(ListView), const Offset(0, -1400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-drink-button')));
+    await tester.pumpAndSettle();
+
+    expect(controller.entries, hasLength(1));
+    expect(controller.entries.single.volumeMl, closeTo(330, 0.2));
+  });
 }

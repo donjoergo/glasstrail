@@ -20,6 +20,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
 
   DrinkDefinition? _selectedDrink;
   String? _imagePath;
+  bool _volumeEditedManually = false;
 
   @override
   void dispose() {
@@ -49,25 +50,27 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     }
     final message = AppScope.controllerOf(context).takeFlashMessage();
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
   void _selectDrink(DrinkDefinition drink) {
+    final unit = AppScope.controllerOf(context).settings.unit;
     setState(() {
       _selectedDrink = drink;
-      _volumeController.text = drink.volumeMl?.toStringAsFixed(0) ?? '';
+      _volumeEditedManually = false;
+      _volumeController.text = unit.formatVolumeInput(drink.volumeMl);
     });
   }
 
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate() || _selectedDrink == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.invalidRequired)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.invalidRequired)));
       return;
     }
 
@@ -75,7 +78,11 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     final volume = double.tryParse(_volumeController.text.trim());
     final success = await controller.addDrinkEntry(
       drink: _selectedDrink!,
-      volumeMl: volume ?? _selectedDrink!.volumeMl,
+      volumeMl: _volumeEditedManually
+          ? (volume == null
+                ? _selectedDrink!.volumeMl
+                : controller.settings.unit.convertToMl(volume))
+          : _selectedDrink!.volumeMl,
       comment: _commentController.text,
       imagePath: _imagePath,
     );
@@ -84,9 +91,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     }
     final message = controller.takeFlashMessage();
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
     if (success) {
       Navigator.of(context).pop();
@@ -98,6 +105,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
+    final unit = controller.settings.unit;
     final search = _searchController.text.trim().toLowerCase();
     final filteredDrinks = controller.availableDrinks.where((drink) {
       if (search.isEmpty) {
@@ -106,7 +114,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
       return drink.name.toLowerCase().contains(search);
     }).toList();
     final grouped = <DrinkCategory, List<DrinkDefinition>>{
-      for (final category in DrinkCategory.values) category: <DrinkDefinition>[],
+      for (final category in DrinkCategory.values)
+        category: <DrinkDefinition>[],
     };
     for (final drink in filteredDrinks) {
       grouped[drink.category]!.add(drink);
@@ -135,7 +144,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                 if (controller.recentDrinks.isNotEmpty) ...<Widget>[
                   Text(
                     l10n.recentDrinks,
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -158,7 +169,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                     Expanded(
                       child: Text(
                         l10n.catalog,
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     FilledButton.tonal(
@@ -172,6 +185,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                   (category) => _DrinkCategorySection(
                     label: l10n.categoryLabel(category),
                     drinks: grouped[category]!,
+                    unit: unit,
                     selectedDrink: _selectedDrink,
                     onSelect: _selectDrink,
                   ),
@@ -190,7 +204,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                       children: <Widget>[
                         Text(
                           _selectedDrink!.name,
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(l10n.categoryLabel(_selectedDrink!.category)),
@@ -201,8 +217,15 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                   TextFormField(
                     key: const Key('drink-volume-field'),
                     controller: _volumeController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(labelText: '${l10n.volume} (ml)'),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: '${l10n.volume} (${l10n.unitLabel(unit)})',
+                    ),
+                    onChanged: (_) {
+                      _volumeEditedManually = true;
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -210,7 +233,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                     controller: _commentController,
                     minLines: 2,
                     maxLines: 4,
-                    decoration: InputDecoration(labelText: '${l10n.comment} (${l10n.optional})'),
+                    decoration: InputDecoration(
+                      labelText: '${l10n.comment} (${l10n.optional})',
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -218,7 +243,11 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                       FilledButton.tonalIcon(
                         onPressed: _pickPhoto,
                         icon: const Icon(Icons.photo_library_outlined),
-                        label: Text(_imagePath == null ? l10n.pickPhoto : l10n.changePhoto),
+                        label: Text(
+                          _imagePath == null
+                              ? l10n.pickPhoto
+                              : l10n.changePhoto,
+                        ),
                       ),
                       if (_imagePath != null) ...<Widget>[
                         const SizedBox(width: 12),
@@ -263,12 +292,14 @@ class _DrinkCategorySection extends StatelessWidget {
   const _DrinkCategorySection({
     required this.label,
     required this.drinks,
+    required this.unit,
     required this.selectedDrink,
     required this.onSelect,
   });
 
   final String label;
   final List<DrinkDefinition> drinks;
+  final AppUnit unit;
   final DrinkDefinition? selectedDrink;
   final ValueChanged<DrinkDefinition> onSelect;
 
@@ -289,7 +320,9 @@ class _DrinkCategorySection extends StatelessWidget {
                 dense: true,
                 leading: Icon(drink.category.icon),
                 title: Text(drink.name),
-                subtitle: drink.volumeMl == null ? null : Text('${drink.volumeMl!.toStringAsFixed(0)} ml'),
+                subtitle: drink.volumeMl == null
+                    ? null
+                    : Text(unit.formatVolume(drink.volumeMl)),
                 trailing: selectedDrink?.id == drink.id
                     ? const Icon(Icons.check_circle_rounded)
                     : null,

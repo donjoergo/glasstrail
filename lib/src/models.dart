@@ -64,6 +64,15 @@ extension AppUnitX on AppUnit {
     final digits = converted >= 100 ? 0 : 1;
     return '${converted.toStringAsFixed(digits)} $name';
   }
+
+  String formatVolumeInput(double? volumeMl) {
+    if (volumeMl == null) {
+      return '';
+    }
+    final converted = convertFromMl(volumeMl);
+    final digits = converted >= 100 ? 0 : 1;
+    return converted.toStringAsFixed(digits).replaceFirst(RegExp(r'\.0$'), '');
+  }
 }
 
 enum AppHandedness { right, left }
