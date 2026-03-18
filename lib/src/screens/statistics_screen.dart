@@ -24,7 +24,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final stats = controller.statistics;
     final entries = _selectedCategory == null
         ? controller.entries
-        : controller.entries.where((entry) => entry.category == _selectedCategory).toList();
+        : controller.entries
+              .where((entry) => entry.category == _selectedCategory)
+              .toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
@@ -36,8 +38,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             _StatCard(label: l10n.weeklyTotal, value: '${stats.weeklyTotal}'),
             _StatCard(label: l10n.monthlyTotal, value: '${stats.monthlyTotal}'),
             _StatCard(label: l10n.yearlyTotal, value: '${stats.yearlyTotal}'),
-            _StatCard(label: l10n.currentStreak, value: '${stats.currentStreak} ${l10n.days}'),
-            _StatCard(label: l10n.bestStreak, value: '${stats.bestStreak} ${l10n.days}'),
+            _StatCard(
+              label: l10n.currentStreak,
+              value:
+                  '${stats.currentStreak} ${l10n.dayLabel(stats.currentStreak)}',
+            ),
+            _StatCard(
+              label: l10n.bestStreak,
+              value: '${stats.bestStreak} ${l10n.dayLabel(stats.bestStreak)}',
+            ),
           ],
         ),
         const SizedBox(height: 24),
@@ -52,7 +61,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             children: <Widget>[
               Text(
                 l10n.categoryBreakdown,
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 18),
               SizedBox(
@@ -76,7 +87,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     label: Text('${l10n.categoryLabel(category)} ($count)'),
                     onSelected: (_) {
                       setState(() {
-                        _selectedCategory = _selectedCategory == category ? null : category;
+                        _selectedCategory = _selectedCategory == category
+                            ? null
+                            : category;
                       });
                     },
                   );
@@ -88,7 +101,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         const SizedBox(height: 24),
         Text(
           l10n.history,
-          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 12),
         if (entries.isEmpty)
@@ -120,10 +135,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         children: <Widget>[
                           Text(
                             entry.drinkName,
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           Text(
-                            DateFormat.yMMMd(controller.settings.localeCode).format(entry.consumedAt),
+                            DateFormat.yMMMd(
+                              controller.settings.localeCode,
+                            ).format(entry.consumedAt),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -170,10 +189,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-  });
+  const _StatCard({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -196,7 +212,9 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               value,
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
         ),

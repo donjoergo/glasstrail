@@ -54,7 +54,8 @@ class HistoryScreen extends StatelessWidget {
                   ),
                   _MetricBadge(
                     label: l10n.currentStreak,
-                    value: '${controller.statistics.currentStreak} ${l10n.days}',
+                    value:
+                        '${controller.statistics.currentStreak} ${l10n.dayLabel(controller.statistics.currentStreak)}',
                   ),
                 ],
               ),
@@ -106,10 +107,7 @@ class HistoryScreen extends StatelessWidget {
 }
 
 class _MetricBadge extends StatelessWidget {
-  const _MetricBadge({
-    required this.label,
-    required this.value,
-  });
+  const _MetricBadge({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -130,7 +128,9 @@ class _MetricBadge extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             value,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -154,7 +154,9 @@ class _DrinkEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final timeLabel = DateFormat.yMMMd(locale).add_Hm().format(entry.consumedAt);
+    final timeLabel = DateFormat.yMMMd(
+      locale,
+    ).add_Hm().format(entry.consumedAt);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -167,7 +169,9 @@ class _DrinkEntryCard extends StatelessWidget {
           Row(
             children: <Widget>[
               CircleAvatar(
-                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
+                backgroundColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.12,
+                ),
                 foregroundColor: theme.colorScheme.primary,
                 child: Icon(entry.category.icon),
               ),
@@ -193,7 +197,10 @@ class _DrinkEntryCard extends StatelessWidget {
               ),
               if (entry.volumeMl != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(16),

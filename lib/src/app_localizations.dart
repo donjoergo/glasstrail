@@ -66,6 +66,7 @@ class AppLocalizations {
       'yearlyTotal': 'Yearly',
       'currentStreak': 'Current streak',
       'bestStreak': 'Best streak',
+      'day': 'day',
       'days': 'days',
       'categoryBreakdown': 'Category breakdown',
       'history': 'History',
@@ -145,6 +146,7 @@ class AppLocalizations {
       'yearlyTotal': 'Jahr',
       'currentStreak': 'Aktuelle Serie',
       'bestStreak': 'Beste Serie',
+      'day': 'Tag',
       'days': 'Tage',
       'categoryBreakdown': 'Kategorien',
       'history': 'Historie',
@@ -225,6 +227,7 @@ class AppLocalizations {
   String get yearlyTotal => _text('yearlyTotal');
   String get currentStreak => _text('currentStreak');
   String get bestStreak => _text('bestStreak');
+  String get day => _text('day');
   String get days => _text('days');
   String get categoryBreakdown => _text('categoryBreakdown');
   String get history => _text('history');
@@ -268,6 +271,8 @@ class AppLocalizations {
   };
 
   String unitLabel(AppUnit unit) => unit.name;
+
+  String dayLabel(int count) => count == 1 ? day : days;
 
   String handednessLabel(AppHandedness handedness) => switch (handedness) {
     AppHandedness.right => handednessRight,
