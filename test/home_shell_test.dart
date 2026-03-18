@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:glasstrail/src/app.dart';
+import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
 
 import 'support/test_harness.dart';
@@ -174,6 +175,120 @@ void main() {
     expect(find.text('Rotwein'), findsOneWidget);
     expect(find.text('Red Wine'), findsNothing);
   });
+
+  testWidgets('localizes drink names in feed and statistics', (tester) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'entry-locale@example.com',
+      password: 'password123',
+      displayName: 'Eintrag Beispiel',
+    );
+    controller.takeFlashMessage(AppLocalizations(const Locale('de')));
+
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+    final redWine = controller.availableDrinks.firstWhere(
+      (drink) => drink.id == 'wine-red-wine',
+    );
+    await controller.addDrinkEntry(drink: redWine, volumeMl: redWine.volumeMl);
+    controller.takeFlashMessage(AppLocalizations(const Locale('de')));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rotwein'), findsOneWidget);
+    expect(find.text('Red Wine'), findsNothing);
+
+    await tester.tap(find.text('Statistiken'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Rotwein'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rotwein'), findsOneWidget);
+    expect(find.text('Red Wine'), findsNothing);
+  });
+
+  testWidgets(
+    'updates renamed custom drinks in feed and statistics',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'custom-rename@example.com',
+        password: 'password123',
+        displayName: 'Custom Rename Example',
+      );
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+      );
+      final customDrink = controller.customDrinks.single;
+      await controller.addDrinkEntry(
+        drink: customDrink,
+        volumeMl: customDrink.volumeMl,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Office Brew'), findsOneWidget);
+
+      await controller.saveCustomDrink(
+        drinkId: customDrink.id,
+        name: 'Desk Coffee',
+        category: customDrink.category,
+        volumeMl: customDrink.volumeMl,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Desk Coffee'), findsOneWidget);
+      expect(find.text('Office Brew'), findsNothing);
+
+      await tester.tap(find.text('Statistics'));
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Desk Coffee'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Desk Coffee'), findsOneWidget);
+      expect(find.text('Office Brew'), findsNothing);
+    },
+  );
 
   testWidgets('clears the add-drink search input and restores categories', (
     tester,

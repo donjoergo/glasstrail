@@ -96,6 +96,20 @@ class AppLocalizations {
       'handednessLeft': 'Left',
       'invalidRequired': 'Please fill in all required fields.',
       'emptyFilter': 'No drinks match the current filter.',
+      'welcomeToGlassTrail': 'Welcome to GlassTrail.',
+      'welcomeBack': 'Welcome back.',
+      'profileUpdated': 'Profile updated.',
+      'customDrinkSaved': 'Custom drink saved.',
+      'drinkLogged': '{drink} logged.',
+      'somethingWentWrong': 'Something went wrong. Please try again.',
+      'accountAlreadyExists': 'An account with that email already exists.',
+      'invalidCredentials': 'The email or password is incorrect.',
+      'profileUpdateFailed': 'The profile could not be updated.',
+      'customDrinkAlreadyExists':
+          'You already have a custom drink with that name.',
+      'signUpMissingUser': 'Sign-up did not return a user.',
+      'signUpConfirmationRequired':
+          'Supabase sign-up succeeded, but email confirmation is enabled. Confirm the email first, then sign in.',
       'beer': 'Beer',
       'wine': 'Wine',
       'spirits': 'Spirits',
@@ -177,6 +191,21 @@ class AppLocalizations {
       'handednessLeft': 'Links',
       'invalidRequired': 'Bitte alle Pflichtfelder ausfüllen.',
       'emptyFilter': 'Keine Getränke für den aktuellen Filter gefunden.',
+      'welcomeToGlassTrail': 'Willkommen bei GlassTrail.',
+      'welcomeBack': 'Willkommen zurück.',
+      'profileUpdated': 'Profil aktualisiert.',
+      'customDrinkSaved': 'Eigenes Getränk gespeichert.',
+      'drinkLogged': '{drink} erfasst.',
+      'somethingWentWrong': 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+      'accountAlreadyExists':
+          'Es gibt bereits ein Konto mit dieser E-Mail-Adresse.',
+      'invalidCredentials': 'Die E-Mail oder das Passwort ist falsch.',
+      'profileUpdateFailed': 'Das Profil konnte nicht aktualisiert werden.',
+      'customDrinkAlreadyExists':
+          'Du hast bereits ein eigenes Getränk mit diesem Namen.',
+      'signUpMissingUser': 'Die Registrierung hat keinen Benutzer zurückgegeben.',
+      'signUpConfirmationRequired':
+          'Die Registrierung bei Supabase war erfolgreich, aber die E-Mail-Bestätigung ist aktiviert. Bestätige zuerst die E-Mail und melde dich dann an.',
       'beer': 'Bier',
       'wine': 'Wein',
       'spirits': 'Spirituosen',
@@ -255,6 +284,17 @@ class AppLocalizations {
   String get handednessLeft => _text('handednessLeft');
   String get invalidRequired => _text('invalidRequired');
   String get emptyFilter => _text('emptyFilter');
+  String get welcomeToGlassTrail => _text('welcomeToGlassTrail');
+  String get welcomeBack => _text('welcomeBack');
+  String get profileUpdated => _text('profileUpdated');
+  String get customDrinkSaved => _text('customDrinkSaved');
+  String get somethingWentWrong => _text('somethingWentWrong');
+  String get accountAlreadyExists => _text('accountAlreadyExists');
+  String get invalidCredentials => _text('invalidCredentials');
+  String get profileUpdateFailed => _text('profileUpdateFailed');
+  String get customDrinkAlreadyExists => _text('customDrinkAlreadyExists');
+  String get signUpMissingUser => _text('signUpMissingUser');
+  String get signUpConfirmationRequired => _text('signUpConfirmationRequired');
 
   String categoryLabel(DrinkCategory category) => switch (category) {
     DrinkCategory.beer => _text('beer'),
@@ -278,6 +318,9 @@ class AppLocalizations {
     AppHandedness.right => handednessRight,
     AppHandedness.left => handednessLeft,
   };
+
+  String drinkLogged(String drinkName) =>
+      _text('drinkLogged').replaceAll('{drink}', drinkName);
 }
 
 class _AppLocalizationsDelegate

@@ -43,6 +43,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
   }
 
   Future<void> _openCustomDrinkDialog() async {
+    final l10n = AppLocalizations.of(context);
     await showDialog<void>(
       context: context,
       builder: (_) => const CustomDrinkDialog(),
@@ -50,7 +51,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     if (!mounted) {
       return;
     }
-    final message = AppScope.controllerOf(context).takeFlashMessage();
+    final message = AppScope.controllerOf(context).takeFlashMessage(l10n);
     if (message != null) {
       ScaffoldMessenger.of(
         context,
@@ -101,7 +102,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     if (!mounted) {
       return;
     }
-    final message = controller.takeFlashMessage();
+    final message = controller.takeFlashMessage(l10n);
     if (message != null) {
       ScaffoldMessenger.of(
         context,

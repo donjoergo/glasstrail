@@ -85,7 +85,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    final message = controller.takeFlashMessage();
+    final message = controller.takeFlashMessage(l10n);
     if (!success) {
       if (message != null) {
         ScaffoldMessenger.of(

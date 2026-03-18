@@ -16,6 +16,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _showCustomDrinkDialog([DrinkDefinition? drink]) async {
+    final l10n = AppLocalizations.of(context);
     await showDialog<void>(
       context: context,
       builder: (_) => CustomDrinkDialog(initialDrink: drink),
@@ -23,7 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) {
       return;
     }
-    final message = AppScope.controllerOf(context).takeFlashMessage();
+    final message = AppScope.controllerOf(context).takeFlashMessage(l10n);
     if (message != null) {
       _showMessage(message);
     }
@@ -39,12 +40,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _updateSettings(UserSettings settings) async {
+    final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
     final success = await controller.updateSettings(settings);
     if (!mounted) {
       return;
     }
-    final message = controller.takeFlashMessage();
+    final message = controller.takeFlashMessage(l10n);
     if (message != null) {
       _showMessage(message);
     }
@@ -375,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (!mounted) {
                           return;
                         }
-                        final message = controller.takeFlashMessage();
+                        final message = controller.takeFlashMessage(l10n);
                         if (message != null) {
                           _showMessage(message);
                         }

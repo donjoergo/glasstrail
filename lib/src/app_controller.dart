@@ -1,11 +1,45 @@
 import 'package:flutter/foundation.dart';
 
+import 'app_localizations.dart';
 import 'backend_config.dart';
 import 'birthday.dart';
 import 'models.dart';
 import 'repository/app_repository.dart';
 import 'repository/repository_factory.dart';
 import 'stats_calculator.dart';
+
+enum _FlashMessageKind {
+  welcomeToGlassTrail,
+  welcomeBack,
+  profileUpdated,
+  customDrinkSaved,
+  drinkLogged,
+  genericError,
+  raw,
+}
+
+class _FlashMessage {
+  const _FlashMessage.simple(this.kind)
+    : rawMessage = null,
+      drinkId = null,
+      fallbackDrinkName = null;
+
+  const _FlashMessage.drinkLogged({
+    required this.drinkId,
+    required this.fallbackDrinkName,
+  }) : kind = _FlashMessageKind.drinkLogged,
+       rawMessage = null;
+
+  const _FlashMessage.raw(this.rawMessage)
+    : kind = _FlashMessageKind.raw,
+      drinkId = null,
+      fallbackDrinkName = null;
+
+  final _FlashMessageKind kind;
+  final String? rawMessage;
+  final String? drinkId;
+  final String? fallbackDrinkName;
+}
 
 class AppController extends ChangeNotifier {
   AppController._(this._repository);
@@ -18,7 +52,7 @@ class AppController extends ChangeNotifier {
   List<DrinkDefinition> _customDrinks = const <DrinkDefinition>[];
   List<DrinkEntry> _entries = const <DrinkEntry>[];
   bool _isBusy = false;
-  String? _flashMessage;
+  _FlashMessage? _flashMessage;
 
   static Future<AppController> bootstrap({BackendConfig? backendConfig}) async {
     final repository = await createRepository(backendConfig: backendConfig);
@@ -80,10 +114,48 @@ class AppController extends ChangeNotifier {
     return result;
   }
 
-  String? takeFlashMessage() {
+  String? takeFlashMessage(AppLocalizations l10n) {
     final message = _flashMessage;
     _flashMessage = null;
-    return message;
+    if (message == null) {
+      return null;
+    }
+    return switch (message.kind) {
+      _FlashMessageKind.welcomeToGlassTrail => l10n.welcomeToGlassTrail,
+      _FlashMessageKind.welcomeBack => l10n.welcomeBack,
+      _FlashMessageKind.profileUpdated => l10n.profileUpdated,
+      _FlashMessageKind.customDrinkSaved => l10n.customDrinkSaved,
+      _FlashMessageKind.drinkLogged => l10n.drinkLogged(
+        localizedDrinkName(
+          message.drinkId!,
+          message.fallbackDrinkName!,
+          l10n.locale.languageCode,
+        ),
+      ),
+      _FlashMessageKind.genericError => l10n.somethingWentWrong,
+      _FlashMessageKind.raw => _localizedRawMessage(message.rawMessage!, l10n),
+    };
+  }
+
+  String localizedDrinkName(
+    String drinkId,
+    String fallbackName,
+    String localeCode,
+  ) {
+    for (final drink in availableDrinks) {
+      if (drink.id == drinkId) {
+        return drink.displayName(localeCode);
+      }
+    }
+    return fallbackName;
+  }
+
+  String localizedEntryDrinkName(DrinkEntry entry, {String? localeCode}) {
+    return localizedDrinkName(
+      entry.drinkId,
+      entry.drinkName,
+      localeCode ?? settings.localeCode,
+    );
   }
 
   Future<bool> signUp({
@@ -102,7 +174,9 @@ class AppController extends ChangeNotifier {
         profileImagePath: profileImagePath,
       );
       await _reloadUserScope();
-      _flashMessage = 'Welcome to GlassTrail.';
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.welcomeToGlassTrail,
+      );
     });
   }
 
@@ -110,7 +184,7 @@ class AppController extends ChangeNotifier {
     return _guard(() async {
       _currentUser = await _repository.signIn(email: email, password: password);
       await _reloadUserScope();
-      _flashMessage = 'Welcome back.';
+      _flashMessage = const _FlashMessage.simple(_FlashMessageKind.welcomeBack);
     });
   }
 
@@ -144,7 +218,9 @@ class AppController extends ChangeNotifier {
           clearProfileImage: clearProfileImage,
         ),
       );
-      _flashMessage = 'Profile updated.';
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.profileUpdated,
+      );
     });
   }
 
@@ -178,7 +254,9 @@ class AppController extends ChangeNotifier {
       }
       next.sort((left, right) => left.name.compareTo(right.name));
       _customDrinks = next;
-      _flashMessage = 'Custom drink saved.';
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.customDrinkSaved,
+      );
     });
   }
 
@@ -202,7 +280,10 @@ class AppController extends ChangeNotifier {
       );
       _entries = [entry, ..._entries]
         ..sort((left, right) => right.consumedAt.compareTo(left.consumedAt));
-      _flashMessage = '${drink.name} logged.';
+      _flashMessage = _FlashMessage.drinkLogged(
+        drinkId: entry.drinkId,
+        fallbackDrinkName: entry.drinkName,
+      );
     });
   }
 
@@ -243,14 +324,29 @@ class AppController extends ChangeNotifier {
       await action();
       return true;
     } on AppException catch (error) {
-      _flashMessage = error.message;
+      _flashMessage = _FlashMessage.raw(error.message);
       return false;
     } catch (_) {
-      _flashMessage = 'Something went wrong. Please try again.';
+      _flashMessage = const _FlashMessage.simple(_FlashMessageKind.genericError);
       return false;
     } finally {
       _isBusy = false;
       notifyListeners();
     }
+  }
+
+  String _localizedRawMessage(String message, AppLocalizations l10n) {
+    return switch (message) {
+      'An account with that email already exists.' => l10n.accountAlreadyExists,
+      'The email or password is incorrect.' => l10n.invalidCredentials,
+      'The profile could not be updated.' => l10n.profileUpdateFailed,
+      'You already have a custom drink with that name.' =>
+        l10n.customDrinkAlreadyExists,
+      'Sign-up did not return a user.' => l10n.signUpMissingUser,
+      'Supabase sign-up succeeded, but email confirmation is enabled. Confirm the email first, then sign in.' =>
+        l10n.signUpConfirmationRequired,
+      'Something went wrong. Please try again.' => l10n.somethingWentWrong,
+      _ => message,
+    };
   }
 }

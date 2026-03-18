@@ -87,7 +87,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
     if (!mounted) {
       return;
     }
-    final message = controller.takeFlashMessage();
+    final message = controller.takeFlashMessage(l10n);
     if (message != null) {
       ScaffoldMessenger.of(
         context,

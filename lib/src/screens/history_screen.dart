@@ -95,6 +95,7 @@ class HistoryScreen extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: _DrinkEntryCard(
                 entry: entry,
+                drinkName: controller.localizedEntryDrinkName(entry),
                 locale: locale,
                 unit: controller.settings.unit,
                 categoryLabel: l10n.categoryLabel(entry.category),
@@ -141,12 +142,14 @@ class _MetricBadge extends StatelessWidget {
 class _DrinkEntryCard extends StatelessWidget {
   const _DrinkEntryCard({
     required this.entry,
+    required this.drinkName,
     required this.locale,
     required this.unit,
     required this.categoryLabel,
   });
 
   final DrinkEntry entry;
+  final String drinkName;
   final String locale;
   final AppUnit unit;
   final String categoryLabel;
@@ -181,7 +184,7 @@ class _DrinkEntryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      entry.drinkName,
+                      drinkName,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
