@@ -16,7 +16,7 @@ class AppRoutes {
       statistics ||
       profile ||
       addDrink ||
-      editProfile => routeName!,
+      editProfile => routeName,
       _ => root,
     };
   }

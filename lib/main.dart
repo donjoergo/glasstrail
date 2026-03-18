@@ -6,8 +6,6 @@ import 'src/photo_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
-    const GlassTrailBootstrapApp(
-      photoService: const FileSelectorPhotoService(),
-    ),
+    const GlassTrailBootstrapApp(photoService: FileSelectorPhotoService()),
   );
 }

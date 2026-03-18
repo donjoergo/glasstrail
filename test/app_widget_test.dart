@@ -1,12 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/test_harness.dart';
