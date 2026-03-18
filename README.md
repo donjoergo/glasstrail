@@ -1,107 +1,182 @@
 # GlassTrail
 
-GlassTrail is a Flutter-based drink tracking app. This repository now defaults to the live Supabase backend for the `GlassTrail Codex` project.
+GlassTrail is a Flutter app for tracking drinks, reviewing personal habits, and keeping profile and app settings in sync across devices.
 
-Two backend modes still exist:
+By default, this repository uses the hosted Supabase project configured in `lib/src/backend_config.dart`. For tests and explicit bootstrap overrides, the app can still run against a local `SharedPreferences` fallback.
 
-- `Supabase` by default, using the hardcoded project URL and publishable key in [backend_config.dart](/home/joerg/Dokumente/_Code/glasstrail_codex/lib/src/backend_config.dart)
-- `Local fallback` via `SharedPreferences` when a test or a custom bootstrap path injects [BackendConfig.empty](/home/joerg/Dokumente/_Code/glasstrail_codex/lib/src/backend_config.dart)
-
-The local fallback remains useful for automated tests. The production backend path uses Supabase Auth, Postgres, row-level security, and Storage.
-
-## Implemented Scope
+## Features
 
 - Email/password sign-up and sign-in
-- Profile editing with nickname, display name, optional birthday, and optional image path
-- Global drink catalog
-- User-managed custom drinks
-- Drink logging with optional comment and image path
-- Personal feed/history
-- Weekly, monthly, yearly, streak, and category statistics
-- Theme, language, and unit settings
-- English and German UI support
-- Mobile-first shell with desktop-safe layout
-- Live Supabase backend integration with a test-only local fallback
+- Personal profile with display name, optional birthday, and optional profile photo
+- Birthday handling with day and month only
+- Global drink catalog plus user-defined custom drinks
+- Drink logging with optional comment and optional photo
+- Feed/history view for past entries
+- Statistics with streaks, time ranges, and category breakdown
+- Persisted theme, language, unit, and handedness settings
+- Left-handed and right-handed FAB placement
+- English and German UI
+- Bookmarkable routes for every visible app page
 
-## Backend Architecture
+## App Pages
+
+The app exposes one route per visible page. On Flutter Web, routing currently uses hash URLs, so bookmarks look like `/#/feed`.
+
+| Page | Route | Purpose |
+| --- | --- | --- |
+| Auth | `/auth` | Sign in and sign up |
+| Feed | `/feed` | Main history/feed view |
+| Statistics | `/statistics` | Trends, streaks, and category breakdown |
+| Profile | `/profile` | Profile summary and app settings |
+| Edit Profile | `/profile/edit` | Dedicated profile editing page |
+| Add Drink | `/add-drink` | Log a drink from recent, global, or custom options |
+
+Additional routing behavior:
+
+- `/` redirects to `/feed`
+- Protected routes show the auth flow when the user is signed out
+- After successful authentication, bookmarked protected pages continue to the originally requested route
+
+## Navigation Map
+
+```mermaid
+flowchart TD
+    Root["/"] --> Feed["/feed"]
+
+    Feed <--> Statistics["/statistics"]
+    Statistics <--> Profile["/profile"]
+    Profile <--> Feed
+
+    Feed --> AddDrink["/add-drink"]
+    Statistics --> AddDrink
+    Profile --> AddDrink
+
+    Profile --> EditProfile["/profile/edit"]
+
+    Auth["/auth"] --> Feed
+    Auth -. bookmarked protected route after sign-in .-> Statistics
+    Auth -. bookmarked protected route after sign-in .-> Profile
+    Auth -. bookmarked protected route after sign-in .-> AddDrink
+    Auth -. bookmarked protected route after sign-in .-> EditProfile
+```
+
+## App Architecture
+
+The UI is driven by `GlassTrailApp`, coordinated by `AppController`, and backed by an `AppRepository` implementation chosen at bootstrap time.
+
+```mermaid
+flowchart LR
+    App["GlassTrailApp"] --> Scope["AppScope"]
+    Scope --> Controller["AppController"]
+    Controller --> Stats["StatsCalculator"]
+    Controller --> Repo["AppRepository"]
+
+    Repo --> SupabaseRepo["SupabaseAppRepository"]
+    Repo --> LocalRepo["LocalAppRepository"]
+
+    SupabaseRepo --> Auth["Supabase Auth"]
+    SupabaseRepo --> Postgres["Postgres + RLS"]
+    SupabaseRepo --> Storage["Storage bucket: user-media"]
+
+    LocalRepo --> Prefs["SharedPreferences"]
+```
+
+## Main User Flows
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Flutter UI
+    participant C as AppController
+    participant R as Repository
+    participant B as Backend
+
+    U->>UI: Sign in / sign up
+    UI->>C: signIn() / signUp()
+    C->>R: authenticate user
+    R->>B: auth request
+    B-->>R: session + profile
+    R-->>C: current user
+    C->>R: load settings, drinks, entries
+    R->>B: fetch user scope
+    B-->>R: data
+    R-->>C: hydrated state
+    C-->>UI: rebuild visible route
+
+    U->>UI: Add drink
+    UI->>C: addDrinkEntry(...)
+    C->>R: persist entry
+    R->>B: insert drink entry
+    B-->>R: saved entry
+    R-->>C: saved entry
+    C-->>UI: feed + statistics update
+```
+
+## Backend Modes
 
 ### Supabase
 
-By default, the app uses:
+Default production runs use:
 
-- `supabase_flutter` for client bootstrapping and auth session persistence
+- `supabase_flutter` for app bootstrap and auth session persistence
 - Postgres tables for profiles, settings, custom drinks, and drink entries
-- RLS policies so users only access their own private data
-- Supabase Storage bucket `user-media` for user-owned media uploads
+- Row-level security so users only access their own data
+- Supabase Storage bucket `user-media` for uploaded profile and drink images
 
-The repository implementation is in:
+Relevant code:
 
-- [supabase_app_repository.dart](/home/joerg/Dokumente/_Code/glasstrail_codex/lib/src/repository/supabase_app_repository.dart)
+- `lib/src/repository/supabase_app_repository.dart`
+- `lib/src/backend_config.dart`
 
-The schema and policies are in:
+Schema migrations:
 
-- [202603180001_initial_schema.sql](/home/joerg/Dokumente/_Code/glasstrail_codex/supabase/migrations/202603180001_initial_schema.sql)
-- [202603180002_optimize_policies.sql](/home/joerg/Dokumente/_Code/glasstrail_codex/supabase/migrations/202603180002_optimize_policies.sql)
+- `supabase/migrations/202603180001_initial_schema.sql`
+- `supabase/migrations/202603180002_optimize_policies.sql`
+- `supabase/migrations/202603180003_add_handedness_to_user_settings.sql`
+- `supabase/migrations/202603180004_drop_nickname_from_profiles.sql`
 
 ### Local Fallback
 
-Automated tests and explicitly injected empty backend configs use:
+Tests and explicit empty backend configs use:
 
-- [local_app_repository.dart](/home/joerg/Dokumente/_Code/glasstrail_codex/lib/src/repository/local_app_repository.dart)
+- `lib/src/repository/local_app_repository.dart`
 
-This is what the automated tests use.
+This keeps the app runnable without Supabase and makes widget and repository tests deterministic.
 
-## Supabase Setup
+## Project Structure
 
-The repository is already wired to the hosted `GlassTrail Codex` project and will connect to it by default.
+| Path | Purpose |
+| --- | --- |
+| `lib/main.dart` | Bootstrap entry point |
+| `lib/src/app.dart` | Top-level app and route handling |
+| `lib/src/app_routes.dart` | Named routes and tab-route mapping |
+| `lib/src/app_controller.dart` | State orchestration and user actions |
+| `lib/src/models.dart` | Domain models and formatting helpers |
+| `lib/src/screens/` | UI pages and dialogs |
+| `lib/src/repository/` | Backend abstraction and implementations |
+| `supabase/migrations/` | Database schema and policy migrations |
+| `test/` | Unit, widget, and repository tests |
 
-You only need Dart defines if you want to override the baked-in project URL or public key:
+## Local Development
+
+Install dependencies:
 
 ```bash
-/home/joerg/.local/lib/flutter/bin/flutter run -d linux \
+flutter pub get
+```
+
+Run the app:
+
+```bash
+flutter run
+```
+
+Override Supabase configuration if needed:
+
+```bash
+flutter run \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_KEY
-```
-
-If you want a fully local run, keep using the test harness or inject `BackendConfig.empty` in code.
-
-## Local Tooling
-
-Flutter was bootstrapped locally at:
-
-```bash
-/home/joerg/.local/lib/flutter
-```
-
-Additional local desktop build tools were installed at:
-
-```bash
-/home/joerg/.local/bin/cmake
-/home/joerg/.local/bin/ninja
-```
-
-Use those binaries if the tools are not on your `PATH`.
-
-## Install Dependencies
-
-```bash
-/home/joerg/.local/lib/flutter/bin/flutter pub get
-```
-
-## Run The App
-
-With the baked-in live Supabase project:
-
-```bash
-/home/joerg/.local/lib/flutter/bin/flutter run -d linux
-```
-
-With an override Supabase project:
-
-```bash
-/home/joerg/.local/lib/flutter/bin/flutter run -d linux \
-  --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLIC_KEY
+  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY
 ```
 
 ## Verification
@@ -109,30 +184,17 @@ With an override Supabase project:
 Static analysis:
 
 ```bash
-/home/joerg/.local/lib/flutter/bin/flutter analyze
+flutter analyze
 ```
 
-Unit, widget, and repository integration tests:
+Unit and widget tests:
 
 ```bash
-/home/joerg/.local/lib/flutter/bin/flutter test
+flutter test
 ```
 
-End-to-end journey test:
+Integration tests:
 
 ```bash
-/home/joerg/.local/lib/flutter/bin/flutter test integration_test -d linux
+flutter test integration_test
 ```
-
-## Repository History
-
-The work is split into logical commits:
-
-1. `chore: bootstrap Flutter project`
-2. `feat: add the GlassTrail MVP app`
-3. `test: add automated app coverage`
-4. `docs: add project README`
-5. `docs: clarify e2e test command`
-6. `feat: integrate Supabase backend support`
-7. `docs: document Supabase setup`
-8. `fix(supabase): optimize policies and indexes`
