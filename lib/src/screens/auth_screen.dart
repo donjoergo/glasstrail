@@ -98,10 +98,7 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     if (success) {
       FocusScope.of(context).unfocus();
-      final routeName = ModalRoute.of(context)?.settings.name;
-      if (routeName == AppRoutes.auth) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.feed);
-      }
+      Navigator.of(context).pushReplacementNamed(AppRoutes.feed);
     }
   }
 

@@ -123,6 +123,92 @@ void main() {
     expect(find.text('Category breakdown'), findsOneWidget);
   });
 
+  testWidgets('navigates to feed after sign-in from a protected route', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'protected-login@example.com',
+      password: 'password123',
+      displayName: 'Protected Login',
+    );
+    await controller.signOut();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+    expect(find.text('Category breakdown'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('signin-email-field')),
+      'protected-login@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signin-password-field')),
+      'password123',
+    );
+    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your activity feed'), findsOneWidget);
+    expect(find.text('Category breakdown'), findsNothing);
+
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.feed);
+  });
+
+  testWidgets('navigates to feed after sign-up from a protected route', (
+    tester,
+  ) async {
+    final app = await buildTestApp(initialRoute: AppRoutes.editProfile);
+
+    await tester.pumpWidget(app);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('edit-profile-display-name-field')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('signup-email-field')),
+      'protected-signup@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-password-field')),
+      'password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-display-name-field')),
+      'Protected Signup',
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your activity feed'), findsOneWidget);
+    expect(
+      find.byKey(const Key('edit-profile-display-name-field')),
+      findsNothing,
+    );
+
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.feed);
+  });
+
   testWidgets('opens bookmarked edit-profile route for authenticated users', (
     tester,
   ) async {

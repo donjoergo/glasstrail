@@ -35,7 +35,7 @@ Additional routing behavior:
 
 - `/` redirects to `/feed`
 - Protected routes show the auth flow when the user is signed out
-- After successful authentication, bookmarked protected pages continue to the originally requested route
+- After successful authentication, the app always lands on `/feed`
 
 ## Navigation Map
 
@@ -54,10 +54,6 @@ flowchart TD
     Profile --> EditProfile["/profile/edit"]
 
     Auth["/auth"] --> Feed
-    Auth -. bookmarked protected route after sign-in .-> Statistics
-    Auth -. bookmarked protected route after sign-in .-> Profile
-    Auth -. bookmarked protected route after sign-in .-> AddDrink
-    Auth -. bookmarked protected route after sign-in .-> EditProfile
 ```
 
 ## App Architecture

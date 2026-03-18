@@ -253,7 +253,10 @@ class _AppRouteScreen extends StatelessWidget {
     }
 
     if (!controller.isAuthenticated) {
-      return const AuthScreen();
+      if (normalizedRoute == AppRoutes.auth) {
+        return const AuthScreen();
+      }
+      return const _RouteRedirectScreen(targetRoute: AppRoutes.auth);
     }
 
     return switch (normalizedRoute) {
