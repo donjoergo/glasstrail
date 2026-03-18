@@ -344,6 +344,10 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                   width: double.infinity,
                   child: FilledButton(
                     key: const Key('confirm-drink-button'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
                     onPressed: controller.isBusy ? null : _save,
                     child: Text(l10n.confirmDrink),
                   ),
