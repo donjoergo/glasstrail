@@ -55,11 +55,18 @@ class AppTheme {
   }
 
   static ThemeData _buildTheme(ColorScheme scheme) {
-    final textTheme = GoogleFonts.manropeTextTheme();
+    final textTheme = GoogleFonts.manropeTextTheme(
+      ThemeData(
+        brightness: scheme.brightness,
+        colorScheme: scheme,
+        useMaterial3: true,
+      ).textTheme,
+    ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       textTheme: textTheme,
+      iconTheme: IconThemeData(color: scheme.onSurface),
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -73,6 +80,18 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surfaceContainerHighest,
+        labelStyle: textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
+        floatingLabelStyle: textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurface,
+          fontWeight: FontWeight.w700,
+        ),
+        hintStyle: textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
+        prefixIconColor: scheme.onSurfaceVariant,
+        suffixIconColor: scheme.onSurfaceVariant,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide.none,
@@ -97,6 +116,53 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scheme.surface,
         indicatorColor: scheme.primary.withValues(alpha: 0.14),
+        labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>((states) {
+          final color = states.contains(WidgetState.selected)
+              ? scheme.onSurface
+              : scheme.onSurfaceVariant;
+          return textTheme.labelMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w700,
+          );
+        }),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: scheme.surface,
+        selectedIconTheme: IconThemeData(color: scheme.primary),
+        unselectedIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
+        selectedLabelTextStyle: textTheme.labelMedium?.copyWith(
+          color: scheme.onSurface,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelTextStyle: textTheme.labelMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      expansionTileTheme: ExpansionTileThemeData(
+        textColor: scheme.onSurface,
+        collapsedTextColor: scheme.onSurface,
+        iconColor: scheme.onSurfaceVariant,
+        collapsedIconColor: scheme.onSurfaceVariant,
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: scheme.onSurfaceVariant,
+        textColor: scheme.onSurface,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: scheme.surfaceContainerHighest,
+        disabledColor: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
+        selectedColor: scheme.primary.withValues(alpha: 0.18),
+        secondarySelectedColor: scheme.primary.withValues(alpha: 0.18),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        labelStyle: textTheme.labelLarge?.copyWith(color: scheme.onSurface),
+        secondaryLabelStyle: textTheme.labelLarge?.copyWith(
+          color: scheme.onSurface,
+        ),
+        brightness: scheme.brightness,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        side: BorderSide(color: scheme.outline.withValues(alpha: 0.45)),
+        checkmarkColor: scheme.primary,
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
