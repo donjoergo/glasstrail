@@ -186,7 +186,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         const SizedBox(height: 24),
                         if (_mode == _AuthMode.signIn)
-                          _buildSignInForm(l10n)
+                          _buildSignInForm(l10n, controller.isBusy)
                         else
                           _buildSignUpForm(l10n, localeCode),
                         const SizedBox(height: 20),
@@ -221,7 +221,7 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildSignInForm(AppLocalizations l10n) {
+  Widget _buildSignInForm(AppLocalizations l10n, bool isBusy) {
     return Form(
       key: _signInKey,
       child: Column(
@@ -231,6 +231,8 @@ class _AuthScreenState extends State<AuthScreen> {
             controller: _signInEmailController,
             decoration: InputDecoration(labelText: l10n.email),
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
             validator: (value) => value == null || value.trim().isEmpty
                 ? l10n.invalidRequired
                 : null,
@@ -241,6 +243,13 @@ class _AuthScreenState extends State<AuthScreen> {
             controller: _signInPasswordController,
             decoration: InputDecoration(labelText: l10n.password),
             obscureText: true,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) {
+              if (isBusy) {
+                return;
+              }
+              _submit();
+            },
             validator: (value) => value == null || value.trim().isEmpty
                 ? l10n.invalidRequired
                 : null,

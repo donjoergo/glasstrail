@@ -45,6 +45,41 @@ void main() {
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
   });
 
+  testWidgets('submits sign-in on enter from the password field', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'keyboard-login@example.com',
+      password: 'password123',
+      displayName: 'Keyboard Login',
+    );
+    await controller.signOut();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('signin-email-field')),
+      'keyboard-login@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signin-password-field')),
+      'password123',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your activity feed'), findsOneWidget);
+    expect(find.byKey(const Key('auth-submit-button')), findsNothing);
+  });
+
   testWidgets('redirects the root route to feed', (tester) async {
     final controller = await buildTestController();
     await controller.signUp(
