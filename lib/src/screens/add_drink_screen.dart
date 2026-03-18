@@ -57,6 +57,12 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     }
   }
 
+  void _clearSearch() {
+    setState(() {
+      _searchController.clear();
+    });
+  }
+
   void _selectDrink(DrinkDefinition drink) {
     final unit = AppScope.controllerOf(context).settings.unit;
     setState(() {
@@ -146,7 +152,14 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     labelText: l10n.searchDrinks,
-                    suffixIcon: const Icon(Icons.search_rounded),
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            key: const Key('drink-search-clear-button'),
+                            onPressed: _clearSearch,
+                            icon: const Icon(Icons.close_rounded),
+                          ),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),

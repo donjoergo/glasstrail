@@ -178,6 +178,57 @@ void main() {
     expect(find.text('Red Wine'), findsNothing);
   });
 
+  testWidgets('clears the add-drink search input and restores categories', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'clear-search@example.com',
+      password: 'password123',
+      displayName: 'Clear Search Example',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('drink-search-field')), 'rot');
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('drink-category-title-beer')), findsNothing);
+    expect(
+      find.byKey(const Key('drink-search-clear-button')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('drink-search-clear-button')));
+    await tester.pumpAndSettle();
+
+    final searchField = tester.widget<TextFormField>(
+      find.byKey(const Key('drink-search-field')),
+    );
+    expect(searchField.controller?.text, isEmpty);
+    expect(find.byKey(const Key('drink-category-title-beer')), findsOneWidget);
+    expect(
+      find.byKey(const Key('drink-search-clear-button')),
+      findsNothing,
+    );
+  });
+
   testWidgets(
     'keeps add-drink categories collapsed and closes them after selection',
     (
