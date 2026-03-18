@@ -170,4 +170,82 @@ void main() {
     expect(find.text('Rotwein'), findsOneWidget);
     expect(find.text('Red Wine'), findsNothing);
   });
+
+  testWidgets('shows icons for recent drinks and statistics cards', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'icons@example.com',
+      password: 'password123',
+      displayName: 'Icon Beispiel',
+    );
+    await controller.addDrinkEntry(
+      drink: controller.availableDrinks.firstWhere(
+        (drink) => drink.id == 'beer-pils',
+      ),
+      volumeMl: 330,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('recent-drink-icon-beer-pils')),
+      findsOneWidget,
+    );
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Statistics'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('stats-card-icon-weekly')), findsOneWidget);
+    expect(find.byKey(const Key('stats-card-icon-monthly')), findsOneWidget);
+    expect(find.byKey(const Key('stats-card-icon-yearly')), findsOneWidget);
+    expect(
+      find.byKey(const Key('stats-card-icon-current-streak')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-card-icon-best-streak')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-category-chip-icon-beer')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-category-chip-icon-wine')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-category-chip-icon-spirits')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-category-chip-icon-cocktails')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-category-chip-icon-nonAlcoholic')),
+      findsOneWidget,
+    );
+  });
 }

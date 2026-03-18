@@ -35,15 +35,34 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           spacing: 12,
           runSpacing: 12,
           children: <Widget>[
-            _StatCard(label: l10n.weeklyTotal, value: '${stats.weeklyTotal}'),
-            _StatCard(label: l10n.monthlyTotal, value: '${stats.monthlyTotal}'),
-            _StatCard(label: l10n.yearlyTotal, value: '${stats.yearlyTotal}'),
             _StatCard(
+              icon: Icons.calendar_view_week_rounded,
+              iconKey: const Key('stats-card-icon-weekly'),
+              label: l10n.weeklyTotal,
+              value: '${stats.weeklyTotal}',
+            ),
+            _StatCard(
+              icon: Icons.calendar_month_rounded,
+              iconKey: const Key('stats-card-icon-monthly'),
+              label: l10n.monthlyTotal,
+              value: '${stats.monthlyTotal}',
+            ),
+            _StatCard(
+              icon: Icons.event_available_rounded,
+              iconKey: const Key('stats-card-icon-yearly'),
+              label: l10n.yearlyTotal,
+              value: '${stats.yearlyTotal}',
+            ),
+            _StatCard(
+              icon: Icons.local_fire_department_rounded,
+              iconKey: const Key('stats-card-icon-current-streak'),
               label: l10n.currentStreak,
               value:
                   '${stats.currentStreak} ${l10n.dayLabel(stats.currentStreak)}',
             ),
             _StatCard(
+              icon: Icons.emoji_events_rounded,
+              iconKey: const Key('stats-card-icon-best-streak'),
               label: l10n.bestStreak,
               value: '${stats.bestStreak} ${l10n.dayLabel(stats.bestStreak)}',
             ),
@@ -84,6 +103,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   final count = stats.categoryCounts[category] ?? 0;
                   return FilterChip(
                     selected: _selectedCategory == category,
+                    avatar: Icon(
+                      category.icon,
+                      key: Key(
+                        'stats-category-chip-icon-${category.storageValue}',
+                      ),
+                      size: 18,
+                    ),
                     label: Text('${l10n.categoryLabel(category)} ($count)'),
                     onSelected: (_) {
                       setState(() {
@@ -189,8 +215,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value});
+  const _StatCard({
+    required this.icon,
+    required this.iconKey,
+    required this.label,
+    required this.value,
+  });
 
+  final IconData icon;
+  final Key iconKey;
   final String label;
   final String value;
 
@@ -208,6 +241,13 @@ class _StatCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            Icon(
+              icon,
+              key: iconKey,
+              color: theme.colorScheme.primary,
+              size: 20,
+            ),
+            const SizedBox(height: 12),
             Text(label, style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             Text(
