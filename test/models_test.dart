@@ -46,4 +46,29 @@ void main() {
       expect(user.toJson()['birthday'], '2000-07-16T00:00:00.000');
     });
   });
+
+  group('DrinkEntry', () {
+    test('copyWith can clear comment and image independently', () {
+      final entry = DrinkEntry(
+        id: 'entry-1',
+        userId: 'user-1',
+        drinkId: 'water',
+        drinkName: 'Water',
+        category: DrinkCategory.nonAlcoholic,
+        consumedAt: DateTime(2026, 3, 19, 12),
+        volumeMl: 250,
+        comment: 'Original',
+        imagePath: '/tmp/original.png',
+      );
+
+      final updated = entry.copyWith(comment: 'Updated', clearImagePath: true);
+      final cleared = updated.copyWith(clearComment: true);
+
+      expect(updated.comment, 'Updated');
+      expect(updated.imagePath, isNull);
+      expect(cleared.comment, isNull);
+      expect(cleared.drinkId, entry.drinkId);
+      expect(cleared.consumedAt, entry.consumedAt);
+    });
+  });
 }

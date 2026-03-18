@@ -51,6 +51,10 @@ class AppLocalizations {
       'confirmDrink': 'Save entry',
       'save': 'Save',
       'cancel': 'Cancel',
+      'editEntry': 'Edit entry',
+      'deleteEntry': 'Delete entry',
+      'deleteEntryPrompt':
+          'Delete this drink entry? The saved comment and photo will be removed too.',
       'createCustomDrink': 'Create custom drink',
       'editCustomDrink': 'Edit custom drink',
       'drinkName': 'Drink name',
@@ -102,10 +106,14 @@ class AppLocalizations {
       'profileUpdated': 'Profile updated.',
       'customDrinkSaved': 'Custom drink saved.',
       'drinkLogged': '{drink} logged.',
+      'entryUpdated': 'Entry updated.',
+      'entryDeleted': 'Entry deleted.',
       'somethingWentWrong': 'Something went wrong. Please try again.',
       'accountAlreadyExists': 'An account with that email already exists.',
       'invalidCredentials': 'The email or password is incorrect.',
       'profileUpdateFailed': 'The profile could not be updated.',
+      'entryUpdateFailed': 'The drink entry could not be updated.',
+      'entryDeleteFailed': 'The drink entry could not be deleted.',
       'customDrinkAlreadyExists':
           'You already have a custom drink with that name.',
       'signUpMissingUser': 'Sign-up did not return a user.',
@@ -146,6 +154,10 @@ class AppLocalizations {
       'confirmDrink': 'Eintrag speichern',
       'save': 'Speichern',
       'cancel': 'Abbrechen',
+      'editEntry': 'Eintrag bearbeiten',
+      'deleteEntry': 'Eintrag löschen',
+      'deleteEntryPrompt':
+          'Diesen Getränkeeintrag löschen? Der gespeicherte Kommentar und das Foto werden ebenfalls entfernt.',
       'createCustomDrink': 'Eigenes Getränk erstellen',
       'editCustomDrink': 'Eigenes Getränk bearbeiten',
       'drinkName': 'Getränkename',
@@ -198,14 +210,21 @@ class AppLocalizations {
       'profileUpdated': 'Profil aktualisiert.',
       'customDrinkSaved': 'Eigenes Getränk gespeichert.',
       'drinkLogged': '{drink} erfasst.',
-      'somethingWentWrong': 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+      'entryUpdated': 'Eintrag aktualisiert.',
+      'entryDeleted': 'Eintrag gelöscht.',
+      'somethingWentWrong':
+          'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
       'accountAlreadyExists':
           'Es gibt bereits ein Konto mit dieser E-Mail-Adresse.',
       'invalidCredentials': 'Die E-Mail oder das Passwort ist falsch.',
       'profileUpdateFailed': 'Das Profil konnte nicht aktualisiert werden.',
+      'entryUpdateFailed':
+          'Der Getränkeeintrag konnte nicht aktualisiert werden.',
+      'entryDeleteFailed': 'Der Getränkeeintrag konnte nicht gelöscht werden.',
       'customDrinkAlreadyExists':
           'Du hast bereits ein eigenes Getränk mit diesem Namen.',
-      'signUpMissingUser': 'Die Registrierung hat keinen Benutzer zurückgegeben.',
+      'signUpMissingUser':
+          'Die Registrierung hat keinen Benutzer zurückgegeben.',
       'signUpConfirmationRequired':
           'Die Registrierung bei Supabase war erfolgreich, aber die E-Mail-Bestätigung ist aktiviert. Bestätige zuerst die E-Mail und melde dich dann an.',
       'beer': 'Bier',
@@ -244,6 +263,9 @@ class AppLocalizations {
   String get confirmDrink => _text('confirmDrink');
   String get save => _text('save');
   String get cancel => _text('cancel');
+  String get editEntry => _text('editEntry');
+  String get deleteEntry => _text('deleteEntry');
+  String get deleteEntryPrompt => _text('deleteEntryPrompt');
   String get createCustomDrink => _text('createCustomDrink');
   String get editCustomDrink => _text('editCustomDrink');
   String get drinkName => _text('drinkName');
@@ -291,10 +313,14 @@ class AppLocalizations {
   String get welcomeBack => _text('welcomeBack');
   String get profileUpdated => _text('profileUpdated');
   String get customDrinkSaved => _text('customDrinkSaved');
+  String get entryUpdated => _text('entryUpdated');
+  String get entryDeleted => _text('entryDeleted');
   String get somethingWentWrong => _text('somethingWentWrong');
   String get accountAlreadyExists => _text('accountAlreadyExists');
   String get invalidCredentials => _text('invalidCredentials');
   String get profileUpdateFailed => _text('profileUpdateFailed');
+  String get entryUpdateFailed => _text('entryUpdateFailed');
+  String get entryDeleteFailed => _text('entryDeleteFailed');
   String get customDrinkAlreadyExists => _text('customDrinkAlreadyExists');
   String get signUpMissingUser => _text('signUpMissingUser');
   String get signUpConfirmationRequired => _text('signUpConfirmationRequired');

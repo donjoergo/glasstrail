@@ -219,6 +219,53 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
+  Future<DrinkEntry> updateDrinkEntry({
+    required AppUser user,
+    required DrinkEntry entry,
+    String? comment,
+    String? imagePath,
+  }) async {
+    final map = _readJsonMap(_entriesKey);
+    final raw = List<dynamic>.from(
+      (map[user.id] as List?) ?? const <dynamic>[],
+    );
+    final index = raw.indexWhere((item) => (item as Map)['id'] == entry.id);
+    if (index == -1) {
+      throw const AppException('The drink entry could not be updated.');
+    }
+
+    final trimmedComment = comment?.trim();
+    final trimmedImagePath = imagePath?.trim();
+    final updated = entry.copyWith(
+      comment: trimmedComment,
+      clearComment: trimmedComment == null || trimmedComment.isEmpty,
+      imagePath: trimmedImagePath,
+      clearImagePath: trimmedImagePath == null || trimmedImagePath.isEmpty,
+    );
+
+    raw[index] = updated.toJson();
+    map[user.id] = raw;
+    await _writeJsonMap(_entriesKey, map);
+    return updated;
+  }
+
+  @override
+  Future<void> deleteDrinkEntry({
+    required String userId,
+    required DrinkEntry entry,
+  }) async {
+    final map = _readJsonMap(_entriesKey);
+    final raw = List<dynamic>.from((map[userId] as List?) ?? const <dynamic>[]);
+    final initialLength = raw.length;
+    raw.removeWhere((item) => (item as Map)['id'] == entry.id);
+    if (raw.length == initialLength) {
+      throw const AppException('The drink entry could not be deleted.');
+    }
+    map[userId] = raw;
+    await _writeJsonMap(_entriesKey, map);
+  }
+
+  @override
   Future<UserSettings> loadSettings(String userId) async {
     final map = _readJsonMap(_settingsKey);
     final raw = map[userId];

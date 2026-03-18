@@ -300,6 +300,76 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
+  Future<DrinkEntry> updateDrinkEntry({
+    required AppUser user,
+    required DrinkEntry entry,
+    String? comment,
+    String? imagePath,
+  }) async {
+    try {
+      final trimmedComment = comment?.trim();
+      final trimmedImagePath = imagePath?.trim();
+      final finalImagePath = await _resolveMediaPath(
+        userId: user.id,
+        imagePath: trimmedImagePath,
+        folder: 'entries',
+      );
+
+      final row = await _client
+          .from('drink_entries')
+          .update(<String, dynamic>{
+            'comment': trimmedComment == null || trimmedComment.isEmpty
+                ? null
+                : trimmedComment,
+            'image_path': finalImagePath,
+          })
+          .eq('id', entry.id)
+          .eq('user_id', user.id)
+          .select()
+          .maybeSingle();
+
+      if (row == null) {
+        throw const AppException('The drink entry could not be updated.');
+      }
+
+      if (entry.imagePath != finalImagePath) {
+        await _deleteMediaPathIfOwned(entry.imagePath, user.id);
+      }
+
+      return _entryFromRow(Map<String, dynamic>.from(row));
+    } on StorageException catch (error) {
+      throw AppException(error.message);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<void> deleteDrinkEntry({
+    required String userId,
+    required DrinkEntry entry,
+  }) async {
+    try {
+      final rows = await _client
+          .from('drink_entries')
+          .delete()
+          .eq('id', entry.id)
+          .eq('user_id', userId)
+          .select('id');
+
+      if ((rows as List<dynamic>).isEmpty) {
+        throw const AppException('The drink entry could not be deleted.');
+      }
+
+      await _deleteMediaPathIfOwned(entry.imagePath, userId);
+    } on StorageException catch (error) {
+      throw AppException(error.message);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
   Future<UserSettings> loadSettings(String userId) async {
     try {
       final row = await _client
@@ -528,6 +598,28 @@ class SupabaseAppRepository implements AppRepository {
       return true;
     }
     return path.startsWith('file://');
+  }
+
+  Future<void> _deleteMediaPathIfOwned(String? imagePath, String userId) async {
+    final normalized = imagePath?.trim();
+    if (!_isOwnedStoragePath(normalized, userId)) {
+      return;
+    }
+    try {
+      await _client.storage.from(_mediaBucket).remove(<String>[normalized!]);
+    } on StorageException {
+      // Best-effort cleanup; data changes should still succeed.
+    }
+  }
+
+  bool _isOwnedStoragePath(String? imagePath, String userId) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return false;
+    }
+    if (_looksLikeLocalFile(imagePath)) {
+      return false;
+    }
+    return imagePath.split('/').first == userId;
   }
 
   String _guessMimeType(String fileName) {

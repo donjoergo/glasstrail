@@ -56,7 +56,9 @@ void main() {
     );
     expect(controller.takeFlashMessage(german), 'Willkommen bei GlassTrail.');
 
-    await controller.updateSettings(controller.settings.copyWith(localeCode: 'de'));
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
     final redWine = controller.availableDrinks.firstWhere(
       (drink) => drink.id == 'wine-red-wine',
     );
@@ -87,6 +89,66 @@ void main() {
       controller.takeFlashMessage(german),
       'Es gibt bereits ein Konto mit dieser E-Mail-Adresse.',
     );
+  });
+
+  test('updates a drink entry and emits a localized success message', () async {
+    final controller = await buildTestController();
+    final german = AppLocalizations(const Locale('de'));
+
+    await controller.signUp(
+      email: 'edit-entry@example.com',
+      password: 'password123',
+      displayName: 'Edit Entry Example',
+    );
+    controller.takeFlashMessage(german);
+
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'nonAlcoholic-water',
+    );
+    await controller.addDrinkEntry(
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      comment: 'Vorher',
+      imagePath: '/tmp/initial-image.png',
+    );
+    controller.takeFlashMessage(german);
+
+    final success = await controller.updateDrinkEntry(
+      entry: controller.entries.single,
+      comment: 'Nachher',
+      imagePath: null,
+    );
+
+    expect(success, isTrue);
+    expect(controller.entries.single.comment, 'Nachher');
+    expect(controller.entries.single.imagePath, isNull);
+    expect(controller.takeFlashMessage(german), 'Eintrag aktualisiert.');
+  });
+
+  test('deletes a drink entry and emits a localized success message', () async {
+    final controller = await buildTestController();
+    final german = AppLocalizations(const Locale('de'));
+
+    await controller.signUp(
+      email: 'delete-entry@example.com',
+      password: 'password123',
+      displayName: 'Delete Entry Example',
+    );
+    controller.takeFlashMessage(german);
+
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl);
+    controller.takeFlashMessage(german);
+
+    final success = await controller.deleteDrinkEntry(
+      controller.entries.single,
+    );
+
+    expect(success, isTrue);
+    expect(controller.entries, isEmpty);
+    expect(controller.takeFlashMessage(german), 'Eintrag gelöscht.');
   });
 }
 
@@ -152,6 +214,14 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
+  Future<void> deleteDrinkEntry({
+    required String userId,
+    required DrinkEntry entry,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<DrinkDefinition> saveCustomDrink({
     required String userId,
     String? drinkId,
@@ -191,6 +261,16 @@ class _BootstrapProbeRepository implements AppRepository {
 
   @override
   Future<AppUser> updateProfile(AppUser user) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<DrinkEntry> updateDrinkEntry({
+    required AppUser user,
+    required DrinkEntry entry,
+    String? comment,
+    String? imagePath,
+  }) {
     throw UnimplementedError();
   }
 }

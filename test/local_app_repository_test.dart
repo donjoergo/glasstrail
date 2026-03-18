@@ -100,5 +100,108 @@ void main() {
       expect(restored.unit, AppUnit.oz);
       expect(restored.handedness, AppHandedness.left);
     });
+
+    test('updates only comment and image for an existing entry', () async {
+      final user = await repository.signUp(
+        email: 'update-entry@example.com',
+        password: 'secret',
+        displayName: 'Update Entry User',
+      );
+
+      final created = await repository.addDrinkEntry(
+        user: user,
+        drink: const DrinkDefinition(
+          id: 'water',
+          name: 'Water',
+          category: DrinkCategory.nonAlcoholic,
+          volumeMl: 250,
+        ),
+        volumeMl: 250,
+        comment: 'Before',
+        imagePath: '/tmp/before.png',
+        consumedAt: DateTime(2026, 3, 19, 10, 30),
+      );
+
+      final updated = await repository.updateDrinkEntry(
+        user: user,
+        entry: created,
+        comment: 'After',
+        imagePath: '/tmp/after.png',
+      );
+
+      expect(updated.drinkId, created.drinkId);
+      expect(updated.drinkName, created.drinkName);
+      expect(updated.category, created.category);
+      expect(updated.volumeMl, created.volumeMl);
+      expect(updated.consumedAt, created.consumedAt);
+      expect(updated.comment, 'After');
+      expect(updated.imagePath, '/tmp/after.png');
+    });
+
+    test(
+      'normalizes empty entry comments to null and removes images',
+      () async {
+        final user = await repository.signUp(
+          email: 'clear-entry@example.com',
+          password: 'secret',
+          displayName: 'Clear Entry User',
+        );
+
+        final created = await repository.addDrinkEntry(
+          user: user,
+          drink: const DrinkDefinition(
+            id: 'cola',
+            name: 'Cola',
+            category: DrinkCategory.nonAlcoholic,
+          ),
+          comment: 'Has comment',
+          imagePath: '/tmp/image.png',
+        );
+
+        final updated = await repository.updateDrinkEntry(
+          user: user,
+          entry: created,
+          comment: '   ',
+          imagePath: null,
+        );
+
+        expect(updated.comment, isNull);
+        expect(updated.imagePath, isNull);
+        final restored = await repository.loadEntries(user.id);
+        expect(restored.single.comment, isNull);
+        expect(restored.single.imagePath, isNull);
+      },
+    );
+
+    test('deletes only the selected entry for a user', () async {
+      final user = await repository.signUp(
+        email: 'delete-selected@example.com',
+        password: 'secret',
+        displayName: 'Delete Selected User',
+      );
+
+      final first = await repository.addDrinkEntry(
+        user: user,
+        drink: const DrinkDefinition(
+          id: 'pils',
+          name: 'Pils',
+          category: DrinkCategory.beer,
+        ),
+      );
+      await repository.addDrinkEntry(
+        user: user,
+        drink: const DrinkDefinition(
+          id: 'water',
+          name: 'Water',
+          category: DrinkCategory.nonAlcoholic,
+        ),
+      );
+
+      await repository.deleteDrinkEntry(userId: user.id, entry: first);
+
+      final restored = await repository.loadEntries(user.id);
+      expect(restored, hasLength(1));
+      expect(restored.single.id, isNot(first.id));
+    });
   });
 }

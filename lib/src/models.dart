@@ -294,6 +294,30 @@ class DrinkEntry {
   final String? comment;
   final String? imagePath;
 
+  DrinkEntry copyWith({
+    String? drinkId,
+    String? drinkName,
+    DrinkCategory? category,
+    DateTime? consumedAt,
+    double? volumeMl,
+    String? comment,
+    bool clearComment = false,
+    String? imagePath,
+    bool clearImagePath = false,
+  }) {
+    return DrinkEntry(
+      id: id,
+      userId: userId,
+      drinkId: drinkId ?? this.drinkId,
+      drinkName: drinkName ?? this.drinkName,
+      category: category ?? this.category,
+      consumedAt: consumedAt ?? this.consumedAt,
+      volumeMl: volumeMl ?? this.volumeMl,
+      comment: clearComment ? null : comment ?? this.comment,
+      imagePath: clearImagePath ? null : imagePath ?? this.imagePath,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'id': id,

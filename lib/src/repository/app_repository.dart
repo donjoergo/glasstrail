@@ -44,6 +44,18 @@ abstract class AppRepository {
     DateTime? consumedAt,
   });
 
+  Future<DrinkEntry> updateDrinkEntry({
+    required AppUser user,
+    required DrinkEntry entry,
+    String? comment,
+    String? imagePath,
+  });
+
+  Future<void> deleteDrinkEntry({
+    required String userId,
+    required DrinkEntry entry,
+  });
+
   Future<UserSettings> loadSettings(String userId);
 
   Future<UserSettings> saveSettings(String userId, UserSettings settings);

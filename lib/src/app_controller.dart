@@ -14,6 +14,8 @@ enum _FlashMessageKind {
   profileUpdated,
   customDrinkSaved,
   drinkLogged,
+  drinkEntryUpdated,
+  drinkEntryDeleted,
   genericError,
   raw,
 }
@@ -132,6 +134,8 @@ class AppController extends ChangeNotifier {
           l10n.locale.languageCode,
         ),
       ),
+      _FlashMessageKind.drinkEntryUpdated => l10n.entryUpdated,
+      _FlashMessageKind.drinkEntryDeleted => l10n.entryDeleted,
       _FlashMessageKind.genericError => l10n.somethingWentWrong,
       _FlashMessageKind.raw => _localizedRawMessage(message.rawMessage!, l10n),
     };
@@ -299,6 +303,53 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<bool> updateDrinkEntry({
+    required DrinkEntry entry,
+    String? comment,
+    String? imagePath,
+  }) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guard(() async {
+      final updated = await _repository.updateDrinkEntry(
+        user: user,
+        entry: entry,
+        comment: comment,
+        imagePath: imagePath,
+      );
+      _entries =
+          _entries
+              .map(
+                (candidate) => candidate.id == updated.id ? updated : candidate,
+              )
+              .toList(growable: false)
+            ..sort(
+              (left, right) => right.consumedAt.compareTo(left.consumedAt),
+            );
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.drinkEntryUpdated,
+      );
+    });
+  }
+
+  Future<bool> deleteDrinkEntry(DrinkEntry entry) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guard(() async {
+      await _repository.deleteDrinkEntry(userId: user.id, entry: entry);
+      _entries = _entries
+          .where((candidate) => candidate.id != entry.id)
+          .toList(growable: false);
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.drinkEntryDeleted,
+      );
+    });
+  }
+
   Future<void> _initialize() async {
     final defaultCatalogFuture = _repository.loadDefaultCatalog();
     final currentUserFuture = _repository.restoreSession();
@@ -334,7 +385,9 @@ class AppController extends ChangeNotifier {
       _flashMessage = _FlashMessage.raw(error.message);
       return false;
     } catch (_) {
-      _flashMessage = const _FlashMessage.simple(_FlashMessageKind.genericError);
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.genericError,
+      );
       return false;
     } finally {
       _isBusy = false;
@@ -352,6 +405,8 @@ class AppController extends ChangeNotifier {
       'Sign-up did not return a user.' => l10n.signUpMissingUser,
       'Supabase sign-up succeeded, but email confirmation is enabled. Confirm the email first, then sign in.' =>
         l10n.signUpConfirmationRequired,
+      'The drink entry could not be updated.' => l10n.entryUpdateFailed,
+      'The drink entry could not be deleted.' => l10n.entryDeleteFailed,
       'Something went wrong. Please try again.' => l10n.somethingWentWrong,
       _ => message,
     };

@@ -141,40 +141,44 @@ void main() {
   testWidgets(
     'shows localized global drink names on the add-drink screen during search',
     (tester) async {
-    tester.view.physicalSize = const Size(430, 1000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
-    final controller = await buildTestController();
-    await controller.signUp(
-      email: 'de@example.com',
-      password: 'password123',
-      displayName: 'Deutsch Beispiel',
-    );
-    await controller.updateSettings(
-      controller.settings.copyWith(localeCode: 'de'),
-    );
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'de@example.com',
+        password: 'password123',
+        displayName: 'Deutsch Beispiel',
+      );
+      await controller.updateSettings(
+        controller.settings.copyWith(localeCode: 'de'),
+      );
 
-    await tester.pumpWidget(
-      GlassTrailApp(
-        controller: controller,
-        photoService: const TestPhotoService(),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('drink-search-field')), 'rot');
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('drink-search-field')),
+        'rot',
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Rotwein'), findsOneWidget);
-    expect(find.text('Red Wine'), findsNothing);
-  });
+      expect(find.text('Rotwein'), findsOneWidget);
+      expect(find.text('Red Wine'), findsNothing);
+    },
+  );
 
   testWidgets('localizes drink names in feed and statistics', (tester) async {
     tester.view.physicalSize = const Size(430, 1000);
@@ -226,69 +230,68 @@ void main() {
     expect(find.text('Red Wine'), findsNothing);
   });
 
-  testWidgets(
-    'updates renamed custom drinks in feed and statistics',
-    (tester) async {
-      tester.view.physicalSize = const Size(430, 1000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
+  testWidgets('updates renamed custom drinks in feed and statistics', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
 
-      final controller = await buildTestController();
-      await controller.signUp(
-        email: 'custom-rename@example.com',
-        password: 'password123',
-        displayName: 'Custom Rename Example',
-      );
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'custom-rename@example.com',
+      password: 'password123',
+      displayName: 'Custom Rename Example',
+    );
 
-      await controller.saveCustomDrink(
-        name: 'Office Brew',
-        category: DrinkCategory.nonAlcoholic,
-        volumeMl: 300,
-      );
-      final customDrink = controller.customDrinks.single;
-      await controller.addDrinkEntry(
-        drink: customDrink,
-        volumeMl: customDrink.volumeMl,
-      );
+    await controller.saveCustomDrink(
+      name: 'Office Brew',
+      category: DrinkCategory.nonAlcoholic,
+      volumeMl: 300,
+    );
+    final customDrink = controller.customDrinks.single;
+    await controller.addDrinkEntry(
+      drink: customDrink,
+      volumeMl: customDrink.volumeMl,
+    );
 
-      await tester.pumpWidget(
-        GlassTrailApp(
-          controller: controller,
-          photoService: const TestPhotoService(),
-        ),
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Office Brew'), findsOneWidget);
+    expect(find.text('Office Brew'), findsOneWidget);
 
-      await controller.saveCustomDrink(
-        drinkId: customDrink.id,
-        name: 'Desk Coffee',
-        category: customDrink.category,
-        volumeMl: customDrink.volumeMl,
-      );
-      await tester.pumpAndSettle();
+    await controller.saveCustomDrink(
+      drinkId: customDrink.id,
+      name: 'Desk Coffee',
+      category: customDrink.category,
+      volumeMl: customDrink.volumeMl,
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Desk Coffee'), findsOneWidget);
-      expect(find.text('Office Brew'), findsNothing);
+    expect(find.text('Desk Coffee'), findsOneWidget);
+    expect(find.text('Office Brew'), findsNothing);
 
-      await tester.tap(find.text('Statistics'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Statistics'));
+    await tester.pumpAndSettle();
 
-      await tester.scrollUntilVisible(
-        find.text('Desk Coffee'),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Desk Coffee'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Desk Coffee'), findsOneWidget);
-      expect(find.text('Office Brew'), findsNothing);
-    },
-  );
+    expect(find.text('Desk Coffee'), findsOneWidget);
+    expect(find.text('Office Brew'), findsNothing);
+  });
 
   testWidgets('clears the add-drink search input and restores categories', (
     tester,
@@ -323,10 +326,7 @@ void main() {
 
     expect(find.byKey(const Key('drink-category-title-beer')), findsNothing);
     expect(find.text('Red Wine'), findsOneWidget);
-    expect(
-      find.byKey(const Key('drink-search-clear-button')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('drink-search-clear-button')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('drink-search-clear-button')));
     await tester.pumpAndSettle();
@@ -337,64 +337,60 @@ void main() {
     expect(searchField.controller?.text, isEmpty);
     expect(find.byKey(const Key('drink-category-title-beer')), findsOneWidget);
     expect(find.text('Red Wine'), findsNothing);
-    expect(
-      find.byKey(const Key('drink-search-clear-button')),
-      findsNothing,
-    );
+    expect(find.byKey(const Key('drink-search-clear-button')), findsNothing);
   });
 
   testWidgets(
     'keeps add-drink categories collapsed and closes them after selection',
-    (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(430, 1000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
-    final controller = await buildTestController();
-    await controller.signUp(
-      email: 'accordion@example.com',
-      password: 'password123',
-      displayName: 'Accordion Example',
-    );
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'accordion@example.com',
+        password: 'password123',
+        displayName: 'Accordion Example',
+      );
 
-    await tester.pumpWidget(
-      GlassTrailApp(
-        controller: controller,
-        photoService: const TestPhotoService(),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Pils'), findsNothing);
-    expect(find.text('Red Wine'), findsNothing);
+      expect(find.text('Pils'), findsNothing);
+      expect(find.text('Red Wine'), findsNothing);
 
-    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+      await tester.pumpAndSettle();
 
-    final pilsTile = find.widgetWithText(ListTile, 'Pils');
-    expect(pilsTile, findsOneWidget);
-    expect(find.widgetWithText(ListTile, 'Red Wine'), findsNothing);
+      final pilsTile = find.widgetWithText(ListTile, 'Pils');
+      expect(pilsTile, findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Red Wine'), findsNothing);
 
-    await tester.tap(pilsTile);
-    await tester.pumpAndSettle();
+      await tester.tap(pilsTile);
+      await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
-    expect(find.byKey(const Key('drink-volume-field')), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
+      expect(find.byKey(const Key('drink-volume-field')), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('drink-category-title-wine')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('drink-category-title-wine')));
+      await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
-    expect(find.widgetWithText(ListTile, 'Red Wine'), findsOneWidget);
-  });
+      expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
+      expect(find.widgetWithText(ListTile, 'Red Wine'), findsOneWidget);
+    },
+  );
 
   testWidgets('shows icons for recent drinks and statistics cards', (
     tester,
@@ -472,5 +468,124 @@ void main() {
       find.byKey(const Key('stats-category-chip-icon-nonAlcoholic')),
       findsOneWidget,
     );
+  });
+
+  testWidgets(
+    'edits entry comment and image from history without exposing drink controls',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'history-edit@example.com',
+        password: 'password123',
+        displayName: 'History Edit Example',
+      );
+
+      final drink = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'nonAlcoholic-water',
+      );
+      await controller.addDrinkEntry(
+        drink: drink,
+        volumeMl: drink.volumeMl,
+        comment: 'Before edit',
+        imagePath: '/tmp/before-edit.png',
+      );
+      final entryId = controller.entries.single.id;
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(path: '/tmp/updated-image.png'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
+      await tester.pumpAndSettle();
+
+      final commentField = tester.widget<TextFormField>(
+        find.byKey(const Key('edit-entry-comment-field')),
+      );
+      final imageLabel = tester.widget<Text>(
+        find.byKey(const Key('edit-entry-image-name')),
+      );
+      expect(commentField.controller?.text, 'Before edit');
+      expect(imageLabel.data, 'before-edit.png');
+      expect(find.byKey(const Key('drink-search-field')), findsNothing);
+      expect(find.byKey(const Key('drink-volume-field')), findsNothing);
+
+      await tester.enterText(
+        find.byKey(const Key('edit-entry-comment-field')),
+        'After edit',
+      );
+      await tester.tap(find.byKey(const Key('edit-entry-remove-photo-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('edit-entry-save-button')));
+      await tester.pumpAndSettle();
+
+      expect(controller.entries.single.comment, 'After edit');
+      expect(controller.entries.single.imagePath, isNull);
+      expect(find.text('After edit'), findsOneWidget);
+      expect(find.text('Before edit'), findsNothing);
+      expect(find.text('before-edit.png'), findsNothing);
+    },
+  );
+
+  testWidgets('deletes a logged drink from history after confirmation', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'history-delete@example.com',
+      password: 'password123',
+      displayName: 'History Delete Example',
+    );
+
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl);
+    final entryId = controller.entries.single.id;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pils'), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(Key('history-entry-delete-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('delete-entry-confirm-button')));
+    await tester.pumpAndSettle();
+
+    expect(controller.entries, isEmpty);
+    expect(find.text('Pils'), findsNothing);
+    expect(find.text('No drinks logged yet.'), findsOneWidget);
+
+    final totalDrinks = tester.widget<Text>(
+      find.byKey(const Key('history-total-drinks-value')),
+    );
+    expect(totalDrinks.data, '0');
   });
 }
