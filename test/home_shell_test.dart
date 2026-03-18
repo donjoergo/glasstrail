@@ -110,6 +110,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('330 ml'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.pumpAndSettle();
+
     expect(find.text('11.2 oz'), findsWidgets);
 
     final pilsTile = find.widgetWithText(ListTile, 'Pils');
@@ -167,8 +171,64 @@ void main() {
     await tester.enterText(find.byKey(const Key('drink-search-field')), 'rot');
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const Key('drink-category-title-wine')));
+    await tester.pumpAndSettle();
+
     expect(find.text('Rotwein'), findsOneWidget);
     expect(find.text('Red Wine'), findsNothing);
+  });
+
+  testWidgets(
+    'keeps add-drink categories collapsed and closes them after selection',
+    (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'accordion@example.com',
+      password: 'password123',
+      displayName: 'Accordion Example',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pils'), findsNothing);
+    expect(find.text('Red Wine'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.pumpAndSettle();
+
+    final pilsTile = find.widgetWithText(ListTile, 'Pils');
+    expect(pilsTile, findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Red Wine'), findsNothing);
+
+    await tester.tap(pilsTile);
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
+    expect(find.byKey(const Key('drink-volume-field')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('drink-category-title-wine')));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
+    expect(find.widgetWithText(ListTile, 'Red Wine'), findsOneWidget);
   });
 
   testWidgets('shows icons for recent drinks and statistics cards', (

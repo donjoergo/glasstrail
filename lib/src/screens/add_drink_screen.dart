@@ -19,6 +19,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
   final _volumeController = TextEditingController();
 
   DrinkDefinition? _selectedDrink;
+  DrinkCategory? _expandedCategory;
   String? _imagePath;
   bool _volumeEditedManually = false;
 
@@ -60,6 +61,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     final unit = AppScope.controllerOf(context).settings.unit;
     setState(() {
       _selectedDrink = drink;
+      _expandedCategory = null;
       _volumeEditedManually = false;
       _volumeController.text = unit.formatVolumeInput(drink.volumeMl);
     });
@@ -212,10 +214,17 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                 const SizedBox(height: 12),
                 ...DrinkCategory.values.map(
                   (category) => _DrinkCategorySection(
+                    category: category,
                     label: l10n.categoryLabel(category),
                     drinks: grouped[category]!,
                     localeCode: localeCode,
                     unit: unit,
+                    isExpanded: _expandedCategory == category,
+                    onExpansionChanged: (isExpanded) {
+                      setState(() {
+                        _expandedCategory = isExpanded ? category : null;
+                      });
+                    },
                     selectedDrink: _selectedDrink,
                     onSelect: _selectDrink,
                   ),
@@ -320,18 +329,24 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
 
 class _DrinkCategorySection extends StatelessWidget {
   const _DrinkCategorySection({
+    required this.category,
     required this.label,
     required this.drinks,
     required this.localeCode,
     required this.unit,
+    required this.isExpanded,
+    required this.onExpansionChanged,
     required this.selectedDrink,
     required this.onSelect,
   });
 
+  final DrinkCategory category;
   final String label;
   final List<DrinkDefinition> drinks;
   final String localeCode;
   final AppUnit unit;
+  final bool isExpanded;
+  final ValueChanged<bool> onExpansionChanged;
   final DrinkDefinition? selectedDrink;
   final ValueChanged<DrinkDefinition> onSelect;
 
@@ -343,9 +358,11 @@ class _DrinkCategorySection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
-        initiallyExpanded: true,
+        key: Key('drink-category-section-${category.name}-$isExpanded'),
+        initiallyExpanded: isExpanded,
+        onExpansionChanged: onExpansionChanged,
         tilePadding: EdgeInsets.zero,
-        title: Text(label),
+        title: Text(label, key: Key('drink-category-title-${category.name}')),
         children: drinks
             .map(
               (drink) => ListTile(
