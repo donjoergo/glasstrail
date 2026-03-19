@@ -350,6 +350,12 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<bool> refreshData() async {
+    return _guard(() async {
+      await _reloadAppData();
+    });
+  }
+
   Future<void> _initialize() async {
     final defaultCatalogFuture = _repository.loadDefaultCatalog();
     final currentUserFuture = _repository.restoreSession();
@@ -359,6 +365,29 @@ class AppController extends ChangeNotifier {
     if (_currentUser != null) {
       await _reloadUserScope();
     }
+  }
+
+  Future<void> _reloadAppData() async {
+    final defaultCatalogFuture = _repository.loadDefaultCatalog();
+    final user = _currentUser;
+    final customDrinksFuture = user == null
+        ? null
+        : _repository.loadCustomDrinks(user.id);
+    final entriesFuture = user == null
+        ? null
+        : _repository.loadEntries(user.id);
+    final settingsFuture = user == null
+        ? null
+        : _repository.loadSettings(user.id);
+
+    _defaultCatalog = await defaultCatalogFuture;
+    if (user == null) {
+      return;
+    }
+
+    _customDrinks = await customDrinksFuture!;
+    _entries = await entriesFuture!;
+    _settings = await settingsFuture!;
   }
 
   Future<void> _reloadUserScope() async {

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
+import 'package:glasstrail/src/repository/local_app_repository.dart';
 
 import 'support/test_harness.dart';
 
@@ -291,6 +293,127 @@ void main() {
 
     expect(find.text('Desk Coffee'), findsOneWidget);
     expect(find.text('Office Brew'), findsNothing);
+  });
+
+  testWidgets('refreshes the feed with pull to refresh', (tester) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'feed-refresh@example.com',
+      password: 'password123',
+      displayName: 'Feed Refresh Example',
+    );
+    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('history-total-drinks-value'))),
+      isA<Text>().having((widget) => widget.data, 'data', '0'),
+    );
+    expect(find.text('Pils'), findsNothing);
+
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: DateTime.now(),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pils'), findsNothing);
+
+    await tester.drag(
+      find.byKey(const Key('history-list-view')),
+      const Offset(0, 300),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('history-total-drinks-value'))),
+      isA<Text>().having((widget) => widget.data, 'data', '1'),
+    );
+    expect(find.text('Pils'), findsOneWidget);
+  });
+
+  testWidgets('refreshes the statistics with pull to refresh', (tester) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-refresh@example.com',
+      password: 'password123',
+      displayName: 'Stats Refresh Example',
+    );
+    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Statistics'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('stats-card-value-weekly'))),
+      isA<Text>().having((widget) => widget.data, 'data', '0'),
+    );
+
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: DateTime.now(),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const Key('statistics-list-view')),
+      const Offset(0, 300),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('stats-card-value-weekly'))),
+      isA<Text>().having((widget) => widget.data, 'data', '1'),
+    );
   });
 
   testWidgets('clears the add-drink search input and restores categories', (

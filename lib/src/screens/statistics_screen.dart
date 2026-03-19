@@ -16,6 +16,21 @@ class StatisticsScreen extends StatefulWidget {
 class _StatisticsScreenState extends State<StatisticsScreen> {
   DrinkCategory? _selectedCategory;
 
+  Future<void> _refresh() async {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final success = await controller.refreshData();
+    if (!mounted || success) {
+      return;
+    }
+    final message = controller.takeFlashMessage(l10n);
+    if (message != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -28,161 +43,177 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               .where((entry) => entry.category == _selectedCategory)
               .toList();
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-      children: <Widget>[
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: <Widget>[
-            _StatCard(
-              icon: Icons.calendar_view_week_rounded,
-              iconKey: const Key('stats-card-icon-weekly'),
-              label: l10n.weeklyTotal,
-              value: '${stats.weeklyTotal}',
-            ),
-            _StatCard(
-              icon: Icons.calendar_month_rounded,
-              iconKey: const Key('stats-card-icon-monthly'),
-              label: l10n.monthlyTotal,
-              value: '${stats.monthlyTotal}',
-            ),
-            _StatCard(
-              icon: Icons.event_available_rounded,
-              iconKey: const Key('stats-card-icon-yearly'),
-              label: l10n.yearlyTotal,
-              value: '${stats.yearlyTotal}',
-            ),
-            _StatCard(
-              icon: Icons.local_fire_department_rounded,
-              iconKey: const Key('stats-card-icon-current-streak'),
-              label: l10n.currentStreak,
-              value:
-                  '${stats.currentStreak} ${l10n.dayLabel(stats.currentStreak)}',
-            ),
-            _StatCard(
-              icon: Icons.emoji_events_rounded,
-              iconKey: const Key('stats-card-icon-best-streak'),
-              label: l10n.bestStreak,
-              value: '${stats.bestStreak} ${l10n.dayLabel(stats.bestStreak)}',
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return RefreshIndicator(
+      key: const Key('statistics-refresh-indicator'),
+      onRefresh: _refresh,
+      child: ListView(
+        key: const Key('statistics-list-view'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+        children: <Widget>[
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: <Widget>[
-              Text(
-                l10n.categoryBreakdown,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+              _StatCard(
+                icon: Icons.calendar_view_week_rounded,
+                iconKey: const Key('stats-card-icon-weekly'),
+                label: l10n.weeklyTotal,
+                value: '${stats.weeklyTotal}',
+                valueKey: const Key('stats-card-value-weekly'),
               ),
-              const SizedBox(height: 18),
-              SizedBox(
-                height: 220,
-                child: PieChart(
-                  PieChartData(
-                    centerSpaceRadius: 60,
-                    sectionsSpace: 2,
-                    sections: _buildSections(context),
-                  ),
-                ),
+              _StatCard(
+                icon: Icons.calendar_month_rounded,
+                iconKey: const Key('stats-card-icon-monthly'),
+                label: l10n.monthlyTotal,
+                value: '${stats.monthlyTotal}',
+                valueKey: const Key('stats-card-value-monthly'),
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: DrinkCategory.values.map((category) {
-                  final count = stats.categoryCounts[category] ?? 0;
-                  return FilterChip(
-                    selected: _selectedCategory == category,
-                    avatar: Icon(
-                      category.icon,
-                      key: Key(
-                        'stats-category-chip-icon-${category.storageValue}',
-                      ),
-                      size: 18,
-                    ),
-                    label: Text('${l10n.categoryLabel(category)} ($count)'),
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedCategory = _selectedCategory == category
-                            ? null
-                            : category;
-                      });
-                    },
-                  );
-                }).toList(),
+              _StatCard(
+                icon: Icons.event_available_rounded,
+                iconKey: const Key('stats-card-icon-yearly'),
+                label: l10n.yearlyTotal,
+                value: '${stats.yearlyTotal}',
+                valueKey: const Key('stats-card-value-yearly'),
+              ),
+              _StatCard(
+                icon: Icons.local_fire_department_rounded,
+                iconKey: const Key('stats-card-icon-current-streak'),
+                label: l10n.currentStreak,
+                value:
+                    '${stats.currentStreak} ${l10n.dayLabel(stats.currentStreak)}',
+                valueKey: const Key('stats-card-value-current-streak'),
+              ),
+              _StatCard(
+                icon: Icons.emoji_events_rounded,
+                iconKey: const Key('stats-card-icon-best-streak'),
+                label: l10n.bestStreak,
+                value: '${stats.bestStreak} ${l10n.dayLabel(stats.bestStreak)}',
+                valueKey: const Key('stats-card-value-best-streak'),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          l10n.history,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (entries.isEmpty)
+          const SizedBox(height: 24),
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
             ),
-            child: Text(l10n.emptyFilter),
-          )
-        else
-          ...entries.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  l10n.categoryBreakdown,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                child: Row(
-                  children: <Widget>[
-                    Icon(entry.category.icon, color: theme.colorScheme.primary),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            controller.localizedEntryDrinkName(entry),
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            DateFormat.yMMMd(
-                              controller.settings.localeCode,
-                            ).format(entry.consumedAt),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  height: 220,
+                  child: PieChart(
+                    PieChartData(
+                      centerSpaceRadius: 60,
+                      sectionsSpace: 2,
+                      sections: _buildSections(context),
                     ),
-                    Text(controller.settings.unit.formatVolume(entry.volumeMl)),
-                  ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: DrinkCategory.values.map((category) {
+                    final count = stats.categoryCounts[category] ?? 0;
+                    return FilterChip(
+                      selected: _selectedCategory == category,
+                      avatar: Icon(
+                        category.icon,
+                        key: Key(
+                          'stats-category-chip-icon-${category.storageValue}',
+                        ),
+                        size: 18,
+                      ),
+                      label: Text('${l10n.categoryLabel(category)} ($count)'),
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedCategory = _selectedCategory == category
+                              ? null
+                              : category;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            l10n.history,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (entries.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(l10n.emptyFilter),
+            )
+          else
+            ...entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      Icon(
+                        entry.category.icon,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              controller.localizedEntryDrinkName(entry),
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              DateFormat.yMMMd(
+                                controller.settings.localeCode,
+                              ).format(entry.consumedAt),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        controller.settings.unit.formatVolume(entry.volumeMl),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -220,12 +251,14 @@ class _StatCard extends StatelessWidget {
     required this.iconKey,
     required this.label,
     required this.value,
+    this.valueKey,
   });
 
   final IconData icon;
   final Key iconKey;
   final String label;
   final String value;
+  final Key? valueKey;
 
   @override
   Widget build(BuildContext context) {
@@ -251,6 +284,7 @@ class _StatCard extends StatelessWidget {
             Text(label, style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             Text(
+              key: valueKey,
               value,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,

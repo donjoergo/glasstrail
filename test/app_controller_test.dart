@@ -45,6 +45,31 @@ void main() {
     expect(controller.availableDrinks, isNotEmpty);
   });
 
+  test('refreshes app data through the repository again', () async {
+    final repository = _BootstrapProbeRepository();
+    repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
+    repository.restoreSessionCompleter.complete(
+      const AppUser(
+        id: 'refresh-user',
+        email: 'refresh@example.com',
+        displayName: 'Refresh Example',
+      ),
+    );
+    repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
+    repository.entriesCompleter.complete(const <DrinkEntry>[]);
+    repository.settingsCompleter.complete(UserSettings.defaults());
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    final success = await controller.refreshData();
+
+    expect(success, isTrue);
+    expect(repository.loadDefaultCatalogCalls, 2);
+    expect(repository.loadCustomDrinksCalls, 2);
+    expect(repository.loadEntriesCalls, 2);
+    expect(repository.loadSettingsCalls, 2);
+  });
+
   test('localizes success flash messages and drink names', () async {
     final controller = await buildTestController();
     final german = AppLocalizations(const Locale('de'));

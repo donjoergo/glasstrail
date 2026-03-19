@@ -5,8 +5,28 @@ import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
+
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  Future<void> _refresh() async {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final success = await controller.refreshData();
+    if (!mounted || success) {
+      return;
+    }
+    final message = controller.takeFlashMessage(l10n);
+    if (message != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,95 +36,101 @@ class HistoryScreen extends StatelessWidget {
     final entries = controller.entries;
     final locale = controller.settings.localeCode;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-      children: <Widget>[
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            gradient: LinearGradient(
-              colors: <Color>[
-                theme.colorScheme.primary.withValues(alpha: 0.18),
-                theme.colorScheme.tertiary.withValues(alpha: 0.12),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                l10n.feedHeadline,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(l10n.feedBody),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: <Widget>[
-                  _MetricBadge(
-                    label: l10n.totalDrinks,
-                    value: '${entries.length}',
-                    valueKey: const Key('history-total-drinks-value'),
-                  ),
-                  _MetricBadge(
-                    label: l10n.currentStreak,
-                    value:
-                        '${controller.statistics.currentStreak} ${l10n.dayLabel(controller.statistics.currentStreak)}',
-                    valueKey: const Key('history-current-streak-value'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        if (entries.isEmpty)
+    return RefreshIndicator(
+      key: const Key('history-refresh-indicator'),
+      onRefresh: _refresh,
+      child: ListView(
+        key: const Key('history-list-view'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+        children: <Widget>[
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(28),
+              gradient: LinearGradient(
+                colors: <Color>[
+                  theme.colorScheme.primary.withValues(alpha: 0.18),
+                  theme.colorScheme.tertiary.withValues(alpha: 0.12),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Icon(
-                  Icons.hourglass_empty_rounded,
-                  size: 42,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(height: 12),
                 Text(
-                  l10n.noEntries,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  l10n.feedHeadline,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(l10n.startLogging),
+                Text(l10n.feedBody),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: <Widget>[
+                    _MetricBadge(
+                      label: l10n.totalDrinks,
+                      value: '${entries.length}',
+                      valueKey: const Key('history-total-drinks-value'),
+                    ),
+                    _MetricBadge(
+                      label: l10n.currentStreak,
+                      value:
+                          '${controller.statistics.currentStreak} ${l10n.dayLabel(controller.statistics.currentStreak)}',
+                      valueKey: const Key('history-current-streak-value'),
+                    ),
+                  ],
+                ),
               ],
             ),
-          )
-        else
-          ...entries.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _DrinkEntryCard(
-                entry: entry,
-                drinkName: controller.localizedEntryDrinkName(entry),
-                locale: locale,
-                unit: controller.settings.unit,
-                categoryLabel: l10n.categoryLabel(entry.category),
+          ),
+          const SizedBox(height: 24),
+          if (entries.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                children: <Widget>[
+                  Icon(
+                    Icons.hourglass_empty_rounded,
+                    size: 42,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    l10n.noEntries,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(l10n.startLogging),
+                ],
+              ),
+            )
+          else
+            ...entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _DrinkEntryCard(
+                  entry: entry,
+                  drinkName: controller.localizedEntryDrinkName(entry),
+                  locale: locale,
+                  unit: controller.settings.unit,
+                  categoryLabel: l10n.categoryLabel(entry.category),
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
