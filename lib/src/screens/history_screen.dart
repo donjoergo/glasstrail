@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
+import '../stats_calculator.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -34,6 +35,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
     final entries = controller.entries;
+    final stats = controller.statistics;
     final locale = controller.settings.localeCode;
 
     return RefreshIndicator(
@@ -44,51 +46,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              gradient: LinearGradient(
-                colors: <Color>[
-                  theme.colorScheme.primary.withValues(alpha: 0.18),
-                  theme.colorScheme.tertiary.withValues(alpha: 0.12),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  l10n.feedHeadline,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(l10n.feedBody),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: <Widget>[
-                    _MetricBadge(
-                      label: l10n.totalDrinks,
-                      value: '${entries.length}',
-                      valueKey: const Key('history-total-drinks-value'),
-                    ),
-                    _MetricBadge(
-                      label: l10n.currentStreak,
-                      value:
-                          '${controller.statistics.currentStreak} ${l10n.dayLabel(controller.statistics.currentStreak)}',
-                      valueKey: const Key('history-current-streak-value'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          _HistoryStreakCard(stats: stats),
           const SizedBox(height: 24),
           if (entries.isEmpty)
             Container(
@@ -135,36 +93,207 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
-class _MetricBadge extends StatelessWidget {
-  const _MetricBadge({required this.label, required this.value, this.valueKey});
+class _HistoryStreakCard extends StatelessWidget {
+  const _HistoryStreakCard({required this.stats});
 
-  final String label;
-  final String value;
-  final Key? valueKey;
+  final AppStatistics stats;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final streakValue =
+        '${stats.currentStreak} ${l10n.dayLabel(stats.currentStreak)}';
+    final accentColors = _accentColors(theme);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      key: const Key('history-streak-card'),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(18),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(label, style: theme.textTheme.labelLarge),
-          const SizedBox(height: 2),
+          Row(
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accentColors.iconBackgroundColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.local_fire_department_rounded,
+                  color: accentColors.iconColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  l10n.currentStreak,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                key: const Key('history-streak-current-value'),
+                streakValue,
+                textAlign: TextAlign.right,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  height: 1.05,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           Text(
-            key: valueKey,
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
+            l10n.thisWeek,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: stats.weekProgress
+                .map((day) => Expanded(child: _WeekProgressIndicator(day: day)))
+                .toList(growable: false),
+          ),
+          const SizedBox(height: 18),
+          Divider(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            key: const Key('history-streak-message'),
+            _streakMessage(l10n, stats),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: accentColors.messageColor,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  _StreakAccentColors _accentColors(ThemeData theme) {
+    final scheme = theme.colorScheme;
+    final warningForeground = theme.brightness == Brightness.dark
+        ? scheme.tertiary
+        : const Color(0xFF8A5A00);
+    final startedForeground = theme.brightness == Brightness.dark
+        ? scheme.secondary
+        : const Color(0xFF2F6F6D);
+    return switch (stats.streakMessageState) {
+      StreakMessageState.start => _StreakAccentColors(
+        iconColor: scheme.onSurfaceVariant,
+        iconBackgroundColor: scheme.surfaceContainerHighest,
+        messageColor: scheme.onSurfaceVariant,
+      ),
+      StreakMessageState.keepAlive => _StreakAccentColors(
+        iconColor: warningForeground,
+        iconBackgroundColor: scheme.tertiary.withValues(alpha: 0.18),
+        messageColor: warningForeground,
+      ),
+      StreakMessageState.startedToday => _StreakAccentColors(
+        iconColor: startedForeground,
+        iconBackgroundColor: scheme.secondary.withValues(alpha: 0.16),
+        messageColor: startedForeground,
+      ),
+      StreakMessageState.continuedToday => _StreakAccentColors(
+        iconColor: scheme.primary,
+        iconBackgroundColor: scheme.primary.withValues(alpha: 0.16),
+        messageColor: scheme.primary,
+      ),
+    };
+  }
+
+  String _streakMessage(AppLocalizations l10n, AppStatistics stats) {
+    return switch (stats.streakMessageState) {
+      StreakMessageState.start => l10n.streakPromptStart,
+      StreakMessageState.keepAlive => l10n.streakPromptKeepAlive,
+      StreakMessageState.startedToday => l10n.streakPromptStartedToday,
+      StreakMessageState.continuedToday => l10n.streakPromptContinuedToday,
+    };
+  }
+}
+
+class _StreakAccentColors {
+  const _StreakAccentColors({
+    required this.iconColor,
+    required this.iconBackgroundColor,
+    required this.messageColor,
+  });
+
+  final Color iconColor;
+  final Color iconBackgroundColor;
+  final Color messageColor;
+}
+
+class _WeekProgressIndicator extends StatelessWidget {
+  const _WeekProgressIndicator({required this.day});
+
+  final WeekProgressDay day;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final hasEntry = day.hasEntry;
+    final circleColor = hasEntry
+        ? theme.colorScheme.primary
+        : theme.colorScheme.surfaceContainerHighest;
+    final iconColor = hasEntry
+        ? theme.colorScheme.onPrimary
+        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4);
+    final labelColor = hasEntry
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
+
+    return Column(
+      key: Key('history-streak-day-${day.weekday}'),
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: circleColor,
+            shape: BoxShape.circle,
+            border: day.isToday
+                ? Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                    width: 2,
+                  )
+                : null,
+          ),
+          child: Icon(
+            hasEntry ? Icons.check_rounded : Icons.circle,
+            size: hasEntry ? 22 : 12,
+            color: iconColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.weekdayShortLabel(day.weekday),
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: labelColor,
+          ),
+        ),
+      ],
     );
   }
 }

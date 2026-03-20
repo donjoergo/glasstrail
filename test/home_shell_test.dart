@@ -295,6 +295,45 @@ void main() {
     expect(find.text('Office Brew'), findsNothing);
   });
 
+  testWidgets('shows the streak card in the feed without a details button', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'streak-card@example.com',
+      password: 'password123',
+      displayName: 'Streak Card Example',
+    );
+    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(
+      tester.widget<Text>(
+        find.byKey(const Key('history-streak-current-value')),
+      ),
+      isA<Text>().having((widget) => widget.data, 'data', '0 days'),
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('history-streak-message'))),
+      isA<Text>().having(
+        (widget) => widget.data,
+        'data',
+        'Log a drink now to start your streak.',
+      ),
+    );
+    expect(find.text('Details'), findsNothing);
+    expect(find.byKey(const Key('history-streak-day-1')), findsOneWidget);
+    expect(find.byKey(const Key('history-streak-day-7')), findsOneWidget);
+  });
+
   testWidgets('refreshes the feed with pull to refresh', (tester) async {
     tester.view.physicalSize = const Size(430, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -326,8 +365,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<Text>(find.byKey(const Key('history-total-drinks-value'))),
-      isA<Text>().having((widget) => widget.data, 'data', '0'),
+      tester.widget<Text>(
+        find.byKey(const Key('history-streak-current-value')),
+      ),
+      isA<Text>().having((widget) => widget.data, 'data', '0 days'),
     );
     expect(find.text('Pils'), findsNothing);
 
@@ -350,8 +391,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<Text>(find.byKey(const Key('history-total-drinks-value'))),
-      isA<Text>().having((widget) => widget.data, 'data', '1'),
+      tester.widget<Text>(
+        find.byKey(const Key('history-streak-current-value')),
+      ),
+      isA<Text>().having((widget) => widget.data, 'data', '1 day'),
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('history-streak-message'))),
+      isA<Text>().having(
+        (widget) => widget.data,
+        'data',
+        'Very good! You started your streak today.',
+      ),
     );
     expect(find.text('Pils'), findsOneWidget);
   });
@@ -706,9 +757,9 @@ void main() {
     expect(find.text('Pils'), findsNothing);
     expect(find.text('No drinks logged yet.'), findsOneWidget);
 
-    final totalDrinks = tester.widget<Text>(
-      find.byKey(const Key('history-total-drinks-value')),
+    final streakValue = tester.widget<Text>(
+      find.byKey(const Key('history-streak-current-value')),
     );
-    expect(totalDrinks.data, '0');
+    expect(streakValue.data, '0 days');
   });
 }

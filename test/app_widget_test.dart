@@ -110,7 +110,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('Your activity feed'), findsOneWidget);
+    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
     expect(find.byKey(const Key('auth-submit-button')), findsNothing);
   });
 
@@ -191,7 +191,7 @@ void main() {
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Your activity feed'), findsOneWidget);
+    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
     expect(find.text('Category breakdown'), findsNothing);
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
@@ -233,7 +233,7 @@ void main() {
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Your activity feed'), findsOneWidget);
+    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
     expect(
       find.byKey(const Key('edit-profile-display-name-field')),
       findsNothing,

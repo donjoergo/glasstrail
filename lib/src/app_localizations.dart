@@ -70,6 +70,19 @@ class AppLocalizations {
       'yearlyTotal': 'Yearly',
       'currentStreak': 'Current streak',
       'bestStreak': 'Best streak',
+      'thisWeek': 'This week',
+      'streakPromptStart': 'Log a drink now to start your streak.',
+      'streakPromptKeepAlive': 'Log a drink now to keep your streak alive.',
+      'streakPromptStartedToday': 'Very good! You started your streak today.',
+      'streakPromptContinuedToday':
+          'Very good! You continued your streak today.',
+      'weekdayMondayShort': 'M',
+      'weekdayTuesdayShort': 'T',
+      'weekdayWednesdayShort': 'W',
+      'weekdayThursdayShort': 'T',
+      'weekdayFridayShort': 'F',
+      'weekdaySaturdayShort': 'S',
+      'weekdaySundayShort': 'S',
       'day': 'day',
       'days': 'days',
       'categoryBreakdown': 'Category breakdown',
@@ -173,6 +186,21 @@ class AppLocalizations {
       'yearlyTotal': 'Jahr',
       'currentStreak': 'Aktuelle Serie',
       'bestStreak': 'Beste Serie',
+      'thisWeek': 'Diese Woche',
+      'streakPromptStart': 'Logge jetzt ein Getränk und starte deine Serie.',
+      'streakPromptKeepAlive':
+          'Logge jetzt ein Getränk, damit deine Serie bestehen bleibt.',
+      'streakPromptStartedToday':
+          'Sehr gut! Du hast deine Serie heute gestartet.',
+      'streakPromptContinuedToday':
+          'Sehr gut! Du hast deine Serie heute fortgeführt.',
+      'weekdayMondayShort': 'Mo',
+      'weekdayTuesdayShort': 'Di',
+      'weekdayWednesdayShort': 'Mi',
+      'weekdayThursdayShort': 'Do',
+      'weekdayFridayShort': 'Fr',
+      'weekdaySaturdayShort': 'Sa',
+      'weekdaySundayShort': 'So',
       'day': 'Tag',
       'days': 'Tage',
       'categoryBreakdown': 'Kategorien',
@@ -280,6 +308,11 @@ class AppLocalizations {
   String get yearlyTotal => _text('yearlyTotal');
   String get currentStreak => _text('currentStreak');
   String get bestStreak => _text('bestStreak');
+  String get thisWeek => _text('thisWeek');
+  String get streakPromptStart => _text('streakPromptStart');
+  String get streakPromptKeepAlive => _text('streakPromptKeepAlive');
+  String get streakPromptStartedToday => _text('streakPromptStartedToday');
+  String get streakPromptContinuedToday => _text('streakPromptContinuedToday');
   String get day => _text('day');
   String get days => _text('days');
   String get categoryBreakdown => _text('categoryBreakdown');
@@ -342,6 +375,17 @@ class AppLocalizations {
   String unitLabel(AppUnit unit) => unit.name;
 
   String dayLabel(int count) => count == 1 ? day : days;
+
+  String weekdayShortLabel(int weekday) => switch (weekday) {
+    DateTime.monday => _text('weekdayMondayShort'),
+    DateTime.tuesday => _text('weekdayTuesdayShort'),
+    DateTime.wednesday => _text('weekdayWednesdayShort'),
+    DateTime.thursday => _text('weekdayThursdayShort'),
+    DateTime.friday => _text('weekdayFridayShort'),
+    DateTime.saturday => _text('weekdaySaturdayShort'),
+    DateTime.sunday => _text('weekdaySundayShort'),
+    _ => '',
+  };
 
   String handednessLabel(AppHandedness handedness) => switch (handedness) {
     AppHandedness.right => handednessRight,

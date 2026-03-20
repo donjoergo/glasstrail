@@ -1,5 +1,21 @@
 import 'models.dart';
 
+enum StreakMessageState { start, keepAlive, startedToday, continuedToday }
+
+class WeekProgressDay {
+  const WeekProgressDay({
+    required this.date,
+    required this.weekday,
+    required this.hasEntry,
+    required this.isToday,
+  });
+
+  final DateTime date;
+  final int weekday;
+  final bool hasEntry;
+  final bool isToday;
+}
+
 class AppStatistics {
   const AppStatistics({
     required this.weeklyTotal,
@@ -7,6 +23,10 @@ class AppStatistics {
     required this.yearlyTotal,
     required this.currentStreak,
     required this.bestStreak,
+    required this.hasEntryToday,
+    required this.streakThroughYesterday,
+    required this.streakMessageState,
+    required this.weekProgress,
     required this.categoryCounts,
     required this.totalEntries,
   });
@@ -16,6 +36,10 @@ class AppStatistics {
   final int yearlyTotal;
   final int currentStreak;
   final int bestStreak;
+  final bool hasEntryToday;
+  final int streakThroughYesterday;
+  final StreakMessageState streakMessageState;
+  final List<WeekProgressDay> weekProgress;
   final int totalEntries;
   final Map<DrinkCategory, int> categoryCounts;
 }
@@ -42,7 +66,8 @@ class StatsCalculator {
         entry.consumedAt.month,
         entry.consumedAt.day,
       );
-      categoryCounts[entry.category] = (categoryCounts[entry.category] ?? 0) + 1;
+      categoryCounts[entry.category] =
+          (categoryCounts[entry.category] ?? 0) + 1;
       if (!entryDay.isBefore(weekStart)) {
         weeklyTotal++;
       }
@@ -55,11 +80,18 @@ class StatsCalculator {
       }
     }
 
-    final uniqueDays = entries
-        .map((entry) => DateTime(entry.consumedAt.year, entry.consumedAt.month, entry.consumedAt.day))
-        .toSet()
-        .toList()
-      ..sort();
+    final uniqueDays =
+        entries
+            .map(
+              (entry) => DateTime(
+                entry.consumedAt.year,
+                entry.consumedAt.month,
+                entry.consumedAt.day,
+              ),
+            )
+            .toSet()
+            .toList()
+          ..sort();
 
     var bestStreak = 0;
     var rolling = 0;
@@ -77,12 +109,31 @@ class StatsCalculator {
     }
 
     final daySet = uniqueDays.toSet();
+    final hasEntryToday = daySet.contains(today);
     var currentStreak = 0;
     var cursor = today;
     while (daySet.contains(cursor)) {
       currentStreak++;
       cursor = cursor.subtract(const Duration(days: 1));
     }
+    final yesterday = today.subtract(const Duration(days: 1));
+    final streakThroughYesterday = _countStreakFrom(daySet, yesterday);
+    final weekProgress = List<WeekProgressDay>.generate(7, (index) {
+      final date = weekStart.add(Duration(days: index));
+      return WeekProgressDay(
+        date: date,
+        weekday: date.weekday,
+        hasEntry: daySet.contains(date),
+        isToday: date == today,
+      );
+    }, growable: false);
+
+    final streakMessageState = switch (currentStreak) {
+      0 when streakThroughYesterday > 0 => StreakMessageState.keepAlive,
+      0 => StreakMessageState.start,
+      1 => StreakMessageState.startedToday,
+      _ => StreakMessageState.continuedToday,
+    };
 
     return AppStatistics(
       weeklyTotal: weeklyTotal,
@@ -90,8 +141,22 @@ class StatsCalculator {
       yearlyTotal: yearlyTotal,
       currentStreak: currentStreak,
       bestStreak: bestStreak,
+      hasEntryToday: hasEntryToday,
+      streakThroughYesterday: streakThroughYesterday,
+      streakMessageState: streakMessageState,
+      weekProgress: weekProgress,
       categoryCounts: categoryCounts,
       totalEntries: entries.length,
     );
+  }
+
+  static int _countStreakFrom(Set<DateTime> daySet, DateTime start) {
+    var streak = 0;
+    var cursor = start;
+    while (daySet.contains(cursor)) {
+      streak++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
   }
 }
