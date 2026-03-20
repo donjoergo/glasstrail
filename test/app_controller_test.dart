@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/app_repository.dart';
+import 'package:glasstrail/src/repository/local_app_repository.dart';
+import 'package:glasstrail/src/stats_calculator.dart';
 
 import 'support/test_harness.dart';
 
@@ -174,6 +177,63 @@ void main() {
     expect(success, isTrue);
     expect(controller.entries, isEmpty);
     expect(controller.takeFlashMessage(german), 'Eintrag gelöscht.');
+  });
+
+  test('re-evaluates streak statistics after deleting a drink entry', () async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'streak-delete@example.com',
+      password: 'password123',
+      displayName: 'Streak Delete Example',
+    );
+    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day, 12);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: yesterday,
+    );
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: today,
+    );
+
+    await controller.refreshData();
+
+    expect(controller.statistics.currentStreak, 2);
+    expect(
+      controller.statistics.streakMessageState,
+      StreakMessageState.continuedToday,
+    );
+
+    final entryToDelete = controller.entries.firstWhere(
+      (entry) =>
+          entry.consumedAt.year == today.year &&
+          entry.consumedAt.month == today.month &&
+          entry.consumedAt.day == today.day,
+    );
+
+    final success = await controller.deleteDrinkEntry(entryToDelete);
+
+    expect(success, isTrue);
+    expect(controller.statistics.currentStreak, 0);
+    expect(controller.statistics.streakThroughYesterday, 1);
+    expect(
+      controller.statistics.streakMessageState,
+      StreakMessageState.keepAlive,
+    );
   });
 }
 
