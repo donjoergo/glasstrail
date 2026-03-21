@@ -52,7 +52,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('GlassTrail'), findsOneWidget);
+    expect(find.text('Glass Trail'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     controllerCompleter.complete(await buildTestController());
@@ -83,7 +83,7 @@ void main() {
       await tester.pump();
 
       expect(tester.takeException(), isNull);
-      expect(find.text('GlassTrail'), findsOneWidget);
+      expect(find.text('Glass Trail'), findsOneWidget);
 
       final controller = await buildTestController();
       await controller.signUp(
@@ -192,7 +192,21 @@ void main() {
     await tester.pumpWidget(app);
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('auth-brand-hero')), findsOneWidget);
+    expect(find.byKey(const Key('auth-brand-icon')), findsOneWidget);
+    expect(
+      find.text(
+        'The first release focuses on private tracking. Social features come later.',
+      ),
+      findsNothing,
+    );
+    final brandTitle = tester.widget<Text>(
+      find.byKey(const Key('auth-brand-title')),
+    );
+    expect(brandTitle.maxLines, 1);
+    expect(brandTitle.softWrap, isFalse);
     expect(find.text('Track every glass'), findsOneWidget);
+    expect(find.text('Glass Trail'), findsOneWidget);
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
   });
 
@@ -452,6 +466,7 @@ void main() {
       find.byKey(const Key('signin-password-field')),
       'password123',
     );
+    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
@@ -549,6 +564,7 @@ void main() {
       find.byKey(const Key('signin-password-field')),
       'password123',
     );
+    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 

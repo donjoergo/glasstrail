@@ -216,7 +216,7 @@ String _displayNameFromJson(Map<String, dynamic> json) {
 
   final email = (json['email'] as String?)?.trim() ?? '';
   final localPart = email.split('@').first.trim();
-  return localPart.isEmpty ? 'GlassTrail User' : localPart;
+  return localPart.isEmpty ? 'Glass Trail User' : localPart;
 }
 
 class DrinkDefinition {

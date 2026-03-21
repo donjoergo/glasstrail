@@ -179,7 +179,7 @@ void main() {
 
   setUp(() {
     PackageInfo.setMockInitialValues(
-      appName: 'GlassTrail',
+      appName: 'Glass Trail',
       packageName: 'dev.glasstrail.glasstrail',
       version: '1.0.0',
       buildNumber: '1',
@@ -456,7 +456,7 @@ void main() {
     );
 
     expect(find.byKey(const Key('profile-about-section')), findsOneWidget);
-    expect(find.text('GlassTrail V1.0.0'), findsOneWidget);
+    expect(find.text('Glass Trail V1.0.0'), findsOneWidget);
     expect(find.text('GitHub'), findsOneWidget);
     expect(find.text('created with ❤️ and ☕ by Jörg Dorlach'), findsOneWidget);
 

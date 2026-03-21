@@ -134,7 +134,7 @@ void main() {
       password: 'password123',
       displayName: 'Flash Beispiel',
     );
-    expect(controller.takeFlashMessage(german), 'Willkommen bei GlassTrail.');
+    expect(controller.takeFlashMessage(german), 'Willkommen bei Glass Trail.');
 
     await controller.updateSettings(
       controller.settings.copyWith(localeCode: 'de'),

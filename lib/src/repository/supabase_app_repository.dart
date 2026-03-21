@@ -743,7 +743,7 @@ class SupabaseAppRepository implements AppRepository {
   String _fallbackDisplayName(String? email) {
     final value = email?.trim();
     if (value == null || value.isEmpty) {
-      return 'GlassTrail User';
+      return 'Glass Trail User';
     }
     return value.split('@').first;
   }
