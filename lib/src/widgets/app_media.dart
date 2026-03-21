@@ -82,6 +82,7 @@ class AppPhotoPreview extends StatefulWidget {
     this.borderRadius = const BorderRadius.all(Radius.circular(18)),
     this.placeholderIcon = Icons.image_outlined,
     this.backgroundColor,
+    this.enableFullscreenOnTap = false,
   });
 
   final String? imagePath;
@@ -89,6 +90,7 @@ class AppPhotoPreview extends StatefulWidget {
   final BorderRadius borderRadius;
   final IconData placeholderIcon;
   final Color? backgroundColor;
+  final bool enableFullscreenOnTap;
 
   @override
   State<AppPhotoPreview> createState() => _AppPhotoPreviewState();
@@ -135,6 +137,7 @@ class _AppPhotoPreviewState extends State<AppPhotoPreview> {
           borderRadius: widget.borderRadius,
           placeholderIcon: widget.placeholderIcon,
           backgroundColor: widget.backgroundColor,
+          enableFullscreenOnTap: widget.enableFullscreenOnTap,
         );
       },
     );
@@ -148,6 +151,7 @@ class _ResolvedPhotoPreview extends StatefulWidget {
     required this.borderRadius,
     required this.placeholderIcon,
     this.backgroundColor,
+    required this.enableFullscreenOnTap,
   });
 
   final ImageProvider<Object> imageProvider;
@@ -155,6 +159,7 @@ class _ResolvedPhotoPreview extends StatefulWidget {
   final BorderRadius borderRadius;
   final IconData placeholderIcon;
   final Color? backgroundColor;
+  final bool enableFullscreenOnTap;
 
   @override
   State<_ResolvedPhotoPreview> createState() => _ResolvedPhotoPreviewState();
@@ -234,8 +239,7 @@ class _ResolvedPhotoPreviewState extends State<_ResolvedPhotoPreview> {
         : (widget.cropPortraitToSquare && rawAspectRatio < 1
               ? 1.0
               : rawAspectRatio);
-
-    return AspectRatio(
+    final preview = AspectRatio(
       aspectRatio: effectiveAspectRatio,
       child: ClipRRect(
         borderRadius: widget.borderRadius,
@@ -250,6 +254,110 @@ class _ResolvedPhotoPreviewState extends State<_ResolvedPhotoPreview> {
                 _PhotoPlaceholderBody(placeholderIcon: widget.placeholderIcon),
           ),
         ),
+      ),
+    );
+
+    if (!widget.enableFullscreenOnTap) {
+      return preview;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: widget.borderRadius,
+        onTap: () {
+          showDialog<void>(
+            context: context,
+            barrierColor: Colors.black87,
+            useSafeArea: false,
+            builder: (context) =>
+                _FullscreenPhotoDialog(imageProvider: widget.imageProvider),
+          );
+        },
+        child: preview,
+      ),
+    );
+  }
+}
+
+class _FullscreenPhotoDialog extends StatefulWidget {
+  const _FullscreenPhotoDialog({required this.imageProvider});
+
+  final ImageProvider<Object> imageProvider;
+
+  @override
+  State<_FullscreenPhotoDialog> createState() => _FullscreenPhotoDialogState();
+}
+
+class _FullscreenPhotoDialogState extends State<_FullscreenPhotoDialog> {
+  late final TransformationController _transformationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _transformationController = TransformationController();
+  }
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      key: const Key('app-photo-preview-fullscreen'),
+      backgroundColor: Colors.black,
+      child: Stack(
+        children: <Widget>[
+          Positioned.fill(
+            child: InteractiveViewer(
+              key: const Key('app-photo-preview-interactive-viewer'),
+              transformationController: _transformationController,
+              minScale: 1,
+              maxScale: 4,
+              child: SizedBox.expand(
+                child: Center(
+                  child: Image(
+                    image: widget.imageProvider,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => Icon(
+                      Icons.broken_image_outlined,
+                      size: 48,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    key: const Key('app-photo-preview-fullscreen-close'),
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).closeButtonTooltip,
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.close_rounded),
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

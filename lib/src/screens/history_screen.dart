@@ -438,6 +438,7 @@ class _DrinkEntryCard extends StatelessWidget {
               key: Key('history-entry-image-${entry.id}'),
               imagePath: entry.imagePath,
               cropPortraitToSquare: true,
+              enableFullscreenOnTap: true,
             ),
           ],
         ],
