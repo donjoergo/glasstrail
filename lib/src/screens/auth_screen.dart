@@ -6,6 +6,7 @@ import '../app_localizations.dart';
 import '../app_routes.dart';
 import '../birthday.dart';
 import '../app_scope.dart';
+import '../photo_service.dart';
 import '../widgets/app_media.dart';
 
 enum _AuthMode { signIn, signUp }
@@ -42,7 +43,9 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _pickPhoto() async {
-    final path = await AppScope.photoServiceOf(context).pickImage();
+    final path = await AppScope.photoServiceOf(
+      context,
+    ).pickImage(preset: ImageUploadPreset.profile);
     if (!mounted || path == null) {
       return;
     }

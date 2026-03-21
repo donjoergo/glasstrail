@@ -5,6 +5,7 @@ import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../birthday.dart';
 import '../models.dart';
+import '../photo_service.dart';
 import '../widgets/app_media.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -57,7 +58,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickPhoto() async {
-    final path = await AppScope.photoServiceOf(context).pickImage();
+    final path = await AppScope.photoServiceOf(
+      context,
+    ).pickImage(preset: ImageUploadPreset.profile);
     if (!mounted || path == null) {
       return;
     }

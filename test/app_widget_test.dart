@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_routes.dart';
+import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/route_memory.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
@@ -208,9 +209,12 @@ void main() {
   testWidgets('shows a profile image preview on sign-up without a filename', (
     tester,
   ) async {
-    final app = await buildTestApp();
+    final controller = await buildTestController();
+    final photoService = RecordingPhotoService();
 
-    await tester.pumpWidget(app);
+    await tester.pumpWidget(
+      GlassTrailApp(controller: controller, photoService: photoService),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
@@ -221,6 +225,9 @@ void main() {
 
     expect(find.byKey(const Key('auth-profile-image-preview')), findsOneWidget);
     expect(find.text('mock-image.png'), findsNothing);
+    expect(photoService.pickedPresets, <ImageUploadPreset>[
+      ImageUploadPreset.profile,
+    ]);
   });
 
   testWidgets('shows a loading spinner while sign-up is being submitted', (

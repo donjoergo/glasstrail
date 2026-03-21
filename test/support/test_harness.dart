@@ -15,7 +15,20 @@ class TestPhotoService extends PhotoService {
   final String? path;
 
   @override
-  Future<String?> pickImage() async => path;
+  Future<String?> pickImage({required ImageUploadPreset preset}) async => path;
+}
+
+class RecordingPhotoService extends PhotoService {
+  RecordingPhotoService({this.path = '/tmp/mock-image.png'});
+
+  final String? path;
+  final List<ImageUploadPreset> pickedPresets = <ImageUploadPreset>[];
+
+  @override
+  Future<String?> pickImage({required ImageUploadPreset preset}) async {
+    pickedPresets.add(preset);
+    return path;
+  }
 }
 
 Future<AppController> buildTestController({

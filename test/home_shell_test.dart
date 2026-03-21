@@ -6,6 +6,7 @@ import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
+import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 
 import 'support/test_harness.dart';
@@ -100,6 +101,34 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Profile Busy Updated'), findsOneWidget);
+  });
+
+  testWidgets('uses the profile preset when changing the profile photo', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-photo-preset@example.com',
+      password: 'password123',
+      displayName: 'Profile Photo Preset',
+    );
+    final photoService = RecordingPhotoService(path: null);
+
+    await tester.pumpWidget(
+      GlassTrailApp(controller: controller, photoService: photoService),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.tap(find.byKey(const Key('profile-edit-button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Pick photo'));
+    await tester.tap(find.text('Pick photo'));
+    await tester.pumpAndSettle();
+
+    expect(photoService.pickedPresets, <ImageUploadPreset>[
+      ImageUploadPreset.profile,
+    ]);
   });
 
   testWidgets('shows a field-local spinner while saving settings', (
@@ -514,6 +543,92 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Night Cap'), findsOneWidget);
+  });
+
+  testWidgets('uses the feed preset when picking an add-drink photo', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'add-drink-photo-preset@example.com',
+      password: 'password123',
+      displayName: 'Add Drink Photo Preset',
+    );
+    final photoService = RecordingPhotoService(path: null);
+
+    await tester.pumpWidget(
+      GlassTrailApp(controller: controller, photoService: photoService),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.pumpAndSettle();
+    final pilsTile = find.widgetWithText(ListTile, 'Pils');
+    await tester.ensureVisible(pilsTile);
+    await tester.tap(pilsTile);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Pick photo'));
+    await tester.tap(find.text('Pick photo'));
+    await tester.pumpAndSettle();
+
+    expect(photoService.pickedPresets, <ImageUploadPreset>[
+      ImageUploadPreset.feed,
+    ]);
+  });
+
+  testWidgets('uses the feed preset when picking a custom drink photo', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'custom-drink-photo-preset@example.com',
+      password: 'password123',
+      displayName: 'Custom Drink Photo Preset',
+    );
+    final photoService = RecordingPhotoService(path: null);
+
+    await tester.pumpWidget(
+      GlassTrailApp(controller: controller, photoService: photoService),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    final addCustomDrinkButton = find.byKey(
+      const Key('profile-add-custom-drink-button'),
+    );
+    await tester.scrollUntilVisible(
+      addCustomDrinkButton,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(addCustomDrinkButton);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    await tester.tap(addCustomDrinkButton);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('custom-drink-save-button')), findsOneWidget);
+    await tester.tap(find.text('Pick photo'));
+    await tester.pumpAndSettle();
+
+    expect(photoService.pickedPresets, <ImageUploadPreset>[
+      ImageUploadPreset.feed,
+    ]);
   });
 
   testWidgets('shows the streak card in the feed without a details button', (
@@ -943,6 +1058,46 @@ void main() {
       expect(find.text('before-edit.png'), findsNothing);
     },
   );
+
+  testWidgets('uses the feed preset when picking a history entry photo', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'history-photo-preset@example.com',
+      password: 'password123',
+      displayName: 'History Photo Preset',
+    );
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl);
+    final entryId = controller.entries.single.id;
+    final photoService = RecordingPhotoService(path: null);
+
+    await tester.pumpWidget(
+      GlassTrailApp(controller: controller, photoService: photoService),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('edit-entry-pick-photo-button')));
+    await tester.pumpAndSettle();
+
+    expect(photoService.pickedPresets, <ImageUploadPreset>[
+      ImageUploadPreset.feed,
+    ]);
+  });
 
   testWidgets('shows a spinner while saving an edited entry', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.updateDrinkEntry);
