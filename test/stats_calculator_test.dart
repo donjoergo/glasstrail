@@ -57,6 +57,8 @@ void main() {
       expect(stats.yearlyTotal, 4);
       expect(stats.currentStreak, 3);
       expect(stats.bestStreak, 3);
+      expect(stats.bestStreakStart, DateTime(2026, 3, 15));
+      expect(stats.bestStreakEnd, DateTime(2026, 3, 17));
       expect(stats.hasEntryToday, isTrue);
       expect(stats.streakThroughYesterday, 2);
       expect(stats.streakMessageState, StreakMessageState.continuedToday);
@@ -97,6 +99,8 @@ void main() {
 
       expect(stats.currentStreak, 0);
       expect(stats.bestStreak, 1);
+      expect(stats.bestStreakStart, DateTime(2026, 3, 16));
+      expect(stats.bestStreakEnd, DateTime(2026, 3, 16));
       expect(stats.hasEntryToday, isFalse);
       expect(stats.streakThroughYesterday, 1);
       expect(stats.streakMessageState, StreakMessageState.keepAlive);
@@ -120,6 +124,8 @@ void main() {
         final stats = StatsCalculator.fromEntries(entries, now: now);
 
         expect(stats.currentStreak, 0);
+        expect(stats.bestStreakStart, DateTime(2026, 3, 14));
+        expect(stats.bestStreakEnd, DateTime(2026, 3, 14));
         expect(stats.streakThroughYesterday, 0);
         expect(stats.streakMessageState, StreakMessageState.start);
       },
@@ -142,6 +148,8 @@ void main() {
 
       expect(stats.currentStreak, 1);
       expect(stats.hasEntryToday, isTrue);
+      expect(stats.bestStreakStart, DateTime(2026, 3, 17));
+      expect(stats.bestStreakEnd, DateTime(2026, 3, 17));
       expect(stats.streakThroughYesterday, 0);
       expect(stats.streakMessageState, StreakMessageState.startedToday);
     });
@@ -172,6 +180,8 @@ void main() {
         final stats = StatsCalculator.fromEntries(entries, now: now);
 
         expect(stats.currentStreak, 1);
+        expect(stats.bestStreakStart, DateTime(2026, 3, 19));
+        expect(stats.bestStreakEnd, DateTime(2026, 3, 19));
         expect(stats.weekProgress.where((day) => day.hasEntry), hasLength(1));
         expect(
           stats.weekProgress.singleWhere((day) => day.hasEntry).weekday,
@@ -179,5 +189,60 @@ void main() {
         );
       },
     );
+
+    test('prefers the most recent range when multiple best streaks tie', () {
+      final now = DateTime(2026, 3, 20, 12);
+      final entries = <DrinkEntry>[
+        DrinkEntry(
+          id: '1',
+          userId: 'u1',
+          drinkId: 'water',
+          drinkName: 'Water',
+          category: DrinkCategory.nonAlcoholic,
+          consumedAt: DateTime(2026, 3, 1, 9),
+        ),
+        DrinkEntry(
+          id: '2',
+          userId: 'u1',
+          drinkId: 'tea',
+          drinkName: 'Tea',
+          category: DrinkCategory.nonAlcoholic,
+          consumedAt: DateTime(2026, 3, 2, 9),
+        ),
+        DrinkEntry(
+          id: '3',
+          userId: 'u1',
+          drinkId: 'cola',
+          drinkName: 'Cola',
+          category: DrinkCategory.nonAlcoholic,
+          consumedAt: DateTime(2026, 3, 10, 9),
+        ),
+        DrinkEntry(
+          id: '4',
+          userId: 'u1',
+          drinkId: 'juice',
+          drinkName: 'Juice',
+          category: DrinkCategory.nonAlcoholic,
+          consumedAt: DateTime(2026, 3, 11, 9),
+        ),
+      ];
+
+      final stats = StatsCalculator.fromEntries(entries, now: now);
+
+      expect(stats.bestStreak, 2);
+      expect(stats.bestStreakStart, DateTime(2026, 3, 10));
+      expect(stats.bestStreakEnd, DateTime(2026, 3, 11));
+    });
+
+    test('keeps the best streak range empty when there are no entries', () {
+      final stats = StatsCalculator.fromEntries(
+        const <DrinkEntry>[],
+        now: DateTime(2026, 3, 17, 12),
+      );
+
+      expect(stats.bestStreak, 0);
+      expect(stats.bestStreakStart, isNull);
+      expect(stats.bestStreakEnd, isNull);
+    });
   });
 }

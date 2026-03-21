@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:glasstrail/src/app.dart';
@@ -941,6 +942,102 @@ void main() {
     expect(
       find.byKey(const Key('stats-category-chip-icon-nonAlcoholic')),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('keeps totals and streaks in fixed overview rows', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-overview@example.com',
+      password: 'password123',
+      displayName: 'Stats Overview Example',
+    );
+    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+    final today = DateTime.now();
+    final bestStart = DateTime(
+      today.year,
+      today.month,
+      today.day,
+    ).subtract(const Duration(days: 2));
+    final bestEnd = bestStart.add(const Duration(days: 2));
+
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: bestStart,
+    );
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: bestStart.add(const Duration(days: 1)),
+    );
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: bestEnd,
+    );
+    await controller.refreshData();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Statistics'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+
+    final weeklyIconOffset = tester.getTopLeft(
+      find.byKey(const Key('stats-card-icon-weekly')),
+    );
+    final monthlyIconOffset = tester.getTopLeft(
+      find.byKey(const Key('stats-card-icon-monthly')),
+    );
+    final yearlyIconOffset = tester.getTopLeft(
+      find.byKey(const Key('stats-card-icon-yearly')),
+    );
+    final currentStreakIconOffset = tester.getTopLeft(
+      find.byKey(const Key('stats-card-icon-current-streak')),
+    );
+    final bestStreakIconOffset = tester.getTopLeft(
+      find.byKey(const Key('stats-card-icon-best-streak')),
+    );
+
+    expect(monthlyIconOffset.dy, closeTo(weeklyIconOffset.dy, 0.1));
+    expect(yearlyIconOffset.dy, closeTo(weeklyIconOffset.dy, 0.1));
+    expect(currentStreakIconOffset.dy, greaterThan(weeklyIconOffset.dy));
+    expect(bestStreakIconOffset.dy, closeTo(currentStreakIconOffset.dy, 0.1));
+
+    final expectedRange =
+        '${DateFormat.MMMd(controller.settings.localeCode).format(bestStart)} - '
+        '${DateFormat.MMMd(controller.settings.localeCode).format(bestEnd)}';
+    expect(
+      tester.widget<Text>(
+        find.byKey(const Key('stats-card-best-streak-range')),
+      ),
+      isA<Text>().having((widget) => widget.data, 'data', expectedRange),
     );
   });
 

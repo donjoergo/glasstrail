@@ -23,6 +23,8 @@ class AppStatistics {
     required this.yearlyTotal,
     required this.currentStreak,
     required this.bestStreak,
+    required this.bestStreakStart,
+    required this.bestStreakEnd,
     required this.hasEntryToday,
     required this.streakThroughYesterday,
     required this.streakMessageState,
@@ -36,6 +38,8 @@ class AppStatistics {
   final int yearlyTotal;
   final int currentStreak;
   final int bestStreak;
+  final DateTime? bestStreakStart;
+  final DateTime? bestStreakEnd;
   final bool hasEntryToday;
   final int streakThroughYesterday;
   final StreakMessageState streakMessageState;
@@ -94,17 +98,23 @@ class StatsCalculator {
           ..sort();
 
     var bestStreak = 0;
+    DateTime? bestStreakStart;
+    DateTime? bestStreakEnd;
     var rolling = 0;
     DateTime? previous;
+    DateTime? rollingStart;
     for (final day in uniqueDays) {
       if (previous == null || day.difference(previous).inDays > 1) {
         rolling = 1;
+        rollingStart = day;
       } else if (day.difference(previous).inDays == 1) {
         rolling++;
       }
       previous = day;
-      if (rolling > bestStreak) {
+      if (rolling > bestStreak || (rolling == bestStreak && rolling > 0)) {
         bestStreak = rolling;
+        bestStreakStart = rollingStart;
+        bestStreakEnd = day;
       }
     }
 
@@ -141,6 +151,8 @@ class StatsCalculator {
       yearlyTotal: yearlyTotal,
       currentStreak: currentStreak,
       bestStreak: bestStreak,
+      bestStreakStart: bestStreakStart,
+      bestStreakEnd: bestStreakEnd,
       hasEntryToday: hasEntryToday,
       streakThroughYesterday: streakThroughYesterday,
       streakMessageState: streakMessageState,
