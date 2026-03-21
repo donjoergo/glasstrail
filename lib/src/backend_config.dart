@@ -5,7 +5,7 @@ class BackendConfig {
   });
 
   static const defaultSupabaseUrl = 'https://lzuxlcfjnekgjukqxoza.supabase.co';
-  static const defaultSupabaseAnonKey =
+  static const defaultSupabasePublishableKey =
       'sb_publishable_VInDXR9KppRTFuR_lgcUyw_ZHx8f3-o';
 
   final String supabaseUrl;
@@ -27,7 +27,7 @@ class BackendConfig {
       ),
       supabaseAnonKey: String.fromEnvironment(
         'SUPABASE_ANON_KEY',
-        defaultValue: defaultSupabaseAnonKey,
+        defaultValue: defaultSupabasePublishableKey,
       ),
     );
   }
