@@ -20,6 +20,18 @@ enum _FlashMessageKind {
   raw,
 }
 
+enum AppBusyAction {
+  signIn,
+  signUp,
+  signOut,
+  updateProfile,
+  saveCustomDrink,
+  addDrinkEntry,
+  updateSettings,
+  updateDrinkEntry,
+  deleteDrinkEntry,
+}
+
 class _FlashMessage {
   const _FlashMessage.simple(this.kind)
     : rawMessage = null,
@@ -54,6 +66,7 @@ class AppController extends ChangeNotifier {
   List<DrinkDefinition> _customDrinks = const <DrinkDefinition>[];
   List<DrinkEntry> _entries = const <DrinkEntry>[];
   bool _isBusy = false;
+  AppBusyAction? _busyAction;
   _FlashMessage? _flashMessage;
 
   static Future<AppController> bootstrap({BackendConfig? backendConfig}) async {
@@ -78,10 +91,13 @@ class AppController extends ChangeNotifier {
   List<DrinkDefinition> get customDrinks => List.unmodifiable(_customDrinks);
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
   bool get isBusy => _isBusy;
+  AppBusyAction? get busyAction => _busyAction;
   bool get isAuthenticated => _currentUser != null;
   String get backendLabel => _repository.backendLabel;
   bool get usesRemoteBackend => _repository.usesRemoteBackend;
   AppStatistics get statistics => StatsCalculator.fromEntries(_entries);
+
+  bool isBusyFor(AppBusyAction action) => _busyAction == action;
 
   List<DrinkDefinition> get availableDrinks {
     final drinks = <DrinkDefinition>[..._defaultCatalog, ..._customDrinks];
@@ -169,7 +185,7 @@ class AppController extends ChangeNotifier {
     DateTime? birthday,
     String? profileImagePath,
   }) async {
-    return _guard(() async {
+    return _guardFor(AppBusyAction.signUp, () async {
       _currentUser = await _repository.signUp(
         email: email,
         password: password,
@@ -185,7 +201,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<bool> signIn({required String email, required String password}) async {
-    return _guard(() async {
+    return _guardFor(AppBusyAction.signIn, () async {
       _currentUser = await _repository.signIn(email: email, password: password);
       await _reloadUserScope();
       _flashMessage = const _FlashMessage.simple(_FlashMessageKind.welcomeBack);
@@ -193,7 +209,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<bool> signOut() async {
-    return _guard(() async {
+    return _guardFor(AppBusyAction.signOut, () async {
       await _repository.signOut();
       _currentUser = null;
       _customDrinks = const <DrinkDefinition>[];
@@ -212,7 +228,7 @@ class AppController extends ChangeNotifier {
     if (user == null) {
       return false;
     }
-    return _guard(() async {
+    return _guardFor(AppBusyAction.updateProfile, () async {
       _currentUser = await _repository.updateProfile(
         user.copyWith(
           displayName: displayName.trim(),
@@ -239,7 +255,7 @@ class AppController extends ChangeNotifier {
     if (user == null) {
       return false;
     }
-    return _guard(() async {
+    return _guardFor(AppBusyAction.saveCustomDrink, () async {
       final drink = await _repository.saveCustomDrink(
         userId: user.id,
         drinkId: drinkId,
@@ -274,7 +290,7 @@ class AppController extends ChangeNotifier {
     if (user == null) {
       return false;
     }
-    return _guard(() async {
+    return _guardFor(AppBusyAction.addDrinkEntry, () async {
       final entry = await _repository.addDrinkEntry(
         user: user,
         drink: drink,
@@ -298,7 +314,7 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       return true;
     }
-    return _guard(() async {
+    return _guardFor(AppBusyAction.updateSettings, () async {
       _settings = await _repository.saveSettings(user.id, settings);
     });
   }
@@ -312,7 +328,7 @@ class AppController extends ChangeNotifier {
     if (user == null) {
       return false;
     }
-    return _guard(() async {
+    return _guardFor(AppBusyAction.updateDrinkEntry, () async {
       final updated = await _repository.updateDrinkEntry(
         user: user,
         entry: entry,
@@ -339,7 +355,7 @@ class AppController extends ChangeNotifier {
     if (user == null) {
       return false;
     }
-    return _guard(() async {
+    return _guardFor(AppBusyAction.deleteDrinkEntry, () async {
       await _repository.deleteDrinkEntry(userId: user.id, entry: entry);
       _entries = _entries
           .where((candidate) => candidate.id != entry.id)
@@ -405,7 +421,22 @@ class AppController extends ChangeNotifier {
   }
 
   Future<bool> _guard(Future<void> Function() action) async {
+    return _guardInternal(action);
+  }
+
+  Future<bool> _guardFor(
+    AppBusyAction action,
+    Future<void> Function() body,
+  ) async {
+    return _guardInternal(body, busyAction: action);
+  }
+
+  Future<bool> _guardInternal(
+    Future<void> Function() action, {
+    AppBusyAction? busyAction,
+  }) async {
     _isBusy = true;
+    _busyAction = busyAction;
     notifyListeners();
     try {
       await action();
@@ -420,6 +451,7 @@ class AppController extends ChangeNotifier {
       return false;
     } finally {
       _isBusy = false;
+      _busyAction = null;
       notifyListeners();
     }
   }

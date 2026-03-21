@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app_controller.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
@@ -103,6 +104,8 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
+    final isBusy = controller.isBusy;
+    final isSavingDrink = controller.isBusyFor(AppBusyAction.saveCustomDrink);
 
     return AlertDialog(
       title: Text(
@@ -118,6 +121,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               TextFormField(
+                enabled: !isBusy,
                 controller: _nameController,
                 decoration: InputDecoration(labelText: l10n.drinkName),
                 validator: (value) => value == null || value.trim().isEmpty
@@ -136,17 +140,20 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                       ),
                     )
                     .toList(),
-                onChanged: (value) {
-                  if (value == null) {
-                    return;
-                  }
-                  setState(() {
-                    _category = value;
-                  });
-                },
+                onChanged: isBusy
+                    ? null
+                    : (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        setState(() {
+                          _category = value;
+                        });
+                      },
               ),
               const SizedBox(height: 12),
               TextFormField(
+                enabled: !isBusy,
                 controller: _volumeController,
                 decoration: InputDecoration(
                   labelText:
@@ -166,7 +173,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: <Widget>[
                   FilledButton.tonalIcon(
-                    onPressed: _pickPhoto,
+                    onPressed: isBusy ? null : _pickPhoto,
                     icon: const Icon(Icons.photo_library_outlined),
                     label: Text(
                       _imagePath == null ? l10n.pickPhoto : l10n.changePhoto,
@@ -174,11 +181,13 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                   ),
                   if (_imagePath != null)
                     OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _imagePath = null;
-                        });
-                      },
+                      onPressed: isBusy
+                          ? null
+                          : () {
+                              setState(() {
+                                _imagePath = null;
+                              });
+                            },
                       icon: const Icon(Icons.close_rounded),
                       label: Text(l10n.removePhoto),
                     ),
@@ -198,10 +207,20 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
       ),
       actions: <Widget>[
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          key: const Key('custom-drink-cancel-button'),
+          onPressed: isBusy ? null : () => Navigator.of(context).pop(),
           child: Text(l10n.cancel),
         ),
-        FilledButton(onPressed: _save, child: Text(l10n.save)),
+        FilledButton(
+          key: const Key('custom-drink-save-button'),
+          onPressed: isBusy ? null : _save,
+          child: isSavingDrink
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.save),
+        ),
       ],
     );
   }

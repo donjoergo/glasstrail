@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../app_controller.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
@@ -341,49 +342,17 @@ class _DrinkEntryCard extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
-    final controller = AppScope.controllerOf(context);
-    final confirmed = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.deleteEntry),
-        content: Text(l10n.deleteEntryPrompt),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            key: const Key('delete-entry-confirm-button'),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(l10n.deleteEntry),
-          ),
-        ],
-      ),
+      builder: (_) =>
+          _DeleteDrinkEntryDialog(entry: entry, parentContext: context),
     );
-
-    if (confirmed != true || !context.mounted) {
-      return;
-    }
-
-    final success = await controller.deleteDrinkEntry(entry);
-    if (!context.mounted) {
-      return;
-    }
-    final message = controller.takeFlashMessage(l10n);
-    if (message != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    }
-    if (!success) {
-      return;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final controller = AppScope.controllerOf(context);
     final timeLabel = DateFormat.yMMMd(
       locale,
     ).add_Hm().format(entry.consumedAt);
@@ -439,6 +408,7 @@ class _DrinkEntryCard extends StatelessWidget {
                 ),
               PopupMenuButton<_DrinkEntryAction>(
                 key: Key('history-entry-actions-${entry.id}'),
+                enabled: !controller.isBusy,
                 onSelected: (action) {
                   _handleAction(context, action);
                 },
@@ -548,7 +518,10 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
+    final isBusy = controller.isBusy;
+    final isSavingEntry = controller.isBusyFor(AppBusyAction.updateDrinkEntry);
     final timeLabel = DateFormat.yMMMd(
       widget.locale,
     ).add_Hm().format(widget.entry.consumedAt);
@@ -608,6 +581,7 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
               TextFormField(
                 key: const Key('edit-entry-comment-field'),
                 controller: _commentController,
+                enabled: !isBusy,
                 minLines: 2,
                 maxLines: 4,
                 decoration: InputDecoration(
@@ -622,7 +596,7 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                 children: <Widget>[
                   FilledButton.tonalIcon(
                     key: const Key('edit-entry-pick-photo-button'),
-                    onPressed: _pickPhoto,
+                    onPressed: isBusy ? null : _pickPhoto,
                     icon: const Icon(Icons.photo_library_outlined),
                     label: Text(
                       _imagePath == null ? l10n.pickPhoto : l10n.changePhoto,
@@ -631,11 +605,13 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                   if (_imagePath != null)
                     OutlinedButton.icon(
                       key: const Key('edit-entry-remove-photo-button'),
-                      onPressed: () {
-                        setState(() {
-                          _imagePath = null;
-                        });
-                      },
+                      onPressed: isBusy
+                          ? null
+                          : () {
+                              setState(() {
+                                _imagePath = null;
+                              });
+                            },
                       icon: const Icon(Icons.close_rounded),
                       label: Text(l10n.removePhoto),
                     ),
@@ -655,13 +631,81 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
       ),
       actions: <Widget>[
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          key: const Key('edit-entry-cancel-button'),
+          onPressed: isBusy ? null : () => Navigator.of(context).pop(),
           child: Text(l10n.cancel),
         ),
         FilledButton(
           key: const Key('edit-entry-save-button'),
-          onPressed: _save,
-          child: Text(l10n.save),
+          onPressed: isBusy ? null : _save,
+          child: isSavingEntry
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.save),
+        ),
+      ],
+    );
+  }
+}
+
+class _DeleteDrinkEntryDialog extends StatefulWidget {
+  const _DeleteDrinkEntryDialog({
+    required this.entry,
+    required this.parentContext,
+  });
+
+  final DrinkEntry entry;
+  final BuildContext parentContext;
+
+  @override
+  State<_DeleteDrinkEntryDialog> createState() =>
+      _DeleteDrinkEntryDialogState();
+}
+
+class _DeleteDrinkEntryDialogState extends State<_DeleteDrinkEntryDialog> {
+  Future<void> _delete() async {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final success = await controller.deleteDrinkEntry(widget.entry);
+    final message = controller.takeFlashMessage(l10n);
+    if (message != null && widget.parentContext.mounted) {
+      ScaffoldMessenger.of(
+        widget.parentContext,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+    if (!mounted || !success) {
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final isBusy = controller.isBusy;
+    final isDeleting = controller.isBusyFor(AppBusyAction.deleteDrinkEntry);
+
+    return AlertDialog(
+      title: Text(l10n.deleteEntry),
+      content: Text(l10n.deleteEntryPrompt),
+      actions: <Widget>[
+        TextButton(
+          key: const Key('delete-entry-cancel-button'),
+          onPressed: isBusy ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          key: const Key('delete-entry-confirm-button'),
+          onPressed: isBusy ? null : _delete,
+          child: isDeleting
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.deleteEntry),
         ),
       ],
     );

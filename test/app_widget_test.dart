@@ -97,6 +97,61 @@ void main() {
     expect(find.text('mock-image.png'), findsNothing);
   });
 
+  testWidgets('shows a loading spinner while sign-up is being submitted', (
+    tester,
+  ) async {
+    final repository = await buildBlockingLocalRepository(
+      blockedAction: AppBusyAction.signUp,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('signup-email-field')),
+      'busy-signup@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-password-field')),
+      'password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signup-display-name-field')),
+      'Busy Signup',
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
+    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('auth-submit-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const Key('signup-email-field')))
+          .enabled,
+      isFalse,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+  });
+
   testWidgets('submits sign-in on enter from the password field', (
     tester,
   ) async {

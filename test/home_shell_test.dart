@@ -3,11 +3,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:glasstrail/src/app.dart';
+import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 
 import 'support/test_harness.dart';
+
+Future<({AppController controller, BlockingLocalAppRepository repository})>
+_buildBlockedHarness(AppBusyAction action) async {
+  final repository = await buildBlockingLocalRepository(blockedAction: action);
+  final controller = await AppController.bootstrapWithRepository(repository);
+  return (controller: controller, repository: repository);
+}
+
+Future<void> _openProfileTab(WidgetTester tester) async {
+  await tester.tap(find.text('Profile'));
+  await tester.pumpAndSettle();
+}
 
 void main() {
   testWidgets('opens profile editing on a separate screen', (tester) async {
@@ -37,6 +50,99 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('edit-profile-save-button')), findsOneWidget);
+  });
+
+  testWidgets('shows a spinner while saving the profile', (tester) async {
+    final harness = await _buildBlockedHarness(AppBusyAction.updateProfile);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'profile-busy@example.com',
+      password: 'password123',
+      displayName: 'Profile Busy',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.tap(find.byKey(const Key('profile-edit-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('edit-profile-display-name-field')),
+      'Profile Busy Updated',
+    );
+    await tester.tap(find.byKey(const Key('edit-profile-save-button')));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('edit-profile-save-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const Key('edit-profile-display-name-field')),
+          )
+          .enabled,
+      isFalse,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Profile Busy Updated'), findsOneWidget);
+  });
+
+  testWidgets('shows a field-local spinner while saving settings', (
+    tester,
+  ) async {
+    final harness = await _buildBlockedHarness(AppBusyAction.updateSettings);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'settings-busy@example.com',
+      password: 'password123',
+      displayName: 'Settings Busy',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.ensureVisible(
+      find.byKey(const Key('language-segmented-control')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('language-segmented-control')),
+        matching: find.text('German'),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('language-settings-loading')), findsOneWidget);
+    expect(find.byKey(const Key('theme-settings-loading')), findsNothing);
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(controller.settings.localeCode, 'de');
+    expect(find.byKey(const Key('language-settings-loading')), findsNothing);
   });
 
   testWidgets('moves the add-drink fab for left-handed mode', (tester) async {
@@ -79,6 +185,63 @@ void main() {
       find.byKey(const Key('global-add-drink-fab')),
     );
     expect(leftRect.center.dx, lessThan(tester.view.physicalSize.width / 2));
+  });
+
+  testWidgets('shows a spinner while confirming a new drink entry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final harness = await _buildBlockedHarness(AppBusyAction.addDrinkEntry);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'add-busy@example.com',
+      password: 'password123',
+      displayName: 'Add Busy',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Pils'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('confirm-drink-button')));
+    await tester.tap(find.byKey(const Key('confirm-drink-button')));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('confirm-drink-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const Key('drink-comment-field')))
+          .enabled,
+      isFalse,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(controller.entries, hasLength(1));
   });
 
   testWidgets('shows and saves add-drink volumes in selected units', (
@@ -293,6 +456,64 @@ void main() {
 
     expect(find.text('Desk Coffee'), findsOneWidget);
     expect(find.text('Office Brew'), findsNothing);
+  });
+
+  testWidgets('shows a spinner while saving a custom drink', (tester) async {
+    final harness = await _buildBlockedHarness(AppBusyAction.saveCustomDrink);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'custom-busy@example.com',
+      password: 'password123',
+      displayName: 'Custom Busy',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    final addCustomDrinkButton = find.byKey(
+      const Key('profile-add-custom-drink-button'),
+    );
+    await tester.scrollUntilVisible(
+      addCustomDrinkButton,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(addCustomDrinkButton);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    await tester.tap(addCustomDrinkButton);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, 'Night Cap');
+    await tester.tap(find.byKey(const Key('custom-drink-save-button')));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('custom-drink-save-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextButton>(
+            find.byKey(const Key('custom-drink-cancel-button')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Night Cap'), findsOneWidget);
   });
 
   testWidgets('shows the streak card in the feed without a details button', (
@@ -714,6 +935,65 @@ void main() {
     },
   );
 
+  testWidgets('shows a spinner while saving an edited entry', (tester) async {
+    final harness = await _buildBlockedHarness(AppBusyAction.updateDrinkEntry);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'edit-busy@example.com',
+      password: 'password123',
+      displayName: 'Edit Busy',
+    );
+
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'nonAlcoholic-water',
+    );
+    await controller.addDrinkEntry(
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      comment: 'Before edit',
+    );
+    final entryId = controller.entries.single.id;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('edit-entry-comment-field')),
+      'After edit',
+    );
+    await tester.tap(find.byKey(const Key('edit-entry-save-button')));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('edit-entry-save-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const Key('edit-entry-cancel-button')))
+          .onPressed,
+      isNull,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(find.text('After edit'), findsOneWidget);
+  });
+
   testWidgets('deletes a logged drink from history after confirmation', (
     tester,
   ) async {
@@ -762,5 +1042,103 @@ void main() {
       find.byKey(const Key('history-streak-current-value')),
     );
     expect(streakValue.data, '0 days');
+  });
+
+  testWidgets('shows a spinner while deleting an entry', (tester) async {
+    final harness = await _buildBlockedHarness(AppBusyAction.deleteDrinkEntry);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'delete-busy@example.com',
+      password: 'password123',
+      displayName: 'Delete Busy',
+    );
+
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl);
+    final entryId = controller.entries.single.id;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(Key('history-entry-delete-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('delete-entry-confirm-button')));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('delete-entry-confirm-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextButton>(
+            find.byKey(const Key('delete-entry-cancel-button')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(controller.entries, isEmpty);
+  });
+
+  testWidgets('shows a spinner while signing out', (tester) async {
+    final harness = await _buildBlockedHarness(AppBusyAction.signOut);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'logout-busy@example.com',
+      password: 'password123',
+      displayName: 'Logout Busy',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    final logoutButton = find.byKey(const Key('profile-logout-button'));
+    await tester.scrollUntilVisible(
+      logoutButton,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(logoutButton);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    await tester.tap(logoutButton);
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('profile-logout-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
   });
 }

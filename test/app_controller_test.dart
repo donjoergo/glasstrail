@@ -73,6 +73,58 @@ void main() {
     expect(repository.loadSettingsCalls, 2);
   });
 
+  test('tracks sign-up as the active busy action while pending', () async {
+    final repository = await buildBlockingLocalRepository(
+      blockedAction: AppBusyAction.signUp,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    final signUpFuture = controller.signUp(
+      email: 'busy-signup@example.com',
+      password: 'password123',
+      displayName: 'Busy Signup',
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.isBusy, isTrue);
+    expect(controller.busyAction, AppBusyAction.signUp);
+    expect(controller.isBusyFor(AppBusyAction.signUp), isTrue);
+
+    repository.unblock();
+    await signUpFuture;
+
+    expect(controller.isBusy, isFalse);
+    expect(controller.busyAction, isNull);
+  });
+
+  test('tracks settings updates separately from other busy actions', () async {
+    final repository = await buildBlockingLocalRepository(
+      blockedAction: AppBusyAction.updateSettings,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    await controller.signUp(
+      email: 'busy-settings@example.com',
+      password: 'password123',
+      displayName: 'Busy Settings',
+    );
+
+    final updateFuture = controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.isBusy, isTrue);
+    expect(controller.busyAction, AppBusyAction.updateSettings);
+    expect(controller.isBusyFor(AppBusyAction.updateSettings), isTrue);
+    expect(controller.isBusyFor(AppBusyAction.signOut), isFalse);
+
+    repository.unblock();
+    await updateFuture;
+
+    expect(controller.isBusy, isFalse);
+    expect(controller.busyAction, isNull);
+  });
+
   test('localizes success flash messages and drink names', () async {
     final controller = await buildTestController();
     final german = AppLocalizations(const Locale('de'));

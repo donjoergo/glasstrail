@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app_controller.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../birthday.dart';
@@ -105,6 +106,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final controller = AppScope.controllerOf(context);
     final user = controller.currentUser!;
     final theme = Theme.of(context);
+    final isBusy = controller.isBusy;
+    final isSavingProfile = controller.isBusyFor(AppBusyAction.updateProfile);
     _hydrate(user);
 
     return Scaffold(
@@ -167,7 +170,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   runSpacing: 10,
                                   children: <Widget>[
                                     FilledButton.tonalIcon(
-                                      onPressed: _pickPhoto,
+                                      onPressed: isBusy ? null : _pickPhoto,
                                       icon: const Icon(
                                         Icons.photo_camera_back_outlined,
                                       ),
@@ -179,11 +182,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     ),
                                     if (_profileImagePath != null)
                                       OutlinedButton.icon(
-                                        onPressed: () {
-                                          setState(() {
-                                            _profileImagePath = null;
-                                          });
-                                        },
+                                        onPressed: isBusy
+                                            ? null
+                                            : () {
+                                                setState(() {
+                                                  _profileImagePath = null;
+                                                });
+                                              },
                                         icon: const Icon(Icons.close_rounded),
                                         label: Text(l10n.removePhoto),
                                       ),
@@ -198,6 +203,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       TextFormField(
                         key: const Key('edit-profile-display-name-field'),
                         controller: _displayNameController,
+                        enabled: !isBusy,
                         decoration: InputDecoration(
                           labelText: l10n.displayName,
                         ),
@@ -212,7 +218,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         runSpacing: 10,
                         children: <Widget>[
                           FilledButton.tonalIcon(
-                            onPressed: _pickBirthday,
+                            onPressed: isBusy ? null : _pickBirthday,
                             icon: const Icon(Icons.cake_outlined),
                             label: Text(
                               _birthday == null
@@ -225,11 +231,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                           if (_birthday != null)
                             OutlinedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _birthday = null;
-                                });
-                              },
+                              onPressed: isBusy
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _birthday = null;
+                                      });
+                                    },
                               icon: const Icon(Icons.close_rounded),
                               label: Text(l10n.removeBirthday),
                             ),
@@ -240,8 +248,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         width: double.infinity,
                         child: FilledButton(
                           key: const Key('edit-profile-save-button'),
-                          onPressed: controller.isBusy ? null : _saveProfile,
-                          child: Text(l10n.save),
+                          onPressed: isBusy ? null : _saveProfile,
+                          child: isSavingProfile
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(l10n.save),
                         ),
                       ),
                     ],

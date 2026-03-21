@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
+import '../app_controller.dart';
 import '../app_localizations.dart';
 import '../app_routes.dart';
 import '../birthday.dart';
@@ -111,6 +112,10 @@ class _AuthScreenState extends State<AuthScreen> {
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
     final localeCode = controller.settings.localeCode;
+    final isBusy = controller.isBusy;
+    final isSubmitting = controller.isBusyFor(
+      _mode == _AuthMode.signIn ? AppBusyAction.signIn : AppBusyAction.signUp,
+    );
 
     return Scaffold(
       body: Container(
@@ -171,11 +176,13 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                           ],
                           selected: <_AuthMode>{_mode},
-                          onSelectionChanged: (selection) {
-                            setState(() {
-                              _mode = selection.first;
-                            });
-                          },
+                          onSelectionChanged: isBusy
+                              ? null
+                              : (selection) {
+                                  setState(() {
+                                    _mode = selection.first;
+                                  });
+                                },
                         ),
                         const SizedBox(height: 20),
                         Text(
@@ -186,16 +193,16 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         const SizedBox(height: 24),
                         if (_mode == _AuthMode.signIn)
-                          _buildSignInForm(l10n, controller.isBusy)
+                          _buildSignInForm(l10n, isBusy)
                         else
-                          _buildSignUpForm(l10n, localeCode),
+                          _buildSignUpForm(l10n, localeCode, isBusy),
                         const SizedBox(height: 20),
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
                             key: const Key('auth-submit-button'),
-                            onPressed: controller.isBusy ? null : _submit,
-                            child: controller.isBusy
+                            onPressed: isBusy ? null : _submit,
+                            child: isSubmitting
                                 ? const SizedBox.square(
                                     dimension: 18,
                                     child: CircularProgressIndicator(
@@ -230,6 +237,7 @@ class _AuthScreenState extends State<AuthScreen> {
             TextFormField(
               key: const Key('signin-email-field'),
               controller: _signInEmailController,
+              enabled: !isBusy,
               decoration: InputDecoration(labelText: l10n.email),
               keyboardType: TextInputType.emailAddress,
               autofillHints: const <String>[AutofillHints.email],
@@ -244,6 +252,7 @@ class _AuthScreenState extends State<AuthScreen> {
             TextFormField(
               key: const Key('signin-password-field'),
               controller: _signInPasswordController,
+              enabled: !isBusy,
               decoration: InputDecoration(labelText: l10n.password),
               obscureText: true,
               autofillHints: const <String>[AutofillHints.password],
@@ -264,7 +273,11 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildSignUpForm(AppLocalizations l10n, String localeCode) {
+  Widget _buildSignUpForm(
+    AppLocalizations l10n,
+    String localeCode,
+    bool isBusy,
+  ) {
     return AutofillGroup(
       child: Form(
         key: _signUpKey,
@@ -273,6 +286,7 @@ class _AuthScreenState extends State<AuthScreen> {
             TextFormField(
               key: const Key('signup-email-field'),
               controller: _signUpEmailController,
+              enabled: !isBusy,
               decoration: InputDecoration(labelText: l10n.email),
               keyboardType: TextInputType.emailAddress,
               autofillHints: const <String>[AutofillHints.email],
@@ -285,6 +299,7 @@ class _AuthScreenState extends State<AuthScreen> {
             TextFormField(
               key: const Key('signup-password-field'),
               controller: _signUpPasswordController,
+              enabled: !isBusy,
               decoration: InputDecoration(labelText: l10n.password),
               obscureText: true,
               autofillHints: const <String>[AutofillHints.newPassword],
@@ -296,6 +311,7 @@ class _AuthScreenState extends State<AuthScreen> {
             TextFormField(
               key: const Key('signup-display-name-field'),
               controller: _displayNameController,
+              enabled: !isBusy,
               decoration: InputDecoration(labelText: l10n.displayName),
               autofillHints: const <String>[AutofillHints.name],
               validator: (value) => value == null || value.trim().isEmpty
@@ -307,7 +323,7 @@ class _AuthScreenState extends State<AuthScreen> {
               children: <Widget>[
                 Expanded(
                   child: FilledButton.tonalIcon(
-                    onPressed: _pickBirthday,
+                    onPressed: isBusy ? null : _pickBirthday,
                     icon: const Icon(Icons.cake_outlined),
                     label: Text(
                       _birthday == null
@@ -319,11 +335,13 @@ class _AuthScreenState extends State<AuthScreen> {
                 if (_birthday != null) ...<Widget>[
                   const SizedBox(width: 8),
                   IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _birthday = null;
-                      });
-                    },
+                    onPressed: isBusy
+                        ? null
+                        : () {
+                            setState(() {
+                              _birthday = null;
+                            });
+                          },
                     icon: const Icon(Icons.close_rounded),
                     tooltip: l10n.removeBirthday,
                   ),
@@ -356,7 +374,7 @@ class _AuthScreenState extends State<AuthScreen> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: <Widget>[
                 FilledButton.tonalIcon(
-                  onPressed: _pickPhoto,
+                  onPressed: isBusy ? null : _pickPhoto,
                   icon: const Icon(Icons.account_circle_outlined),
                   label: Text(
                     _profileImagePath == null
@@ -366,11 +384,13 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 if (_profileImagePath != null)
                   OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _profileImagePath = null;
-                      });
-                    },
+                    onPressed: isBusy
+                        ? null
+                        : () {
+                            setState(() {
+                              _profileImagePath = null;
+                            });
+                          },
                     icon: const Icon(Icons.close_rounded),
                     label: Text(l10n.removePhoto),
                   ),

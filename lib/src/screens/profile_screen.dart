@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app_controller.dart';
 import '../app_localizations.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
@@ -7,6 +8,8 @@ import '../birthday.dart';
 import '../models.dart';
 import '../widgets/app_media.dart';
 import 'custom_drink_dialog.dart';
+
+enum _ProfilePendingSetting { theme, language, unit, handedness }
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +19,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  _ProfilePendingSetting? _pendingSetting;
+
   Future<void> _showCustomDrinkDialog([DrinkDefinition? drink]) async {
     final l10n = AppLocalizations.of(context);
     await showDialog<void>(
@@ -40,13 +45,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _showMessage(message);
   }
 
-  Future<void> _updateSettings(UserSettings settings) async {
+  Future<void> _updateSettings(
+    _ProfilePendingSetting pendingSetting,
+    UserSettings settings,
+  ) async {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
+    setState(() {
+      _pendingSetting = pendingSetting;
+    });
     final success = await controller.updateSettings(settings);
     if (!mounted) {
       return;
     }
+    setState(() {
+      _pendingSetting = null;
+    });
     final message = controller.takeFlashMessage(l10n);
     if (message != null) {
       _showMessage(message);
@@ -69,6 +83,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = controller.currentUser!;
     final theme = Theme.of(context);
     final settings = controller.settings;
+    final isBusy = controller.isBusy;
+    final isSigningOut = controller.isBusyFor(AppBusyAction.signOut);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
@@ -160,7 +176,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               FilledButton.tonalIcon(
                 key: const Key('profile-edit-button'),
-                onPressed: controller.isBusy ? null : _openEditProfile,
+                onPressed: isBusy ? null : _openEditProfile,
                 icon: const Icon(Icons.edit_outlined),
                 label: Text(l10n.editProfile),
               ),
@@ -227,7 +243,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _SettingsSegmentedField<AppThemePreference>(
                 label: l10n.theme,
                 value: settings.themePreference,
-                enabled: !controller.isBusy,
+                enabled: !isBusy,
+                isLoading:
+                    _pendingSetting == _ProfilePendingSetting.theme &&
+                    controller.isBusyFor(AppBusyAction.updateSettings),
+                loadingIndicatorKey: const Key('theme-settings-loading'),
                 key: const Key('theme-segmented-control'),
                 segments: AppThemePreference.values
                     .map(
@@ -237,27 +257,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     )
                     .toList(growable: false),
-                onChanged: (value) =>
-                    _updateSettings(settings.copyWith(themePreference: value)),
+                onChanged: (value) => _updateSettings(
+                  _ProfilePendingSetting.theme,
+                  settings.copyWith(themePreference: value),
+                ),
               ),
               const SizedBox(height: 16),
               _SettingsSegmentedField<String>(
                 label: l10n.language,
                 value: settings.localeCode,
-                enabled: !controller.isBusy,
+                enabled: !isBusy,
+                isLoading:
+                    _pendingSetting == _ProfilePendingSetting.language &&
+                    controller.isBusyFor(AppBusyAction.updateSettings),
+                loadingIndicatorKey: const Key('language-settings-loading'),
                 key: const Key('language-segmented-control'),
                 segments: <ButtonSegment<String>>[
                   ButtonSegment<String>(value: 'en', label: Text(l10n.english)),
                   ButtonSegment<String>(value: 'de', label: Text(l10n.german)),
                 ],
-                onChanged: (value) =>
-                    _updateSettings(settings.copyWith(localeCode: value)),
+                onChanged: (value) => _updateSettings(
+                  _ProfilePendingSetting.language,
+                  settings.copyWith(localeCode: value),
+                ),
               ),
               const SizedBox(height: 16),
               _SettingsSegmentedField<AppUnit>(
                 label: l10n.units,
                 value: settings.unit,
-                enabled: !controller.isBusy,
+                enabled: !isBusy,
+                isLoading:
+                    _pendingSetting == _ProfilePendingSetting.unit &&
+                    controller.isBusyFor(AppBusyAction.updateSettings),
+                loadingIndicatorKey: const Key('unit-settings-loading'),
                 key: const Key('unit-segmented-control'),
                 segments: AppUnit.values
                     .map(
@@ -267,14 +299,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     )
                     .toList(growable: false),
-                onChanged: (value) =>
-                    _updateSettings(settings.copyWith(unit: value)),
+                onChanged: (value) => _updateSettings(
+                  _ProfilePendingSetting.unit,
+                  settings.copyWith(unit: value),
+                ),
               ),
               const SizedBox(height: 16),
               _SettingsSegmentedField<AppHandedness>(
                 label: l10n.handedness,
                 value: settings.handedness,
-                enabled: !controller.isBusy,
+                enabled: !isBusy,
+                isLoading:
+                    _pendingSetting == _ProfilePendingSetting.handedness &&
+                    controller.isBusyFor(AppBusyAction.updateSettings),
+                loadingIndicatorKey: const Key('handedness-settings-loading'),
                 key: const Key('handedness-segmented-control'),
                 segments: <ButtonSegment<AppHandedness>>[
                   ButtonSegment<AppHandedness>(
@@ -286,8 +324,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     label: Text(l10n.handednessLabel(AppHandedness.right)),
                   ),
                 ],
-                onChanged: (value) =>
-                    _updateSettings(settings.copyWith(handedness: value)),
+                onChanged: (value) => _updateSettings(
+                  _ProfilePendingSetting.handedness,
+                  settings.copyWith(handedness: value),
+                ),
               ),
             ],
           ),
@@ -313,7 +353,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   FilledButton.tonal(
-                    onPressed: () => _showCustomDrinkDialog(),
+                    key: const Key('profile-add-custom-drink-button'),
+                    onPressed: isBusy ? null : () => _showCustomDrinkDialog(),
                     child: Text(l10n.addCustomDrinkAction),
                   ),
                 ],
@@ -344,7 +385,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       '${l10n.categoryLabel(drink.category)} • ${settings.unit.formatVolume(drink.volumeMl)}',
                     ),
                     trailing: IconButton(
-                      onPressed: () => _showCustomDrinkDialog(drink),
+                      onPressed: isBusy
+                          ? null
+                          : () => _showCustomDrinkDialog(drink),
                       icon: const Icon(Icons.edit_rounded),
                     ),
                   ),
@@ -372,7 +415,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(l10n.roadmapBody),
               const SizedBox(height: 16),
               FilledButton.tonalIcon(
-                onPressed: controller.isBusy
+                key: const Key('profile-logout-button'),
+                onPressed: isBusy
                     ? null
                     : () async {
                         final success = await controller.signOut();
@@ -387,7 +431,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           return;
                         }
                       },
-                icon: const Icon(Icons.logout_rounded),
+                icon: isSigningOut
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.logout_rounded),
                 label: Text(l10n.logout),
               ),
             ],
@@ -406,6 +455,8 @@ class _SettingsSegmentedField<T> extends StatelessWidget {
     required this.segments,
     required this.onChanged,
     required this.enabled,
+    this.isLoading = false,
+    this.loadingIndicatorKey,
   });
 
   final String label;
@@ -413,6 +464,8 @@ class _SettingsSegmentedField<T> extends StatelessWidget {
   final List<ButtonSegment<T>> segments;
   final ValueChanged<T> onChanged;
   final bool enabled;
+  final bool isLoading;
+  final Key? loadingIndicatorKey;
 
   @override
   Widget build(BuildContext context) {
@@ -421,11 +474,26 @@ class _SettingsSegmentedField<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(
-          label,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              label,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (isLoading) ...<Widget>[
+              const SizedBox(width: 8),
+              SizedBox.square(
+                dimension: 14,
+                child: CircularProgressIndicator(
+                  key: loadingIndicatorKey,
+                  strokeWidth: 2,
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 10),
         SizedBox(

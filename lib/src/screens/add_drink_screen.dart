@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app_controller.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
@@ -121,6 +122,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     final theme = Theme.of(context);
     final localeCode = controller.settings.localeCode;
     final unit = controller.settings.unit;
+    final isBusy = controller.isBusy;
+    final isSavingDrink = controller.isBusyFor(AppBusyAction.addDrinkEntry);
     final search = _searchController.text.trim().toLowerCase();
     final isSearchActive = search.isNotEmpty;
     final expandsFromSearch = isSearchActive && _autoExpandSearchResults;
@@ -158,6 +161,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                 TextFormField(
                   key: const Key('drink-search-field'),
                   controller: _searchController,
+                  enabled: !isBusy,
                   decoration: InputDecoration(
                     labelText: l10n.searchDrinks,
                     prefixIcon: const Icon(Icons.search_rounded),
@@ -165,18 +169,20 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                         ? null
                         : IconButton(
                             key: const Key('drink-search-clear-button'),
-                            onPressed: _clearSearch,
+                            onPressed: isBusy ? null : _clearSearch,
                             icon: const Icon(Icons.close_rounded),
                           ),
                   ),
-                  onChanged: (_) {
-                    setState(() {
-                      _expandedCategory = null;
-                      _autoExpandSearchResults = _searchController.text
-                          .trim()
-                          .isNotEmpty;
-                    });
-                  },
+                  onChanged: isBusy
+                      ? null
+                      : (_) {
+                          setState(() {
+                            _expandedCategory = null;
+                            _autoExpandSearchResults = _searchController.text
+                                .trim()
+                                .isNotEmpty;
+                          });
+                        },
                 ),
                 const SizedBox(height: 20),
                 if (controller.recentDrinks.isNotEmpty) ...<Widget>[
@@ -200,7 +206,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                               size: 18,
                             ),
                             label: Text(drink.displayName(localeCode)),
-                            onSelected: (_) => _selectDrink(drink),
+                            onSelected: isBusy
+                                ? null
+                                : (_) => _selectDrink(drink),
                           ),
                         )
                         .toList(),
@@ -216,7 +224,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                       ),
                     );
                     final action = FilledButton.tonal(
-                      onPressed: _openCustomDrinkDialog,
+                      onPressed: isBusy ? null : _openCustomDrinkDialog,
                       child: Text(l10n.createCustomDrink),
                     );
 
@@ -251,6 +259,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                         ? grouped[category]!.isNotEmpty
                         : _expandedCategory == category,
                     isInteractive: !expandsFromSearch,
+                    enabled: !isBusy,
                     onExpansionChanged: (isExpanded) {
                       setState(() {
                         _expandedCategory = isExpanded ? category : null;
@@ -287,6 +296,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                   TextFormField(
                     key: const Key('drink-volume-field'),
                     controller: _volumeController,
+                    enabled: !isBusy,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -301,6 +311,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                   TextFormField(
                     key: const Key('drink-comment-field'),
                     controller: _commentController,
+                    enabled: !isBusy,
                     minLines: 2,
                     maxLines: 4,
                     decoration: InputDecoration(
@@ -314,7 +325,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: <Widget>[
                       FilledButton.tonalIcon(
-                        onPressed: _pickPhoto,
+                        onPressed: isBusy ? null : _pickPhoto,
                         icon: const Icon(Icons.photo_library_outlined),
                         label: Text(
                           _imagePath == null
@@ -324,11 +335,13 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                       ),
                       if (_imagePath != null)
                         OutlinedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _imagePath = null;
-                            });
-                          },
+                          onPressed: isBusy
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _imagePath = null;
+                                  });
+                                },
                           icon: const Icon(Icons.close_rounded),
                           label: Text(l10n.removePhoto),
                         ),
@@ -352,8 +365,13 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                       minimumSize: const Size.fromHeight(56),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    onPressed: controller.isBusy ? null : _save,
-                    child: Text(l10n.confirmDrink),
+                    onPressed: isBusy ? null : _save,
+                    child: isSavingDrink
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(l10n.confirmDrink),
                   ),
                 ),
               ],
@@ -374,6 +392,7 @@ class _DrinkCategorySection extends StatelessWidget {
     required this.unit,
     required this.isExpanded,
     required this.isInteractive,
+    required this.enabled,
     required this.onExpansionChanged,
     required this.selectedDrink,
     required this.onSelect,
@@ -386,6 +405,7 @@ class _DrinkCategorySection extends StatelessWidget {
   final AppUnit unit;
   final bool isExpanded;
   final bool isInteractive;
+  final bool enabled;
   final ValueChanged<bool> onExpansionChanged;
   final DrinkDefinition? selectedDrink;
   final ValueChanged<DrinkDefinition> onSelect;
@@ -400,8 +420,8 @@ class _DrinkCategorySection extends StatelessWidget {
       child: ExpansionTile(
         key: Key('drink-category-section-${category.name}-$isExpanded'),
         initiallyExpanded: isExpanded,
-        enabled: isInteractive,
-        onExpansionChanged: onExpansionChanged,
+        enabled: enabled && isInteractive,
+        onExpansionChanged: enabled ? onExpansionChanged : null,
         tilePadding: EdgeInsets.zero,
         title: Text(label, key: Key('drink-category-title-${category.name}')),
         children: drinks
@@ -416,7 +436,7 @@ class _DrinkCategorySection extends StatelessWidget {
                 trailing: selectedDrink?.id == drink.id
                     ? const Icon(Icons.check_circle_rounded)
                     : null,
-                onTap: () => onSelect(drink),
+                onTap: enabled ? () => onSelect(drink) : null,
               ),
             )
             .toList(),
