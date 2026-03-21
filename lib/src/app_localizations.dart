@@ -96,9 +96,9 @@ class AppLocalizations {
       'statisticsMapPlaceholderTitle': 'Drink map coming soon',
       'statisticsMapPlaceholderBody':
           'Logged drinks will appear here on a map in a later step.',
-      'statisticsGalleryPlaceholderTitle': 'Gallery coming soon',
-      'statisticsGalleryPlaceholderBody':
-          'Drink photos from your log will appear here in a later step.',
+      'statisticsGalleryEmptyTitle': 'No drink photos yet',
+      'statisticsGalleryEmptyBody':
+          'Photos from logged drinks will appear here automatically.',
       'totalDrinks': 'Total drinks',
       'settings': 'Settings',
       'backend': 'Backend',
@@ -228,9 +228,9 @@ class AppLocalizations {
       'statisticsMapPlaceholderTitle': 'Karte folgt später',
       'statisticsMapPlaceholderBody':
           'Hier werden geloggte Getränke später auf einer Karte angezeigt.',
-      'statisticsGalleryPlaceholderTitle': 'Galerie folgt später',
-      'statisticsGalleryPlaceholderBody':
-          'Hier werden Fotos aus deinen Getränke-Logs später als Galerie angezeigt.',
+      'statisticsGalleryEmptyTitle': 'Noch keine Drink-Fotos',
+      'statisticsGalleryEmptyBody':
+          'Fotos aus deinen Log-Einträgen erscheinen hier automatisch.',
       'totalDrinks': 'Getränke gesamt',
       'settings': 'Einstellungen',
       'backend': 'Backend',
@@ -355,10 +355,9 @@ class AppLocalizations {
       _text('statisticsMapPlaceholderTitle');
   String get statisticsMapPlaceholderBody =>
       _text('statisticsMapPlaceholderBody');
-  String get statisticsGalleryPlaceholderTitle =>
-      _text('statisticsGalleryPlaceholderTitle');
-  String get statisticsGalleryPlaceholderBody =>
-      _text('statisticsGalleryPlaceholderBody');
+  String get statisticsGalleryEmptyTitle =>
+      _text('statisticsGalleryEmptyTitle');
+  String get statisticsGalleryEmptyBody => _text('statisticsGalleryEmptyBody');
   String get totalDrinks => _text('totalDrinks');
   String get settings => _text('settings');
   String get backend => _text('backend');

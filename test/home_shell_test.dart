@@ -9,12 +9,16 @@ import 'package:url_launcher_platform_interface/url_launcher_platform_interface.
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_localizations.dart';
+import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 
 import 'support/test_harness.dart';
+
+const _transparentPngDataUrl =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRSEAAAAASUVORK5CYII=';
 
 Future<({AppController controller, BlockingLocalAppRepository repository})>
 _buildBlockedHarness(AppBusyAction action) async {
@@ -60,10 +64,7 @@ Future<void> _scrollProfileTargetIntoView(
     200,
     scrollable: _profileScrollable(),
   );
-  await Scrollable.ensureVisible(
-    tester.element(target),
-    alignment: 0.5,
-  );
+  await Scrollable.ensureVisible(tester.element(target), alignment: 0.5);
   await tester.pump();
 }
 
@@ -111,6 +112,32 @@ Future<void> _tapPhotoAction(
 
   await tester.tap(sourceOption);
   await tester.pumpAndSettle();
+}
+
+void _setSurfaceSize(WidgetTester tester, Size size) {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1.0;
+}
+
+Future<List<DrinkEntry>> _seedGalleryEntries(
+  AppController controller, {
+  required int count,
+  bool withImages = true,
+}) async {
+  final drinks = controller.availableDrinks.take(count).toList(growable: false);
+  for (var index = 0; index < drinks.length; index++) {
+    final drink = drinks[index];
+    await controller.addDrinkEntry(
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      comment: 'Gallery note ${index + 1}',
+      imagePath: withImages ? _transparentPngDataUrl : null,
+    );
+  }
+
+  return controller.entries
+      .where((entry) => entry.imagePath?.trim().isNotEmpty ?? false)
+      .toList(growable: false);
 }
 
 void main() {
@@ -1363,7 +1390,7 @@ void main() {
     expect(find.text('Red Wine'), findsOneWidget);
   });
 
-  testWidgets('shows placeholder tabs for map and gallery in statistics', (
+  testWidgets('shows the map placeholder and gallery empty state', (
     tester,
   ) async {
     final controller = await buildTestController();
@@ -1371,6 +1398,12 @@ void main() {
       email: 'stats-placeholders@example.com',
       password: 'password123',
       displayName: 'Stats Placeholders',
+    );
+    final drink = controller.availableDrinks.first;
+    await controller.addDrinkEntry(
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      comment: 'Entry without photo',
     );
 
     await tester.pumpWidget(
@@ -1392,11 +1425,213 @@ void main() {
 
     await _openStatisticsSection(tester, 'Gallery');
 
-    expect(find.text('Gallery coming soon'), findsOneWidget);
+    expect(find.byKey(const Key('statistics-gallery-grid')), findsNothing);
+    expect(find.text('No drink photos yet'), findsOneWidget);
     expect(
-      find.text('Drink photos from your log will appear here in a later step.'),
+      find.text('Photos from logged drinks will appear here automatically.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets(
+    'shows newest gallery photos first in three columns and opens the swipe viewer',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'stats-gallery-phone@example.com',
+        password: 'password123',
+        displayName: 'Stats Gallery Phone',
+      );
+      final galleryEntries = await _seedGalleryEntries(controller, count: 4);
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openStatisticsTab(tester);
+      await _openStatisticsSection(tester, 'Gallery');
+
+      expect(find.byKey(const Key('statistics-gallery-grid')), findsOneWidget);
+
+      final newestRect = tester.getRect(
+        find.byKey(Key('statistics-gallery-tile-${galleryEntries[0].id}')),
+      );
+      final secondRect = tester.getRect(
+        find.byKey(Key('statistics-gallery-tile-${galleryEntries[1].id}')),
+      );
+      final thirdRect = tester.getRect(
+        find.byKey(Key('statistics-gallery-tile-${galleryEntries[2].id}')),
+      );
+      final fourthRect = tester.getRect(
+        find.byKey(Key('statistics-gallery-tile-${galleryEntries[3].id}')),
+      );
+
+      expect((newestRect.top - secondRect.top).abs(), lessThan(0.1));
+      expect((secondRect.top - thirdRect.top).abs(), lessThan(0.1));
+      expect(newestRect.left, lessThan(secondRect.left));
+      expect(secondRect.left, lessThan(thirdRect.left));
+      expect(fourthRect.top, greaterThan(newestRect.top + 1));
+
+      await tester.tap(
+        find.byKey(Key('statistics-gallery-tile-${galleryEntries.first.id}')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('app-gallery-viewer-fullscreen')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const Key('app-gallery-viewer-drink-name')),
+            )
+            .data,
+        controller.localizedEntryDrinkName(galleryEntries.first),
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('app-gallery-viewer-comment')))
+            .data,
+        galleryEntries.first.comment,
+      );
+
+      await tester.drag(
+        find.byKey(const Key('app-gallery-viewer-page-view')),
+        const Offset(-400, 0),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 / 4'), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const Key('app-gallery-viewer-drink-name')),
+            )
+            .data,
+        controller.localizedEntryDrinkName(galleryEntries[1]),
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('app-gallery-viewer-comment')))
+            .data,
+        galleryEntries[1].comment,
+      );
+    },
+  );
+
+  testWidgets('uses four columns for gallery layouts on tablet widths', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(820, 1180));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-gallery-tablet@example.com',
+      password: 'password123',
+      displayName: 'Stats Gallery Tablet',
+    );
+    final galleryEntries = await _seedGalleryEntries(controller, count: 5);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Gallery');
+
+    final firstRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[0].id}')),
+    );
+    final secondRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[1].id}')),
+    );
+    final thirdRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[2].id}')),
+    );
+    final fourthRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[3].id}')),
+    );
+    final fifthRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[4].id}')),
+    );
+
+    expect((firstRect.top - secondRect.top).abs(), lessThan(0.1));
+    expect((secondRect.top - thirdRect.top).abs(), lessThan(0.1));
+    expect((thirdRect.top - fourthRect.top).abs(), lessThan(0.1));
+    expect(fifthRect.top, greaterThan(firstRect.top + 1));
+  });
+
+  testWidgets('uses five columns for gallery layouts on wider screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1200, 1366));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-gallery-wide@example.com',
+      password: 'password123',
+      displayName: 'Stats Gallery Wide',
+    );
+    final galleryEntries = await _seedGalleryEntries(controller, count: 5);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsSection(tester, 'Gallery');
+
+    final firstRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[0].id}')),
+    );
+    final secondRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[1].id}')),
+    );
+    final thirdRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[2].id}')),
+    );
+    final fourthRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[3].id}')),
+    );
+    final fifthRect = tester.getRect(
+      find.byKey(Key('statistics-gallery-tile-${galleryEntries[4].id}')),
+    );
+
+    expect((firstRect.top - secondRect.top).abs(), lessThan(0.1));
+    expect((secondRect.top - thirdRect.top).abs(), lessThan(0.1));
+    expect((thirdRect.top - fourthRect.top).abs(), lessThan(0.1));
+    expect((fourthRect.top - fifthRect.top).abs(), lessThan(0.1));
+    expect(firstRect.left, lessThan(secondRect.left));
+    expect(secondRect.left, lessThan(thirdRect.left));
+    expect(thirdRect.left, lessThan(fourthRect.left));
+    expect(fourthRect.left, lessThan(fifthRect.left));
   });
 
   testWidgets(

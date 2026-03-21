@@ -6,6 +6,7 @@ import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
 import '../stats_calculator.dart';
+import '../widgets/app_media.dart';
 
 Future<void> _refreshStatistics(BuildContext context) async {
   final l10n = AppLocalizations.of(context);
@@ -30,6 +31,21 @@ Map<DrinkCategory, Color> _statisticsCategoryColors(ThemeData theme) {
     DrinkCategory.cocktails: theme.colorScheme.error,
     DrinkCategory.nonAlcoholic: theme.colorScheme.primaryContainer,
   };
+}
+
+bool _statisticsGalleryHasImage(DrinkEntry entry) {
+  final imagePath = entry.imagePath?.trim();
+  return imagePath != null && imagePath.isNotEmpty;
+}
+
+int _statisticsGalleryCrossAxisCount(double maxWidth) {
+  if (maxWidth >= 900) {
+    return 5;
+  }
+  if (maxWidth >= 600) {
+    return 4;
+  }
+  return 3;
 }
 
 class StatisticsScreen extends StatelessWidget {
@@ -60,8 +76,8 @@ class StatisticsScreen extends StatelessWidget {
                 tabs: <Widget>[
                   Tab(text: l10n.statisticsOverview),
                   Tab(text: l10n.statisticsMap),
-                  Tab(text: l10n.history),
                   Tab(text: l10n.statisticsGallery),
+                  Tab(text: l10n.history),
                 ],
               ),
             ),
@@ -77,14 +93,8 @@ class StatisticsScreen extends StatelessWidget {
                   title: l10n.statisticsMapPlaceholderTitle,
                   body: l10n.statisticsMapPlaceholderBody,
                 ),
+                const _StatisticsGalleryPage(),
                 const _StatisticsHistoryPage(),
-                _StatisticsPlaceholderPage(
-                  listKey: const Key('statistics-gallery-list-view'),
-                  placeholderKey: const Key('statistics-gallery-placeholder'),
-                  icon: Icons.photo_library_rounded,
-                  title: l10n.statisticsGalleryPlaceholderTitle,
-                  body: l10n.statisticsGalleryPlaceholderBody,
-                ),
               ],
             ),
           ),
@@ -310,6 +320,216 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatisticsGalleryPage extends StatelessWidget {
+  const _StatisticsGalleryPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.controllerOf(context);
+    final l10n = AppLocalizations.of(context);
+    final localeCode = controller.settings.localeCode;
+    final unit = controller.settings.unit;
+    final entries = controller.entries
+        .where(_statisticsGalleryHasImage)
+        .toList(growable: false);
+    final galleryItems = entries
+        .map(
+          (entry) => AppGalleryViewerItem(
+            imagePath: entry.imagePath!.trim(),
+            drinkName: controller.localizedEntryDrinkName(
+              entry,
+              localeCode: localeCode,
+            ),
+            metadata: <String>[
+              l10n.categoryLabel(entry.category),
+              DateFormat.yMMMd(localeCode).add_Hm().format(entry.consumedAt),
+              if (entry.volumeMl != null) unit.formatVolume(entry.volumeMl),
+            ],
+            comment: _normalizedGalleryComment(entry.comment),
+          ),
+        )
+        .toList(growable: false);
+
+    if (entries.isEmpty) {
+      final theme = Theme.of(context);
+      return RefreshIndicator(
+        key: const Key('statistics-gallery-refresh-indicator'),
+        onRefresh: () => _refreshStatistics(context),
+        child: ListView(
+          key: const Key('statistics-gallery-list-view'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+          children: <Widget>[
+            Container(
+              key: const Key('statistics-gallery-empty-state'),
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: Column(
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Icon(
+                      Icons.photo_library_rounded,
+                      size: 36,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    l10n.statisticsGalleryEmptyTitle,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    l10n.statisticsGalleryEmptyBody,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      key: const Key('statistics-gallery-refresh-indicator'),
+      onRefresh: () => _refreshStatistics(context),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return GridView.builder(
+            key: const Key('statistics-gallery-grid'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: _statisticsGalleryCrossAxisCount(
+                constraints.maxWidth,
+              ),
+              crossAxisSpacing: 4,
+              mainAxisSpacing: 4,
+            ),
+            itemCount: entries.length,
+            itemBuilder: (context, index) {
+              final entry = entries[index];
+              final galleryItem = galleryItems[index];
+
+              return _StatisticsGalleryTile(
+                key: Key('statistics-gallery-tile-${entry.id}'),
+                imagePath: galleryItem.imagePath,
+                onTap: () {
+                  showAppGalleryViewerDialog(
+                    context,
+                    items: galleryItems,
+                    initialIndex: index,
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  String? _normalizedGalleryComment(String? comment) {
+    final normalized = comment?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+}
+
+class _StatisticsGalleryTile extends StatefulWidget {
+  const _StatisticsGalleryTile({
+    super.key,
+    required this.imagePath,
+    required this.onTap,
+  });
+
+  final String imagePath;
+  final VoidCallback onTap;
+
+  @override
+  State<_StatisticsGalleryTile> createState() => _StatisticsGalleryTileState();
+}
+
+class _StatisticsGalleryTileState extends State<_StatisticsGalleryTile> {
+  late Future<ImageProvider<Object>?> _imageFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateImageFuture();
+  }
+
+  @override
+  void didUpdateWidget(covariant _StatisticsGalleryTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imagePath != widget.imagePath) {
+      _updateImageFuture();
+    }
+  }
+
+  void _updateImageFuture() {
+    _imageFuture = AppMediaResolver.resolveImageProvider(widget.imagePath);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: ColoredBox(
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: FutureBuilder<ImageProvider<Object>?>(
+                future: _imageFuture,
+                builder: (context, snapshot) {
+                  final imageProvider = snapshot.data;
+                  if (imageProvider == null) {
+                    return Icon(
+                      Icons.image_outlined,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    );
+                  }
+                  return Image(
+                    image: imageProvider,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Icon(
+                      Icons.broken_image_outlined,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
