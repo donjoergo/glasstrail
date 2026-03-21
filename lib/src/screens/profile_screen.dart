@@ -85,12 +85,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final settings = controller.settings;
     final isBusy = controller.isBusy;
     final isSigningOut = controller.isBusyFor(AppBusyAction.signOut);
+    final editProfileButton = FilledButton.tonalIcon(
+      key: const Key('profile-edit-button'),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(40),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: isBusy ? null : _openEditProfile,
+      icon: const Icon(Icons.edit_outlined),
+      label: Text(l10n.editProfile),
+    );
+    final logoutButton = FilledButton.tonalIcon(
+      key: const Key('profile-logout-button'),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(40),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      ),
+      onPressed: isBusy
+          ? null
+          : () async {
+              final success = await controller.signOut();
+              if (!mounted) {
+                return;
+              }
+              final message = controller.takeFlashMessage(l10n);
+              if (message != null) {
+                _showMessage(message);
+              }
+              if (!success) {
+                return;
+              }
+              await AppScope.routeMemoryOf(context).markLoggedOut();
+              if (!mounted) {
+                return;
+              }
+              Navigator.of(context).pushReplacementNamed(AppRoutes.auth);
+            },
+      icon: isSigningOut
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.logout_rounded),
+      label: Text(l10n.logout),
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
       children: <Widget>[
         Container(
-          padding: const EdgeInsets.all(20),
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(24),
@@ -98,88 +144,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  AppAvatar(
-                    imagePath: user.profileImagePath,
-                    radius: 30,
-                    backgroundColor: theme.colorScheme.primary.withValues(
-                      alpha: 0.14,
-                    ),
-                    fallback: Text(
-                      user.initials,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
-                          user.displayName,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
+                        AppAvatar(
+                          imagePath: user.profileImagePath,
+                          radius: 30,
+                          backgroundColor: theme.colorScheme.primary.withValues(
+                            alpha: 0.14,
+                          ),
+                          fallback: Text(
+                            user.initials,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          user.email,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                user.displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                user.email,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        if (user.birthday != null) ...<Widget>[
+                          const SizedBox(width: 12),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.cake_outlined,
+                                    size: 18,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    formatBirthdayMonthDay(
+                                      user.birthday!,
+                                      settings.localeCode,
+                                    ),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                  ),
-                ],
-              ),
-              if (user.birthday != null) ...<Widget>[
-                const SizedBox(height: 16),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Icon(
-                          Icons.cake_outlined,
-                          size: 18,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          formatBirthdayMonthDay(
-                            user.birthday!,
-                            settings.localeCode,
-                          ),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-              const SizedBox(height: 16),
-              FilledButton.tonalIcon(
-                key: const Key('profile-edit-button'),
-                onPressed: isBusy ? null : _openEditProfile,
-                icon: const Icon(Icons.edit_outlined),
-                label: Text(l10n.editProfile),
               ),
+              SizedBox(width: double.infinity, child: editProfileButton),
             ],
           ),
         ),
@@ -413,42 +465,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 12),
               Text(l10n.roadmapBody),
-              const SizedBox(height: 16),
-              FilledButton.tonalIcon(
-                key: const Key('profile-logout-button'),
-                onPressed: isBusy
-                    ? null
-                    : () async {
-                        final success = await controller.signOut();
-                        if (!mounted) {
-                          return;
-                        }
-                        final message = controller.takeFlashMessage(l10n);
-                        if (message != null) {
-                          _showMessage(message);
-                        }
-                        if (!success) {
-                          return;
-                        }
-                        await AppScope.routeMemoryOf(context).markLoggedOut();
-                        if (!mounted) {
-                          return;
-                        }
-                        Navigator.of(
-                          context,
-                        ).pushReplacementNamed(AppRoutes.auth);
-                      },
-                icon: isSigningOut
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.logout_rounded),
-                label: Text(l10n.logout),
-              ),
             ],
           ),
         ),
+        const SizedBox(height: 20),
+        SizedBox(width: double.infinity, child: logoutButton),
       ],
     );
   }
