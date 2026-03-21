@@ -5,6 +5,7 @@ import '../app_routes.dart';
 import '../app_scope.dart';
 import '../birthday.dart';
 import '../models.dart';
+import '../widgets/app_media.dart';
 import 'custom_drink_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -84,12 +85,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  CircleAvatar(
+                  AppAvatar(
+                    imagePath: user.profileImagePath,
                     radius: 30,
                     backgroundColor: theme.colorScheme.primary.withValues(
                       alpha: 0.14,
                     ),
-                    child: Text(
+                    fallback: Text(
                       user.initials,
                       style: theme.textTheme.titleLarge?.copyWith(
                         color: theme.colorScheme.primary,

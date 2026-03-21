@@ -4,6 +4,7 @@ import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../birthday.dart';
 import '../models.dart';
+import '../widgets/app_media.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -126,14 +127,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          CircleAvatar(
-                            radius: 28,
+                          AppAvatar(
+                            key: const Key('edit-profile-image-preview'),
+                            imagePath: _profileImagePath,
+                            radius: 72,
                             backgroundColor: theme.colorScheme.primary
                                 .withValues(alpha: 0.14),
-                            child: Text(
+                            fallback: Text(
                               user.initials,
-                              style: theme.textTheme.titleLarge?.copyWith(
+                              style: theme.textTheme.headlineLarge?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -156,6 +160,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
                                   ),
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: <Widget>[
+                                    FilledButton.tonalIcon(
+                                      onPressed: _pickPhoto,
+                                      icon: const Icon(
+                                        Icons.photo_camera_back_outlined,
+                                      ),
+                                      label: Text(
+                                        _profileImagePath == null
+                                            ? l10n.pickPhoto
+                                            : l10n.changePhoto,
+                                      ),
+                                    ),
+                                    if (_profileImagePath != null)
+                                      OutlinedButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            _profileImagePath = null;
+                                          });
+                                        },
+                                        icon: const Icon(Icons.close_rounded),
+                                        label: Text(l10n.removePhoto),
+                                      ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -203,44 +235,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: <Widget>[
-                          FilledButton.tonalIcon(
-                            onPressed: _pickPhoto,
-                            icon: const Icon(Icons.photo_camera_back_outlined),
-                            label: Text(
-                              _profileImagePath == null
-                                  ? l10n.pickPhoto
-                                  : l10n.changePhoto,
-                            ),
-                          ),
-                          if (_profileImagePath != null)
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _profileImagePath = null;
-                                });
-                              },
-                              icon: const Icon(Icons.close_rounded),
-                              label: Text(l10n.removePhoto),
-                            ),
-                        ],
-                      ),
-                      if (_profileImagePath != null) ...<Widget>[
-                        const SizedBox(height: 12),
-                        Text(
-                          _profileImagePath!.split(RegExp(r'[\\/]')).last,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
                       const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,

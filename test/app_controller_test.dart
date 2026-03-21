@@ -119,6 +119,32 @@ void main() {
     );
   });
 
+  test(
+    'removes the current user profile image when updating the profile',
+    () async {
+      final controller = await buildTestController();
+      final german = AppLocalizations(const Locale('de'));
+
+      await controller.signUp(
+        email: 'profile-image@example.com',
+        password: 'password123',
+        displayName: 'Profile Image Example',
+        profileImagePath: '/tmp/profile-before.png',
+      );
+      controller.takeFlashMessage(german);
+
+      final success = await controller.updateProfile(
+        displayName: 'Profile Image Example',
+        profileImagePath: null,
+        clearProfileImage: true,
+      );
+
+      expect(success, isTrue);
+      expect(controller.currentUser?.profileImagePath, isNull);
+      expect(controller.takeFlashMessage(german), 'Profil aktualisiert.');
+    },
+  );
+
   test('updates a drink entry and emits a localized success message', () async {
     final controller = await buildTestController();
     final german = AppLocalizations(const Locale('de'));

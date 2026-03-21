@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -27,7 +29,15 @@ class SupabaseAppRepository implements AppRepository {
     if (authUser == null) {
       return null;
     }
-    return _authUserToUser(authUser);
+    try {
+      return _ensureProfile(authUser);
+    } on AuthException catch (error) {
+      throw AppException(error.message);
+    } on StorageException catch (error) {
+      throw AppException(error.message);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
   }
 
   @override
@@ -39,14 +49,15 @@ class SupabaseAppRepository implements AppRepository {
     String? profileImagePath,
   }) async {
     try {
+      final trimmedProfileImagePath = profileImagePath?.trim();
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
         data: <String, dynamic>{
           'display_name': displayName.trim(),
           if (birthday != null) 'birthday': _toDateString(birthday),
-          if (profileImagePath != null && profileImagePath.trim().isNotEmpty)
-            'profile_image_path': profileImagePath.trim(),
+          if (_shouldPersistAuthMetadataImagePath(trimmedProfileImagePath))
+            'profile_image_path': trimmedProfileImagePath,
         },
       );
 
@@ -61,12 +72,21 @@ class SupabaseAppRepository implements AppRepository {
         );
       }
 
-      return _ensureProfile(
+      var profile = await _ensureProfile(
         user,
         preferredDisplayName: displayName.trim(),
         preferredBirthday: birthday,
-        preferredProfileImagePath: profileImagePath,
+        preferredProfileImagePath: trimmedProfileImagePath,
       );
+      if (trimmedProfileImagePath != null &&
+          trimmedProfileImagePath.isNotEmpty &&
+          (_looksLikeLocalFile(trimmedProfileImagePath) ||
+              trimmedProfileImagePath != profile.profileImagePath)) {
+        profile = await updateProfile(
+          profile.copyWith(profileImagePath: trimmedProfileImagePath),
+        );
+      }
+      return profile;
     } on AuthException catch (error) {
       throw AppException(error.message);
     } on StorageException catch (error) {
@@ -110,6 +130,10 @@ class SupabaseAppRepository implements AppRepository {
   @override
   Future<AppUser> updateProfile(AppUser user) async {
     try {
+      final previousProfile = await _loadProfile(
+        user.id,
+        fallbackEmail: user.email,
+      );
       final finalImagePath = await _resolveMediaPath(
         userId: user.id,
         imagePath: user.profileImagePath,
@@ -142,11 +166,18 @@ class SupabaseAppRepository implements AppRepository {
           .select()
           .single();
 
-      return _profileToUser(
+      final updatedProfile = _profileToUser(
         Map<String, dynamic>.from(row),
         userId: user.id,
         email: user.email,
       );
+      if (previousProfile?.profileImagePath != finalImagePath) {
+        await _deleteMediaPathIfOwned(
+          previousProfile?.profileImagePath,
+          user.id,
+        );
+      }
+      return updatedProfile;
     } on AuthException catch (error) {
       throw AppException(error.message);
     } on StorageException catch (error) {
@@ -479,6 +510,25 @@ class SupabaseAppRepository implements AppRepository {
         );
   }
 
+  Future<AppUser?> _loadProfile(
+    String userId, {
+    required String fallbackEmail,
+  }) async {
+    final row = await _client
+        .from('profiles')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
+    if (row == null) {
+      return null;
+    }
+    return _profileToUser(
+      Map<String, dynamic>.from(row),
+      userId: userId,
+      email: fallbackEmail,
+    );
+  }
+
   AppUser _profileToUser(
     Map<String, dynamic> row, {
     required String userId,
@@ -495,26 +545,6 @@ class SupabaseAppRepository implements AppRepository {
       profileImagePath: row['profile_image_path'] as String?,
       birthday: normalizeBirthdayOrNull(
         birthdayRaw == null ? null : DateTime.parse(birthdayRaw as String),
-      ),
-    );
-  }
-
-  AppUser _authUserToUser(User authUser) {
-    final metadata = Map<String, dynamic>.from(
-      authUser.userMetadata ?? const <String, dynamic>{},
-    );
-    final birthdayRaw = metadata['birthday'] as String?;
-
-    return AppUser(
-      id: authUser.id,
-      email: authUser.email ?? '',
-      displayName:
-          (metadata['display_name'] as String?) ??
-          (metadata['nickname'] as String?) ??
-          _fallbackDisplayName(authUser.email),
-      profileImagePath: metadata['profile_image_path'] as String?,
-      birthday: normalizeBirthdayOrNull(
-        birthdayRaw == null ? null : DateTime.parse(birthdayRaw),
       ),
     );
   }
@@ -567,8 +597,9 @@ class SupabaseAppRepository implements AppRepository {
       return normalized;
     }
 
-    final bytes = await XFile(normalized).readAsBytes();
-    final fileName = normalized.split(RegExp(r'[\\/]')).last;
+    final bytes = await _readUploadBytes(normalized);
+    final mimeType = _guessMimeTypeFromSource(normalized);
+    final fileName = _storageFileNameForSource(normalized, mimeType);
     final sanitized =
         '${DateTime.now().millisecondsSinceEpoch}-${fileName.replaceAll(' ', '-')}';
     final storagePath = '$userId/$folder/$sanitized';
@@ -578,10 +609,7 @@ class SupabaseAppRepository implements AppRepository {
         .uploadBinary(
           storagePath,
           bytes,
-          fileOptions: FileOptions(
-            upsert: true,
-            contentType: _guessMimeType(fileName),
-          ),
+          fileOptions: FileOptions(upsert: true, contentType: mimeType),
         );
 
     return storagePath;
@@ -591,6 +619,9 @@ class SupabaseAppRepository implements AppRepository {
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return false;
     }
+    if (path.startsWith('blob:') || path.startsWith('data:')) {
+      return true;
+    }
     if (path.startsWith('/')) {
       return true;
     }
@@ -598,6 +629,32 @@ class SupabaseAppRepository implements AppRepository {
       return true;
     }
     return path.startsWith('file://');
+  }
+
+  Future<Uint8List> _readUploadBytes(String source) async {
+    if (source.startsWith('data:')) {
+      final bytes = Uri.parse(source).data?.contentAsBytes();
+      if (bytes == null) {
+        throw const AppException('The selected image could not be read.');
+      }
+      return Uint8List.fromList(bytes);
+    }
+    return XFile(source).readAsBytes();
+  }
+
+  String _storageFileNameForSource(String source, String mimeType) {
+    if (source.startsWith('data:') || source.startsWith('blob:')) {
+      return 'upload${_extensionForMimeType(mimeType)}';
+    }
+    return source.split(RegExp(r'[\\/]')).last;
+  }
+
+  bool _shouldPersistAuthMetadataImagePath(String? imagePath) {
+    final normalized = imagePath?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return false;
+    }
+    return !_looksLikeLocalFile(normalized);
   }
 
   Future<void> _deleteMediaPathIfOwned(String? imagePath, String userId) async {
@@ -622,6 +679,17 @@ class SupabaseAppRepository implements AppRepository {
     return imagePath.split('/').first == userId;
   }
 
+  String _guessMimeTypeFromSource(String source) {
+    if (source.startsWith('data:')) {
+      final mimeType = Uri.parse(source).data?.mimeType;
+      if (mimeType != null && mimeType.isNotEmpty) {
+        return mimeType;
+      }
+      return 'image/jpeg';
+    }
+    return _guessMimeType(source);
+  }
+
   String _guessMimeType(String fileName) {
     final lower = fileName.toLowerCase();
     if (lower.endsWith('.png')) {
@@ -631,6 +699,17 @@ class SupabaseAppRepository implements AppRepository {
       return 'image/webp';
     }
     return 'image/jpeg';
+  }
+
+  String _extensionForMimeType(String mimeType) {
+    final normalized = mimeType.toLowerCase();
+    if (normalized == 'image/png') {
+      return '.png';
+    }
+    if (normalized == 'image/webp') {
+      return '.webp';
+    }
+    return '.jpg';
   }
 
   String _fallbackDisplayName(String? email) {

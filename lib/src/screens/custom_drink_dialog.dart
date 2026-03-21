@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
+import '../widgets/app_media.dart';
 
 class CustomDrinkDialog extends StatefulWidget {
   const CustomDrinkDialog({super.key, this.initialDrink});
@@ -102,7 +103,6 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
-    final theme = Theme.of(context);
 
     return AlertDialog(
       title: Text(
@@ -160,7 +160,10 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                 },
               ),
               const SizedBox(height: 16),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: <Widget>[
                   FilledButton.tonalIcon(
                     onPressed: _pickPhoto,
@@ -169,34 +172,24 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                       _imagePath == null ? l10n.pickPhoto : l10n.changePhoto,
                     ),
                   ),
-                  if (_imagePath != null) ...<Widget>[
-                    const SizedBox(width: 12),
-                    IconButton(
+                  if (_imagePath != null)
+                    OutlinedButton.icon(
                       onPressed: () {
                         setState(() {
                           _imagePath = null;
                         });
                       },
                       icon: const Icon(Icons.close_rounded),
-                      tooltip: l10n.removePhoto,
+                      label: Text(l10n.removePhoto),
                     ),
-                  ],
                 ],
               ),
               if (_imagePath != null) ...<Widget>[
-                const SizedBox(height: 10),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    _imagePath!.split(RegExp(r'[\\/]')).last,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                const SizedBox(height: 12),
+                AppPhotoPreview(
+                  key: const Key('custom-drink-image-preview'),
+                  imagePath: _imagePath,
+                  cropPortraitToSquare: true,
                 ),
               ],
             ],

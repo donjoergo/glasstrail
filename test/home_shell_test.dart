@@ -680,6 +680,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.byKey(Key('history-entry-image-$entryId')), findsOneWidget);
+      expect(find.text('before-edit.png'), findsNothing);
+
       await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
@@ -688,11 +691,9 @@ void main() {
       final commentField = tester.widget<TextFormField>(
         find.byKey(const Key('edit-entry-comment-field')),
       );
-      final imageLabel = tester.widget<Text>(
-        find.byKey(const Key('edit-entry-image-name')),
-      );
       expect(commentField.controller?.text, 'Before edit');
-      expect(imageLabel.data, 'before-edit.png');
+      expect(find.byKey(const Key('edit-entry-image-preview')), findsOneWidget);
+      expect(find.text('before-edit.png'), findsNothing);
       expect(find.byKey(const Key('drink-search-field')), findsNothing);
       expect(find.byKey(const Key('drink-volume-field')), findsNothing);
 

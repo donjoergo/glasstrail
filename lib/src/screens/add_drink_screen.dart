@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
+import '../widgets/app_media.dart';
 import 'custom_drink_dialog.dart';
 
 class AddDrinkScreen extends StatefulWidget {
@@ -307,7 +308,10 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: <Widget>[
                       FilledButton.tonalIcon(
                         onPressed: _pickPhoto,
@@ -318,26 +322,26 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                               : l10n.changePhoto,
                         ),
                       ),
-                      if (_imagePath != null) ...<Widget>[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _imagePath!.split(RegExp(r'[\\/]')).last,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        IconButton(
+                      if (_imagePath != null)
+                        OutlinedButton.icon(
                           onPressed: () {
                             setState(() {
                               _imagePath = null;
                             });
                           },
                           icon: const Icon(Icons.close_rounded),
+                          label: Text(l10n.removePhoto),
                         ),
-                      ],
                     ],
                   ),
+                  if (_imagePath != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    AppPhotoPreview(
+                      key: const Key('add-drink-image-preview'),
+                      imagePath: _imagePath,
+                      cropPortraitToSquare: true,
+                    ),
+                  ],
                 ],
                 const SizedBox(height: 24),
                 SizedBox(

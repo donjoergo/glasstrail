@@ -79,6 +79,24 @@ void main() {
     expect(signUpDisplayNameField.autofillHints, contains(AutofillHints.name));
   });
 
+  testWidgets('shows a profile image preview on sign-up without a filename', (
+    tester,
+  ) async {
+    final app = await buildTestApp();
+
+    await tester.pumpWidget(app);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Pick photo'));
+    await tester.tap(find.text('Pick photo'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('auth-profile-image-preview')), findsOneWidget);
+    expect(find.text('mock-image.png'), findsNothing);
+  });
+
   testWidgets('submits sign-in on enter from the password field', (
     tester,
   ) async {

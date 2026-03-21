@@ -5,6 +5,7 @@ import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
 import '../stats_calculator.dart';
+import '../widgets/app_media.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -462,26 +463,10 @@ class _DrinkEntryCard extends StatelessWidget {
           ],
           if (entry.imagePath != null) ...<Widget>[
             const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Row(
-                children: <Widget>[
-                  const Icon(Icons.image_outlined),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      entry.imagePath!.split(RegExp(r'[\\/]')).last,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
+            AppPhotoPreview(
+              key: Key('history-entry-image-${entry.id}'),
+              imagePath: entry.imagePath,
+              cropPortraitToSquare: true,
             ),
           ],
         ],
@@ -630,7 +615,10 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: <Widget>[
                   FilledButton.tonalIcon(
                     key: const Key('edit-entry-pick-photo-button'),
@@ -640,9 +628,8 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                       _imagePath == null ? l10n.pickPhoto : l10n.changePhoto,
                     ),
                   ),
-                  if (_imagePath != null) ...<Widget>[
-                    const SizedBox(width: 12),
-                    IconButton(
+                  if (_imagePath != null)
+                    OutlinedButton.icon(
                       key: const Key('edit-entry-remove-photo-button'),
                       onPressed: () {
                         setState(() {
@@ -650,26 +637,16 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                         });
                       },
                       icon: const Icon(Icons.close_rounded),
-                      tooltip: l10n.removePhoto,
+                      label: Text(l10n.removePhoto),
                     ),
-                  ],
                 ],
               ),
               if (_imagePath != null) ...<Widget>[
-                const SizedBox(height: 10),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    _imagePath!.split(RegExp(r'[\\/]')).last,
-                    key: const Key('edit-entry-image-name'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                const SizedBox(height: 12),
+                AppPhotoPreview(
+                  key: const Key('edit-entry-image-preview'),
+                  imagePath: _imagePath,
+                  cropPortraitToSquare: true,
                 ),
               ],
             ],

@@ -5,6 +5,7 @@ import '../app_localizations.dart';
 import '../app_routes.dart';
 import '../birthday.dart';
 import '../app_scope.dart';
+import '../widgets/app_media.dart';
 
 enum _AuthMode { signIn, signUp }
 
@@ -330,7 +331,29 @@ class _AuthScreenState extends State<AuthScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
+            if (_profileImagePath != null) ...<Widget>[
+              const SizedBox(height: 4),
+              Center(
+                child: AppAvatar(
+                  key: const Key('auth-profile-image-preview'),
+                  imagePath: _profileImagePath,
+                  radius: 42,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.14),
+                  fallback: Icon(
+                    Icons.account_circle_outlined,
+                    size: 42,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: <Widget>[
                 FilledButton.tonalIcon(
                   onPressed: _pickPhoto,
@@ -341,25 +364,16 @@ class _AuthScreenState extends State<AuthScreen> {
                         : l10n.changePhoto,
                   ),
                 ),
-                if (_profileImagePath != null) ...<Widget>[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _profileImagePath!.split(RegExp(r'[\\/]')).last,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
+                if (_profileImagePath != null)
+                  OutlinedButton.icon(
                     onPressed: () {
                       setState(() {
                         _profileImagePath = null;
                       });
                     },
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: l10n.removePhoto,
+                    label: Text(l10n.removePhoto),
                   ),
-                ],
               ],
             ),
           ],
