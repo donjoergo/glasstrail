@@ -19,6 +19,8 @@ import 'screens/auth_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/home_shell.dart';
 
+const _appDisplayTitle = 'Glass Trail';
+
 class GlassTrailBootstrapApp extends StatefulWidget {
   const GlassTrailBootstrapApp({
     super.key,
@@ -129,7 +131,7 @@ class GlassTrailApp extends StatelessWidget {
           }
 
           return MaterialApp(
-            title: 'GlassTrail',
+            title: _appDisplayTitle,
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
@@ -182,7 +184,7 @@ class _BootstrapShell extends StatelessWidget {
     }
 
     return MaterialApp(
-      title: 'GlassTrail',
+      title: _appDisplayTitle,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

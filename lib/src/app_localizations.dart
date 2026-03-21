@@ -23,7 +23,7 @@ class AppLocalizations {
 
   static const _values = <String, Map<String, String>>{
     'en': {
-      'appTitle': 'GlassTrail',
+      'appTitle': 'Glass Trail',
       'feed': 'Feed',
       'statistics': 'Statistics',
       'statisticsOverview': 'Overview',
@@ -48,8 +48,6 @@ class AppLocalizations {
       'takePhoto': 'Take photo',
       'chooseFromGallery': 'Choose from gallery',
       'removePhoto': 'Remove photo',
-      'authHint':
-          'The first release focuses on private tracking. Social features come later.',
       'addDrink': 'Add drink',
       'searchDrinks': 'Search drinks',
       'recentDrinks': 'Recent drinks',
@@ -152,7 +150,7 @@ class AppLocalizations {
       'invalidRequired': 'Please fill in all required fields.',
       'emptyFilter': 'No drinks match the current filter.',
       'launchingApp': 'Loading your drinks and settings.',
-      'welcomeToGlassTrail': 'Welcome to GlassTrail.',
+      'welcomeToGlassTrail': 'Welcome to Glass Trail.',
       'welcomeBack': 'Welcome back.',
       'profileUpdated': 'Profile updated.',
       'customDrinkSaved': 'Custom drink saved.',
@@ -177,7 +175,7 @@ class AppLocalizations {
       'nonAlcoholic': 'Non-alcoholic',
     },
     'de': {
-      'appTitle': 'GlassTrail',
+      'appTitle': 'Glass Trail',
       'feed': 'Feed',
       'statistics': 'Statistiken',
       'statisticsOverview': 'Überblick',
@@ -202,8 +200,6 @@ class AppLocalizations {
       'takePhoto': 'Kamera verwenden',
       'chooseFromGallery': 'Aus Galerie wählen',
       'removePhoto': 'Foto entfernen',
-      'authHint':
-          'Die erste Version konzentriert sich auf privates Tracking. Soziale Funktionen folgen später.',
       'addDrink': 'Getränk hinzufügen',
       'searchDrinks': 'Getränke suchen',
       'recentDrinks': 'Zuletzt verwendet',
@@ -310,7 +306,7 @@ class AppLocalizations {
       'invalidRequired': 'Bitte alle Pflichtfelder ausfüllen.',
       'emptyFilter': 'Keine Getränke für den aktuellen Filter gefunden.',
       'launchingApp': 'Getränke und Einstellungen werden geladen.',
-      'welcomeToGlassTrail': 'Willkommen bei GlassTrail.',
+      'welcomeToGlassTrail': 'Willkommen bei Glass Trail.',
       'welcomeBack': 'Willkommen zurück.',
       'profileUpdated': 'Profil aktualisiert.',
       'customDrinkSaved': 'Eigenes Getränk gespeichert.',
@@ -366,7 +362,6 @@ class AppLocalizations {
   String get takePhoto => _text('takePhoto');
   String get chooseFromGallery => _text('chooseFromGallery');
   String get removePhoto => _text('removePhoto');
-  String get authHint => _text('authHint');
   String get addDrink => _text('addDrink');
   String get searchDrinks => _text('searchDrinks');
   String get recentDrinks => _text('recentDrinks');

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
@@ -10,6 +11,8 @@ import '../photo_service.dart';
 import '../widgets/app_media.dart';
 
 enum _AuthMode { signIn, signUp }
+
+const _brandIconAsset = 'assets/icon/app_icon.png';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -148,95 +151,171 @@ class _AuthScreenState extends State<AuthScreen> {
               padding: const EdgeInsets.all(24),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 520),
-                child: Card(
-                  color: theme.colorScheme.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          l10n.welcomeTitle,
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          l10n.welcomeBody,
-                          style: theme.textTheme.bodyLarge,
-                        ),
-                        const SizedBox(height: 20),
-                        SegmentedButton<_AuthMode>(
-                          segments: <ButtonSegment<_AuthMode>>[
-                            ButtonSegment<_AuthMode>(
-                              value: _AuthMode.signIn,
-                              label: Text(
-                                l10n.signIn,
-                                key: const Key('auth-mode-sign-in'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    _buildBrandHero(theme, l10n),
+                    const SizedBox(height: 24),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      color: theme.colorScheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              l10n.welcomeTitle,
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
-                            ButtonSegment<_AuthMode>(
-                              value: _AuthMode.signUp,
-                              label: Text(
-                                l10n.signUp,
-                                key: const Key('auth-mode-sign-up'),
+                            const SizedBox(height: 10),
+                            Text(
+                              l10n.welcomeBody,
+                              style: theme.textTheme.bodyLarge,
+                            ),
+                            const SizedBox(height: 20),
+                            SegmentedButton<_AuthMode>(
+                              segments: <ButtonSegment<_AuthMode>>[
+                                ButtonSegment<_AuthMode>(
+                                  value: _AuthMode.signIn,
+                                  label: Text(
+                                    l10n.signIn,
+                                    key: const Key('auth-mode-sign-in'),
+                                  ),
+                                ),
+                                ButtonSegment<_AuthMode>(
+                                  value: _AuthMode.signUp,
+                                  label: Text(
+                                    l10n.signUp,
+                                    key: const Key('auth-mode-sign-up'),
+                                  ),
+                                ),
+                              ],
+                              selected: <_AuthMode>{_mode},
+                              onSelectionChanged: isBusy
+                                  ? null
+                                  : (selection) {
+                                      setState(() {
+                                        _mode = selection.first;
+                                      });
+                                    },
+                            ),
+                            const SizedBox(height: 24),
+                            if (_mode == _AuthMode.signIn)
+                              _buildSignInForm(l10n, isBusy)
+                            else
+                              _buildSignUpForm(l10n, localeCode, isBusy),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                key: const Key('auth-submit-button'),
+                                onPressed: isBusy ? null : _submit,
+                                child: isSubmitting
+                                    ? const SizedBox.square(
+                                        dimension: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        _mode == _AuthMode.signIn
+                                            ? l10n.signIn
+                                            : l10n.signUp,
+                                      ),
                               ),
                             ),
                           ],
-                          selected: <_AuthMode>{_mode},
-                          onSelectionChanged: isBusy
-                              ? null
-                              : (selection) {
-                                  setState(() {
-                                    _mode = selection.first;
-                                  });
-                                },
                         ),
-                        const SizedBox(height: 20),
-                        Text(
-                          l10n.authHint,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        if (_mode == _AuthMode.signIn)
-                          _buildSignInForm(l10n, isBusy)
-                        else
-                          _buildSignUpForm(l10n, localeCode, isBusy),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            key: const Key('auth-submit-button'),
-                            onPressed: isBusy ? null : _submit,
-                            child: isSubmitting
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Text(
-                                    _mode == _AuthMode.signIn
-                                        ? l10n.signIn
-                                        : l10n.signUp,
-                                  ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBrandHero(ThemeData theme, AppLocalizations l10n) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 360;
+        final iconSize = isCompact ? 112.0 : 132.0;
+        final baseTitleStyle = isCompact
+            ? theme.textTheme.displayMedium
+            : theme.textTheme.displayLarge;
+        final titleHeight = !isCompact && kIsWeb ? 96.0 : 78.0;
+        final title = Text(
+          l10n.appTitle,
+          key: const Key('auth-brand-title'),
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.visible,
+          style: baseTitleStyle?.copyWith(
+            fontSize: !isCompact && kIsWeb
+                ? (baseTitleStyle?.fontSize ?? 57) + 22
+                : null,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -2.2,
+            height: 0.94,
+          ),
+        );
+
+        return Padding(
+          key: const Key('auth-brand-hero'),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 8 : 12,
+            vertical: isCompact ? 8 : 12,
+          ),
+          child: Flex(
+            direction: isCompact ? Axis.vertical : Axis.horizontal,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Material(
+                key: const Key('auth-brand-icon'),
+                elevation: 20,
+                shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(30),
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox.square(
+                  dimension: iconSize,
+                  child: Image.asset(_brandIconAsset, fit: BoxFit.cover),
+                ),
+              ),
+              SizedBox(width: isCompact ? 0 : 24, height: isCompact ? 20 : 0),
+              if (isCompact)
+                SizedBox(
+                  width: constraints.maxWidth,
+                  height: 56,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: title,
+                  ),
+                )
+              else
+                Expanded(
+                  child: SizedBox(
+                    height: titleHeight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: title,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
