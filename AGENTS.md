@@ -17,3 +17,8 @@ Recent history uses Conventional Commits such as `feat(statistics): ...` and `fi
 
 ## Security & Configuration Tips
 Do not commit live Supabase secrets or ad hoc environment files. Production defaults come from `lib/src/backend_config.dart`; temporary local overrides should stay in command-line `--dart-define` flags. Review row-level-security implications whenever you add or modify migrations.
+
+## Agent-Specific Instructions
+For Dart and Flutter work in this repository, prefer Dart MCP tools over shell commands whenever possible.
+
+Call `mcp__dart__add_roots` for this repository before other Dart MCP calls when needed. Prefer `mcp__dart__analyze_files` over `flutter analyze`, `mcp__dart__run_tests` over `flutter test`, and `mcp__dart__dart_format` over `dart format`. Use shell `dart` or `flutter` commands only when the Dart MCP cannot perform the task or when the user explicitly asks for shell commands.
