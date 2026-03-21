@@ -200,6 +200,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                         .map(
                           (drink) => ChoiceChip(
                             selected: _selectedDrink?.id == drink.id,
+                            showCheckmark: false,
                             avatar: Icon(
                               drink.category.icon,
                               key: Key('recent-drink-icon-${drink.id}'),

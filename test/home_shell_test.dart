@@ -826,6 +826,15 @@ void main() {
       findsOneWidget,
     );
 
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Pils'));
+    await tester.pumpAndSettle();
+
+    final recentDrinkChip = tester.widget<ChoiceChip>(
+      find.widgetWithText(ChoiceChip, 'Pils'),
+    );
+    expect(recentDrinkChip.selected, isTrue);
+    expect(recentDrinkChip.showCheckmark, isFalse);
+
     await tester.pageBack();
     await tester.pumpAndSettle();
 
