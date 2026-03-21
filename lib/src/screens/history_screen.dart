@@ -5,6 +5,7 @@ import '../app_controller.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
+import '../photo_service.dart';
 import '../stats_calculator.dart';
 import '../widgets/app_media.dart';
 
@@ -484,7 +485,9 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
   }
 
   Future<void> _pickPhoto() async {
-    final path = await AppScope.photoServiceOf(context).pickImage();
+    final path = await AppScope.photoServiceOf(
+      context,
+    ).pickImage(preset: ImageUploadPreset.feed);
     if (!mounted || path == null) {
       return;
     }
