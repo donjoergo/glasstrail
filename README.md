@@ -134,6 +134,10 @@ Schema migrations:
 - `supabase/migrations/202603180003_add_handedness_to_user_settings.sql`
 - `supabase/migrations/202603180004_drop_nickname_from_profiles.sql`
 
+Seed data:
+
+- `supabase/seed.sql`
+
 ### Local Fallback
 
 Tests and explicit empty backend configs use:
@@ -154,6 +158,7 @@ This keeps the app runnable without Supabase and makes widget and repository tes
 | `lib/src/screens/` | UI pages and dialogs |
 | `lib/src/repository/` | Backend abstraction and implementations |
 | `supabase/migrations/` | Database schema and policy migrations |
+| `supabase/seed.sql` | Global drink catalog seed data |
 | `test/` | Unit, widget, and repository tests |
 
 ## Local Development
@@ -177,6 +182,12 @@ flutter run \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY
 ```
+
+When working with the Supabase CLI:
+
+- `supabase db reset` reapplies migrations and runs `supabase/seed.sql`
+- `supabase db push` applies schema changes only
+- `supabase db push --include-seed` applies schema changes and seeds a linked remote project
 
 ## Verification
 
