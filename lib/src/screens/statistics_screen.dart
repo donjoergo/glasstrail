@@ -69,10 +69,6 @@ class StatisticsScreen extends StatelessWidget {
               ),
               child: TabBar(
                 key: const Key('statistics-tab-bar'),
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                padding: const EdgeInsets.all(6),
-                labelPadding: const EdgeInsets.symmetric(horizontal: 18),
                 dividerColor: Colors.transparent,
                 tabs: <Widget>[
                   Tab(text: l10n.statisticsOverview),
