@@ -42,7 +42,10 @@ class AppLocalizations {
       'optional': 'Optional',
       'removeBirthday': 'Remove birthday',
       'pickPhoto': 'Pick photo',
+      'pickPhotoSource': 'Choose photo source',
       'changePhoto': 'Change photo',
+      'takePhoto': 'Take photo',
+      'chooseFromGallery': 'Choose from gallery',
       'removePhoto': 'Remove photo',
       'authHint':
           'The first release focuses on private tracking. Social features come later.',
@@ -167,7 +170,10 @@ class AppLocalizations {
       'optional': 'Optional',
       'removeBirthday': 'Geburtstag entfernen',
       'pickPhoto': 'Foto wählen',
+      'pickPhotoSource': 'Fotoquelle wählen',
       'changePhoto': 'Foto ändern',
+      'takePhoto': 'Kamera verwenden',
+      'chooseFromGallery': 'Aus Galerie wählen',
       'removePhoto': 'Foto entfernen',
       'authHint':
           'Die erste Version konzentriert sich auf privates Tracking. Soziale Funktionen folgen später.',
@@ -301,7 +307,10 @@ class AppLocalizations {
   String get optional => _text('optional');
   String get removeBirthday => _text('removeBirthday');
   String get pickPhoto => _text('pickPhoto');
+  String get pickPhotoSource => _text('pickPhotoSource');
   String get changePhoto => _text('changePhoto');
+  String get takePhoto => _text('takePhoto');
+  String get chooseFromGallery => _text('chooseFromGallery');
   String get removePhoto => _text('removePhoto');
   String get authHint => _text('authHint');
   String get addDrink => _text('addDrink');

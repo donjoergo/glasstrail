@@ -42,6 +42,31 @@ Future<void> _openStatisticsSection(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _tapPhotoAction(
+  WidgetTester tester,
+  Finder button, {
+  PhotoPickSource source = PhotoPickSource.gallery,
+}) async {
+  await tester.ensureVisible(button);
+  await tester.tap(button);
+  await tester.pumpAndSettle();
+
+  final sourceOption = switch (source) {
+    PhotoPickSource.camera => find.byKey(
+      const Key('photo-source-camera-option'),
+    ),
+    PhotoPickSource.gallery => find.byKey(
+      const Key('photo-source-gallery-option'),
+    ),
+  };
+  if (sourceOption.evaluate().isEmpty) {
+    return;
+  }
+
+  await tester.tap(sourceOption);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('opens profile editing on a separate screen', (tester) async {
     final controller = await buildTestController();
@@ -211,9 +236,7 @@ void main() {
     await _openProfileTab(tester);
     await tester.tap(find.byKey(const Key('profile-edit-button')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Pick photo'));
-    await tester.tap(find.text('Pick photo'));
-    await tester.pumpAndSettle();
+    await _tapPhotoAction(tester, find.text('Pick photo'));
 
     expect(photoService.pickedPresets, <ImageUploadPreset>[
       ImageUploadPreset.profile,
@@ -651,9 +674,7 @@ void main() {
     await tester.ensureVisible(pilsTile);
     await tester.tap(pilsTile);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Pick photo'));
-    await tester.tap(find.text('Pick photo'));
-    await tester.pumpAndSettle();
+    await _tapPhotoAction(tester, find.text('Pick photo'));
 
     expect(photoService.pickedPresets, <ImageUploadPreset>[
       ImageUploadPreset.feed,
@@ -698,8 +719,7 @@ void main() {
     await tester.tap(addCustomDrinkButton);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('custom-drink-save-button')), findsOneWidget);
-    await tester.tap(find.text('Pick photo'));
-    await tester.pumpAndSettle();
+    await _tapPhotoAction(tester, find.text('Pick photo'));
 
     expect(photoService.pickedPresets, <ImageUploadPreset>[
       ImageUploadPreset.feed,
@@ -1385,8 +1405,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('edit-entry-pick-photo-button')));
-    await tester.pumpAndSettle();
+    await _tapPhotoAction(
+      tester,
+      find.byKey(const Key('edit-entry-pick-photo-button')),
+    );
 
     expect(photoService.pickedPresets, <ImageUploadPreset>[
       ImageUploadPreset.feed,

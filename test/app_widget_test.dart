@@ -13,6 +13,31 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/test_harness.dart';
 
+Future<void> _tapPhotoAction(
+  WidgetTester tester,
+  Finder button, {
+  PhotoPickSource source = PhotoPickSource.gallery,
+}) async {
+  await tester.ensureVisible(button);
+  await tester.tap(button);
+  await tester.pumpAndSettle();
+
+  final sourceOption = switch (source) {
+    PhotoPickSource.camera => find.byKey(
+      const Key('photo-source-camera-option'),
+    ),
+    PhotoPickSource.gallery => find.byKey(
+      const Key('photo-source-gallery-option'),
+    ),
+  };
+  if (sourceOption.evaluate().isEmpty) {
+    return;
+  }
+
+  await tester.tap(sourceOption);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('shows a bootstrap screen until the controller is ready', (
     tester,
@@ -219,14 +244,46 @@ void main() {
 
     await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Pick photo'));
-    await tester.tap(find.text('Pick photo'));
-    await tester.pumpAndSettle();
+    await _tapPhotoAction(tester, find.text('Pick photo'));
 
     expect(find.byKey(const Key('auth-profile-image-preview')), findsOneWidget);
     expect(find.text('mock-image.png'), findsNothing);
     expect(photoService.pickedPresets, <ImageUploadPreset>[
       ImageUploadPreset.profile,
+    ]);
+  });
+
+  testWidgets('offers the Android camera option for sign-up photos', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    final photoService = RecordingPhotoService(path: null);
+
+    await tester.pumpWidget(
+      GlassTrailApp(controller: controller, photoService: photoService),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Pick photo'));
+    await tester.tap(find.text('Pick photo'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('photo-source-camera-option')), findsOneWidget);
+    expect(
+      find.byKey(const Key('photo-source-gallery-option')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('photo-source-camera-option')));
+    await tester.pumpAndSettle();
+
+    expect(photoService.pickedPresets, <ImageUploadPreset>[
+      ImageUploadPreset.profile,
+    ]);
+    expect(photoService.pickedSources, <PhotoPickSource>[
+      PhotoPickSource.camera,
     ]);
   });
 

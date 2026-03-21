@@ -15,7 +15,10 @@ class TestPhotoService extends PhotoService {
   final String? path;
 
   @override
-  Future<String?> pickImage({required ImageUploadPreset preset}) async => path;
+  Future<String?> pickImage({
+    required ImageUploadPreset preset,
+    PhotoPickSource source = PhotoPickSource.gallery,
+  }) async => path;
 }
 
 class RecordingPhotoService extends PhotoService {
@@ -23,10 +26,15 @@ class RecordingPhotoService extends PhotoService {
 
   final String? path;
   final List<ImageUploadPreset> pickedPresets = <ImageUploadPreset>[];
+  final List<PhotoPickSource> pickedSources = <PhotoPickSource>[];
 
   @override
-  Future<String?> pickImage({required ImageUploadPreset preset}) async {
+  Future<String?> pickImage({
+    required ImageUploadPreset preset,
+    PhotoPickSource source = PhotoPickSource.gallery,
+  }) async {
     pickedPresets.add(preset);
+    pickedSources.add(source);
     return path;
   }
 }

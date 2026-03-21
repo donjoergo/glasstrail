@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart'
+    show CameraDevice, ImagePicker, ImageSource;
 import 'package:path_provider/path_provider.dart';
 
 const double _marginalTransparencyRatio = 0.02;
@@ -23,25 +25,26 @@ enum ImageUploadPreset {
   final int jpegQuality;
 }
 
+enum PhotoPickSource { gallery, camera }
+
 abstract class PhotoService {
   const PhotoService();
 
-  Future<String?> pickImage({required ImageUploadPreset preset});
+  Future<String?> pickImage({
+    required ImageUploadPreset preset,
+    PhotoPickSource source = PhotoPickSource.gallery,
+  });
 }
 
 class FileSelectorPhotoService extends PhotoService {
   const FileSelectorPhotoService();
 
   @override
-  Future<String?> pickImage({required ImageUploadPreset preset}) async {
-    final image = await openFile(
-      acceptedTypeGroups: const <XTypeGroup>[
-        XTypeGroup(
-          label: 'images',
-          extensions: <String>['jpg', 'jpeg', 'png', 'webp'],
-        ),
-      ],
-    );
+  Future<String?> pickImage({
+    required ImageUploadPreset preset,
+    PhotoPickSource source = PhotoPickSource.gallery,
+  }) async {
+    final image = await _pickSourceImage(source);
     if (image == null) {
       return null;
     }
@@ -54,6 +57,27 @@ class FileSelectorPhotoService extends PhotoService {
       ).toString();
     }
     return _materializeImagePath(compressed);
+  }
+
+  Future<XFile?> _pickSourceImage(PhotoPickSource source) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return ImagePicker().pickImage(
+        source: switch (source) {
+          PhotoPickSource.gallery => ImageSource.gallery,
+          PhotoPickSource.camera => ImageSource.camera,
+        },
+        preferredCameraDevice: CameraDevice.rear,
+      );
+    }
+
+    return openFile(
+      acceptedTypeGroups: const <XTypeGroup>[
+        XTypeGroup(
+          label: 'images',
+          extensions: <String>['jpg', 'jpeg', 'png', 'webp'],
+        ),
+      ],
+    );
   }
 
   Future<String> _materializeImagePath(CompressedUploadImage image) async {

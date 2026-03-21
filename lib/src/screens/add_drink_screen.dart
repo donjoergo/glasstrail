@@ -4,6 +4,7 @@ import '../app_controller.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../models.dart';
+import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../widgets/app_media.dart';
 import 'custom_drink_dialog.dart';
@@ -36,9 +37,10 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
   }
 
   Future<void> _pickPhoto() async {
-    final path = await AppScope.photoServiceOf(
+    final path = await pickImageForUpload(
       context,
-    ).pickImage(preset: ImageUploadPreset.feed);
+      preset: ImageUploadPreset.feed,
+    );
     if (!mounted || path == null) {
       return;
     }

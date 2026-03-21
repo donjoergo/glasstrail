@@ -5,6 +5,7 @@ import '../app_localizations.dart';
 import '../app_scope.dart';
 import '../birthday.dart';
 import '../models.dart';
+import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../widgets/app_media.dart';
 
@@ -62,9 +63,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickPhoto() async {
-    final path = await AppScope.photoServiceOf(
+    final path = await pickImageForUpload(
       context,
-    ).pickImage(preset: ImageUploadPreset.profile);
+      preset: ImageUploadPreset.profile,
+    );
     if (!mounted || path == null) {
       return;
     }
