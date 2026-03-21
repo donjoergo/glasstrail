@@ -247,13 +247,6 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
     for (final drink in filteredDrinks) {
       grouped[drink.category]!.add(drink);
     }
-    for (final drinks in grouped.values) {
-      drinks.sort(
-        (left, right) => left
-            .displayName(localeCode)
-            .compareTo(right.displayName(localeCode)),
-      );
-    }
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.addDrink)),

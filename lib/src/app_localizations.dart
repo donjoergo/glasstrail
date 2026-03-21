@@ -29,6 +29,7 @@ class AppLocalizations {
       'statisticsOverview': 'Overview',
       'statisticsMap': 'Map',
       'statisticsGallery': 'Gallery',
+      'bar': 'Bar',
       'profile': 'Profile',
       'welcomeTitle': 'Track every glass',
       'welcomeBody':
@@ -112,6 +113,18 @@ class AppLocalizations {
           'Photos from logged drinks will appear here automatically.',
       'totalDrinks': 'Total drinks',
       'settings': 'Settings',
+      'globalDrinks': 'Global drinks',
+      'barDrinkSortingTab': 'Drink sorting',
+      'barCustomDrinksTab': 'My drinks',
+      'barGlobalDrinksBody':
+          'Reorder global and custom drinks inside each category and hide global entries you do not want in selectors.',
+      'barCustomDrinksBody': 'Create and edit your own drinks.',
+      'hiddenDrinks': 'Hidden drinks',
+      'hideCategory': 'Hide category',
+      'showCategory': 'Show category',
+      'hideDrink': 'Hide',
+      'showDrink': 'Show',
+      'allGlobalDrinksHidden': 'All global drinks in this category are hidden.',
       'backend': 'Backend',
       'backendRemoteBody': 'Supabase is configured and remote sync is active.',
       'backendLocalBody':
@@ -170,6 +183,7 @@ class AppLocalizations {
       'statisticsOverview': 'Überblick',
       'statisticsMap': 'Karte',
       'statisticsGallery': 'Galerie',
+      'bar': 'Bar',
       'profile': 'Profil',
       'welcomeTitle': 'Jedes Glas festhalten',
       'welcomeBody':
@@ -255,6 +269,19 @@ class AppLocalizations {
           'Fotos aus deinen Log-Einträgen erscheinen hier automatisch.',
       'totalDrinks': 'Getränke gesamt',
       'settings': 'Einstellungen',
+      'globalDrinks': 'Globale Getränke',
+      'barDrinkSortingTab': 'Drink-Sortierung',
+      'barCustomDrinksTab': 'Eigene Drinks',
+      'barGlobalDrinksBody':
+          'Sortiere globale und eigene Getränke innerhalb jeder Kategorie neu und blende globale Einträge aus, die du in Auswahllisten nicht sehen willst.',
+      'barCustomDrinksBody': 'Erstelle und bearbeite deine eigenen Getränke.',
+      'hiddenDrinks': 'Ausgeblendete Getränke',
+      'hideCategory': 'Kategorie ausblenden',
+      'showCategory': 'Kategorie einblenden',
+      'hideDrink': 'Ausblenden',
+      'showDrink': 'Einblenden',
+      'allGlobalDrinksHidden':
+          'Alle globalen Getränke dieser Kategorie sind ausgeblendet.',
       'backend': 'Backend',
       'backendRemoteBody':
           'Supabase ist konfiguriert und die Remote-Synchronisierung ist aktiv.',
@@ -321,6 +348,7 @@ class AppLocalizations {
   String get statisticsOverview => _text('statisticsOverview');
   String get statisticsMap => _text('statisticsMap');
   String get statisticsGallery => _text('statisticsGallery');
+  String get bar => _text('bar');
   String get profile => _text('profile');
   String get welcomeTitle => _text('welcomeTitle');
   String get welcomeBody => _text('welcomeBody');
@@ -390,6 +418,17 @@ class AppLocalizations {
   String get statisticsGalleryEmptyBody => _text('statisticsGalleryEmptyBody');
   String get totalDrinks => _text('totalDrinks');
   String get settings => _text('settings');
+  String get globalDrinks => _text('globalDrinks');
+  String get barDrinkSortingTab => _text('barDrinkSortingTab');
+  String get barCustomDrinksTab => _text('barCustomDrinksTab');
+  String get barGlobalDrinksBody => _text('barGlobalDrinksBody');
+  String get barCustomDrinksBody => _text('barCustomDrinksBody');
+  String get hiddenDrinks => _text('hiddenDrinks');
+  String get hideCategory => _text('hideCategory');
+  String get showCategory => _text('showCategory');
+  String get hideDrink => _text('hideDrink');
+  String get showDrink => _text('showDrink');
+  String get allGlobalDrinksHidden => _text('allGlobalDrinksHidden');
   String get backend => _text('backend');
   String get backendRemoteBody => _text('backendRemoteBody');
   String get backendLocalBody => _text('backendLocalBody');

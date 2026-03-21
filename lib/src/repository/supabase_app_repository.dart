@@ -438,6 +438,15 @@ class SupabaseAppRepository implements AppRepository {
             'locale_code': settings.localeCode,
             'unit': settings.unit.storageValue,
             'handedness': settings.handedness.storageValue,
+            'hidden_global_drink_ids': settings.hiddenGlobalDrinkIds,
+            'hidden_global_drink_categories': settings
+                .hiddenGlobalDrinkCategories
+                .map((category) => category.storageValue)
+                .toList(growable: false),
+            'global_drink_order_overrides': <String, List<String>>{
+              for (final entry in settings.globalDrinkOrderOverrides.entries)
+                entry.key.storageValue: entry.value.toList(growable: false),
+            },
           }, onConflict: 'user_id')
           .select()
           .single();
@@ -510,6 +519,8 @@ class SupabaseAppRepository implements AppRepository {
             'locale_code': 'en',
             'unit': AppUnit.ml.storageValue,
             'handedness': AppHandedness.right.storageValue,
+            'hidden_global_drink_ids': const <String>[],
+            'global_drink_order_overrides': const <String, List<String>>{},
           },
           onConflict: 'user_id',
           ignoreDuplicates: true,

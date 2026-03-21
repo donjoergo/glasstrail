@@ -65,11 +65,12 @@ class StatisticsScreen extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: TabBar(
                 key: const Key('statistics-tab-bar'),
                 isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 padding: const EdgeInsets.all(6),
                 labelPadding: const EdgeInsets.symmetric(horizontal: 18),
                 dividerColor: Colors.transparent,

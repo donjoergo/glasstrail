@@ -321,6 +321,7 @@ class _AppRouteScreen extends StatelessWidget {
     return switch (normalizedRoute) {
       AppRoutes.feed ||
       AppRoutes.statistics ||
+      AppRoutes.bar ||
       AppRoutes.profile => HomeShell(routeName: normalizedRoute),
       AppRoutes.addDrink => const AddDrinkScreen(),
       AppRoutes.editProfile => const EditProfileScreen(),

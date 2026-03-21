@@ -147,6 +147,188 @@ void main() {
     expect(controller.takeFlashMessage(german), 'Rotwein erfasst.');
   });
 
+  test(
+    'hides global drinks from selectors while keeping history localization',
+    () async {
+      final controller = await buildTestController();
+
+      await controller.signUp(
+        email: 'hide-global@example.com',
+        password: 'password123',
+        displayName: 'Hide Global Example',
+      );
+
+      final redWine = controller.availableDrinks.firstWhere(
+        (drink) => drink.id == 'wine-red-wine',
+      );
+      await controller.addDrinkEntry(
+        drink: redWine,
+        volumeMl: redWine.volumeMl,
+      );
+
+      final hidden = await controller.hideGlobalDrink(redWine.id);
+
+      expect(hidden, isTrue);
+      expect(
+        controller.availableDrinks.any((drink) => drink.id == redWine.id),
+        isFalse,
+      );
+      expect(
+        controller.recentDrinks.any((drink) => drink.id == redWine.id),
+        isFalse,
+      );
+      expect(
+        controller.localizedEntryDrinkName(
+          controller.entries.first,
+          localeCode: 'de',
+        ),
+        'Rotwein',
+      );
+    },
+  );
+
+  test(
+    'hides whole global categories from selectors while keeping history localization',
+    () async {
+      final controller = await buildTestController();
+
+      await controller.signUp(
+        email: 'hide-category@example.com',
+        password: 'password123',
+        displayName: 'Hide Category Example',
+      );
+
+      final pils = controller.availableDrinks.firstWhere(
+        (drink) => drink.id == 'beer-pils',
+      );
+      await controller.addDrinkEntry(drink: pils, volumeMl: pils.volumeMl);
+
+      final hidden = await controller.hideGlobalCategory(DrinkCategory.beer);
+
+      expect(hidden, isTrue);
+      expect(controller.isGlobalCategoryHidden(DrinkCategory.beer), isTrue);
+      expect(controller.settings.hiddenGlobalDrinkCategories, <DrinkCategory>[
+        DrinkCategory.beer,
+      ]);
+      expect(
+        controller.availableDrinks.any(
+          (drink) => !drink.isCustom && drink.category == DrinkCategory.beer,
+        ),
+        isFalse,
+      );
+      expect(
+        controller.recentDrinks.any(
+          (drink) => drink.category == DrinkCategory.beer,
+        ),
+        isFalse,
+      );
+      expect(
+        controller.localizedEntryDrinkName(
+          controller.entries.first,
+          localeCode: 'de',
+        ),
+        'Pils',
+      );
+
+      final shown = await controller.showGlobalCategory(DrinkCategory.beer);
+
+      expect(shown, isTrue);
+      expect(controller.isGlobalCategoryHidden(DrinkCategory.beer), isFalse);
+      expect(
+        controller.availableDrinks.any((drink) => drink.id == pils.id),
+        isTrue,
+      );
+    },
+  );
+
+  test('reorders visible global drinks inside a category', () async {
+    final controller = await buildTestController();
+
+    await controller.signUp(
+      email: 'reorder-global@example.com',
+      password: 'password123',
+      displayName: 'Reorder Global Example',
+    );
+
+    final initialBeerIds = controller.availableDrinks
+        .where(
+          (drink) => !drink.isCustom && drink.category == DrinkCategory.beer,
+        )
+        .map((drink) => drink.id)
+        .toList(growable: false);
+    final reorderedIds = <String>[
+      initialBeerIds[1],
+      initialBeerIds[0],
+      ...initialBeerIds.skip(2),
+    ];
+
+    final success = await controller.reorderGlobalDrinks(
+      category: DrinkCategory.beer,
+      orderedDrinkIds: reorderedIds,
+    );
+
+    expect(success, isTrue);
+    final updatedBeerIds = controller.availableDrinks
+        .where(
+          (drink) => !drink.isCustom && drink.category == DrinkCategory.beer,
+        )
+        .map((drink) => drink.id)
+        .toList(growable: false);
+    expect(updatedBeerIds, reorderedIds);
+  });
+
+  test(
+    'reorders custom drinks together with global drinks inside a category',
+    () async {
+      final controller = await buildTestController();
+
+      await controller.signUp(
+        email: 'reorder-custom@example.com',
+        password: 'password123',
+        displayName: 'Reorder Custom Example',
+      );
+      await controller.saveCustomDrink(
+        name: 'Zulu Tonic',
+        category: DrinkCategory.cocktails,
+        volumeMl: 200,
+      );
+      final customDrink = controller.customDrinks.single;
+      final mojito = controller.availableDrinks.firstWhere(
+        (drink) => drink.id == 'cocktails-mojito',
+      );
+      final currentCocktailIds = controller.availableDrinks
+          .where((drink) => drink.category == DrinkCategory.cocktails)
+          .map((drink) => drink.id)
+          .toList(growable: false);
+
+      final success = await controller.reorderGlobalDrinks(
+        category: DrinkCategory.cocktails,
+        orderedDrinkIds: <String>[
+          customDrink.id,
+          mojito.id,
+          ...currentCocktailIds.where(
+            (id) => id != customDrink.id && id != mojito.id,
+          ),
+        ],
+      );
+
+      expect(success, isTrue);
+      final updatedCocktailIds = controller.availableDrinks
+          .where((drink) => drink.category == DrinkCategory.cocktails)
+          .map((drink) => drink.id)
+          .toList(growable: false);
+      expect(updatedCocktailIds.first, customDrink.id);
+      expect(updatedCocktailIds[1], mojito.id);
+      expect(
+        controller
+            .settings
+            .globalDrinkOrderOverrides[DrinkCategory.cocktails]
+            ?.first,
+        customDrink.id,
+      );
+    },
+  );
+
   test('localizes mapped repository error messages', () async {
     final controller = await buildTestController();
     final german = AppLocalizations(const Locale('de'));

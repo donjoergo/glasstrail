@@ -88,7 +88,12 @@ class AppController extends ChangeNotifier {
   UserSettings get settings => _settings;
   List<DrinkDefinition> get defaultCatalog =>
       List.unmodifiable(_defaultCatalog);
-  List<DrinkDefinition> get customDrinks => List.unmodifiable(_customDrinks);
+  List<DrinkDefinition> get customDrinks =>
+      List.unmodifiable(_sortedCustomDrinks());
+  List<DrinkDefinition> get allDrinks => List.unmodifiable(<DrinkDefinition>[
+    ..._defaultCatalog,
+    ..._customDrinks,
+  ]);
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
   bool get isBusy => _isBusy;
   AppBusyAction? get busyAction => _busyAction;
@@ -100,16 +105,10 @@ class AppController extends ChangeNotifier {
   bool isBusyFor(AppBusyAction action) => _busyAction == action;
 
   List<DrinkDefinition> get availableDrinks {
-    final drinks = <DrinkDefinition>[..._defaultCatalog, ..._customDrinks];
-    drinks.sort((left, right) {
-      final categoryComparison = left.category.index.compareTo(
-        right.category.index,
-      );
-      if (categoryComparison != 0) {
-        return categoryComparison;
-      }
-      return left.name.compareTo(right.name);
-    });
+    final drinks = <DrinkDefinition>[];
+    for (final category in DrinkCategory.values) {
+      drinks.addAll(sortableDrinksForCategory(category));
+    }
     return drinks;
   }
 
@@ -130,6 +129,176 @@ class AppController extends ChangeNotifier {
       }
     }
     return result;
+  }
+
+  bool isGlobalCategoryHidden(DrinkCategory category) {
+    return _hiddenGlobalCategorySet().contains(category);
+  }
+
+  List<DrinkDefinition> customDrinksForCategory(DrinkCategory category) {
+    final drinks =
+        _customDrinks
+            .where((drink) => drink.category == category)
+            .toList(growable: false)
+          ..sort(_localizedDrinkComparer);
+    return drinks;
+  }
+
+  List<DrinkDefinition> sortableDrinksForCategory(DrinkCategory category) {
+    final globals = visibleGlobalDrinksForCategory(category);
+    final customs = customDrinksForCategory(category);
+    final visible = <DrinkDefinition>[...globals, ...customs];
+    final byId = {for (final drink in visible) drink.id: drink};
+    final ordered = <DrinkDefinition>[];
+    final seen = <String>{};
+
+    for (final id in _globalOrderOverrideForCategory(category)) {
+      final drink = byId[id];
+      if (drink != null && seen.add(id)) {
+        ordered.add(drink);
+      }
+    }
+
+    final remaining =
+        visible
+            .where((drink) => !seen.contains(drink.id))
+            .toList(growable: false)
+          ..sort(_localizedDrinkComparer);
+    return <DrinkDefinition>[...ordered, ...remaining];
+  }
+
+  List<DrinkDefinition> visibleGlobalDrinksForCategory(DrinkCategory category) {
+    if (isGlobalCategoryHidden(category)) {
+      return const <DrinkDefinition>[];
+    }
+    final hiddenIds = _hiddenGlobalDrinkIdSet();
+    final visible = _defaultCatalog
+        .where(
+          (drink) =>
+              drink.category == category && !hiddenIds.contains(drink.id),
+        )
+        .toList(growable: false);
+    final byId = {for (final drink in visible) drink.id: drink};
+    final ordered = <DrinkDefinition>[];
+    final seen = <String>{};
+
+    for (final id in _globalOrderOverrideForCategory(category)) {
+      final drink = byId[id];
+      if (drink != null && seen.add(id)) {
+        ordered.add(drink);
+      }
+    }
+
+    final remaining =
+        visible
+            .where((drink) => !seen.contains(drink.id))
+            .toList(growable: false)
+          ..sort(_localizedDrinkComparer);
+    return <DrinkDefinition>[...ordered, ...remaining];
+  }
+
+  List<DrinkDefinition> hiddenGlobalDrinksForCategory(DrinkCategory category) {
+    final hiddenIds = _hiddenGlobalDrinkIdSet();
+    final categoryHidden = isGlobalCategoryHidden(category);
+    final hidden =
+        _defaultCatalog
+            .where(
+              (drink) =>
+                  drink.category == category &&
+                  (categoryHidden || hiddenIds.contains(drink.id)),
+            )
+            .toList(growable: false)
+          ..sort(_localizedDrinkComparer);
+    return hidden;
+  }
+
+  Future<bool> reorderGlobalDrinks({
+    required DrinkCategory category,
+    required List<String> orderedDrinkIds,
+  }) async {
+    final currentIds = sortableDrinksForCategory(
+      category,
+    ).map((drink) => drink.id).toList(growable: false);
+    final nextIds = _sanitizeOrderOverrideIds(
+      orderedDrinkIds,
+      allowedIds: currentIds.toSet(),
+    );
+    if (listEquals(currentIds, nextIds)) {
+      return true;
+    }
+
+    final nextOverrides = _copyGlobalDrinkOrderOverrides();
+    if (nextIds.isEmpty) {
+      nextOverrides.remove(category);
+    } else {
+      nextOverrides[category] = nextIds;
+    }
+    return updateSettings(
+      _settings.copyWith(globalDrinkOrderOverrides: nextOverrides),
+    );
+  }
+
+  Future<bool> hideGlobalDrink(String drinkId) async {
+    if (!_defaultCatalog.any((drink) => drink.id == drinkId)) {
+      return false;
+    }
+    final hiddenIds = _settings.hiddenGlobalDrinkIds.toList(growable: true);
+    if (hiddenIds.contains(drinkId)) {
+      return true;
+    }
+    hiddenIds.add(drinkId);
+
+    final nextOverrides = _copyGlobalDrinkOrderOverrides();
+    for (final ids in nextOverrides.values) {
+      ids.removeWhere((candidate) => candidate == drinkId);
+    }
+    nextOverrides.removeWhere((_, ids) => ids.isEmpty);
+
+    return updateSettings(
+      _settings.copyWith(
+        hiddenGlobalDrinkIds: hiddenIds,
+        globalDrinkOrderOverrides: nextOverrides,
+      ),
+    );
+  }
+
+  Future<bool> hideGlobalCategory(DrinkCategory category) async {
+    if (!_defaultCatalog.any((drink) => drink.category == category)) {
+      return false;
+    }
+    final hiddenCategories = _settings.hiddenGlobalDrinkCategories.toList(
+      growable: true,
+    );
+    if (hiddenCategories.contains(category)) {
+      return true;
+    }
+    hiddenCategories.add(category);
+    return updateSettings(
+      _settings.copyWith(hiddenGlobalDrinkCategories: hiddenCategories),
+    );
+  }
+
+  Future<bool> showGlobalDrink(String drinkId) async {
+    if (!_defaultCatalog.any((drink) => drink.id == drinkId)) {
+      return false;
+    }
+    final hiddenIds = _settings.hiddenGlobalDrinkIds.toList(growable: true);
+    if (!hiddenIds.remove(drinkId)) {
+      return true;
+    }
+    return updateSettings(_settings.copyWith(hiddenGlobalDrinkIds: hiddenIds));
+  }
+
+  Future<bool> showGlobalCategory(DrinkCategory category) async {
+    final hiddenCategories = _settings.hiddenGlobalDrinkCategories.toList(
+      growable: true,
+    );
+    if (!hiddenCategories.remove(category)) {
+      return true;
+    }
+    return updateSettings(
+      _settings.copyWith(hiddenGlobalDrinkCategories: hiddenCategories),
+    );
   }
 
   String? takeFlashMessage(AppLocalizations l10n) {
@@ -162,7 +331,7 @@ class AppController extends ChangeNotifier {
     String fallbackName,
     String localeCode,
   ) {
-    for (final drink in availableDrinks) {
+    for (final drink in allDrinks) {
       if (drink.id == drinkId) {
         return drink.displayName(localeCode);
       }
@@ -424,6 +593,50 @@ class AppController extends ChangeNotifier {
     _customDrinks = await customDrinksFuture;
     _entries = await entriesFuture;
     _settings = await settingsFuture;
+  }
+
+  Set<String> _hiddenGlobalDrinkIdSet() =>
+      _settings.hiddenGlobalDrinkIds.toSet();
+
+  Set<DrinkCategory> _hiddenGlobalCategorySet() =>
+      _settings.hiddenGlobalDrinkCategories.toSet();
+
+  List<String> _globalOrderOverrideForCategory(DrinkCategory category) {
+    return _settings.globalDrinkOrderOverrides[category] ?? const <String>[];
+  }
+
+  int _localizedDrinkComparer(DrinkDefinition left, DrinkDefinition right) {
+    return left
+        .displayName(_settings.localeCode)
+        .compareTo(right.displayName(_settings.localeCode));
+  }
+
+  Map<DrinkCategory, List<String>> _copyGlobalDrinkOrderOverrides() {
+    return <DrinkCategory, List<String>>{
+      for (final entry in _settings.globalDrinkOrderOverrides.entries)
+        entry.key: entry.value.toList(growable: true),
+    };
+  }
+
+  List<DrinkDefinition> _sortedCustomDrinks() =>
+      _customDrinks.toList(growable: false)..sort(_localizedDrinkComparer);
+
+  List<String> _sanitizeOrderOverrideIds(
+    List<String> orderedDrinkIds, {
+    required Set<String> allowedIds,
+  }) {
+    final result = <String>[];
+    for (final id in orderedDrinkIds) {
+      if (allowedIds.contains(id) && !result.contains(id)) {
+        result.add(id);
+      }
+    }
+    for (final id in allowedIds) {
+      if (!result.contains(id)) {
+        result.add(id);
+      }
+    }
+    return result;
   }
 
   Future<bool> _guard(Future<void> Function() action) async {

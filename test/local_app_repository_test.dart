@@ -90,6 +90,11 @@ void main() {
           localeCode: 'de',
           unit: AppUnit.oz,
           handedness: AppHandedness.left,
+          hiddenGlobalDrinkIds: <String>['beer-pils'],
+          hiddenGlobalDrinkCategories: <DrinkCategory>[DrinkCategory.wine],
+          globalDrinkOrderOverrides: <DrinkCategory, List<String>>{
+            DrinkCategory.beer: <String>['beer-ipa', 'beer-pils'],
+          },
         ),
       );
 
@@ -99,6 +104,14 @@ void main() {
       expect(restored.localeCode, 'de');
       expect(restored.unit, AppUnit.oz);
       expect(restored.handedness, AppHandedness.left);
+      expect(restored.hiddenGlobalDrinkIds, <String>['beer-pils']);
+      expect(restored.hiddenGlobalDrinkCategories, <DrinkCategory>[
+        DrinkCategory.wine,
+      ]);
+      expect(restored.globalDrinkOrderOverrides[DrinkCategory.beer], <String>[
+        'beer-ipa',
+        'beer-pils',
+      ]);
     });
 
     test('updates only comment and image for an existing entry', () async {

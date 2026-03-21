@@ -102,11 +102,17 @@ enum DrinkCategory { beer, wine, spirits, cocktails, nonAlcoholic }
 extension DrinkCategoryX on DrinkCategory {
   String get storageValue => name;
 
+  static DrinkCategory? maybeFromStorage(String? value) {
+    for (final candidate in DrinkCategory.values) {
+      if (candidate.name == value) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
   static DrinkCategory fromStorage(String value) {
-    return DrinkCategory.values.firstWhere(
-      (candidate) => candidate.name == value,
-      orElse: () => DrinkCategory.nonAlcoholic,
-    );
+    return maybeFromStorage(value) ?? DrinkCategory.nonAlcoholic;
   }
 
   IconData get icon => switch (this) {
@@ -386,6 +392,9 @@ class UserSettings {
     required this.localeCode,
     required this.unit,
     required this.handedness,
+    this.hiddenGlobalDrinkIds = const <String>[],
+    this.hiddenGlobalDrinkCategories = const <DrinkCategory>[],
+    this.globalDrinkOrderOverrides = const <DrinkCategory, List<String>>{},
   });
 
   factory UserSettings.defaults() {
@@ -394,6 +403,9 @@ class UserSettings {
       localeCode: 'en',
       unit: AppUnit.ml,
       handedness: AppHandedness.right,
+      hiddenGlobalDrinkIds: <String>[],
+      hiddenGlobalDrinkCategories: <DrinkCategory>[],
+      globalDrinkOrderOverrides: <DrinkCategory, List<String>>{},
     );
   }
 
@@ -401,18 +413,29 @@ class UserSettings {
   final String localeCode;
   final AppUnit unit;
   final AppHandedness handedness;
+  final List<String> hiddenGlobalDrinkIds;
+  final List<DrinkCategory> hiddenGlobalDrinkCategories;
+  final Map<DrinkCategory, List<String>> globalDrinkOrderOverrides;
 
   UserSettings copyWith({
     AppThemePreference? themePreference,
     String? localeCode,
     AppUnit? unit,
     AppHandedness? handedness,
+    List<String>? hiddenGlobalDrinkIds,
+    List<DrinkCategory>? hiddenGlobalDrinkCategories,
+    Map<DrinkCategory, List<String>>? globalDrinkOrderOverrides,
   }) {
     return UserSettings(
       themePreference: themePreference ?? this.themePreference,
       localeCode: localeCode ?? this.localeCode,
       unit: unit ?? this.unit,
       handedness: handedness ?? this.handedness,
+      hiddenGlobalDrinkIds: hiddenGlobalDrinkIds ?? this.hiddenGlobalDrinkIds,
+      hiddenGlobalDrinkCategories:
+          hiddenGlobalDrinkCategories ?? this.hiddenGlobalDrinkCategories,
+      globalDrinkOrderOverrides:
+          globalDrinkOrderOverrides ?? this.globalDrinkOrderOverrides,
     );
   }
 
@@ -422,6 +445,14 @@ class UserSettings {
       'localeCode': localeCode,
       'unit': unit.storageValue,
       'handedness': handedness.storageValue,
+      'hiddenGlobalDrinkIds': hiddenGlobalDrinkIds.toList(growable: false),
+      'hiddenGlobalDrinkCategories': hiddenGlobalDrinkCategories
+          .map((category) => category.storageValue)
+          .toList(growable: false),
+      'globalDrinkOrderOverrides': <String, List<String>>{
+        for (final entry in globalDrinkOrderOverrides.entries)
+          entry.key.storageValue: entry.value.toList(growable: false),
+      },
     };
   }
 
@@ -433,6 +464,21 @@ class UserSettings {
       localeCode: _readString(json, 'localeCode', 'locale_code') ?? 'en',
       unit: AppUnitX.fromStorage(_readString(json, 'unit')),
       handedness: AppHandednessX.fromStorage(_readString(json, 'handedness')),
+      hiddenGlobalDrinkIds: _readStringList(
+        json,
+        'hiddenGlobalDrinkIds',
+        'hidden_global_drink_ids',
+      ),
+      hiddenGlobalDrinkCategories: _readDrinkCategoryList(
+        json,
+        'hiddenGlobalDrinkCategories',
+        'hidden_global_drink_categories',
+      ),
+      globalDrinkOrderOverrides: _readDrinkOrderOverrides(
+        json,
+        'globalDrinkOrderOverrides',
+        'global_drink_order_overrides',
+      ),
     );
   }
 }
@@ -466,6 +512,77 @@ double? _readDouble(
   }
   final fallbackValue = json[fallback] as num?;
   return fallbackValue?.toDouble();
+}
+
+List<String> _readStringList(
+  Map<String, dynamic> json,
+  String primary, [
+  String? fallback,
+]) {
+  final value = json[primary] ?? (fallback == null ? null : json[fallback]);
+  if (value is! List) {
+    return const <String>[];
+  }
+  final result = <String>[];
+  for (final item in value) {
+    if (item is String && item.isNotEmpty && !result.contains(item)) {
+      result.add(item);
+    }
+  }
+  return result;
+}
+
+List<DrinkCategory> _readDrinkCategoryList(
+  Map<String, dynamic> json,
+  String primary, [
+  String? fallback,
+]) {
+  final value = json[primary] ?? (fallback == null ? null : json[fallback]);
+  if (value is! List) {
+    return const <DrinkCategory>[];
+  }
+  final result = <DrinkCategory>[];
+  for (final item in value) {
+    if (item is! String) {
+      continue;
+    }
+    final category = DrinkCategoryX.maybeFromStorage(item);
+    if (category != null && !result.contains(category)) {
+      result.add(category);
+    }
+  }
+  return result;
+}
+
+Map<DrinkCategory, List<String>> _readDrinkOrderOverrides(
+  Map<String, dynamic> json,
+  String primary, [
+  String? fallback,
+]) {
+  final rawValue = json[primary] ?? (fallback == null ? null : json[fallback]);
+  if (rawValue is! Map) {
+    return const <DrinkCategory, List<String>>{};
+  }
+
+  final result = <DrinkCategory, List<String>>{};
+  for (final entry in rawValue.entries) {
+    final category = DrinkCategoryX.maybeFromStorage(
+      entry.key is String ? entry.key as String : null,
+    );
+    if (category == null || entry.value is! List) {
+      continue;
+    }
+    final orderedIds = <String>[];
+    for (final item in entry.value as List<dynamic>) {
+      if (item is String && item.isNotEmpty && !orderedIds.contains(item)) {
+        orderedIds.add(item);
+      }
+    }
+    if (orderedIds.isNotEmpty) {
+      result[category] = orderedIds;
+    }
+  }
+  return result;
 }
 
 List<DrinkDefinition> buildDefaultDrinkCatalog() {

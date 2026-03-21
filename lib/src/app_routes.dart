@@ -3,6 +3,7 @@ class AppRoutes {
   static const auth = '/auth';
   static const feed = '/feed';
   static const statistics = '/statistics';
+  static const bar = '/bar';
   static const profile = '/profile';
   static const addDrink = '/add-drink';
   static const editProfile = '/profile/edit';
@@ -14,6 +15,7 @@ class AppRoutes {
       auth ||
       feed ||
       statistics ||
+      bar ||
       profile ||
       addDrink ||
       editProfile => routeName,
@@ -24,7 +26,12 @@ class AppRoutes {
   static String postAuthRoute(String? routeName) {
     final normalized = normalize(routeName);
     return switch (normalized) {
-      feed || statistics || profile || addDrink || editProfile => normalized,
+      feed ||
+      statistics ||
+      bar ||
+      profile ||
+      addDrink ||
+      editProfile => normalized,
       _ => feed,
     };
   }
@@ -32,7 +39,7 @@ class AppRoutes {
   static bool isRestorable(String? routeName) {
     final normalized = normalize(routeName);
     return switch (normalized) {
-      feed || statistics || profile || addDrink || editProfile => true,
+      feed || statistics || bar || profile || addDrink || editProfile => true,
       _ => false,
     };
   }
@@ -42,7 +49,8 @@ class AppRoutes {
     return switch (normalized) {
       root || feed => 0,
       statistics => 1,
-      profile => 2,
+      bar => 2,
+      profile => 3,
       _ => 0,
     };
   }
@@ -51,7 +59,8 @@ class AppRoutes {
     return switch (index) {
       0 => feed,
       1 => statistics,
-      2 => profile,
+      2 => bar,
+      3 => profile,
       _ => feed,
     };
   }

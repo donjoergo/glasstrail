@@ -99,7 +99,7 @@ void main() {
     },
   );
 
-  testWidgets('restores the last visited route after a web reload', (
+  testWidgets('restores the last visited bar route after a web reload', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -109,9 +109,9 @@ void main() {
 
     final controller = await AppController.bootstrapWithRepository(repository);
     await controller.signUp(
-      email: 'reload-profile@example.com',
+      email: 'reload-bar@example.com',
       password: 'password123',
-      displayName: 'Reload Profile',
+      displayName: 'Reload Bar',
     );
 
     await tester.pumpWidget(
@@ -124,10 +124,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Profile'));
+    await tester.tap(find.text('Bar'));
     await tester.pumpAndSettle();
-    final profileRoute = ModalRoute.of(tester.element(find.byType(HomeShell)));
-    expect(profileRoute?.settings.name, AppRoutes.profile);
+    final barRoute = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(barRoute?.settings.name, AppRoutes.bar);
 
     final reloadedController = await AppController.bootstrapWithRepository(
       repository,
@@ -142,7 +142,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
-    expect(route?.settings.name, AppRoutes.profile);
+    expect(route?.settings.name, AppRoutes.bar);
   });
 
   testWidgets('starts in feed after a native app restart', (tester) async {
@@ -168,7 +168,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Profile'));
+    await tester.tap(find.text('Bar'));
     await tester.pumpAndSettle();
 
     final restartedController = await AppController.bootstrapWithRepository(
@@ -582,5 +582,32 @@ void main() {
       find.byKey(const Key('edit-profile-display-name-field')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('opens bookmarked bar route for authenticated users', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar@example.com',
+      password: 'password123',
+      displayName: 'Bar Example',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-global-section')), findsOneWidget);
+
+    final route = ModalRoute.of(
+      tester.element(find.byKey(const Key('bar-global-section'))),
+    );
+    expect(route?.settings.name, AppRoutes.bar);
   });
 }

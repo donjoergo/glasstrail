@@ -24,12 +24,25 @@ void main() {
         'locale_code': 'de',
         'unit': 'oz',
         'handedness': 'left',
+        'hidden_global_drink_ids': <String>['beer-pils'],
+        'hidden_global_drink_categories': <String>['beer'],
+        'global_drink_order_overrides': <String, List<String>>{
+          'beer': <String>['beer-ipa', 'beer-pils'],
+        },
       });
 
       expect(settings.themePreference, AppThemePreference.dark);
       expect(settings.localeCode, 'de');
       expect(settings.unit, AppUnit.oz);
       expect(settings.handedness, AppHandedness.left);
+      expect(settings.hiddenGlobalDrinkIds, <String>['beer-pils']);
+      expect(settings.hiddenGlobalDrinkCategories, <DrinkCategory>[
+        DrinkCategory.beer,
+      ]);
+      expect(settings.globalDrinkOrderOverrides[DrinkCategory.beer], <String>[
+        'beer-ipa',
+        'beer-pils',
+      ]);
     });
   });
 

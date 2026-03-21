@@ -15,6 +15,7 @@ import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
+import 'package:glasstrail/src/screens/add_drink_screen.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 
 import 'support/test_harness.dart';
@@ -42,6 +43,11 @@ Future<void> _openStatisticsTab(
   await tester.pumpAndSettle();
 }
 
+Future<void> _openBarCustomDrinksTab(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('bar-custom-tab')));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _openStatisticsSection(WidgetTester tester, String label) async {
   final tab = find.descendant(
     of: find.byKey(const Key('statistics-tab-bar')),
@@ -66,6 +72,20 @@ Future<void> _scrollProfileTargetIntoView(
     200,
     scrollable: _profileScrollable(),
   );
+  await Scrollable.ensureVisible(tester.element(target), alignment: 0.5);
+  await tester.pump();
+}
+
+Future<void> _scrollBarTargetIntoView(
+  WidgetTester tester,
+  Finder target,
+) async {
+  final customList = find.byKey(const Key('bar-custom-list-view'));
+  final sortList = find.byKey(const Key('bar-sort-list-view'));
+  final activeScrollable = customList.evaluate().isNotEmpty
+      ? find.descendant(of: customList, matching: find.byType(Scrollable)).first
+      : find.descendant(of: sortList, matching: find.byType(Scrollable)).first;
+  await tester.scrollUntilVisible(target, 200, scrollable: activeScrollable);
   await Scrollable.ensureVisible(tester.element(target), alignment: 0.5);
   await tester.pump();
 }
@@ -342,6 +362,30 @@ void main() {
     expect(photoService.pickedPresets, <ImageUploadPreset>[
       ImageUploadPreset.profile,
     ]);
+  });
+
+  testWidgets('keeps the statistics tab bar left-aligned', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'statistics-tabbar@example.com',
+      password: 'password123',
+      displayName: 'Statistics Tabbar',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tabBar = tester.widget<TabBar>(
+      find.byKey(const Key('statistics-tab-bar')),
+    );
+    expect(tabBar.isScrollable, isTrue);
+    expect(tabBar.tabAlignment, TabAlignment.start);
   });
 
   testWidgets('shows a field-local spinner while saving settings', (
@@ -934,6 +978,41 @@ void main() {
     expect(find.text('Office Brew'), findsNothing);
   });
 
+  testWidgets('shows custom drink management on bar instead of profile', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-custom-screen@example.com',
+      password: 'password123',
+      displayName: 'Bar Custom Screen',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+    final customSection = find.byKey(const Key('bar-custom-drinks-section'));
+    await _scrollBarTargetIntoView(tester, customSection);
+    expect(customSection, findsOneWidget);
+    expect(
+      find.byKey(const Key('bar-add-custom-drink-button')),
+      findsOneWidget,
+    );
+
+    await _openProfileTab(tester);
+    expect(
+      find.byKey(const Key('profile-add-custom-drink-button')),
+      findsNothing,
+    );
+  });
+
   testWidgets('shows a spinner while saving a custom drink', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.saveCustomDrink);
     final controller = harness.controller;
@@ -948,15 +1027,16 @@ void main() {
       GlassTrailApp(
         controller: controller,
         photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
       ),
     );
     await tester.pumpAndSettle();
 
-    await _openProfileTab(tester);
+    await _openBarCustomDrinksTab(tester);
     final addCustomDrinkButton = find.byKey(
-      const Key('profile-add-custom-drink-button'),
+      const Key('bar-add-custom-drink-button'),
     );
-    await _scrollProfileTargetIntoView(tester, addCustomDrinkButton);
+    await _scrollBarTargetIntoView(tester, addCustomDrinkButton);
     await tester.tap(addCustomDrinkButton);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, 'Night Cap');
@@ -984,6 +1064,262 @@ void main() {
 
     expect(find.text('Night Cap'), findsOneWidget);
   });
+
+  testWidgets(
+    'renders hidden global drinks in bar and removes them from add drink',
+    (tester) async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'bar-hide-global@example.com',
+        password: 'password123',
+        displayName: 'Bar Hide Global',
+      );
+
+      final pils = controller.availableDrinks.firstWhere(
+        (drink) => drink.id == 'beer-pils',
+      );
+      await controller.addDrinkEntry(drink: pils, volumeMl: pils.volumeMl);
+      await controller.hideGlobalDrink(pils.id);
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.bar,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(
+          const ValueKey<String>('bar-visible-global-drink-beer-pils'),
+        ),
+        findsNothing,
+      );
+      final hiddenDrinksToggle = find.text('Hidden drinks');
+      await _scrollBarTargetIntoView(tester, hiddenDrinksToggle);
+      await tester.tap(hiddenDrinksToggle);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('bar-hidden-global-drink-beer-pils')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('recent-drink-icon-beer-pils')),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
+      Navigator.of(tester.element(find.byType(AddDrinkScreen))).pop();
+      await tester.pumpAndSettle();
+
+      await controller.showGlobalDrink(pils.id);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('recent-drink-icon-beer-pils')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Pils'), findsOneWidget);
+    },
+  );
+
+  testWidgets('hides and restores a whole global category from bar', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-hide-category@example.com',
+      password: 'password123',
+      displayName: 'Bar Hide Category',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final hideCategoryButton = find.byKey(const Key('bar-hide-category-beer'));
+    await _scrollBarTargetIntoView(tester, hideCategoryButton);
+    await tester.tap(hideCategoryButton);
+    await tester.pumpAndSettle();
+
+    expect(controller.isGlobalCategoryHidden(DrinkCategory.beer), isTrue);
+    expect(find.byKey(const Key('bar-show-category-beer')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('bar-visible-global-drink-beer-pils')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('drink-category-title-beer')), findsNothing);
+    Navigator.of(tester.element(find.byType(AddDrinkScreen))).pop();
+    await tester.pumpAndSettle();
+
+    final showCategoryButton = find.byKey(const Key('bar-show-category-beer'));
+    await _scrollBarTargetIntoView(tester, showCategoryButton);
+    await tester.tap(showCategoryButton);
+    await tester.pumpAndSettle();
+
+    expect(controller.isGlobalCategoryHidden(DrinkCategory.beer), isFalse);
+    expect(find.byKey(const Key('bar-hide-category-beer')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('drink-category-title-beer')), findsOneWidget);
+  });
+
+  testWidgets(
+    'reorders global drinks in bar and keeps that order in add drink',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'bar-reorder@example.com',
+        password: 'password123',
+        displayName: 'Bar Reorder',
+      );
+      final initialBeerIds = controller.availableDrinks
+          .where(
+            (drink) => !drink.isCustom && drink.category == DrinkCategory.beer,
+          )
+          .map((drink) => drink.id)
+          .toList(growable: false);
+      await controller.reorderGlobalDrinks(
+        category: DrinkCategory.beer,
+        orderedDrinkIds: <String>[
+          initialBeerIds[1],
+          initialBeerIds[0],
+          ...initialBeerIds.skip(2),
+        ],
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.bar,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final hellesBarTop = tester.getTopLeft(
+        find.byKey(
+          const ValueKey<String>('bar-visible-global-drink-beer-helles'),
+        ),
+      );
+      final pilsBarTop = tester.getTopLeft(
+        find.byKey(
+          const ValueKey<String>('bar-visible-global-drink-beer-pils'),
+        ),
+      );
+      expect(hellesBarTop.dy, lessThan(pilsBarTop.dy));
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+      await tester.pumpAndSettle();
+
+      final hellesTileTop = tester.getTopLeft(
+        find.widgetWithText(ListTile, 'Helles'),
+      );
+      final pilsTileTop = tester.getTopLeft(
+        find.widgetWithText(ListTile, 'Pils'),
+      );
+      expect(hellesTileTop.dy, lessThan(pilsTileTop.dy));
+    },
+  );
+
+  testWidgets(
+    'reorders custom drinks together with global drinks in bar and keeps that order in add drink',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'bar-reorder-custom@example.com',
+        password: 'password123',
+        displayName: 'Bar Reorder Custom',
+      );
+      await controller.saveCustomDrink(
+        name: 'Zulu Tonic',
+        category: DrinkCategory.cocktails,
+        volumeMl: 180,
+      );
+      final customDrink = controller.customDrinks.single;
+      final mojito = controller.availableDrinks.firstWhere(
+        (drink) => drink.id == 'cocktails-mojito',
+      );
+      final cocktailIds = controller.availableDrinks
+          .where((drink) => drink.category == DrinkCategory.cocktails)
+          .map((drink) => drink.id)
+          .toList(growable: false);
+      await controller.reorderGlobalDrinks(
+        category: DrinkCategory.cocktails,
+        orderedDrinkIds: <String>[
+          customDrink.id,
+          mojito.id,
+          ...cocktailIds.where((id) => id != customDrink.id && id != mojito.id),
+        ],
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.bar,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final customBarTop = tester.getTopLeft(
+        find.byKey(
+          ValueKey<String>('bar-visible-custom-drink-${customDrink.id}'),
+        ),
+      );
+      final mojitoBarTop = tester.getTopLeft(
+        find.byKey(
+          const ValueKey<String>('bar-visible-global-drink-cocktails-mojito'),
+        ),
+      );
+      expect(customBarTop.dy, lessThan(mojitoBarTop.dy));
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('drink-category-title-cocktails')));
+      await tester.pumpAndSettle();
+
+      final customTileTop = tester.getTopLeft(
+        find.widgetWithText(ListTile, 'Zulu Tonic'),
+      );
+      final mojitoTileTop = tester.getTopLeft(
+        find.widgetWithText(ListTile, 'Mojito'),
+      );
+      expect(customTileTop.dy, lessThan(mojitoTileTop.dy));
+    },
+  );
 
   testWidgets('uses the feed preset when picking an add-drink photo', (
     tester,
@@ -1042,15 +1378,19 @@ void main() {
     final photoService = RecordingPhotoService(path: null);
 
     await tester.pumpWidget(
-      GlassTrailApp(controller: controller, photoService: photoService),
+      GlassTrailApp(
+        controller: controller,
+        photoService: photoService,
+        initialRoute: AppRoutes.bar,
+      ),
     );
     await tester.pumpAndSettle();
 
-    await _openProfileTab(tester);
+    await _openBarCustomDrinksTab(tester);
     final addCustomDrinkButton = find.byKey(
-      const Key('profile-add-custom-drink-button'),
+      const Key('bar-add-custom-drink-button'),
     );
-    await _scrollProfileTargetIntoView(tester, addCustomDrinkButton);
+    await _scrollBarTargetIntoView(tester, addCustomDrinkButton);
     await tester.tap(addCustomDrinkButton);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('custom-drink-save-button')), findsOneWidget);

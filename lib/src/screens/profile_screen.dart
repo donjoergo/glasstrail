@@ -9,7 +9,6 @@ import '../app_scope.dart';
 import '../birthday.dart';
 import '../models.dart';
 import '../widgets/app_media.dart';
-import 'custom_drink_dialog.dart';
 
 enum _ProfilePendingSetting { theme, language, unit, handedness }
 
@@ -41,21 +40,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return version.isEmpty ? null : version;
     } catch (_) {
       return null;
-    }
-  }
-
-  Future<void> _showCustomDrinkDialog([DrinkDefinition? drink]) async {
-    final l10n = AppLocalizations.of(context);
-    await showDialog<void>(
-      context: context,
-      builder: (_) => CustomDrinkDialog(initialDrink: drink),
-    );
-    if (!mounted) {
-      return;
-    }
-    final message = AppScope.controllerOf(context).takeFlashMessage(l10n);
-    if (message != null) {
-      _showMessage(message);
     }
   }
 
@@ -433,69 +417,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   settings.copyWith(handedness: value),
                 ),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      l10n.customDrinks,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  FilledButton.tonal(
-                    key: const Key('profile-add-custom-drink-button'),
-                    onPressed: isBusy ? null : () => _showCustomDrinkDialog(),
-                    child: Text(l10n.addCustomDrinkAction),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (controller.customDrinks.isEmpty)
-                Text(
-                  l10n.emptyFilter,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                )
-              else
-                ...controller.customDrinks.map(
-                  (drink) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withValues(
-                        alpha: 0.12,
-                      ),
-                      child: Icon(
-                        drink.category.icon,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    title: Text(drink.name),
-                    subtitle: Text(
-                      '${l10n.categoryLabel(drink.category)} • ${settings.unit.formatVolume(drink.volumeMl)}',
-                    ),
-                    trailing: IconButton(
-                      onPressed: isBusy
-                          ? null
-                          : () => _showCustomDrinkDialog(drink),
-                      icon: const Icon(Icons.edit_rounded),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
