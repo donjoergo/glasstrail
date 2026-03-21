@@ -245,6 +245,39 @@ void main() {
     expect(signUpDisplayNameField.autofillHints, contains(AutofillHints.name));
   });
 
+  testWidgets('uses a full-width auth mode toggle without selected icons', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final app = await buildTestApp();
+
+    await tester.pumpWidget(app);
+    await tester.pumpAndSettle();
+
+    final segmentedButtonFinder = find.byWidgetPredicate(
+      (widget) => widget is SegmentedButton,
+    );
+    final segmentedButton = tester.widget<SegmentedButton<Object?>>(
+      segmentedButtonFinder,
+    );
+
+    expect(segmentedButton.showSelectedIcon, isFalse);
+    expect(segmentedButton.expandedInsets, EdgeInsets.zero);
+
+    final cardRect = tester.getRect(find.byType(Card));
+    final segmentedRect = tester.getRect(segmentedButtonFinder);
+    expect(segmentedRect.width, closeTo(cardRect.width - 48, 0.01));
+
+    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows a profile image preview on sign-up without a filename', (
     tester,
   ) async {

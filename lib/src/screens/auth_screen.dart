@@ -179,31 +179,36 @@ class _AuthScreenState extends State<AuthScreen> {
                               style: theme.textTheme.bodyLarge,
                             ),
                             const SizedBox(height: 20),
-                            SegmentedButton<_AuthMode>(
-                              segments: <ButtonSegment<_AuthMode>>[
-                                ButtonSegment<_AuthMode>(
-                                  value: _AuthMode.signIn,
-                                  label: Text(
-                                    l10n.signIn,
-                                    key: const Key('auth-mode-sign-in'),
+                            SizedBox(
+                              width: double.infinity,
+                              child: SegmentedButton<_AuthMode>(
+                                segments: <ButtonSegment<_AuthMode>>[
+                                  ButtonSegment<_AuthMode>(
+                                    value: _AuthMode.signIn,
+                                    label: Text(
+                                      l10n.signIn,
+                                      key: const Key('auth-mode-sign-in'),
+                                    ),
                                   ),
-                                ),
-                                ButtonSegment<_AuthMode>(
-                                  value: _AuthMode.signUp,
-                                  label: Text(
-                                    l10n.signUp,
-                                    key: const Key('auth-mode-sign-up'),
+                                  ButtonSegment<_AuthMode>(
+                                    value: _AuthMode.signUp,
+                                    label: Text(
+                                      l10n.signUp,
+                                      key: const Key('auth-mode-sign-up'),
+                                    ),
                                   ),
-                                ),
-                              ],
-                              selected: <_AuthMode>{_mode},
-                              onSelectionChanged: isBusy
-                                  ? null
-                                  : (selection) {
-                                      setState(() {
-                                        _mode = selection.first;
-                                      });
-                                    },
+                                ],
+                                selected: <_AuthMode>{_mode},
+                                showSelectedIcon: false,
+                                expandedInsets: EdgeInsets.zero,
+                                onSelectionChanged: isBusy
+                                    ? null
+                                    : (selection) {
+                                        setState(() {
+                                          _mode = selection.first;
+                                        });
+                                      },
+                              ),
                             ),
                             const SizedBox(height: 24),
                             if (_mode == _AuthMode.signIn)
