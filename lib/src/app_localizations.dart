@@ -26,6 +26,9 @@ class AppLocalizations {
       'appTitle': 'GlassTrail',
       'feed': 'Feed',
       'statistics': 'Statistics',
+      'statisticsOverview': 'Overview',
+      'statisticsMap': 'Map',
+      'statisticsGallery': 'Gallery',
       'profile': 'Profile',
       'welcomeTitle': 'Track every glass',
       'welcomeBody':
@@ -87,6 +90,12 @@ class AppLocalizations {
       'days': 'days',
       'categoryBreakdown': 'Category breakdown',
       'history': 'History',
+      'statisticsMapPlaceholderTitle': 'Drink map coming soon',
+      'statisticsMapPlaceholderBody':
+          'Logged drinks will appear here on a map in a later step.',
+      'statisticsGalleryPlaceholderTitle': 'Gallery coming soon',
+      'statisticsGalleryPlaceholderBody':
+          'Drink photos from your log will appear here in a later step.',
       'totalDrinks': 'Total drinks',
       'settings': 'Settings',
       'backend': 'Backend',
@@ -142,6 +151,9 @@ class AppLocalizations {
       'appTitle': 'GlassTrail',
       'feed': 'Feed',
       'statistics': 'Statistiken',
+      'statisticsOverview': 'Überblick',
+      'statisticsMap': 'Karte',
+      'statisticsGallery': 'Galerie',
       'profile': 'Profil',
       'welcomeTitle': 'Jedes Glas festhalten',
       'welcomeBody':
@@ -205,6 +217,12 @@ class AppLocalizations {
       'days': 'Tage',
       'categoryBreakdown': 'Kategorien',
       'history': 'Historie',
+      'statisticsMapPlaceholderTitle': 'Karte folgt später',
+      'statisticsMapPlaceholderBody':
+          'Hier werden geloggte Getränke später auf einer Karte angezeigt.',
+      'statisticsGalleryPlaceholderTitle': 'Galerie folgt später',
+      'statisticsGalleryPlaceholderBody':
+          'Hier werden Fotos aus deinen Getränke-Logs später als Galerie angezeigt.',
       'totalDrinks': 'Getränke gesamt',
       'settings': 'Einstellungen',
       'backend': 'Backend',
@@ -268,6 +286,9 @@ class AppLocalizations {
   String get appTitle => _text('appTitle');
   String get feed => _text('feed');
   String get statistics => _text('statistics');
+  String get statisticsOverview => _text('statisticsOverview');
+  String get statisticsMap => _text('statisticsMap');
+  String get statisticsGallery => _text('statisticsGallery');
   String get profile => _text('profile');
   String get welcomeTitle => _text('welcomeTitle');
   String get welcomeBody => _text('welcomeBody');
@@ -317,6 +338,14 @@ class AppLocalizations {
   String get days => _text('days');
   String get categoryBreakdown => _text('categoryBreakdown');
   String get history => _text('history');
+  String get statisticsMapPlaceholderTitle =>
+      _text('statisticsMapPlaceholderTitle');
+  String get statisticsMapPlaceholderBody =>
+      _text('statisticsMapPlaceholderBody');
+  String get statisticsGalleryPlaceholderTitle =>
+      _text('statisticsGalleryPlaceholderTitle');
+  String get statisticsGalleryPlaceholderBody =>
+      _text('statisticsGalleryPlaceholderBody');
   String get totalDrinks => _text('totalDrinks');
   String get settings => _text('settings');
   String get backend => _text('backend');

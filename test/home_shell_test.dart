@@ -24,6 +24,24 @@ Future<void> _openProfileTab(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _openStatisticsTab(
+  WidgetTester tester, {
+  String label = 'Statistics',
+}) async {
+  await tester.tap(find.text(label));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openStatisticsSection(WidgetTester tester, String label) async {
+  final tab = find.descendant(
+    of: find.byKey(const Key('statistics-tab-bar')),
+    matching: find.text(label, skipOffstage: false),
+  );
+  await tester.ensureVisible(tab.first);
+  await tester.tap(tab.first);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('opens profile editing on a separate screen', (tester) async {
     final controller = await buildTestController();
@@ -481,15 +499,8 @@ void main() {
     expect(find.text('Rotwein'), findsOneWidget);
     expect(find.text('Red Wine'), findsNothing);
 
-    await tester.tap(find.text('Statistiken'));
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(
-      find.text('Rotwein'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+    await _openStatisticsTab(tester, label: 'Statistiken');
+    await _openStatisticsSection(tester, 'Historie');
 
     expect(find.text('Rotwein'), findsOneWidget);
     expect(find.text('Red Wine'), findsNothing);
@@ -544,15 +555,8 @@ void main() {
     expect(find.text('Desk Coffee'), findsOneWidget);
     expect(find.text('Office Brew'), findsNothing);
 
-    await tester.tap(find.text('Statistics'));
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(
-      find.text('Desk Coffee'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'History');
 
     expect(find.text('Desk Coffee'), findsOneWidget);
     expect(find.text('Office Brew'), findsNothing);
@@ -844,8 +848,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Statistics'));
-    await tester.pumpAndSettle();
+    await _openStatisticsTab(tester);
 
     expect(
       tester.widget<Text>(find.byKey(const Key('stats-card-value-weekly'))),
@@ -1024,8 +1027,7 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Statistics'));
-    await tester.pumpAndSettle();
+    await _openStatisticsTab(tester);
 
     expect(find.byKey(const Key('stats-card-icon-weekly')), findsOneWidget);
     expect(find.byKey(const Key('stats-card-icon-monthly')), findsOneWidget);
@@ -1119,8 +1121,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Statistics'));
-    await tester.pumpAndSettle();
+    await _openStatisticsTab(tester);
 
     expect(tester.takeException(), isNull);
 
@@ -1153,6 +1154,132 @@ void main() {
         find.byKey(const Key('stats-card-best-streak-range')),
       ),
       isA<Text>().having((widget) => widget.data, 'data', expectedRange),
+    );
+  });
+
+  testWidgets('shows a compact history view inside statistics', (tester) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-history-compact@example.com',
+      password: 'password123',
+      displayName: 'Stats History Compact',
+    );
+
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'nonAlcoholic-water',
+    );
+    await controller.addDrinkEntry(
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      comment: 'Should stay out of compact stats history',
+      imagePath: '/tmp/stats-history-image.png',
+    );
+    final entryId = controller.entries.single.id;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'History');
+
+    expect(find.text('Water'), findsOneWidget);
+    expect(find.text('Should stay out of compact stats history'), findsNothing);
+    expect(find.byKey(Key('history-entry-image-$entryId')), findsNothing);
+    expect(find.byKey(Key('history-entry-actions-$entryId')), findsNothing);
+  });
+
+  testWidgets('filters the compact statistics history by category', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-history-filter@example.com',
+      password: 'password123',
+      displayName: 'Stats History Filter',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final wine = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+    await controller.addDrinkEntry(drink: beer, volumeMl: beer.volumeMl);
+    await controller.addDrinkEntry(drink: wine, volumeMl: wine.volumeMl);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'History');
+
+    expect(find.text('Pils'), findsOneWidget);
+    expect(find.text('Red Wine'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilterChip, 'Wine (1)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pils'), findsNothing);
+    expect(find.text('Red Wine'), findsOneWidget);
+  });
+
+  testWidgets('shows placeholder tabs for map and gallery in statistics', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-placeholders@example.com',
+      password: 'password123',
+      displayName: 'Stats Placeholders',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    expect(find.text('Drink map coming soon'), findsOneWidget);
+    expect(
+      find.text('Logged drinks will appear here on a map in a later step.'),
+      findsOneWidget,
+    );
+
+    await _openStatisticsSection(tester, 'Gallery');
+
+    expect(find.text('Gallery coming soon'), findsOneWidget);
+    expect(
+      find.text('Drink photos from your log will appear here in a later step.'),
+      findsOneWidget,
     );
   });
 

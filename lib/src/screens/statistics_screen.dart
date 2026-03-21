@@ -7,51 +7,112 @@ import '../app_scope.dart';
 import '../models.dart';
 import '../stats_calculator.dart';
 
-class StatisticsScreen extends StatefulWidget {
-  const StatisticsScreen({super.key});
-
-  @override
-  State<StatisticsScreen> createState() => _StatisticsScreenState();
+Future<void> _refreshStatistics(BuildContext context) async {
+  final l10n = AppLocalizations.of(context);
+  final controller = AppScope.controllerOf(context);
+  final success = await controller.refreshData();
+  if (!context.mounted || success) {
+    return;
+  }
+  final message = controller.takeFlashMessage(l10n);
+  if (message != null) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> {
-  DrinkCategory? _selectedCategory;
+Map<DrinkCategory, Color> _statisticsCategoryColors(ThemeData theme) {
+  return <DrinkCategory, Color>{
+    DrinkCategory.beer: theme.colorScheme.primary,
+    DrinkCategory.wine: theme.colorScheme.secondary,
+    DrinkCategory.spirits: theme.colorScheme.tertiary,
+    DrinkCategory.cocktails: theme.colorScheme.error,
+    DrinkCategory.nonAlcoholic: theme.colorScheme.primaryContainer,
+  };
+}
 
-  Future<void> _refresh() async {
-    final l10n = AppLocalizations.of(context);
-    final controller = AppScope.controllerOf(context);
-    final success = await controller.refreshData();
-    if (!mounted || success) {
-      return;
-    }
-    final message = controller.takeFlashMessage(l10n);
-    if (message != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    }
-  }
+class StatisticsScreen extends StatelessWidget {
+  const StatisticsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return DefaultTabController(
+      length: 4,
+      child: Column(
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: TabBar(
+                key: const Key('statistics-tab-bar'),
+                isScrollable: true,
+                padding: const EdgeInsets.all(6),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 18),
+                dividerColor: Colors.transparent,
+                tabs: <Widget>[
+                  Tab(text: l10n.statisticsOverview),
+                  Tab(text: l10n.statisticsMap),
+                  Tab(text: l10n.history),
+                  Tab(text: l10n.statisticsGallery),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: <Widget>[
+                const _StatisticsOverviewPage(),
+                _StatisticsPlaceholderPage(
+                  listKey: const Key('statistics-map-list-view'),
+                  placeholderKey: const Key('statistics-map-placeholder'),
+                  icon: Icons.map_rounded,
+                  title: l10n.statisticsMapPlaceholderTitle,
+                  body: l10n.statisticsMapPlaceholderBody,
+                ),
+                const _StatisticsHistoryPage(),
+                _StatisticsPlaceholderPage(
+                  listKey: const Key('statistics-gallery-list-view'),
+                  placeholderKey: const Key('statistics-gallery-placeholder'),
+                  icon: Icons.photo_library_rounded,
+                  title: l10n.statisticsGalleryPlaceholderTitle,
+                  body: l10n.statisticsGalleryPlaceholderBody,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatisticsOverviewPage extends StatelessWidget {
+  const _StatisticsOverviewPage();
+
+  @override
+  Widget build(BuildContext context) {
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final stats = controller.statistics;
     final localeCode = controller.settings.localeCode;
-    final entries = _selectedCategory == null
-        ? controller.entries
-        : controller.entries
-              .where((entry) => entry.category == _selectedCategory)
-              .toList();
+    final colors = _statisticsCategoryColors(theme);
 
     return RefreshIndicator(
       key: const Key('statistics-refresh-indicator'),
-      onRefresh: _refresh,
+      onRefresh: () => _refreshStatistics(context),
       child: ListView(
         key: const Key('statistics-list-view'),
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
         children: <Widget>[
           _StatisticsOverviewPanel(stats: stats, localeCode: localeCode),
           const SizedBox(height: 24),
@@ -77,47 +138,122 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     PieChartData(
                       centerSpaceRadius: 60,
                       sectionsSpace: 2,
-                      sections: _buildSections(context),
+                      sections: _buildSections(context, stats, colors),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: DrinkCategory.values.map((category) {
                     final count = stats.categoryCounts[category] ?? 0;
-                    return FilterChip(
-                      selected: _selectedCategory == category,
-                      avatar: Icon(
-                        category.icon,
-                        key: Key(
-                          'stats-category-chip-icon-${category.storageValue}',
-                        ),
-                        size: 18,
+                    return _StatisticsLegendChip(
+                      iconKey: Key(
+                        'stats-category-chip-icon-${category.storageValue}',
                       ),
-                      label: Text('${l10n.categoryLabel(category)} ($count)'),
-                      onSelected: (_) {
-                        setState(() {
-                          _selectedCategory = _selectedCategory == category
-                              ? null
-                              : category;
-                        });
-                      },
+                      label: '${l10n.categoryLabel(category)} ($count)',
+                      icon: category.icon,
+                      accentColor: colors[category]!,
                     );
                   }).toList(),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Text(
-            l10n.history,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
+        ],
+      ),
+    );
+  }
+
+  List<PieChartSectionData> _buildSections(
+    BuildContext context,
+    AppStatistics stats,
+    Map<DrinkCategory, Color> colors,
+  ) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return DrinkCategory.values.map((category) {
+      final count = stats.categoryCounts[category] ?? 0;
+      return PieChartSectionData(
+        value: count.toDouble(),
+        color: colors[category],
+        radius: 48,
+        title: count == 0 ? '' : '${l10n.categoryLabel(category)}\n$count',
+        titleStyle: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: theme.colorScheme.onPrimary,
+        ),
+      );
+    }).toList();
+  }
+}
+
+class _StatisticsHistoryPage extends StatefulWidget {
+  const _StatisticsHistoryPage();
+
+  @override
+  State<_StatisticsHistoryPage> createState() => _StatisticsHistoryPageState();
+}
+
+class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
+  DrinkCategory? _selectedCategory;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.controllerOf(context);
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final entries = _selectedCategory == null
+        ? controller.entries
+        : controller.entries
+              .where((entry) => entry.category == _selectedCategory)
+              .toList();
+
+    return RefreshIndicator(
+      key: const Key('statistics-history-refresh-indicator'),
+      onRefresh: () => _refreshStatistics(context),
+      child: ListView(
+        key: const Key('statistics-history-list-view'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: DrinkCategory.values.map((category) {
+                final count =
+                    controller.statistics.categoryCounts[category] ?? 0;
+                return FilterChip(
+                  selected: _selectedCategory == category,
+                  showCheckmark: false,
+                  avatar: Icon(
+                    category.icon,
+                    key: Key(
+                      'statistics-history-category-chip-icon-${category.storageValue}',
+                    ),
+                    size: 18,
+                  ),
+                  label: Text('${l10n.categoryLabel(category)} ($count)'),
+                  onSelected: (_) {
+                    setState(() {
+                      _selectedCategory = _selectedCategory == category
+                          ? null
+                          : category;
+                    });
+                  },
+                );
+              }).toList(),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           if (entries.isEmpty)
             Container(
               padding: const EdgeInsets.all(18),
@@ -177,32 +313,116 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       ),
     );
   }
+}
 
-  List<PieChartSectionData> _buildSections(BuildContext context) {
+class _StatisticsPlaceholderPage extends StatelessWidget {
+  const _StatisticsPlaceholderPage({
+    required this.listKey,
+    required this.placeholderKey,
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final Key listKey;
+  final Key placeholderKey;
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final stats = AppScope.controllerOf(context).statistics;
-    final colors = <DrinkCategory, Color>{
-      DrinkCategory.beer: theme.colorScheme.primary,
-      DrinkCategory.wine: theme.colorScheme.secondary,
-      DrinkCategory.spirits: theme.colorScheme.tertiary,
-      DrinkCategory.cocktails: theme.colorScheme.error,
-      DrinkCategory.nonAlcoholic: theme.colorScheme.primaryContainer,
-    };
 
-    return DrinkCategory.values.map((category) {
-      final count = stats.categoryCounts[category] ?? 0;
-      return PieChartSectionData(
-        value: count.toDouble(),
-        color: colors[category],
-        radius: 48,
-        title: count == 0 ? '' : '${l10n.categoryLabel(category)}\n$count',
-        titleStyle: theme.textTheme.labelMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: theme.colorScheme.onPrimary,
+    return RefreshIndicator(
+      onRefresh: () => _refreshStatistics(context),
+      child: ListView(
+        key: listKey,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+        children: <Widget>[
+          Container(
+            key: placeholderKey,
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: Column(
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(icon, size: 36, color: theme.colorScheme.primary),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  body,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatisticsLegendChip extends StatelessWidget {
+  const _StatisticsLegendChip({
+    required this.iconKey,
+    required this.label,
+    required this.icon,
+    required this.accentColor,
+  });
+
+  final Key iconKey;
+  final String label;
+  final IconData icon;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          accentColor.withValues(alpha: 0.1),
+          theme.colorScheme.surface,
         ),
-      );
-    }).toList();
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, key: iconKey, size: 18, color: accentColor),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
