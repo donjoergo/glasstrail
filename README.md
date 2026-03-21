@@ -36,6 +36,7 @@ Additional routing behavior:
 - `/` redirects to `/feed`
 - Protected routes show the auth flow when the user is signed out
 - After successful authentication, the app returns to the originally requested protected route
+- On Flutter Web, a full browser reload restores the last visited page
 - After an explicit logout, the next login lands on `/feed`
 
 ## Navigation Map

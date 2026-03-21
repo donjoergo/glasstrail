@@ -73,7 +73,7 @@ void main() {
     },
   );
 
-  testWidgets('restores the last visited route after a full reload', (
+  testWidgets('restores the last visited route after a web reload', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -110,12 +110,54 @@ void main() {
       GlassTrailBootstrapApp(
         controllerFuture: Future<AppController>.value(reloadedController),
         photoService: const TestPhotoService(),
+        routeMemoryFuture: Future<RouteMemory>.value(routeMemory),
       ),
     );
     await tester.pumpAndSettle();
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(route?.settings.name, AppRoutes.profile);
+  });
+
+  testWidgets('starts in feed after a native app restart', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final routeMemory = await RouteMemory.create();
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+    await controller.signUp(
+      email: 'native-restart@example.com',
+      password: 'password123',
+      displayName: 'Native Restart',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        routeMemory: routeMemory,
+        initialRoute: AppRoutes.feed,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+
+    final restartedController = await AppController.bootstrapWithRepository(
+      repository,
+    );
+    await tester.pumpWidget(
+      GlassTrailBootstrapApp(
+        controllerFuture: Future<AppController>.value(restartedController),
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.feed);
   });
 
   testWidgets('boots into authentication flow', (tester) async {

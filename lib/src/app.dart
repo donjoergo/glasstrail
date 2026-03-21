@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -24,12 +25,14 @@ class GlassTrailBootstrapApp extends StatefulWidget {
     this.backendConfig,
     this.initialRoute,
     this.controllerFuture,
+    this.routeMemoryFuture,
   });
 
   final PhotoService photoService;
   final BackendConfig? backendConfig;
   final String? initialRoute;
   final Future<AppController>? controllerFuture;
+  final Future<RouteMemory>? routeMemoryFuture;
 
   @override
   State<GlassTrailBootstrapApp> createState() => _GlassTrailBootstrapAppState();
@@ -73,7 +76,12 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
     Future<AppController> controllerFuture,
   ) async {
     final controller = await controllerFuture;
-    final routeMemory = await RouteMemory.create();
+    final Future<RouteMemory> routeMemoryFuture =
+        widget.routeMemoryFuture ??
+        (kIsWeb
+            ? RouteMemory.create()
+            : Future<RouteMemory>.value(RouteMemory.disabled()));
+    final routeMemory = await routeMemoryFuture;
     return _BootstrapData(controller: controller, routeMemory: routeMemory);
   }
 }
