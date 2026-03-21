@@ -102,7 +102,15 @@ class _AuthScreenState extends State<AuthScreen> {
     if (success) {
       FocusScope.of(context).unfocus();
       TextInput.finishAutofillContext();
-      Navigator.of(context).pushReplacementNamed(AppRoutes.feed);
+      final arguments = ModalRoute.of(context)?.settings.arguments;
+      final redirectRoute = arguments is String ? arguments : null;
+      final targetRoute = await AppScope.routeMemoryOf(
+        context,
+      ).consumePostAuthRoute(redirectRoute);
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pushReplacementNamed(targetRoute);
     }
   }
 

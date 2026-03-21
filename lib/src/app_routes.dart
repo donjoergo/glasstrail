@@ -21,6 +21,22 @@ class AppRoutes {
     };
   }
 
+  static String postAuthRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    return switch (normalized) {
+      feed || statistics || profile || addDrink || editProfile => normalized,
+      _ => feed,
+    };
+  }
+
+  static bool isRestorable(String? routeName) {
+    final normalized = normalize(routeName);
+    return switch (normalized) {
+      feed || statistics || profile || addDrink || editProfile => true,
+      _ => false,
+    };
+  }
+
   static int homeTabIndex(String routeName) {
     final normalized = normalize(routeName);
     return switch (normalized) {

@@ -430,6 +430,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (!success) {
                           return;
                         }
+                        await AppScope.routeMemoryOf(context).markLoggedOut();
+                        if (!mounted) {
+                          return;
+                        }
+                        Navigator.of(
+                          context,
+                        ).pushReplacementNamed(AppRoutes.auth);
                       },
                 icon: isSigningOut
                     ? const SizedBox.square(

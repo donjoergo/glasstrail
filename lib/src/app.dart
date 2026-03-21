@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -9,6 +11,7 @@ import 'app_theme.dart';
 import 'backend_config.dart';
 import 'models.dart';
 import 'photo_service.dart';
+import 'route_memory.dart';
 import 'screens/add_drink_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/edit_profile_screen.dart';
@@ -33,44 +36,60 @@ class GlassTrailBootstrapApp extends StatefulWidget {
 }
 
 class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
-  late Future<AppController> _controllerFuture;
+  late Future<_BootstrapData> _bootstrapFuture;
 
   @override
   void initState() {
     super.initState();
-    _controllerFuture =
+    final controllerFuture =
         widget.controllerFuture ??
         AppController.bootstrap(backendConfig: widget.backendConfig);
+    _bootstrapFuture = _loadBootstrapData(controllerFuture);
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<AppController>(
-      future: _controllerFuture,
+    return FutureBuilder<_BootstrapData>(
+      future: _bootstrapFuture,
       builder: (context, snapshot) {
         if (snapshot.hasData) {
+          final bootstrapData = snapshot.data!;
           return GlassTrailApp(
-            controller: snapshot.data!,
+            controller: bootstrapData.controller,
             photoService: widget.photoService,
+            routeMemory: bootstrapData.routeMemory,
             initialRoute: widget.initialRoute,
           );
         }
-        return _BootstrapShell(hasError: snapshot.hasError);
+        return _BootstrapShell(
+          hasError: snapshot.hasError,
+          initialRoute: widget.initialRoute,
+        );
       },
     );
+  }
+
+  Future<_BootstrapData> _loadBootstrapData(
+    Future<AppController> controllerFuture,
+  ) async {
+    final controller = await controllerFuture;
+    final routeMemory = await RouteMemory.create();
+    return _BootstrapData(controller: controller, routeMemory: routeMemory);
   }
 }
 
 class GlassTrailApp extends StatelessWidget {
-  const GlassTrailApp({
+  GlassTrailApp({
     super.key,
     required this.controller,
     required this.photoService,
+    RouteMemory? routeMemory,
     this.initialRoute,
-  });
+  }) : routeMemory = routeMemory ?? RouteMemory.disabled();
 
   final AppController controller;
   final PhotoService photoService;
+  final RouteMemory routeMemory;
   final String? initialRoute;
 
   @override
@@ -78,11 +97,13 @@ class GlassTrailApp extends StatelessWidget {
     return AppScope(
       controller: controller,
       photoService: photoService,
+      routeMemory: routeMemory,
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, _) {
           Route<dynamic> buildRoute(RouteSettings settings) {
             final routeName = AppRoutes.normalize(settings.name);
+            unawaited(routeMemory.rememberRoute(routeName));
             return MaterialPageRoute<void>(
               settings: RouteSettings(
                 name: routeName,
@@ -107,7 +128,7 @@ class GlassTrailApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             onGenerateInitialRoutes: (initialRouteName) {
-              final routeName = AppRoutes.normalize(
+              final routeName = routeMemory.resolveInitialRoute(
                 initialRoute ?? initialRouteName,
               );
               return <Route<dynamic>>[
@@ -130,12 +151,21 @@ class GlassTrailApp extends StatelessWidget {
 }
 
 class _BootstrapShell extends StatelessWidget {
-  const _BootstrapShell({required this.hasError});
+  const _BootstrapShell({required this.hasError, this.initialRoute});
 
   final bool hasError;
+  final String? initialRoute;
 
   @override
   Widget build(BuildContext context) {
+    Route<dynamic> buildRoute(RouteSettings settings) {
+      final routeName = AppRoutes.normalize(settings.name);
+      return MaterialPageRoute<void>(
+        settings: RouteSettings(name: routeName, arguments: settings.arguments),
+        builder: (_) => _BootstrapScreen(hasError: hasError),
+      );
+    }
+
     return MaterialApp(
       title: 'GlassTrail',
       debugShowCheckedModeBanner: false,
@@ -149,7 +179,11 @@ class _BootstrapShell extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: _BootstrapScreen(hasError: hasError),
+      onGenerateInitialRoutes: (initialRouteName) {
+        final routeName = AppRoutes.normalize(initialRoute ?? initialRouteName);
+        return <Route<dynamic>>[buildRoute(RouteSettings(name: routeName))];
+      },
+      onGenerateRoute: buildRoute,
     );
   }
 }
@@ -238,6 +272,13 @@ class _BootstrapScreen extends StatelessWidget {
   }
 }
 
+class _BootstrapData {
+  const _BootstrapData({required this.controller, required this.routeMemory});
+
+  final AppController controller;
+  final RouteMemory routeMemory;
+}
+
 class _AppRouteScreen extends StatelessWidget {
   const _AppRouteScreen({required this.routeName});
 
@@ -256,7 +297,10 @@ class _AppRouteScreen extends StatelessWidget {
       if (normalizedRoute == AppRoutes.auth) {
         return const AuthScreen();
       }
-      return const _RouteRedirectScreen(targetRoute: AppRoutes.auth);
+      return _RouteRedirectScreen(
+        targetRoute: AppRoutes.auth,
+        arguments: normalizedRoute,
+      );
     }
 
     return switch (normalizedRoute) {
@@ -272,9 +316,10 @@ class _AppRouteScreen extends StatelessWidget {
 }
 
 class _RouteRedirectScreen extends StatefulWidget {
-  const _RouteRedirectScreen({required this.targetRoute});
+  const _RouteRedirectScreen({required this.targetRoute, this.arguments});
 
   final String targetRoute;
+  final Object? arguments;
 
   @override
   State<_RouteRedirectScreen> createState() => _RouteRedirectScreenState();
@@ -288,7 +333,9 @@ class _RouteRedirectScreenState extends State<_RouteRedirectScreen> {
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pushReplacementNamed(widget.targetRoute);
+      Navigator.of(
+        context,
+      ).pushReplacementNamed(widget.targetRoute, arguments: widget.arguments);
     });
   }
 

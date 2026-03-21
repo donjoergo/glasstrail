@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_routes.dart';
+import 'package:glasstrail/src/repository/local_app_repository.dart';
+import 'package:glasstrail/src/route_memory.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/test_harness.dart';
 
@@ -32,6 +35,87 @@ void main() {
 
     expect(find.text('Track every glass'), findsOneWidget);
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+  });
+
+  testWidgets(
+    'accepts the browser initial route while the bootstrap shell is active',
+    (tester) async {
+      tester.binding.platformDispatcher.defaultRouteNameTestValue =
+          AppRoutes.statistics;
+      addTearDown(
+        tester.binding.platformDispatcher.clearDefaultRouteNameTestValue,
+      );
+
+      final controllerCompleter = Completer<AppController>();
+
+      await tester.pumpWidget(
+        GlassTrailBootstrapApp(
+          controllerFuture: controllerCompleter.future,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('GlassTrail'), findsOneWidget);
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'bootstrap-route@example.com',
+        password: 'password123',
+        displayName: 'Bootstrap Route',
+      );
+      controllerCompleter.complete(controller);
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Category breakdown'), findsOneWidget);
+    },
+  );
+
+  testWidgets('restores the last visited route after a full reload', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final routeMemory = await RouteMemory.create();
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+    await controller.signUp(
+      email: 'reload-profile@example.com',
+      password: 'password123',
+      displayName: 'Reload Profile',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        routeMemory: routeMemory,
+        initialRoute: AppRoutes.feed,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    final profileRoute = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(profileRoute?.settings.name, AppRoutes.profile);
+
+    final reloadedController = await AppController.bootstrapWithRepository(
+      repository,
+    );
+    await tester.pumpWidget(
+      GlassTrailBootstrapApp(
+        controllerFuture: Future<AppController>.value(reloadedController),
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.profile);
   });
 
   testWidgets('boots into authentication flow', (tester) async {
@@ -230,16 +314,17 @@ void main() {
     expect(find.text('Category breakdown'), findsOneWidget);
   });
 
-  testWidgets('navigates to feed after sign-in from a protected route', (
-    tester,
-  ) async {
-    final controller = await buildTestController();
-    await controller.signUp(
+  testWidgets('restores the protected route after sign-in', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    await repository.signUp(
       email: 'protected-login@example.com',
       password: 'password123',
       displayName: 'Protected Login',
     );
-    await controller.signOut();
+    await repository.signOut();
+    final controller = await AppController.bootstrapWithRepository(repository);
 
     await tester.pumpWidget(
       GlassTrailApp(
@@ -264,16 +349,14 @@ void main() {
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
-    expect(find.text('Category breakdown'), findsNothing);
+    expect(find.byKey(const Key('history-streak-card')), findsNothing);
+    expect(find.text('Category breakdown'), findsOneWidget);
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
-    expect(route?.settings.name, AppRoutes.feed);
+    expect(route?.settings.name, AppRoutes.statistics);
   });
 
-  testWidgets('navigates to feed after sign-up from a protected route', (
-    tester,
-  ) async {
+  testWidgets('restores the protected route after sign-up', (tester) async {
     final app = await buildTestApp(initialRoute: AppRoutes.editProfile);
 
     await tester.pumpWidget(app);
@@ -306,11 +389,65 @@ void main() {
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
     expect(
       find.byKey(const Key('edit-profile-display-name-field')),
-      findsNothing,
+      findsOneWidget,
     );
+
+    final route = ModalRoute.of(
+      tester.element(find.byKey(const Key('edit-profile-display-name-field'))),
+    );
+    expect(route?.settings.name, AppRoutes.editProfile);
+  });
+
+  testWidgets('navigates to feed after login when the user logged out', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'logout-reset@example.com',
+      password: 'password123',
+      displayName: 'Logout Reset',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.feed,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    final logoutButton = find.byKey(const Key('profile-logout-button'));
+    await tester.scrollUntilVisible(
+      logoutButton,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(logoutButton);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    await tester.tap(logoutButton);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('signin-email-field')),
+      'logout-reset@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signin-password-field')),
+      'password123',
+    );
+    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(find.byType(HomeShell), findsOneWidget);
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(route?.settings.name, AppRoutes.feed);
