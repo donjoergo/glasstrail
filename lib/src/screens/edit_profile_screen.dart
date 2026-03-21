@@ -21,6 +21,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _profileImagePath;
   String? _hydratedUserId;
 
+  Widget _fullWidthAction(Widget child) {
+    return SizedBox(width: double.infinity, child: child);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -165,33 +169,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: <Widget>[
-                                    FilledButton.tonalIcon(
-                                      onPressed: isBusy ? null : _pickPhoto,
-                                      icon: const Icon(
-                                        Icons.photo_camera_back_outlined,
-                                      ),
-                                      label: Text(
-                                        _profileImagePath == null
-                                            ? l10n.pickPhoto
-                                            : l10n.changePhoto,
+                                    _fullWidthAction(
+                                      FilledButton.tonalIcon(
+                                        key: const Key(
+                                          'edit-profile-change-photo-button',
+                                        ),
+                                        onPressed: isBusy ? null : _pickPhoto,
+                                        icon: const Icon(
+                                          Icons.photo_camera_back_outlined,
+                                        ),
+                                        label: Text(
+                                          _profileImagePath == null
+                                              ? l10n.pickPhoto
+                                              : l10n.changePhoto,
+                                        ),
                                       ),
                                     ),
-                                    if (_profileImagePath != null)
-                                      OutlinedButton.icon(
-                                        onPressed: isBusy
-                                            ? null
-                                            : () {
-                                                setState(() {
-                                                  _profileImagePath = null;
-                                                });
-                                              },
-                                        icon: const Icon(Icons.close_rounded),
-                                        label: Text(l10n.removePhoto),
+                                    if (_profileImagePath != null) ...<Widget>[
+                                      const SizedBox(height: 10),
+                                      _fullWidthAction(
+                                        OutlinedButton.icon(
+                                          key: const Key(
+                                            'edit-profile-remove-photo-button',
+                                          ),
+                                          onPressed: isBusy
+                                              ? null
+                                              : () {
+                                                  setState(() {
+                                                    _profileImagePath = null;
+                                                  });
+                                                },
+                                          icon: const Icon(Icons.close_rounded),
+                                          label: Text(l10n.removePhoto),
+                                        ),
                                       ),
+                                    ],
                                   ],
                                 ),
                               ],
@@ -213,36 +229,66 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             : null,
                       ),
                       const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: <Widget>[
+                      if (_birthday == null)
+                        _fullWidthAction(
                           FilledButton.tonalIcon(
+                            key: const Key('edit-profile-birthday-button'),
                             onPressed: isBusy ? null : _pickBirthday,
                             icon: const Icon(Icons.cake_outlined),
-                            label: Text(
-                              _birthday == null
-                                  ? '${l10n.birthday} (${l10n.optional})'
-                                  : formatBirthdayMonthDay(
-                                      _birthday!,
-                                      controller.settings.localeCode,
-                                    ),
-                            ),
+                            label: Text('${l10n.birthday} (${l10n.optional})'),
                           ),
-                          if (_birthday != null)
-                            OutlinedButton.icon(
-                              onPressed: isBusy
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _birthday = null;
-                                      });
-                                    },
-                              icon: const Icon(Icons.close_rounded),
-                              label: Text(l10n.removeBirthday),
+                        )
+                      else
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            FilledButton.tonalIcon(
+                              key: const Key('edit-profile-birthday-button'),
+                              style: FilledButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                minimumSize: const Size(0, 40),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              onPressed: isBusy ? null : _pickBirthday,
+                              icon: const Icon(Icons.cake_outlined),
+                              label: Text(
+                                formatBirthdayMonthDay(
+                                  _birthday!,
+                                  controller.settings.localeCode,
+                                ),
+                              ),
                             ),
-                        ],
-                      ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                key: const Key(
+                                  'edit-profile-remove-birthday-button',
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  minimumSize: const Size(0, 40),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: isBusy
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          _birthday = null;
+                                        });
+                                      },
+                                icon: const Icon(Icons.close_rounded),
+                                label: Text(l10n.removeBirthday),
+                              ),
+                            ),
+                          ],
+                        ),
                       const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,

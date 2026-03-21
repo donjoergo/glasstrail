@@ -102,6 +102,76 @@ void main() {
     expect(find.text('Profile Busy Updated'), findsOneWidget);
   });
 
+  testWidgets('stretches edit-profile action buttons to the right edge', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-actions@example.com',
+      password: 'password123',
+      displayName: 'Profile Actions',
+      birthday: DateTime(1990, 7, 13),
+      profileImagePath: '/tmp/mock-image.png',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.tap(find.byKey(const Key('profile-edit-button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-profile-save-button')),
+    );
+    await tester.pumpAndSettle();
+
+    final saveRect = tester.getRect(
+      find.byKey(const Key('edit-profile-save-button')),
+    );
+    final changePhotoRect = tester.getRect(
+      find.byKey(const Key('edit-profile-change-photo-button')),
+    );
+    final removePhotoRect = tester.getRect(
+      find.byKey(const Key('edit-profile-remove-photo-button')),
+    );
+    final birthdayRect = tester.getRect(
+      find.byKey(const Key('edit-profile-birthday-button')),
+    );
+    final removeBirthdayRect = tester.getRect(
+      find.byKey(const Key('edit-profile-remove-birthday-button')),
+    );
+
+    expect(
+      changePhotoRect.right,
+      moreOrLessEquals(saveRect.right, epsilon: 0.01),
+    );
+    expect(
+      removePhotoRect.right,
+      moreOrLessEquals(saveRect.right, epsilon: 0.01),
+    );
+    expect(
+      removeBirthdayRect.right,
+      moreOrLessEquals(saveRect.right, epsilon: 0.01),
+    );
+    expect(removeBirthdayRect.width, greaterThan(birthdayRect.width));
+    expect(
+      birthdayRect.top,
+      moreOrLessEquals(removeBirthdayRect.top, epsilon: 0.01),
+    );
+  });
+
   testWidgets('shows a field-local spinner while saving settings', (
     tester,
   ) async {
