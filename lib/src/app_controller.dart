@@ -285,6 +285,9 @@ class AppController extends ChangeNotifier {
     required double? volumeMl,
     String? comment,
     String? imagePath,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationAddress,
   }) async {
     final user = _currentUser;
     if (user == null) {
@@ -297,6 +300,9 @@ class AppController extends ChangeNotifier {
         volumeMl: volumeMl,
         comment: comment,
         imagePath: imagePath,
+        locationLatitude: locationLatitude,
+        locationLongitude: locationLongitude,
+        locationAddress: locationAddress,
       );
       _entries = [entry, ..._entries]
         ..sort((left, right) => right.consumedAt.compareTo(left.consumedAt));

@@ -277,51 +277,94 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
             ...entries.map(
               (entry) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: <Widget>[
-                      Icon(
-                        entry.category.icon,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              controller.localizedEntryDrinkName(entry),
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              DateFormat.yMMMd(
-                                controller.settings.localeCode,
-                              ).format(entry.consumedAt),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        controller.settings.unit.formatVolume(entry.volumeMl),
-                      ),
-                    ],
-                  ),
-                ),
+                child: _StatisticsHistoryEntryCard(entry: entry),
               ),
             ),
         ],
       ),
     );
+  }
+}
+
+class _StatisticsHistoryEntryCard extends StatelessWidget {
+  const _StatisticsHistoryEntryCard({required this.entry});
+
+  final DrinkEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.controllerOf(context);
+    final theme = Theme.of(context);
+    final locationAddress = _normalizedLocationAddress(entry.locationAddress);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(entry.category.icon, color: theme.colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  controller.localizedEntryDrinkName(entry),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  DateFormat.yMMMd(
+                    controller.settings.localeCode,
+                  ).format(entry.consumedAt),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (locationAddress != null) ...<Widget>[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: <Widget>[
+                      Icon(
+                        Icons.location_on_outlined,
+                        key: Key(
+                          'statistics-history-location-icon-${entry.id}',
+                        ),
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          locationAddress,
+                          key: Key('statistics-history-location-${entry.id}'),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Text(controller.settings.unit.formatVolume(entry.volumeMl)),
+        ],
+      ),
+    );
+  }
+
+  String? _normalizedLocationAddress(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 }
 
@@ -349,6 +392,8 @@ class _StatisticsGalleryPage extends StatelessWidget {
               l10n.categoryLabel(entry.category),
               DateFormat.yMMMd(localeCode).add_Hm().format(entry.consumedAt),
               if (entry.volumeMl != null) unit.formatVolume(entry.volumeMl),
+              if (_normalizedLocationAddress(entry.locationAddress) != null)
+                _normalizedLocationAddress(entry.locationAddress)!,
             ],
             comment: _normalizedGalleryComment(entry.comment),
           ),
@@ -451,6 +496,14 @@ class _StatisticsGalleryPage extends StatelessWidget {
 
   String? _normalizedGalleryComment(String? comment) {
     final normalized = comment?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  String? _normalizedLocationAddress(String? value) {
+    final normalized = value?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;
     }

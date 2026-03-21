@@ -371,6 +371,9 @@ class _BootstrapProbeRepository implements AppRepository {
     double? volumeMl,
     String? comment,
     String? imagePath,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationAddress,
     DateTime? consumedAt,
   }) {
     throw UnimplementedError();

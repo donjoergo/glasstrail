@@ -282,6 +282,9 @@ class DrinkEntry {
     this.volumeMl,
     this.comment,
     this.imagePath,
+    this.locationLatitude,
+    this.locationLongitude,
+    this.locationAddress,
   });
 
   final String id;
@@ -293,6 +296,9 @@ class DrinkEntry {
   final double? volumeMl;
   final String? comment;
   final String? imagePath;
+  final double? locationLatitude;
+  final double? locationLongitude;
+  final String? locationAddress;
 
   DrinkEntry copyWith({
     String? drinkId,
@@ -304,6 +310,10 @@ class DrinkEntry {
     bool clearComment = false,
     String? imagePath,
     bool clearImagePath = false,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationAddress,
+    bool clearLocation = false,
   }) {
     return DrinkEntry(
       id: id,
@@ -315,6 +325,15 @@ class DrinkEntry {
       volumeMl: volumeMl ?? this.volumeMl,
       comment: clearComment ? null : comment ?? this.comment,
       imagePath: clearImagePath ? null : imagePath ?? this.imagePath,
+      locationLatitude: clearLocation
+          ? null
+          : locationLatitude ?? this.locationLatitude,
+      locationLongitude: clearLocation
+          ? null
+          : locationLongitude ?? this.locationLongitude,
+      locationAddress: clearLocation
+          ? null
+          : locationAddress ?? this.locationAddress,
     );
   }
 
@@ -329,6 +348,9 @@ class DrinkEntry {
       'volumeMl': volumeMl,
       'comment': comment,
       'imagePath': imagePath,
+      'locationLatitude': locationLatitude,
+      'locationLongitude': locationLongitude,
+      'locationAddress': locationAddress,
     };
   }
 
@@ -340,9 +362,20 @@ class DrinkEntry {
       drinkName: json['drinkName'] as String,
       category: DrinkCategoryX.fromStorage(json['category'] as String),
       consumedAt: DateTime.parse(json['consumedAt'] as String),
-      volumeMl: (json['volumeMl'] as num?)?.toDouble(),
+      volumeMl: _readDouble(json, 'volumeMl', 'volume_ml'),
       comment: json['comment'] as String?,
       imagePath: json['imagePath'] as String?,
+      locationLatitude: _readDouble(
+        json,
+        'locationLatitude',
+        'location_latitude',
+      ),
+      locationLongitude: _readDouble(
+        json,
+        'locationLongitude',
+        'location_longitude',
+      ),
+      locationAddress: _readString(json, 'locationAddress', 'location_address'),
     );
   }
 }
@@ -417,6 +450,22 @@ String? _readString(
     return null;
   }
   return json[fallback] as String?;
+}
+
+double? _readDouble(
+  Map<String, dynamic> json,
+  String primary, [
+  String? fallback,
+]) {
+  final primaryValue = json[primary] as num?;
+  if (primaryValue != null) {
+    return primaryValue.toDouble();
+  }
+  if (fallback == null) {
+    return null;
+  }
+  final fallbackValue = json[fallback] as num?;
+  return fallbackValue?.toDouble();
 }
 
 List<DrinkDefinition> buildDefaultDrinkCatalog() {

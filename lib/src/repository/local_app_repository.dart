@@ -190,6 +190,9 @@ class LocalAppRepository implements AppRepository {
     double? volumeMl,
     String? comment,
     String? imagePath,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationAddress,
     DateTime? consumedAt,
   }) async {
     final map = _readJsonMap(_entriesKey);
@@ -210,6 +213,9 @@ class LocalAppRepository implements AppRepository {
           ? null
           : trimmedComment,
       imagePath: imagePath,
+      locationLatitude: locationLatitude,
+      locationLongitude: locationLongitude,
+      locationAddress: _normalizeLocationAddress(locationAddress),
     );
 
     raw.add(entry.toJson());
@@ -314,5 +320,13 @@ class LocalAppRepository implements AppRepository {
 
   Future<void> _writeJsonMap(String key, Map<String, dynamic> value) async {
     await _preferences.setString(key, jsonEncode(value));
+  }
+
+  String? _normalizeLocationAddress(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 }

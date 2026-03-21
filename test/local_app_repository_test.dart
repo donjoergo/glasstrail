@@ -119,6 +119,9 @@ void main() {
         volumeMl: 250,
         comment: 'Before',
         imagePath: '/tmp/before.png',
+        locationLatitude: 52.52,
+        locationLongitude: 13.405,
+        locationAddress: 'Alexanderplatz 1, 10178 Berlin',
         consumedAt: DateTime(2026, 3, 19, 10, 30),
       );
 
@@ -136,6 +139,35 @@ void main() {
       expect(updated.consumedAt, created.consumedAt);
       expect(updated.comment, 'After');
       expect(updated.imagePath, '/tmp/after.png');
+      expect(updated.locationLatitude, 52.52);
+      expect(updated.locationLongitude, 13.405);
+      expect(updated.locationAddress, 'Alexanderplatz 1, 10178 Berlin');
+    });
+
+    test('persists location fields for a drink entry', () async {
+      final user = await repository.signUp(
+        email: 'location-entry@example.com',
+        password: 'secret',
+        displayName: 'Location Entry User',
+      );
+
+      await repository.addDrinkEntry(
+        user: user,
+        drink: const DrinkDefinition(
+          id: 'pils',
+          name: 'Pils',
+          category: DrinkCategory.beer,
+        ),
+        locationLatitude: 48.137,
+        locationLongitude: 11.575,
+        locationAddress: 'Marienplatz 1, 80331 Munich',
+      );
+
+      final restored = await repository.loadEntries(user.id);
+
+      expect(restored.single.locationLatitude, 48.137);
+      expect(restored.single.locationLongitude, 11.575);
+      expect(restored.single.locationAddress, 'Marienplatz 1, 80331 Munich');
     });
 
     test(

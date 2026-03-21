@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +11,7 @@ import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/app_routes.dart';
+import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
@@ -132,6 +134,9 @@ Future<List<DrinkEntry>> _seedGalleryEntries(
       volumeMl: drink.volumeMl,
       comment: 'Gallery note ${index + 1}',
       imagePath: withImages ? _transparentPngDataUrl : null,
+      locationLatitude: 52.5 + index,
+      locationLongitude: 13.4 + index,
+      locationAddress: 'Gallery Place ${index + 1}',
     );
   }
 
@@ -498,7 +503,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, 'Pils'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('confirm-drink-button')));
+    await tester.drag(find.byType(ListView), const Offset(0, -1400));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('confirm-drink-button')));
     await tester.pump();
 
@@ -579,6 +585,168 @@ void main() {
 
     expect(controller.entries, hasLength(1));
     expect(controller.entries.single.volumeMl, closeTo(330, 0.2));
+  });
+
+  testWidgets('shows detected location on the add-drink screen and saves it', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'location-save@example.com',
+      password: 'password123',
+      displayName: 'Location Save',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        locationService: const TestLocationService(
+          result: EntryLocationData(
+            latitude: 52.52,
+            longitude: 13.405,
+            address: 'Alexanderplatz 1, 10178 Berlin',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Pils'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('drink-location-toggle')), findsOneWidget);
+    expect(find.text('Alexanderplatz 1, 10178 Berlin'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -1400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-drink-button')));
+    await tester.pumpAndSettle();
+
+    final entry = controller.entries.single;
+    expect(entry.locationLatitude, 52.52);
+    expect(entry.locationLongitude, 13.405);
+    expect(entry.locationAddress, 'Alexanderplatz 1, 10178 Berlin');
+  });
+
+  testWidgets('can disable location for a single drink entry', (tester) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'location-disabled@example.com',
+      password: 'password123',
+      displayName: 'Location Disabled',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        locationService: const TestLocationService(
+          result: EntryLocationData(
+            latitude: 52.52,
+            longitude: 13.405,
+            address: 'Alexanderplatz 1, 10178 Berlin',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Pils'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drink-location-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('drink-location-value')), findsOneWidget);
+    expect(find.text('Location disabled for this entry.'), findsOneWidget);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -1400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-drink-button')));
+    await tester.pumpAndSettle();
+
+    final entry = controller.entries.single;
+    expect(entry.locationLatitude, isNull);
+    expect(entry.locationLongitude, isNull);
+    expect(entry.locationAddress, isNull);
+  });
+
+  testWidgets('shows a precise-location hint and opens app settings', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'location-approximate@example.com',
+      password: 'password123',
+      displayName: 'Location Approximate',
+    );
+    final locationService = RecordingLocationService(
+      result: const EntryLocationData(
+        latitude: 52.52,
+        longitude: 13.405,
+        address: 'Alexanderplatz 1, 10178 Berlin',
+      ),
+      accuracyStatus: LocationAccuracyStatus.reduced,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        locationService: locationService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Pils'));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -1400));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('drink-location-approximate-warning')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('drink-location-open-settings-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(locationService.openAppSettingsCalls, 1);
   });
 
   testWidgets(
@@ -664,6 +832,50 @@ void main() {
 
     expect(find.text('Rotwein'), findsOneWidget);
     expect(find.text('Red Wine'), findsNothing);
+  });
+
+  testWidgets('shows entry addresses in feed and statistics history', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'entry-address@example.com',
+      password: 'password123',
+      displayName: 'Entry Address Example',
+    );
+
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+      locationAddress: 'Alexanderplatz 1, 10178 Berlin',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alexanderplatz 1, 10178 Berlin'), findsOneWidget);
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'History');
+
+    expect(find.text('Alexanderplatz 1, 10178 Berlin'), findsOneWidget);
   });
 
   testWidgets('updates renamed custom drinks in feed and statistics', (
@@ -1505,6 +1717,7 @@ void main() {
             .data,
         galleryEntries.first.comment,
       );
+      expect(find.text(galleryEntries.first.locationAddress!), findsOneWidget);
 
       await tester.drag(
         find.byKey(const Key('app-gallery-viewer-page-view')),
@@ -1527,6 +1740,7 @@ void main() {
             .data,
         galleryEntries[1].comment,
       );
+      expect(find.text(galleryEntries[1].locationAddress!), findsOneWidget);
     },
   );
 

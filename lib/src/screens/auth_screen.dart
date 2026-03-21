@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 import '../app_controller.dart';
 import '../app_localizations.dart';
-import '../app_routes.dart';
 import '../birthday.dart';
 import '../app_scope.dart';
 import '../photo_pick_flow.dart';

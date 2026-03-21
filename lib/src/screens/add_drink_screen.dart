@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../app_controller.dart';
 import '../app_localizations.dart';
 import '../app_scope.dart';
+import '../location_service.dart';
 import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';
@@ -16,7 +18,8 @@ class AddDrinkScreen extends StatefulWidget {
   State<AddDrinkScreen> createState() => _AddDrinkScreenState();
 }
 
-class _AddDrinkScreenState extends State<AddDrinkScreen> {
+class _AddDrinkScreenState extends State<AddDrinkScreen>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _searchController = TextEditingController();
   final _commentController = TextEditingController();
@@ -27,13 +30,46 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
   String? _imagePath;
   bool _autoExpandSearchResults = false;
   bool _volumeEditedManually = false;
+  bool _isLocationEnabled = true;
+  bool _isResolvingLocation = false;
+  bool _locationAttempted = false;
+  EntryLocationData? _location;
+  LocationAccuracyStatus _locationAccuracyStatus =
+      LocationAccuracyStatus.unknown;
+  bool _startedInitialLocationLookup = false;
+  int _locationRequestVersion = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_startedInitialLocationLookup) {
+      return;
+    }
+    _startedInitialLocationLookup = true;
+    _refreshLocation();
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _commentController.dispose();
     _volumeController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !_isLocationEnabled) {
+      return;
+    }
+    _refreshLocation(force: true);
   }
 
   Future<void> _pickPhoto() async {
@@ -85,6 +121,68 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
     });
   }
 
+  Future<void> _refreshLocation({bool force = false}) async {
+    if (!_isLocationEnabled || (_isResolvingLocation && !force)) {
+      return;
+    }
+
+    final locationService = AppScope.locationServiceOf(context);
+    final localeCode = AppScope.controllerOf(context).settings.localeCode;
+    final requestVersion = ++_locationRequestVersion;
+    setState(() {
+      _isResolvingLocation = true;
+      _locationAttempted = true;
+    });
+
+    LocationFetchResult result = const LocationFetchResult();
+    try {
+      result = await locationService.fetchCurrentLocation(
+        localeCode: localeCode,
+      );
+    } catch (_) {}
+
+    if (!mounted ||
+        requestVersion != _locationRequestVersion ||
+        !_isLocationEnabled) {
+      return;
+    }
+
+    setState(() {
+      _location = result.location;
+      _locationAccuracyStatus = result.accuracyStatus;
+      _isResolvingLocation = false;
+    });
+  }
+
+  void _setLocationEnabled(bool value) {
+    if (value == _isLocationEnabled) {
+      return;
+    }
+
+    setState(() {
+      _isLocationEnabled = value;
+      if (!value) {
+        _locationRequestVersion++;
+        _isResolvingLocation = false;
+        _locationAccuracyStatus = LocationAccuracyStatus.unknown;
+      }
+    });
+
+    if (value && _location == null) {
+      _refreshLocation();
+    }
+  }
+
+  Future<void> _openLocationSettings() async {
+    final opened = await AppScope.locationServiceOf(context).openAppSettings();
+    if (!mounted || opened) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context).locationUnavailable)),
+    );
+  }
+
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate() || _selectedDrink == null) {
@@ -96,6 +194,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
 
     final controller = AppScope.controllerOf(context);
     final volume = double.tryParse(_volumeController.text.trim());
+    final location = _isLocationEnabled ? _location : null;
     final success = await controller.addDrinkEntry(
       drink: _selectedDrink!,
       volumeMl: _volumeEditedManually
@@ -105,6 +204,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
           : _selectedDrink!.volumeMl,
       comment: _commentController.text,
       imagePath: _imagePath,
+      locationLatitude: location?.latitude,
+      locationLongitude: location?.longitude,
+      locationAddress: location?.address,
     );
     if (!mounted) {
       return;
@@ -314,6 +416,98 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: Text(
+                                l10n.location,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Switch.adaptive(
+                              key: const Key('drink-location-toggle'),
+                              value: _isLocationEnabled,
+                              onChanged: isBusy ? null : _setLocationEnabled,
+                            ),
+                          ],
+                        ),
+                        Text(
+                          l10n.saveLocationForEntry,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                key: const Key('drink-location-value'),
+                                _locationText(l10n),
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_showsApproximateLocationWarning) ...<Widget>[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.tertiary.withValues(
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  l10n.locationApproximateWarning,
+                                  key: const Key(
+                                    'drink-location-approximate-warning',
+                                  ),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  key: const Key(
+                                    'drink-location-open-settings-button',
+                                  ),
+                                  onPressed: _openLocationSettings,
+                                  icon: const Icon(Icons.settings_outlined),
+                                  label: Text(l10n.openAppSettings),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   TextFormField(
                     key: const Key('drink-comment-field'),
                     controller: _commentController,
@@ -386,6 +580,33 @@ class _AddDrinkScreenState extends State<AddDrinkScreen> {
         ],
       ),
     );
+  }
+
+  String _locationText(AppLocalizations l10n) {
+    if (!_isLocationEnabled) {
+      return l10n.locationDisabledForEntry;
+    }
+    if (_isResolvingLocation) {
+      return l10n.locationLoading;
+    }
+    final address = _location?.address?.trim();
+    if (address != null && address.isNotEmpty) {
+      return address;
+    }
+    if (_location != null) {
+      return l10n.locationAddressUnavailable;
+    }
+    if (_locationAttempted) {
+      return l10n.locationUnavailable;
+    }
+    return l10n.locationLoading;
+  }
+
+  bool get _showsApproximateLocationWarning {
+    return _isLocationEnabled &&
+        !_isResolvingLocation &&
+        _locationAttempted &&
+        _locationAccuracyStatus == LocationAccuracyStatus.reduced;
   }
 }
 

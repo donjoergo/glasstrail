@@ -358,6 +358,7 @@ class _DrinkEntryCard extends StatelessWidget {
     final timeLabel = DateFormat.yMMMd(
       locale,
     ).add_Hm().format(entry.consumedAt);
+    final locationAddress = _normalizedLocationAddress(entry.locationAddress);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -393,6 +394,29 @@ class _DrinkEntryCard extends StatelessWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    if (locationAddress != null) ...<Widget>[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: <Widget>[
+                          Icon(
+                            Icons.location_on_outlined,
+                            key: Key('history-entry-location-icon-${entry.id}'),
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              locationAddress,
+                              key: Key('history-entry-location-${entry.id}'),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -445,6 +469,14 @@ class _DrinkEntryCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String? _normalizedLocationAddress(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 }
 

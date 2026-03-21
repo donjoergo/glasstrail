@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
+import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
@@ -39,6 +41,67 @@ class RecordingPhotoService extends PhotoService {
   }
 }
 
+class TestLocationService extends LocationService {
+  const TestLocationService({
+    this.result,
+    this.accuracyStatus = LocationAccuracyStatus.unknown,
+    this.error,
+    this.openSettingsResult = true,
+  });
+
+  final EntryLocationData? result;
+  final LocationAccuracyStatus accuracyStatus;
+  final Object? error;
+  final bool openSettingsResult;
+
+  @override
+  Future<LocationFetchResult> fetchCurrentLocation({
+    required String localeCode,
+  }) async {
+    if (error != null) {
+      throw error!;
+    }
+    return LocationFetchResult(
+      location: result,
+      accuracyStatus: accuracyStatus,
+    );
+  }
+
+  @override
+  Future<bool> openAppSettings() async => openSettingsResult;
+}
+
+class RecordingLocationService extends LocationService {
+  RecordingLocationService({
+    this.result,
+    this.accuracyStatus = LocationAccuracyStatus.unknown,
+    this.openSettingsResult = true,
+  });
+
+  final EntryLocationData? result;
+  final LocationAccuracyStatus accuracyStatus;
+  final bool openSettingsResult;
+  int openAppSettingsCalls = 0;
+  int fetchCalls = 0;
+
+  @override
+  Future<LocationFetchResult> fetchCurrentLocation({
+    required String localeCode,
+  }) async {
+    fetchCalls++;
+    return LocationFetchResult(
+      location: result,
+      accuracyStatus: accuracyStatus,
+    );
+  }
+
+  @override
+  Future<bool> openAppSettings() async {
+    openAppSettingsCalls++;
+    return openSettingsResult;
+  }
+}
+
 Future<AppController> buildTestController({
   Map<String, Object> initialValues = const <String, Object>{},
 }) async {
@@ -52,11 +115,13 @@ Future<AppController> buildTestController({
 Future<GlassTrailApp> buildTestApp({
   Map<String, Object> initialValues = const <String, Object>{},
   String? initialRoute,
+  LocationService locationService = const TestLocationService(),
 }) async {
   final controller = await buildTestController(initialValues: initialValues);
   return GlassTrailApp(
     controller: controller,
     photoService: const TestPhotoService(),
+    locationService: locationService,
     initialRoute: initialRoute,
   );
 }
@@ -167,6 +232,9 @@ class BlockingLocalAppRepository extends LocalAppRepository {
     double? volumeMl,
     String? comment,
     String? imagePath,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationAddress,
     DateTime? consumedAt,
   }) {
     return _runBlocked(
@@ -177,6 +245,9 @@ class BlockingLocalAppRepository extends LocalAppRepository {
         volumeMl: volumeMl,
         comment: comment,
         imagePath: imagePath,
+        locationLatitude: locationLatitude,
+        locationLongitude: locationLongitude,
+        locationAddress: locationAddress,
         consumedAt: consumedAt,
       ),
     );

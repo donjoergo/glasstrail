@@ -59,6 +59,9 @@ void main() {
         volumeMl: 250,
         comment: 'Original',
         imagePath: '/tmp/original.png',
+        locationLatitude: 52.52,
+        locationLongitude: 13.405,
+        locationAddress: 'Alexanderplatz 1, 10178 Berlin',
       );
 
       final updated = entry.copyWith(comment: 'Updated', clearImagePath: true);
@@ -66,9 +69,32 @@ void main() {
 
       expect(updated.comment, 'Updated');
       expect(updated.imagePath, isNull);
+      expect(updated.locationLatitude, 52.52);
+      expect(updated.locationLongitude, 13.405);
+      expect(updated.locationAddress, 'Alexanderplatz 1, 10178 Berlin');
       expect(cleared.comment, isNull);
       expect(cleared.drinkId, entry.drinkId);
       expect(cleared.consumedAt, entry.consumedAt);
+    });
+
+    test('reads snake_case location keys from remote rows', () {
+      final entry = DrinkEntry.fromJson(<String, dynamic>{
+        'id': 'entry-remote',
+        'userId': 'user-1',
+        'drinkId': 'water',
+        'drinkName': 'Water',
+        'category': 'nonAlcoholic',
+        'consumedAt': '2026-03-19T12:00:00.000Z',
+        'volume_ml': 250,
+        'location_latitude': 52.52,
+        'location_longitude': 13.405,
+        'location_address': 'Alexanderplatz 1, 10178 Berlin',
+      });
+
+      expect(entry.volumeMl, 250);
+      expect(entry.locationLatitude, 52.52);
+      expect(entry.locationLongitude, 13.405);
+      expect(entry.locationAddress, 'Alexanderplatz 1, 10178 Berlin');
     });
   });
 }

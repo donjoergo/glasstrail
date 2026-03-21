@@ -294,6 +294,9 @@ class SupabaseAppRepository implements AppRepository {
     double? volumeMl,
     String? comment,
     String? imagePath,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationAddress,
     DateTime? consumedAt,
   }) async {
     try {
@@ -315,6 +318,9 @@ class SupabaseAppRepository implements AppRepository {
             'volume_ml': volumeMl,
             'comment': comment?.trim().isEmpty ?? true ? null : comment?.trim(),
             'image_path': finalImagePath,
+            'location_latitude': locationLatitude,
+            'location_longitude': locationLongitude,
+            'location_address': _normalizeLocationAddress(locationAddress),
             'consumed_at': (consumedAt ?? DateTime.now())
                 .toUtc()
                 .toIso8601String(),
@@ -581,6 +587,9 @@ class SupabaseAppRepository implements AppRepository {
       volumeMl: (row['volume_ml'] as num?)?.toDouble(),
       comment: row['comment'] as String?,
       imagePath: row['image_path'] as String?,
+      locationLatitude: (row['location_latitude'] as num?)?.toDouble(),
+      locationLongitude: (row['location_longitude'] as num?)?.toDouble(),
+      locationAddress: row['location_address'] as String?,
     );
   }
 
@@ -710,6 +719,14 @@ class SupabaseAppRepository implements AppRepository {
       return '.webp';
     }
     return '.jpg';
+  }
+
+  String? _normalizeLocationAddress(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 
   String _fallbackDisplayName(String? email) {

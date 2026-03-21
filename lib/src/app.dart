@@ -10,6 +10,7 @@ import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';
 import 'backend_config.dart';
+import 'location_service.dart';
 import 'models.dart';
 import 'photo_service.dart';
 import 'route_memory.dart';
@@ -22,6 +23,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
   const GlassTrailBootstrapApp({
     super.key,
     required this.photoService,
+    this.locationService = const PlatformLocationService(),
     this.backendConfig,
     this.initialRoute,
     this.controllerFuture,
@@ -29,6 +31,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
   });
 
   final PhotoService photoService;
+  final LocationService locationService;
   final BackendConfig? backendConfig;
   final String? initialRoute;
   final Future<AppController>? controllerFuture;
@@ -60,6 +63,7 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
           return GlassTrailApp(
             controller: bootstrapData.controller,
             photoService: widget.photoService,
+            locationService: widget.locationService,
             routeMemory: bootstrapData.routeMemory,
             initialRoute: widget.initialRoute,
           );
@@ -91,12 +95,14 @@ class GlassTrailApp extends StatelessWidget {
     super.key,
     required this.controller,
     required this.photoService,
+    this.locationService = const PlatformLocationService(),
     RouteMemory? routeMemory,
     this.initialRoute,
   }) : routeMemory = routeMemory ?? RouteMemory.disabled();
 
   final AppController controller;
   final PhotoService photoService;
+  final LocationService locationService;
   final RouteMemory routeMemory;
   final String? initialRoute;
 
@@ -105,6 +111,7 @@ class GlassTrailApp extends StatelessWidget {
     return AppScope(
       controller: controller,
       photoService: photoService,
+      locationService: locationService,
       routeMemory: routeMemory,
       child: AnimatedBuilder(
         animation: controller,

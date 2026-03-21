@@ -41,6 +41,9 @@ abstract class AppRepository {
     double? volumeMl,
     String? comment,
     String? imagePath,
+    double? locationLatitude,
+    double? locationLongitude,
+    String? locationAddress,
     DateTime? consumedAt,
   });
 

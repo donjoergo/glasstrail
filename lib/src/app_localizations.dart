@@ -53,6 +53,17 @@ class AppLocalizations {
       'searchDrinks': 'Search drinks',
       'recentDrinks': 'Recent drinks',
       'catalog': 'Drink catalog',
+      'location': 'Location',
+      'saveLocationForEntry': 'Save location for this entry',
+      'locationLoading': 'Looking up your current location…',
+      'locationUnavailable':
+          'Location unavailable. The entry can still be saved.',
+      'locationAddressUnavailable':
+          'Address unavailable. Coordinates will still be saved.',
+      'locationDisabledForEntry': 'Location disabled for this entry.',
+      'locationApproximateWarning':
+          'Android is only providing approximate location. Enable precise location in app settings for better accuracy.',
+      'openAppSettings': 'Open app settings',
       'comment': 'Comment',
       'confirmDrink': 'Save entry',
       'save': 'Save',
@@ -183,6 +194,17 @@ class AppLocalizations {
       'searchDrinks': 'Getränke suchen',
       'recentDrinks': 'Zuletzt verwendet',
       'catalog': 'Getränkeliste',
+      'location': 'Standort',
+      'saveLocationForEntry': 'Standort für diesen Eintrag speichern',
+      'locationLoading': 'Aktueller Standort wird ermittelt…',
+      'locationUnavailable':
+          'Standort nicht verfügbar. Der Eintrag kann trotzdem gespeichert werden.',
+      'locationAddressUnavailable':
+          'Adresse nicht verfügbar. Die Koordinaten werden trotzdem gespeichert.',
+      'locationDisabledForEntry': 'Standort für diesen Eintrag deaktiviert.',
+      'locationApproximateWarning':
+          'Android liefert aktuell nur einen ungefähren Standort. Aktiviere den genauen Standort in den App-Einstellungen.',
+      'openAppSettings': 'App-Einstellungen öffnen',
       'comment': 'Kommentar',
       'confirmDrink': 'Eintrag speichern',
       'save': 'Speichern',
@@ -321,6 +343,14 @@ class AppLocalizations {
   String get searchDrinks => _text('searchDrinks');
   String get recentDrinks => _text('recentDrinks');
   String get catalog => _text('catalog');
+  String get location => _text('location');
+  String get saveLocationForEntry => _text('saveLocationForEntry');
+  String get locationLoading => _text('locationLoading');
+  String get locationUnavailable => _text('locationUnavailable');
+  String get locationAddressUnavailable => _text('locationAddressUnavailable');
+  String get locationDisabledForEntry => _text('locationDisabledForEntry');
+  String get locationApproximateWarning => _text('locationApproximateWarning');
+  String get openAppSettings => _text('openAppSettings');
   String get comment => _text('comment');
   String get confirmDrink => _text('confirmDrink');
   String get save => _text('save');

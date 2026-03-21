@@ -20,4 +20,3 @@ Future<AppRepository> createRepository({
 
   return SupabaseAppRepository(Supabase.instance.client);
 }
-
