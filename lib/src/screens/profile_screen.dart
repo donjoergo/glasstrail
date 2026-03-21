@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app_controller.dart';
 import '../app_localizations.dart';
@@ -19,7 +21,28 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static final Uri _gitHubRepositoryUri = Uri.parse(
+    'https://github.com/donjoergo/GlassTrail',
+  );
+
   _ProfilePendingSetting? _pendingSetting;
+  late final Future<String?> _appVersionFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _appVersionFuture = _loadAppVersion();
+  }
+
+  Future<String?> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final version = packageInfo.version.trim();
+      return version.isEmpty ? null : version;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<void> _showCustomDrinkDialog([DrinkDefinition? drink]) async {
     final l10n = AppLocalizations.of(context);
@@ -76,6 +99,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _openGitHubRepository() async {
+    final l10n = AppLocalizations.of(context);
+
+    try {
+      final launched = await launchUrl(
+        _gitHubRepositoryUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!mounted || launched) {
+        return;
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+    }
+
+    _showMessage(l10n.somethingWentWrong);
+  }
+
+  String _formatAppVersionLabel(AppLocalizations l10n, String? version) {
+    if (version == null || version.isEmpty) {
+      return l10n.appTitle;
+    }
+    return '${l10n.appTitle} V$version';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -83,6 +133,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = controller.currentUser!;
     final theme = Theme.of(context);
     final settings = controller.settings;
+    final routeMemory = AppScope.routeMemoryOf(context);
+    final navigator = Navigator.of(context);
     final isBusy = controller.isBusy;
     final isSigningOut = controller.isBusyFor(AppBusyAction.signOut);
     final editProfileButton = FilledButton.tonalIcon(
@@ -117,11 +169,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!success) {
                 return;
               }
-              await AppScope.routeMemoryOf(context).markLoggedOut();
+              await routeMemory.markLoggedOut();
               if (!mounted) {
                 return;
               }
-              Navigator.of(context).pushReplacementNamed(AppRoutes.auth);
+              navigator.pushReplacementNamed(AppRoutes.auth);
             },
       icon: isSigningOut
           ? const SizedBox.square(
@@ -470,6 +522,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 20),
         SizedBox(width: double.infinity, child: logoutButton),
+        const SizedBox(height: 20),
+        Container(
+          key: const Key('profile-about-section'),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                l10n.about,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              FutureBuilder<String?>(
+                future: _appVersionFuture,
+                builder: (context, snapshot) {
+                  return Text(
+                    _formatAppVersionLabel(l10n, snapshot.data),
+                    key: const Key('profile-about-version'),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: ListTile(
+                  key: const Key('profile-about-github-button'),
+                  onTap: _openGitHubRepository,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  leading: Icon(
+                    Icons.code_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
+                  title: Text(
+                    l10n.github,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _gitHubRepositoryUri.toString(),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  trailing: const Icon(Icons.open_in_new_rounded),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'created with ❤️ and ☕ by Jörg Dorlach',
+                key: const Key('profile-about-attribution'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

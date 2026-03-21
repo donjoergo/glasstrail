@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher_platform_interface/link.dart';
+import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
@@ -9,6 +12,7 @@ import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
+import 'package:glasstrail/src/screens/profile_screen.dart';
 
 import 'support/test_harness.dart';
 
@@ -42,6 +46,48 @@ Future<void> _openStatisticsSection(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
+Finder _profileScrollable() => find.descendant(
+  of: find.byType(ProfileScreen),
+  matching: find.byType(Scrollable),
+);
+
+Future<void> _scrollProfileTargetIntoView(
+  WidgetTester tester,
+  Finder target,
+) async {
+  await tester.scrollUntilVisible(
+    target,
+    200,
+    scrollable: _profileScrollable(),
+  );
+  await Scrollable.ensureVisible(
+    tester.element(target),
+    alignment: 0.5,
+  );
+  await tester.pump();
+}
+
+class _RecordingUrlLauncherPlatform extends UrlLauncherPlatform {
+  final List<String> launchedUrls = <String>[];
+  final List<LaunchOptions> launchOptions = <LaunchOptions>[];
+
+  @override
+  LinkDelegate? get linkDelegate => null;
+
+  @override
+  Future<bool> canLaunch(String url) async => true;
+
+  @override
+  Future<void> closeWebView() async {}
+
+  @override
+  Future<bool> launchUrl(String url, LaunchOptions options) async {
+    launchedUrls.add(url);
+    launchOptions.add(options);
+    return true;
+  }
+}
+
 Future<void> _tapPhotoAction(
   WidgetTester tester,
   Finder button, {
@@ -68,6 +114,29 @@ Future<void> _tapPhotoAction(
 }
 
 void main() {
+  late UrlLauncherPlatform initialUrlLauncherPlatform;
+  late _RecordingUrlLauncherPlatform urlLauncherPlatform;
+
+  setUpAll(() {
+    initialUrlLauncherPlatform = UrlLauncherPlatform.instance;
+  });
+
+  tearDownAll(() {
+    UrlLauncherPlatform.instance = initialUrlLauncherPlatform;
+  });
+
+  setUp(() {
+    PackageInfo.setMockInitialValues(
+      appName: 'GlassTrail',
+      packageName: 'dev.glasstrail.glasstrail',
+      version: '1.0.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
+    urlLauncherPlatform = _RecordingUrlLauncherPlatform();
+    UrlLauncherPlatform.instance = urlLauncherPlatform;
+  });
+
   testWidgets('opens profile editing on a separate screen', (tester) async {
     final controller = await buildTestController();
     await controller.signUp(
@@ -284,6 +353,47 @@ void main() {
 
     expect(controller.settings.localeCode, 'de');
     expect(find.byKey(const Key('language-settings-loading')), findsNothing);
+  });
+
+  testWidgets('shows the about section with version and GitHub link', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'about@example.com',
+      password: 'password123',
+      displayName: 'About Example',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await _scrollProfileTargetIntoView(
+      tester,
+      find.byKey(const Key('profile-about-section')),
+    );
+
+    expect(find.byKey(const Key('profile-about-section')), findsOneWidget);
+    expect(find.text('GlassTrail V1.0.0'), findsOneWidget);
+    expect(find.text('GitHub'), findsOneWidget);
+    expect(find.text('created with ❤️ and ☕ by Jörg Dorlach'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('profile-about-github-button')));
+    await tester.pumpAndSettle();
+
+    expect(urlLauncherPlatform.launchedUrls, <String>[
+      'https://github.com/donjoergo/GlassTrail',
+    ]);
+    expect(
+      urlLauncherPlatform.launchOptions.single.mode,
+      PreferredLaunchMode.externalApplication,
+    );
   });
 
   testWidgets('moves the add-drink fab for left-handed mode', (tester) async {
@@ -607,14 +717,7 @@ void main() {
     final addCustomDrinkButton = find.byKey(
       const Key('profile-add-custom-drink-button'),
     );
-    await tester.scrollUntilVisible(
-      addCustomDrinkButton,
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.ensureVisible(addCustomDrinkButton);
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-    await tester.pumpAndSettle();
+    await _scrollProfileTargetIntoView(tester, addCustomDrinkButton);
     await tester.tap(addCustomDrinkButton);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, 'Night Cap');
@@ -708,14 +811,7 @@ void main() {
     final addCustomDrinkButton = find.byKey(
       const Key('profile-add-custom-drink-button'),
     );
-    await tester.scrollUntilVisible(
-      addCustomDrinkButton,
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.ensureVisible(addCustomDrinkButton);
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-    await tester.pumpAndSettle();
+    await _scrollProfileTargetIntoView(tester, addCustomDrinkButton);
     await tester.tap(addCustomDrinkButton);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('custom-drink-save-button')), findsOneWidget);

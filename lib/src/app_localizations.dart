@@ -114,6 +114,8 @@ class AppLocalizations {
       'customDrinks': 'My custom drinks',
       'addCustomDrinkAction': 'Add custom drink',
       'roadmap': 'Planned next',
+      'about': 'About',
+      'github': 'GitHub',
       'roadmapBody':
           'Friends, social feed, achievements, import, and map are part of the plan but intentionally not shipped in V1.',
       'themeSystem': 'System',
@@ -245,6 +247,8 @@ class AppLocalizations {
       'customDrinks': 'Meine eigenen Getränke',
       'addCustomDrinkAction': 'Eigenes Getränk hinzufügen',
       'roadmap': 'Als Nächstes geplant',
+      'about': 'Über die App',
+      'github': 'GitHub',
       'roadmapBody':
           'Freunde, Social Feed, Erfolge, Import und Karte sind im Plan, aber bewusst nicht Teil von V1.',
       'themeSystem': 'System',
@@ -369,6 +373,8 @@ class AppLocalizations {
   String get customDrinks => _text('customDrinks');
   String get addCustomDrinkAction => _text('addCustomDrinkAction');
   String get roadmap => _text('roadmap');
+  String get about => _text('about');
+  String get github => _text('github');
   String get roadmapBody => _text('roadmapBody');
   String get themeSystem => _text('themeSystem');
   String get themeLight => _text('themeLight');
