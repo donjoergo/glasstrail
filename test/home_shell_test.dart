@@ -364,7 +364,9 @@ void main() {
     ]);
   });
 
-  testWidgets('keeps the statistics tab bar left-aligned', (tester) async {
+  testWidgets('spreads the statistics tabs evenly across the bar', (
+    tester,
+  ) async {
     final controller = await buildTestController();
     await controller.signUp(
       email: 'statistics-tabbar@example.com',
@@ -381,11 +383,39 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final tabBar = tester.widget<TabBar>(
-      find.byKey(const Key('statistics-tab-bar')),
+    final tabBarFinder = find.byKey(const Key('statistics-tab-bar'));
+    final l10n = AppLocalizations.of(tester.element(tabBarFinder));
+    final tabBarRect = tester.getRect(tabBarFinder);
+    final labels = <String>[
+      l10n.statisticsOverview,
+      l10n.statisticsMap,
+      l10n.statisticsGallery,
+      l10n.history,
+    ];
+    final labelRects = labels
+        .map(
+          (label) => tester.getRect(
+            find.descendant(
+              of: tabBarFinder,
+              matching: find.text(label, skipOffstage: false),
+            ),
+          ),
+        )
+        .toList(growable: false);
+    final expectedCenters = List<double>.generate(
+      labels.length,
+      (index) =>
+          tabBarRect.left +
+          tabBarRect.width * ((index * 2 + 1) / (labels.length * 2)),
+      growable: false,
     );
-    expect(tabBar.isScrollable, isTrue);
-    expect(tabBar.tabAlignment, TabAlignment.start);
+
+    for (var index = 0; index < labelRects.length; index++) {
+      expect(
+        labelRects[index].center.dx,
+        moreOrLessEquals(expectedCenters[index], epsilon: 24),
+      );
+    }
   });
 
   testWidgets('shows a field-local spinner while saving settings', (
