@@ -266,7 +266,7 @@ class _AuthScreenState extends State<AuthScreen> {
           overflow: TextOverflow.visible,
           style: baseTitleStyle?.copyWith(
             fontSize: !isCompact && kIsWeb
-                ? (baseTitleStyle?.fontSize ?? 57) + 22
+                ? (baseTitleStyle.fontSize ?? 57) + 22
                 : null,
             fontWeight: FontWeight.w900,
             letterSpacing: -2.2,
