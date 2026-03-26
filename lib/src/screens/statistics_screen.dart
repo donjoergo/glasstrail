@@ -1,10 +1,20 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart' as latlong2;
+import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app_localizations.dart';
 import '../app_scope.dart';
+import '../maplibre_web_registration.dart' as maplibre_web_registration;
 import '../models.dart';
+import '../runtime_platform.dart' as runtime_platform;
 import '../stats_calculator.dart';
 import '../widgets/app_media.dart';
 
@@ -48,6 +58,397 @@ int _statisticsGalleryCrossAxisCount(double maxWidth) {
   return 3;
 }
 
+const String _statisticsMapProtomapsBasemapsVersion = '5.7.2';
+const String _statisticsMapProtomapsTilesBuild = '20260325';
+const String _statisticsMapCartoLightStyleUrl =
+    'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+const String _statisticsMapCartoDarkStyleUrl =
+    'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+const String _statisticsMapAttributionOpenStreetMapLabel = '© OpenStreetMap';
+const String _statisticsMapAttributionOpenStreetMapUrl =
+    'https://www.openstreetmap.org/copyright';
+const String _statisticsMapAttributionProtomapsLabel = '© Protomaps';
+const String _statisticsMapAttributionProtomapsUrl = 'https://protomaps.com';
+const double _statisticsMapFanOutDistanceMeters = 9;
+const double _statisticsMapSingleMarkerZoom = 15.5;
+const double _statisticsMapBoundsPadding = 48;
+const double _statisticsMapMarkerHitSize = 56;
+const double _statisticsMapMarkerVisualSize = 44;
+const double _statisticsMapFallbackPadding = 56;
+const latlong2.Distance _statisticsMapDistance = latlong2.Distance();
+
+final Set<Factory<OneSequenceGestureRecognizer>>
+_statisticsMapGestureRecognizers = <Factory<OneSequenceGestureRecognizer>>{
+  Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
+};
+
+String _statisticsMapStyleString({
+  required Brightness brightness,
+  required String localeCode,
+}) {
+  if (kIsWeb) {
+    return brightness == Brightness.dark
+        ? _statisticsMapCartoDarkStyleUrl
+        : _statisticsMapCartoLightStyleUrl;
+  }
+
+  final theme = brightness == Brightness.dark ? 'dark' : 'light';
+  return 'https://npm-style.protomaps.dev/style.json'
+      '?version=$_statisticsMapProtomapsBasemapsVersion'
+      '&theme=$theme'
+      '&tiles=$_statisticsMapProtomapsTilesBuild'
+      '&lang=$localeCode';
+}
+
+class _StatisticsMapMarkerData {
+  const _StatisticsMapMarkerData({required this.entry, required this.position});
+
+  final DrinkEntry entry;
+  final maplibre.LatLng position;
+
+  String get signature =>
+      '${entry.id}:${position.latitude.toStringAsFixed(6)},'
+      '${position.longitude.toStringAsFixed(6)}';
+}
+
+class _StatisticsMapCoordinateGroup {
+  const _StatisticsMapCoordinateGroup({
+    required this.center,
+    required this.entries,
+  });
+
+  final maplibre.LatLng center;
+  final List<DrinkEntry> entries;
+}
+
+bool _statisticsEntryHasCoordinates(DrinkEntry entry) {
+  final latitude = entry.locationLatitude;
+  final longitude = entry.locationLongitude;
+  if (latitude == null || longitude == null) {
+    return false;
+  }
+  return latitude >= -90 &&
+      latitude <= 90 &&
+      longitude >= -180 &&
+      longitude <= 180;
+}
+
+double _roundStatisticsCoordinate(double value) {
+  return double.parse(value.toStringAsFixed(4));
+}
+
+String _statisticsMapCoordinateGroupKey(double latitude, double longitude) {
+  return '${_roundStatisticsCoordinate(latitude).toStringAsFixed(4)}|'
+      '${_roundStatisticsCoordinate(longitude).toStringAsFixed(4)}';
+}
+
+List<_StatisticsMapMarkerData> _statisticsMapMarkersForEntries(
+  List<DrinkEntry> entries,
+) {
+  final groupedEntries = <String, _StatisticsMapCoordinateGroup>{};
+
+  for (final entry in entries) {
+    if (!_statisticsEntryHasCoordinates(entry)) {
+      continue;
+    }
+
+    final latitude = entry.locationLatitude!;
+    final longitude = entry.locationLongitude!;
+    final roundedLatitude = _roundStatisticsCoordinate(latitude);
+    final roundedLongitude = _roundStatisticsCoordinate(longitude);
+    final groupKey = _statisticsMapCoordinateGroupKey(latitude, longitude);
+    final group = groupedEntries[groupKey];
+
+    if (group == null) {
+      groupedEntries[groupKey] = _StatisticsMapCoordinateGroup(
+        center: maplibre.LatLng(roundedLatitude, roundedLongitude),
+        entries: <DrinkEntry>[entry],
+      );
+      continue;
+    }
+
+    group.entries.add(entry);
+  }
+
+  final markers = <_StatisticsMapMarkerData>[];
+  for (final group in groupedEntries.values) {
+    if (group.entries.length == 1) {
+      final entry = group.entries.single;
+      markers.add(
+        _StatisticsMapMarkerData(
+          entry: entry,
+          position: maplibre.LatLng(
+            entry.locationLatitude!,
+            entry.locationLongitude!,
+          ),
+        ),
+      );
+      continue;
+    }
+
+    final bearingStep = 360 / group.entries.length;
+    for (var index = 0; index < group.entries.length; index++) {
+      markers.add(
+        _StatisticsMapMarkerData(
+          entry: group.entries[index],
+          position: _statisticsMapLatLngFromOffset(
+            _statisticsMapDistance.offset(
+              latlong2.LatLng(group.center.latitude, group.center.longitude),
+              _statisticsMapFanOutDistanceMeters,
+              bearingStep * index,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  return markers;
+}
+
+maplibre.LatLng _statisticsMapLatLngFromOffset(latlong2.LatLng position) {
+  return maplibre.LatLng(position.latitude, position.longitude);
+}
+
+maplibre.LatLngBounds? _statisticsMapBounds(
+  List<_StatisticsMapMarkerData> markers,
+) {
+  if (markers.length < 2) {
+    return null;
+  }
+
+  var south = markers.first.position.latitude;
+  var north = markers.first.position.latitude;
+  var west = markers.first.position.longitude;
+  var east = markers.first.position.longitude;
+
+  for (final marker in markers.skip(1)) {
+    south = math.min(south, marker.position.latitude);
+    north = math.max(north, marker.position.latitude);
+    west = math.min(west, marker.position.longitude);
+    east = math.max(east, marker.position.longitude);
+  }
+
+  return maplibre.LatLngBounds(
+    southwest: maplibre.LatLng(south, west),
+    northeast: maplibre.LatLng(north, east),
+  );
+}
+
+String _statisticsMapSignature(List<_StatisticsMapMarkerData> markers) {
+  return markers.map((marker) => marker.signature).join('|');
+}
+
+maplibre.CameraPosition _statisticsMapInitialCameraPosition(
+  List<_StatisticsMapMarkerData> markers,
+) {
+  if (markers.length == 1) {
+    return maplibre.CameraPosition(
+      target: markers.single.position,
+      zoom: _statisticsMapSingleMarkerZoom,
+    );
+  }
+
+  final bounds = _statisticsMapBounds(markers)!;
+  return maplibre.CameraPosition(
+    target: maplibre.LatLng(
+      (bounds.southwest.latitude + bounds.northeast.latitude) / 2,
+      (bounds.southwest.longitude + bounds.northeast.longitude) / 2,
+    ),
+    zoom: 4,
+  );
+}
+
+Future<void> _fitStatisticsMapCamera(
+  maplibre.MapLibreMapController controller,
+  List<_StatisticsMapMarkerData> markers,
+) async {
+  if (markers.length == 1) {
+    await controller.moveCamera(
+      maplibre.CameraUpdate.newLatLngZoom(
+        markers.single.position,
+        _statisticsMapSingleMarkerZoom,
+      ),
+    );
+    return;
+  }
+
+  final bounds = _statisticsMapBounds(markers);
+  if (bounds == null) {
+    return;
+  }
+
+  await controller.moveCamera(
+    maplibre.CameraUpdate.newLatLngBounds(
+      bounds,
+      left: _statisticsMapBoundsPadding,
+      top: _statisticsMapBoundsPadding,
+      right: _statisticsMapBoundsPadding,
+      bottom: _statisticsMapBoundsPadding,
+    ),
+  );
+}
+
+Offset _statisticsMapFallbackOffsetForMarker({
+  required _StatisticsMapMarkerData marker,
+  required List<_StatisticsMapMarkerData> markers,
+  required Size size,
+}) {
+  if (markers.length == 1) {
+    return Offset(size.width / 2, size.height / 2);
+  }
+
+  final bounds = _statisticsMapBounds(markers)!;
+  final availableWidth = math.max(
+    size.width - (_statisticsMapFallbackPadding * 2),
+    _statisticsMapMarkerHitSize,
+  );
+  final availableHeight = math.max(
+    size.height - (_statisticsMapFallbackPadding * 2),
+    _statisticsMapMarkerHitSize,
+  );
+  final longitudeSpan = math.max(
+    bounds.northeast.longitude - bounds.southwest.longitude,
+    0.0001,
+  );
+  final latitudeSpan = math.max(
+    bounds.northeast.latitude - bounds.southwest.latitude,
+    0.0001,
+  );
+  final normalizedX =
+      (marker.position.longitude - bounds.southwest.longitude) / longitudeSpan;
+  final normalizedY =
+      (bounds.northeast.latitude - marker.position.latitude) / latitudeSpan;
+
+  return Offset(
+    _statisticsMapFallbackPadding + (availableWidth * normalizedX),
+    _statisticsMapFallbackPadding + (availableHeight * normalizedY),
+  );
+}
+
+List<Offset> _statisticsMapFallbackOffsets({
+  required List<_StatisticsMapMarkerData> markers,
+  required Size size,
+}) {
+  return markers
+      .map(
+        (marker) => _statisticsMapFallbackOffsetForMarker(
+          marker: marker,
+          markers: markers,
+          size: size,
+        ),
+      )
+      .toList(growable: false);
+}
+
+String? _normalizedStatisticsText(String? value) {
+  final normalized = value?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  return normalized;
+}
+
+Color _statisticsMapMarkerForegroundColor(Color backgroundColor) {
+  final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
+  return brightness == Brightness.dark ? Colors.white : Colors.black87;
+}
+
+Future<void> _showStatisticsMapEntrySheet(
+  BuildContext context,
+  _StatisticsMapMarkerData marker,
+  Color accentColor,
+) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    useSafeArea: true,
+    isScrollControlled: true,
+    builder: (_) =>
+        _StatisticsMapEntrySheet(entry: marker.entry, accentColor: accentColor),
+  );
+}
+
+List<Widget> _statisticsMapMarkerWidgets({
+  required BuildContext context,
+  required List<_StatisticsMapMarkerData> markers,
+  required List<Offset> offsets,
+  required Map<DrinkCategory, Color> colors,
+}) {
+  return markers.indexed
+      .map((markerEntry) {
+        final index = markerEntry.$1;
+        final marker = markerEntry.$2;
+        final backgroundColor = colors[marker.entry.category]!;
+        final offset = offsets[index];
+
+        return Positioned(
+          key: Key('statistics-map-slot-${marker.entry.id}'),
+          left: offset.dx - (_statisticsMapMarkerHitSize / 2),
+          top: offset.dy - (_statisticsMapMarkerHitSize / 2),
+          child: SizedBox(
+            width: _statisticsMapMarkerHitSize,
+            height: _statisticsMapMarkerHitSize,
+            child: Center(
+              child: _StatisticsMapMarker(
+                entry: marker.entry,
+                backgroundColor: backgroundColor,
+                foregroundColor: _statisticsMapMarkerForegroundColor(
+                  backgroundColor,
+                ),
+                onTap: () => _showStatisticsMapEntrySheet(
+                  context,
+                  marker,
+                  backgroundColor,
+                ),
+              ),
+            ),
+          ),
+        );
+      })
+      .toList(growable: false);
+}
+
+List<Widget> _statisticsMapAttributionChildren(ThemeData theme) {
+  Widget buildButton({
+    required String keyValue,
+    required String label,
+    required String url,
+  }) {
+    return TextButton(
+      key: Key(keyValue),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        foregroundColor: theme.colorScheme.onSurfaceVariant,
+      ),
+      onPressed: () {
+        launchUrl(Uri.parse(url));
+      },
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          decoration: TextDecoration.underline,
+        ),
+      ),
+    );
+  }
+
+  return <Widget>[
+    buildButton(
+      keyValue: 'statistics-map-attribution-protomaps',
+      label: _statisticsMapAttributionProtomapsLabel,
+      url: _statisticsMapAttributionProtomapsUrl,
+    ),
+    buildButton(
+      keyValue: 'statistics-map-attribution-openstreetmap',
+      label: _statisticsMapAttributionOpenStreetMapLabel,
+      url: _statisticsMapAttributionOpenStreetMapUrl,
+    ),
+  ];
+}
+
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});
 
@@ -83,13 +484,7 @@ class StatisticsScreen extends StatelessWidget {
             child: TabBarView(
               children: <Widget>[
                 const _StatisticsOverviewPage(),
-                _StatisticsPlaceholderPage(
-                  listKey: const Key('statistics-map-list-view'),
-                  placeholderKey: const Key('statistics-map-placeholder'),
-                  icon: Icons.map_rounded,
-                  title: l10n.statisticsMapPlaceholderTitle,
-                  body: l10n.statisticsMapPlaceholderBody,
-                ),
+                const _StatisticsMapPage(),
                 const _StatisticsGalleryPage(),
                 const _StatisticsHistoryPage(),
               ],
@@ -194,6 +589,635 @@ class _StatisticsOverviewPage extends StatelessWidget {
         ),
       );
     }).toList();
+  }
+}
+
+class _StatisticsMapPage extends StatelessWidget {
+  const _StatisticsMapPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final markers = _statisticsMapMarkersForEntries(
+      AppScope.controllerOf(context).entries,
+    );
+
+    if (markers.isEmpty) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final cardHeight = math.max(constraints.maxHeight - 8, 1.0);
+
+          return RefreshIndicator(
+            key: const Key('statistics-map-refresh-indicator'),
+            onRefresh: () => _refreshStatistics(context),
+            child: ListView(
+              key: const Key('statistics-map-list-view'),
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 8),
+              children: <Widget>[
+                SizedBox(
+                  height: cardHeight,
+                  child: _StatisticsEmptyStateCard(
+                    key: const Key('statistics-map-empty-state'),
+                    icon: Icons.map_rounded,
+                    title: l10n.statisticsMapEmptyTitle,
+                    body: l10n.statisticsMapEmptyBody,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final mapHeight = math.max(constraints.maxHeight - 8, 1.0);
+
+        return RefreshIndicator(
+          key: const Key('statistics-map-refresh-indicator'),
+          onRefresh: () => _refreshStatistics(context),
+          child: ListView(
+            key: const Key('statistics-map-list-view'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(top: 8),
+            children: <Widget>[
+              SizedBox(
+                height: mapHeight,
+                child: _StatisticsMapCard(markers: markers),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatisticsMapCard extends StatefulWidget {
+  const _StatisticsMapCard({required this.markers});
+
+  final List<_StatisticsMapMarkerData> markers;
+
+  @override
+  State<_StatisticsMapCard> createState() => _StatisticsMapCardState();
+}
+
+class _StatisticsMapCardState extends State<_StatisticsMapCard> {
+  maplibre.MapLibreMapController? _controller;
+  List<Offset> _markerOffsets = const <Offset>[];
+  bool _isSyncScheduled = false;
+  int _projectionRetryEpoch = 0;
+
+  double get _projectionScale {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return 1;
+    }
+    return MediaQuery.devicePixelRatioOf(context);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StatisticsMapCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_statisticsMapSignature(oldWidget.markers) !=
+        _statisticsMapSignature(widget.markers)) {
+      _projectionRetryEpoch += 1;
+      _scheduleMarkerSync();
+    }
+  }
+
+  Future<void> _handleStyleLoaded() async {
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+
+    await _fitStatisticsMapCamera(controller, widget.markers);
+    _scheduleMarkerSync();
+    _scheduleProjectionRetries();
+  }
+
+  void _scheduleMarkerSync() {
+    if (_isSyncScheduled || !mounted) {
+      return;
+    }
+
+    _isSyncScheduled = true;
+    scheduleMicrotask(() async {
+      _isSyncScheduled = false;
+      await _syncMarkerOffsets();
+    });
+  }
+
+  Future<void> _syncMarkerOffsets() async {
+    final controller = _controller;
+    if (controller == null || !mounted) {
+      return;
+    }
+
+    try {
+      final points = await controller.toScreenLocationBatch(
+        widget.markers.map((marker) => marker.position),
+      );
+      if (!mounted) {
+        return;
+      }
+
+      final projectionScale = _projectionScale;
+      final nextOffsets = points
+          .map(
+            (point) => Offset(
+              point.x.toDouble() / projectionScale,
+              point.y.toDouble() / projectionScale,
+            ),
+          )
+          .toList(growable: false);
+      if (_statisticsMapOffsetsEqual(_markerOffsets, nextOffsets)) {
+        return;
+      }
+
+      setState(() {
+        _markerOffsets = nextOffsets;
+      });
+    } catch (_) {
+      // Ignore transient projection errors during initial style loads.
+    }
+  }
+
+  void _scheduleProjectionRetries() {
+    final retryEpoch = ++_projectionRetryEpoch;
+    const retryDelays = <Duration>[
+      Duration(milliseconds: 120),
+      Duration(milliseconds: 320),
+      Duration(milliseconds: 700),
+    ];
+
+    for (final delay in retryDelays) {
+      Future<void>.delayed(delay, () async {
+        if (!mounted || retryEpoch != _projectionRetryEpoch) {
+          return;
+        }
+        await _syncMarkerOffsets();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    maplibre_web_registration.ensureMapLibreWebRegistered();
+
+    final theme = Theme.of(context);
+    final controller = AppScope.controllerOf(context);
+    final colors = _statisticsCategoryColors(theme);
+    final styleString = _statisticsMapStyleString(
+      brightness: theme.brightness,
+      localeCode: controller.settings.localeCode,
+    );
+    final useMapLibre = runtime_platform.isMapLibrePlatformSupported;
+
+    return ClipRect(
+      key: const Key('statistics-map-card'),
+      child: ColoredBox(
+        color: theme.colorScheme.surface,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final overlayOffsets =
+                _markerOffsets.length == widget.markers.length
+                ? _markerOffsets
+                : _statisticsMapFallbackOffsets(
+                    markers: widget.markers,
+                    size: constraints.biggest,
+                  );
+            final markerOverlay = useMapLibre && overlayOffsets.isNotEmpty
+                ? _statisticsMapMarkerWidgets(
+                    context: context,
+                    markers: widget.markers,
+                    offsets: overlayOffsets,
+                    colors: colors,
+                  )
+                : const <Widget>[];
+
+            return Stack(
+              children: <Widget>[
+                Positioned.fill(
+                  child: useMapLibre
+                      ? maplibre.MapLibreMap(
+                          key: ValueKey<String>(
+                            '${_statisticsMapSignature(widget.markers)}:$styleString',
+                          ),
+                          initialCameraPosition:
+                              _statisticsMapInitialCameraPosition(
+                                widget.markers,
+                              ),
+                          styleString: styleString,
+                          logoEnabled: false,
+                          compassEnabled: false,
+                          rotateGesturesEnabled: false,
+                          tiltGesturesEnabled: false,
+                          gestureRecognizers: _statisticsMapGestureRecognizers,
+                          trackCameraPosition: true,
+                          attributionButtonPosition:
+                              maplibre.AttributionButtonPosition.bottomRight,
+                          onMapCreated: (controller) {
+                            _controller = controller;
+                            _scheduleProjectionRetries();
+                          },
+                          onStyleLoadedCallback: _handleStyleLoaded,
+                          onCameraMove: (_) => _scheduleMarkerSync(),
+                          onCameraIdle: _scheduleMarkerSync,
+                        )
+                      : _StatisticsMapFallbackSurface(
+                          markers: widget.markers,
+                          colors: colors,
+                        ),
+                ),
+                ...markerOverlay,
+                if (!useMapLibre)
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: _StatisticsMapAttributionCard(
+                      children: _statisticsMapAttributionChildren(theme),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+bool _statisticsMapOffsetsEqual(List<Offset> left, List<Offset> right) {
+  if (left.length != right.length) {
+    return false;
+  }
+
+  for (var index = 0; index < left.length; index++) {
+    if ((left[index] - right[index]).distance > 0.1) {
+      return false;
+    }
+  }
+  return true;
+}
+
+class _StatisticsMapFallbackSurface extends StatelessWidget {
+  const _StatisticsMapFallbackSurface({
+    required this.markers,
+    required this.colors,
+  });
+
+  final List<_StatisticsMapMarkerData> markers;
+  final Map<DrinkCategory, Color> colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        final offsets = markers
+            .map(
+              (marker) => _statisticsMapFallbackOffsetForMarker(
+                marker: marker,
+                markers: markers,
+                size: size,
+              ),
+            )
+            .toList(growable: false);
+
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[
+                theme.colorScheme.surfaceContainerHigh,
+                theme.colorScheme.surface,
+                theme.colorScheme.primaryContainer.withValues(alpha: 0.42),
+              ],
+            ),
+          ),
+          child: Stack(
+            children: <Widget>[
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _StatisticsMapFallbackPainter(theme: theme),
+                ),
+              ),
+              ..._statisticsMapMarkerWidgets(
+                context: context,
+                markers: markers,
+                offsets: offsets,
+                colors: colors,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatisticsMapFallbackPainter extends CustomPainter {
+  const _StatisticsMapFallbackPainter({required this.theme});
+
+  final ThemeData theme;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final roadPaint = Paint()
+      ..color = theme.colorScheme.outlineVariant.withValues(alpha: 0.32)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    final accentPaint = Paint()
+      ..color = theme.colorScheme.primary.withValues(alpha: 0.18)
+      ..style = PaintingStyle.fill;
+
+    final verticalStep = math.max(size.width / 4, 90);
+    for (
+      var x = -verticalStep;
+      x <= size.width + verticalStep;
+      x += verticalStep
+    ) {
+      final path = Path()
+        ..moveTo(x.toDouble(), 0)
+        ..quadraticBezierTo(
+          (x + 24).toDouble(),
+          size.height * 0.45,
+          (x - 12).toDouble(),
+          size.height,
+        );
+      canvas.drawPath(path, roadPaint);
+    }
+
+    final horizontalStep = math.max(size.height / 5, 84);
+    for (var y = horizontalStep; y <= size.height; y += horizontalStep) {
+      final path = Path()
+        ..moveTo(0, y.toDouble())
+        ..quadraticBezierTo(
+          size.width * 0.45,
+          (y - 20).toDouble(),
+          size.width,
+          (y + 12).toDouble(),
+        );
+      canvas.drawPath(path, roadPaint);
+    }
+
+    canvas.drawCircle(
+      Offset(size.width * 0.22, size.height * 0.24),
+      math.min(size.width, size.height) * 0.1,
+      accentPaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.78, size.height * 0.68),
+      math.min(size.width, size.height) * 0.13,
+      accentPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _StatisticsMapFallbackPainter oldDelegate) {
+    return oldDelegate.theme.colorScheme != theme.colorScheme;
+  }
+}
+
+class _StatisticsMapAttributionCard extends StatelessWidget {
+  const _StatisticsMapAttributionCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      key: const Key('statistics-map-attribution'),
+      color: theme.colorScheme.surface.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(14),
+      elevation: 1,
+      child: Wrap(children: children),
+    );
+  }
+}
+
+class _StatisticsMapMarker extends StatelessWidget {
+  const _StatisticsMapMarker({
+    required this.entry,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.onTap,
+  });
+
+  final DrinkEntry entry;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: Key('statistics-map-marker-${entry.id}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: SizedBox(
+          width: _statisticsMapMarkerVisualSize + 10,
+          height: _statisticsMapMarkerVisualSize + 16,
+          child: Stack(
+            alignment: Alignment.topCenter,
+            children: <Widget>[
+              Icon(
+                Icons.location_on_rounded,
+                size: _statisticsMapMarkerVisualSize + 8,
+                color: backgroundColor,
+                shadows: <Shadow>[
+                  Shadow(
+                    color: theme.colorScheme.shadow.withValues(alpha: 0.22),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              Positioned(
+                top: 6,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const SizedBox(width: 18, height: 18),
+                ),
+              ),
+              Positioned(
+                top: 12,
+                child: Icon(
+                  entry.category.icon,
+                  key: Key('statistics-map-marker-icon-${entry.id}'),
+                  color: foregroundColor,
+                  size: 18,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatisticsMapEntrySheet extends StatelessWidget {
+  const _StatisticsMapEntrySheet({
+    required this.entry,
+    required this.accentColor,
+  });
+
+  final DrinkEntry entry;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.controllerOf(context);
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final localeCode = controller.settings.localeCode;
+    final unit = controller.settings.unit;
+    final drinkName = controller.localizedEntryDrinkName(
+      entry,
+      localeCode: localeCode,
+    );
+    final categoryLabel = l10n.categoryLabel(entry.category);
+    final timeLabel = DateFormat.yMMMd(
+      localeCode,
+    ).add_Hm().format(entry.consumedAt);
+    final volumeLabel = entry.volumeMl == null
+        ? null
+        : unit.formatVolume(entry.volumeMl);
+    final locationAddress = _normalizedStatisticsText(entry.locationAddress);
+    final comment = _normalizedStatisticsText(entry.comment);
+    final imagePath = _normalizedStatisticsText(entry.imagePath);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: SingleChildScrollView(
+        child: Column(
+          key: Key('statistics-map-sheet-${entry.id}'),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: accentColor.withValues(alpha: 0.16),
+                  foregroundColor: accentColor,
+                  child: Icon(entry.category.icon),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        drinkName,
+                        key: Key('statistics-map-sheet-name-${entry.id}'),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        categoryLabel,
+                        key: Key('statistics-map-sheet-category-${entry.id}'),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        timeLabel,
+                        key: Key('statistics-map-sheet-time-${entry.id}'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (volumeLabel != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      volumeLabel,
+                      key: Key('statistics-map-sheet-volume-${entry.id}'),
+                    ),
+                  ),
+              ],
+            ),
+            if (locationAddress != null) ...<Widget>[
+              const SizedBox(height: 18),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 18,
+                    color: accentColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      locationAddress,
+                      key: Key('statistics-map-sheet-location-${entry.id}'),
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (comment != null) ...<Widget>[
+              const SizedBox(height: 18),
+              Text(
+                l10n.comment,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                comment,
+                key: Key('statistics-map-sheet-comment-${entry.id}'),
+              ),
+            ],
+            if (imagePath != null) ...<Widget>[
+              const SizedBox(height: 18),
+              AppPhotoPreview(
+                key: Key('statistics-map-sheet-image-${entry.id}'),
+                imagePath: imagePath,
+                cropPortraitToSquare: true,
+                enableFullscreenOnTap: true,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -398,7 +1422,6 @@ class _StatisticsGalleryPage extends StatelessWidget {
         .toList(growable: false);
 
     if (entries.isEmpty) {
-      final theme = Theme.of(context);
       return RefreshIndicator(
         key: const Key('statistics-gallery-refresh-indicator'),
         onRefresh: () => _refreshStatistics(context),
@@ -407,45 +1430,11 @@ class _StatisticsGalleryPage extends StatelessWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
           children: <Widget>[
-            Container(
+            _StatisticsEmptyStateCard(
               key: const Key('statistics-gallery-empty-state'),
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Column(
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(
-                      Icons.photo_library_rounded,
-                      size: 36,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    l10n.statisticsGalleryEmptyTitle,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    l10n.statisticsGalleryEmptyBody,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
+              icon: Icons.photo_library_rounded,
+              title: l10n.statisticsGalleryEmptyTitle,
+              body: l10n.statisticsGalleryEmptyBody,
             ),
           ],
         ),
@@ -585,17 +1574,14 @@ class _StatisticsGalleryTileState extends State<_StatisticsGalleryTile> {
   }
 }
 
-class _StatisticsPlaceholderPage extends StatelessWidget {
-  const _StatisticsPlaceholderPage({
-    required this.listKey,
-    required this.placeholderKey,
+class _StatisticsEmptyStateCard extends StatelessWidget {
+  const _StatisticsEmptyStateCard({
+    super.key,
     required this.icon,
     required this.title,
     required this.body,
   });
 
-  final Key listKey;
-  final Key placeholderKey;
   final IconData icon;
   final String title;
   final String body;
@@ -604,47 +1590,36 @@ class _StatisticsPlaceholderPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return RefreshIndicator(
-      onRefresh: () => _refreshStatistics(context),
-      child: ListView(
-        key: listKey,
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
         children: <Widget>[
           Container(
-            key: placeholderKey,
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(28),
+              color: theme.colorScheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: Column(
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Icon(icon, size: 36, color: theme.colorScheme.primary),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  body,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+            child: Icon(icon, size: 36, color: theme.colorScheme.primary),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ],
