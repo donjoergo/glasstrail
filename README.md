@@ -1,5 +1,10 @@
 # GlassTrail
 
+[![Android Release](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml/badge.svg?branch=release)](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml)
+[![CI](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml/badge.svg)](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml)
+
+
+
 GlassTrail is a Flutter app for tracking drinks, reviewing personal habits, and keeping profile and app settings in sync across devices.
 
 By default, this repository uses the hosted Supabase project configured in `lib/src/backend_config.dart`. For tests and explicit bootstrap overrides, the app can still run against a local `SharedPreferences` fallback.

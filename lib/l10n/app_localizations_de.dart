@@ -256,10 +256,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get globalDrinks => 'Globale Getränke';
 
   @override
-  String get barDrinkSortingTab => 'Drink-Sortierung';
+  String get barDrinkSortingTab => 'Getränke Sortierung';
 
   @override
-  String get barCustomDrinksTab => 'Eigene Drinks';
+  String get barCustomDrinksTab => 'Eigene Getränke';
 
   @override
   String get barGlobalDrinksBody =>
