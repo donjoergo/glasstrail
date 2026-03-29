@@ -14,10 +14,7 @@ class BackendConfig {
   bool get isSupabaseConfigured =>
       supabaseUrl.trim().isNotEmpty && supabaseAnonKey.trim().isNotEmpty;
 
-  static const empty = BackendConfig(
-    supabaseUrl: '',
-    supabaseAnonKey: '',
-  );
+  static const empty = BackendConfig(supabaseUrl: '', supabaseAnonKey: '');
 
   static BackendConfig fromEnvironment() {
     return const BackendConfig(

@@ -5,9 +5,7 @@ import 'app_repository.dart';
 import 'local_app_repository.dart';
 import 'supabase_app_repository.dart';
 
-Future<AppRepository> createRepository({
-  BackendConfig? backendConfig,
-}) async {
+Future<AppRepository> createRepository({BackendConfig? backendConfig}) async {
   final config = backendConfig ?? BackendConfig.fromEnvironment();
   if (!config.isSupabaseConfigured) {
     return LocalAppRepository.create();

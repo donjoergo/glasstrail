@@ -338,15 +338,11 @@ List<_StatisticsMapScreenCluster> _statisticsMapScreenClusters({
         clusterRadius: clusterRadius,
       )
       .map((group) {
-        final averageDx = group.fold<double>(
-              0,
-              (sum, index) => sum + offsets[index].dx,
-            ) /
+        final averageDx =
+            group.fold<double>(0, (sum, index) => sum + offsets[index].dx) /
             group.length;
-        final averageDy = group.fold<double>(
-              0,
-              (sum, index) => sum + offsets[index].dy,
-            ) /
+        final averageDy =
+            group.fold<double>(0, (sum, index) => sum + offsets[index].dy) /
             group.length;
         return _StatisticsMapScreenCluster(
           markerIndexes: group,
@@ -625,9 +621,8 @@ List<Widget> _statisticsMapClusterOverlayWidgets({
         final clusterKey = cluster.markerIndexes
             .map((index) => markers[index].entry.id)
             .join('-');
-        final backgroundColor = colors[markers[cluster.markerIndexes.first]
-            .entry
-            .category]!;
+        final backgroundColor =
+            colors[markers[cluster.markerIndexes.first].entry.category]!;
 
         return Positioned(
           key: Key('statistics-map-cluster-slot-$clusterKey'),
