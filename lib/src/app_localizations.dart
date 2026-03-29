@@ -103,9 +103,9 @@ class AppLocalizations {
       'days': 'days',
       'categoryBreakdown': 'Category breakdown',
       'history': 'History',
-      'statisticsMapPlaceholderTitle': 'Drink map coming soon',
-      'statisticsMapPlaceholderBody':
-          'Logged drinks will appear here on a map in a later step.',
+      'statisticsMapEmptyTitle': 'No drinks with location yet',
+      'statisticsMapEmptyBody':
+          'Enable location while logging drinks so they can appear here on the map.',
       'statisticsGalleryEmptyTitle': 'No drink photos yet',
       'statisticsGalleryEmptyBody':
           'Photos from logged drinks will appear here automatically.',
@@ -139,7 +139,7 @@ class AppLocalizations {
       'about': 'About',
       'github': 'GitHub',
       'roadmapBody':
-          'Friends, social feed, achievements, import, and map are part of the plan but intentionally not shipped in V1.',
+          'Friends, social feed, achievements, and import are part of the plan but intentionally not shipped in V1.',
       'themeSystem': 'System',
       'themeLight': 'Light',
       'themeDark': 'Dark',
@@ -257,9 +257,9 @@ class AppLocalizations {
       'days': 'Tage',
       'categoryBreakdown': 'Kategorien',
       'history': 'Historie',
-      'statisticsMapPlaceholderTitle': 'Karte folgt später',
-      'statisticsMapPlaceholderBody':
-          'Hier werden geloggte Getränke später auf einer Karte angezeigt.',
+      'statisticsMapEmptyTitle': 'Noch keine Drinks mit Standort',
+      'statisticsMapEmptyBody':
+          'Aktiviere beim Loggen den Standort, damit Drinks hier auf der Karte erscheinen.',
       'statisticsGalleryEmptyTitle': 'Noch keine Drink-Fotos',
       'statisticsGalleryEmptyBody':
           'Fotos aus deinen Log-Einträgen erscheinen hier automatisch.',
@@ -295,7 +295,7 @@ class AppLocalizations {
       'about': 'Über die App',
       'github': 'GitHub',
       'roadmapBody':
-          'Freunde, Social Feed, Erfolge, Import und Karte sind im Plan, aber bewusst nicht Teil von V1.',
+          'Freunde, Social Feed, Erfolge und Import sind im Plan, aber bewusst nicht Teil von V1.',
       'themeSystem': 'System',
       'themeLight': 'Hell',
       'themeDark': 'Dunkel',
@@ -404,10 +404,8 @@ class AppLocalizations {
   String get days => _text('days');
   String get categoryBreakdown => _text('categoryBreakdown');
   String get history => _text('history');
-  String get statisticsMapPlaceholderTitle =>
-      _text('statisticsMapPlaceholderTitle');
-  String get statisticsMapPlaceholderBody =>
-      _text('statisticsMapPlaceholderBody');
+  String get statisticsMapEmptyTitle => _text('statisticsMapEmptyTitle');
+  String get statisticsMapEmptyBody => _text('statisticsMapEmptyBody');
   String get statisticsGalleryEmptyTitle =>
       _text('statisticsGalleryEmptyTitle');
   String get statisticsGalleryEmptyBody => _text('statisticsGalleryEmptyBody');

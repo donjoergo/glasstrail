@@ -17,6 +17,7 @@ import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/add_drink_screen.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
+import 'package:glasstrail/src/screens/statistics_screen.dart';
 
 import 'support/test_harness.dart';
 
@@ -139,6 +140,19 @@ Future<void> _tapPhotoAction(
 void _setSurfaceSize(WidgetTester tester, Size size) {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
+}
+
+Finder _statisticsMapMarker(String entryId) {
+  return find.byKey(Key('statistics-map-marker-$entryId'));
+}
+
+Finder _statisticsMapMarkers() {
+  return find.byWidgetPredicate((widget) {
+    final key = widget.key;
+    return key is ValueKey<String> &&
+        key.value.startsWith('statistics-map-marker-') &&
+        !key.value.startsWith('statistics-map-marker-icon-');
+  });
 }
 
 Future<List<DrinkEntry>> _seedGalleryEntries(
@@ -364,7 +378,9 @@ void main() {
     ]);
   });
 
-  testWidgets('keeps the statistics tab bar left-aligned', (tester) async {
+  testWidgets('spreads the statistics tabs evenly across the bar', (
+    tester,
+  ) async {
     final controller = await buildTestController();
     await controller.signUp(
       email: 'statistics-tabbar@example.com',
@@ -381,11 +397,39 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final tabBar = tester.widget<TabBar>(
-      find.byKey(const Key('statistics-tab-bar')),
+    final tabBarFinder = find.byKey(const Key('statistics-tab-bar'));
+    final l10n = AppLocalizations.of(tester.element(tabBarFinder));
+    final tabBarRect = tester.getRect(tabBarFinder);
+    final labels = <String>[
+      l10n.statisticsOverview,
+      l10n.statisticsMap,
+      l10n.statisticsGallery,
+      l10n.history,
+    ];
+    final labelRects = labels
+        .map(
+          (label) => tester.getRect(
+            find.descendant(
+              of: tabBarFinder,
+              matching: find.text(label, skipOffstage: false),
+            ),
+          ),
+        )
+        .toList(growable: false);
+    final expectedCenters = List<double>.generate(
+      labels.length,
+      (index) =>
+          tabBarRect.left +
+          tabBarRect.width * ((index * 2 + 1) / (labels.length * 2)),
+      growable: false,
     );
-    expect(tabBar.isScrollable, isTrue);
-    expect(tabBar.tabAlignment, TabAlignment.start);
+
+    for (var index = 0; index < labelRects.length; index++) {
+      expect(
+        labelRects[index].center.dx,
+        moreOrLessEquals(expectedCenters[index], epsilon: 24),
+      );
+    }
   });
 
   testWidgets('shows a field-local spinner while saving settings', (
@@ -1942,7 +1986,7 @@ void main() {
     expect(find.text('Red Wine'), findsOneWidget);
   });
 
-  testWidgets('shows the map placeholder and gallery empty state', (
+  testWidgets('shows the map empty state and gallery empty state', (
     tester,
   ) async {
     final controller = await buildTestController();
@@ -1969,9 +2013,13 @@ void main() {
     await _openStatisticsTab(tester);
     await _openStatisticsSection(tester, 'Map');
 
-    expect(find.text('Drink map coming soon'), findsOneWidget);
+    expect(find.byKey(const Key('statistics-map-empty-state')), findsOneWidget);
+    expect(find.byKey(const Key('statistics-map-card')), findsNothing);
+    expect(find.text('No drinks with location yet'), findsOneWidget);
     expect(
-      find.text('Logged drinks will appear here on a map in a later step.'),
+      find.text(
+        'Enable location while logging drinks so they can appear here on the map.',
+      ),
       findsOneWidget,
     );
 
@@ -1984,6 +2032,519 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('renders one statistics map marker per entry with coordinates', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-markers@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Markers',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final wine = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+    final water = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'nonAlcoholic-water',
+    );
+
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+      locationAddress: 'Alexanderplatz 1, 10178 Berlin',
+    );
+    final beerEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == beer.id,
+    );
+    await controller.addDrinkEntry(
+      drink: wine,
+      volumeMl: wine.volumeMl,
+      locationLatitude: 48.1372,
+      locationLongitude: 11.5756,
+      locationAddress: 'Marienplatz 1, 80331 Munich',
+    );
+    final wineEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == wine.id,
+    );
+    await controller.addDrinkEntry(drink: water, volumeMl: water.volumeMl);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    expect(find.byKey(const Key('statistics-map-card')), findsOneWidget);
+    expect(_statisticsMapMarkers(), findsNWidgets(2));
+    expect(_statisticsMapMarker(beerEntry.id), findsOneWidget);
+    expect(_statisticsMapMarker(wineEntry.id), findsOneWidget);
+  });
+
+  testWidgets('expands the statistics map card down to the navigation bar', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-height@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Height',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    final mapBottom = tester
+        .getBottomLeft(find.byKey(const Key('statistics-map-card')))
+        .dy;
+    final navigationTop = tester.getTopLeft(find.byType(NavigationBar)).dy;
+
+    expect((mapBottom - navigationTop).abs(), lessThanOrEqualTo(1));
+  });
+
+  testWidgets('stretches the statistics map card to the screen edges', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-width@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Width',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    final mapLeft = tester
+        .getTopLeft(find.byKey(const Key('statistics-map-card')))
+        .dx;
+    final mapRight = tester
+        .getTopRight(find.byKey(const Key('statistics-map-card')))
+        .dx;
+    final screenWidth =
+        tester.view.physicalSize.width / tester.view.devicePixelRatio;
+
+    expect(mapLeft.abs(), lessThanOrEqualTo(1));
+    expect((mapRight - screenWidth).abs(), lessThanOrEqualTo(1));
+  });
+
+  testWidgets(
+    'does not show entries without coordinates as statistics markers',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'stats-map-filter@example.com',
+        password: 'password123',
+        displayName: 'Stats Map Filter',
+      );
+
+      final beer = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final wine = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'wine-red-wine',
+      );
+
+      await controller.addDrinkEntry(
+        drink: beer,
+        volumeMl: beer.volumeMl,
+        locationLatitude: 52.52,
+        locationLongitude: 13.405,
+      );
+      final mappedEntry = controller.entries.firstWhere(
+        (entry) => entry.drinkId == beer.id,
+      );
+      await controller.addDrinkEntry(drink: wine, volumeMl: wine.volumeMl);
+      final unmappedEntry = controller.entries.firstWhere(
+        (entry) => entry.drinkId == wine.id,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openStatisticsTab(tester);
+      await _openStatisticsSection(tester, 'Map');
+
+      expect(_statisticsMapMarkers(), findsOneWidget);
+      expect(_statisticsMapMarker(mappedEntry.id), findsOneWidget);
+      expect(_statisticsMapMarker(unmappedEntry.id), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'opens a statistics map sheet with localized name, time, volume and address',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'stats-map-sheet@example.com',
+        password: 'password123',
+        displayName: 'Stats Map Sheet',
+      );
+      await controller.updateSettings(
+        controller.settings.copyWith(localeCode: 'de'),
+      );
+
+      final wine = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'wine-red-wine',
+      );
+      await controller.addDrinkEntry(
+        drink: wine,
+        volumeMl: 175,
+        locationLatitude: 52.52,
+        locationLongitude: 13.405,
+        locationAddress: 'Alexanderplatz 1, 10178 Berlin',
+      );
+      final entry = controller.entries.firstWhere(
+        (candidate) => candidate.drinkId == wine.id,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openStatisticsTab(tester, label: 'Statistiken');
+      await _openStatisticsSection(tester, 'Karte');
+
+      await tester.tap(_statisticsMapMarker(entry.id));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(Key('statistics-map-sheet-${entry.id}')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(controller.localizedEntryDrinkName(entry)),
+        findsOneWidget,
+      );
+      expect(find.text('Wein'), findsOneWidget);
+      expect(
+        find.text(
+          DateFormat.yMMMd(
+            controller.settings.localeCode,
+          ).add_Hm().format(entry.consumedAt),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(controller.settings.unit.formatVolume(entry.volumeMl)),
+        findsOneWidget,
+      );
+      expect(find.text(entry.locationAddress!), findsOneWidget);
+    },
+  );
+
+  testWidgets('shows statistics map comments and photos only when present', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-media@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Media',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final wine = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      comment: 'Map comment',
+      imagePath: _transparentPngDataUrl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+    );
+    final richEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == beer.id,
+    );
+    await controller.addDrinkEntry(
+      drink: wine,
+      volumeMl: wine.volumeMl,
+      locationLatitude: 48.1372,
+      locationLongitude: 11.5756,
+    );
+    final plainEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == wine.id,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    await tester.tap(_statisticsMapMarker(richEntry.id));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(Key('statistics-map-sheet-comment-${richEntry.id}')),
+      findsOneWidget,
+    );
+    expect(find.text('Map comment'), findsOneWidget);
+    expect(
+      find.byKey(Key('statistics-map-sheet-image-${richEntry.id}')),
+      findsOneWidget,
+    );
+
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpAndSettle();
+
+    await tester.tap(_statisticsMapMarker(plainEntry.id));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(Key('statistics-map-sheet-comment-${plainEntry.id}')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(Key('statistics-map-sheet-image-${plainEntry.id}')),
+      findsNothing,
+    );
+  });
+
+  test('resolves overlapping statistics map markers to zoom in', () {
+    final resolution = resolveStatisticsMapMarkerTap(
+      offsets: const <Offset>[
+        Offset(120, 160),
+        Offset(138, 176),
+        Offset(260, 320),
+      ],
+      tappedIndex: 0,
+      currentZoom: 14,
+    );
+
+    expect(resolution, StatisticsMapTapResolution.zoomIn);
+    expect(
+      statisticsMapOverlappingMarkerIndexes(
+        offsets: const <Offset>[
+          Offset(120, 160),
+          Offset(138, 176),
+          Offset(260, 320),
+        ],
+        tappedIndex: 0,
+      ),
+      <int>[0, 1],
+    );
+  });
+
+  test('keeps isolated or fully resolved statistics map markers tappable', () {
+    expect(
+      resolveStatisticsMapMarkerTap(
+        offsets: const <Offset>[Offset(120, 160), Offset(182, 230)],
+        tappedIndex: 0,
+        currentZoom: 14,
+      ),
+      StatisticsMapTapResolution.openSheet,
+    );
+
+    expect(
+      resolveStatisticsMapMarkerTap(
+        offsets: const <Offset>[Offset(120, 160), Offset(132, 170)],
+        tappedIndex: 0,
+        currentZoom: 18.5,
+      ),
+      StatisticsMapTapResolution.openSheet,
+    );
+  });
+
+  test(
+    'keeps standalone statistics map markers visible outside dense groups',
+    () {
+      expect(
+        statisticsMapStandaloneMarkerIndexes(
+          offsets: const <Offset>[
+            Offset(60, 80),
+            Offset(180, 220),
+            Offset(214, 246),
+          ],
+        ),
+        <int>[0],
+      );
+    },
+  );
+
+  test('groups dense statistics map markers into overlay clusters', () {
+    expect(
+      statisticsMapClusterGroups(
+        offsets: const <Offset>[
+          Offset(80, 100),
+          Offset(108, 126),
+          Offset(260, 320),
+          Offset(288, 348),
+          Offset(420, 180),
+        ],
+      ),
+      const <List<int>>[
+        <int>[0, 1],
+        <int>[2, 3],
+        <int>[4],
+      ],
+    );
+  });
+
+  testWidgets(
+    'fans out statistics markers with the same rounded coordinates into separate positions',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'stats-map-fanout@example.com',
+        password: 'password123',
+        displayName: 'Stats Map Fanout',
+      );
+
+      final beer = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final wine = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'wine-red-wine',
+      );
+
+      await controller.addDrinkEntry(
+        drink: beer,
+        volumeMl: beer.volumeMl,
+        locationLatitude: 52.52004,
+        locationLongitude: 13.40496,
+      );
+      final firstEntry = controller.entries.firstWhere(
+        (entry) => entry.drinkId == beer.id,
+      );
+      await controller.addDrinkEntry(
+        drink: wine,
+        volumeMl: wine.volumeMl,
+        locationLatitude: 52.52003,
+        locationLongitude: 13.40499,
+      );
+      final secondEntry = controller.entries.firstWhere(
+        (entry) => entry.drinkId == wine.id,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openStatisticsTab(tester);
+      await _openStatisticsSection(tester, 'Map');
+
+      final firstCenter = tester.getCenter(_statisticsMapMarker(firstEntry.id));
+      final secondCenter = tester.getCenter(
+        _statisticsMapMarker(secondEntry.id),
+      );
+
+      expect(_statisticsMapMarkers(), findsNWidgets(2));
+      expect((firstCenter - secondCenter).distance, greaterThan(1));
+    },
+  );
 
   testWidgets(
     'shows newest gallery photos first in three columns and opens the swipe viewer',

@@ -208,3 +208,57 @@ Integration tests:
 ```bash
 flutter test integration_test
 ```
+
+## Android Releases
+
+This repository now includes a tag-driven GitHub Actions workflow at `.github/workflows/android-release.yml` that:
+
+- builds a release APK with `flutter build apk --release`
+- creates or updates a GitHub Release for the pushed tag
+- uploads the APK asset to that release page
+
+The workflow expects a real Android release keystore. `android/app/build.gradle.kts` reads `android/key.properties` when it exists and uses that release signing config. If the file is absent, local release builds still fall back to the debug key.
+
+### One-Time Setup
+
+Create an upload keystore locally:
+
+```bash
+keytool -genkeypair \
+  -v \
+  -keystore upload-keystore.jks \
+  -alias upload \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
+```
+
+Base64-encode it for GitHub Actions:
+
+```bash
+base64 -w 0 upload-keystore.jks
+```
+
+Add these repository secrets in GitHub:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+No extra Supabase secrets are required for the current production build because the app already has production defaults in `lib/src/backend_config.dart`.
+
+### Creating a Release
+
+1. Update `pubspec.yaml` with the app version you want to ship.
+2. Commit and push that change to `main`.
+3. Create and push a tag such as `v1.0.0`.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+When the tag reaches GitHub, the workflow builds `app-release.apk` and attaches it to the matching release as `glasstrail-v1.0.0.apk`.
+
+If you later want Play Store deployment, metadata management, screenshots, or beta lanes, add Fastlane then. For APKs on GitHub Releases alone, the GitHub Actions workflow is the simpler setup.
