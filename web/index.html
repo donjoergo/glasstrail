@@ -30,6 +30,71 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png" />
   <script src="https://unpkg.com/maplibre-gl@^4.3/dist/maplibre-gl.js"></script>
+  <script>
+    (() => {
+      const trackpadZoomRate = 1 / 40;
+      const wheelZoomRate = 1 / 180;
+      const scrollZoomHandler = window.maplibregl?.ScrollZoomHandler;
+      const prototype = scrollZoomHandler?.prototype;
+      if (!prototype || prototype.__glasstrailFastZoomPatched) {
+        return;
+      }
+
+      const originalEnable = prototype.enable;
+      if (typeof originalEnable !== 'function') {
+        return;
+      }
+
+      prototype.enable = function (...args) {
+        const result = originalEnable.apply(this, args);
+        this.setZoomRate?.(trackpadZoomRate);
+        this.setWheelZoomRate?.(wheelZoomRate);
+        return result;
+      };
+      prototype.__glasstrailFastZoomPatched = true;
+
+      const collapseAttributionElement = (element) => {
+          if (element.dataset.glasstrailCompactInitialized === 'true') {
+            return;
+          }
+
+          element.dataset.glasstrailCompactInitialized = 'true';
+          element.classList.add('maplibregl-compact');
+          element.classList.remove('maplibregl-compact-show');
+          if ('open' in element) {
+            element.open = false;
+          }
+          element.removeAttribute?.('open');
+          element.querySelectorAll?.('details').forEach((details) => {
+            details.open = false;
+            details.removeAttribute?.('open');
+          });
+      };
+
+      const collapseAttributionControl = (root = document) => {
+        if (root.matches?.('.maplibregl-ctrl-attrib')) {
+          collapseAttributionElement(root);
+        }
+        root.querySelectorAll?.('.maplibregl-ctrl-attrib').forEach(
+          collapseAttributionElement,
+        );
+      };
+
+      collapseAttributionControl();
+      new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          mutation.addedNodes.forEach((node) => {
+            if (node instanceof Element) {
+              collapseAttributionControl(node);
+            }
+          });
+        }
+      }).observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    })();
+  </script>
   <link href="https://unpkg.com/maplibre-gl@^4.3/dist/maplibre-gl.css" rel="stylesheet" />
 
   <title>Glass Trail</title>

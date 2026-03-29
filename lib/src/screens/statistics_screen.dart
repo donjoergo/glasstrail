@@ -69,8 +69,20 @@ const String _statisticsMapAttributionOpenStreetMapUrl =
     'https://www.openstreetmap.org/copyright';
 const String _statisticsMapAttributionProtomapsLabel = '© Protomaps';
 const String _statisticsMapAttributionProtomapsUrl = 'https://protomaps.com';
+const String _statisticsMapClusterSourceId = 'statistics-map-cluster-source';
+const String _statisticsMapClusterCircleLayerId =
+    'statistics-map-cluster-circle-layer';
+const String _statisticsMapClusterCountLayerId =
+    'statistics-map-cluster-count-layer';
 const double _statisticsMapFanOutDistanceMeters = 9;
+const double _statisticsMapClusterRadius = 52;
+const double _statisticsMapClusterMaxZoom = 12;
+const double _statisticsMapDetailMarkerMinZoom = 12;
 const double _statisticsMapSingleMarkerZoom = 15.5;
+const double _statisticsMapTapResolveZoomStep = 2;
+const double _statisticsMapTapResolveMaxZoom = 18.5;
+const double _statisticsMapMarkerOverlapRadius = 28;
+const double _statisticsMapLonelyMarkerRadius = 52;
 const double _statisticsMapBoundsPadding = 48;
 const double _statisticsMapMarkerHitSize = 56;
 const double _statisticsMapMarkerVisualSize = 44;
@@ -100,6 +112,8 @@ String _statisticsMapStyleString({
       '&lang=$localeCode';
 }
 
+enum StatisticsMapTapResolution { openSheet, zoomIn }
+
 class _StatisticsMapMarkerData {
   const _StatisticsMapMarkerData({required this.entry, required this.position});
 
@@ -119,6 +133,16 @@ class _StatisticsMapCoordinateGroup {
 
   final maplibre.LatLng center;
   final List<DrinkEntry> entries;
+}
+
+class _StatisticsMapScreenCluster {
+  const _StatisticsMapScreenCluster({
+    required this.markerIndexes,
+    required this.center,
+  });
+
+  final List<int> markerIndexes;
+  final Offset center;
 }
 
 bool _statisticsEntryHasCoordinates(DrinkEntry entry) {
@@ -210,6 +234,128 @@ maplibre.LatLng _statisticsMapLatLngFromOffset(latlong2.LatLng position) {
   return maplibre.LatLng(position.latitude, position.longitude);
 }
 
+bool _statisticsMapShowsIndividualMarkers(double zoom) {
+  return zoom >= _statisticsMapDetailMarkerMinZoom;
+}
+
+@visibleForTesting
+List<int> statisticsMapOverlappingMarkerIndexes({
+  required List<Offset> offsets,
+  required int tappedIndex,
+  double overlapRadius = _statisticsMapMarkerOverlapRadius,
+}) {
+  if (tappedIndex < 0 || tappedIndex >= offsets.length) {
+    return const <int>[];
+  }
+
+  final tappedOffset = offsets[tappedIndex];
+  return List<int>.generate(offsets.length, (index) => index)
+      .where(
+        (index) => (offsets[index] - tappedOffset).distance <= overlapRadius,
+      )
+      .toList(growable: false);
+}
+
+@visibleForTesting
+StatisticsMapTapResolution resolveStatisticsMapMarkerTap({
+  required List<Offset> offsets,
+  required int tappedIndex,
+  required double currentZoom,
+  double overlapRadius = _statisticsMapMarkerOverlapRadius,
+  double zoomResolutionMaxZoom = _statisticsMapTapResolveMaxZoom,
+}) {
+  final overlappingIndexes = statisticsMapOverlappingMarkerIndexes(
+    offsets: offsets,
+    tappedIndex: tappedIndex,
+    overlapRadius: overlapRadius,
+  );
+  if (overlappingIndexes.length > 1 && currentZoom < zoomResolutionMaxZoom) {
+    return StatisticsMapTapResolution.zoomIn;
+  }
+  return StatisticsMapTapResolution.openSheet;
+}
+
+@visibleForTesting
+List<List<int>> statisticsMapClusterGroups({
+  required List<Offset> offsets,
+  double clusterRadius = _statisticsMapLonelyMarkerRadius,
+}) {
+  final visited = List<bool>.filled(offsets.length, false);
+  final groups = <List<int>>[];
+
+  for (var index = 0; index < offsets.length; index++) {
+    if (visited[index]) {
+      continue;
+    }
+
+    final pending = <int>[index];
+    final group = <int>[];
+    visited[index] = true;
+
+    while (pending.isNotEmpty) {
+      final currentIndex = pending.removeLast();
+      group.add(currentIndex);
+      final current = offsets[currentIndex];
+
+      for (var otherIndex = 0; otherIndex < offsets.length; otherIndex++) {
+        if (visited[otherIndex]) {
+          continue;
+        }
+        if ((offsets[otherIndex] - current).distance <= clusterRadius) {
+          visited[otherIndex] = true;
+          pending.add(otherIndex);
+        }
+      }
+    }
+
+    group.sort();
+    groups.add(group);
+  }
+
+  return groups;
+}
+
+@visibleForTesting
+List<int> statisticsMapStandaloneMarkerIndexes({
+  required List<Offset> offsets,
+  double isolationRadius = _statisticsMapLonelyMarkerRadius,
+}) {
+  return statisticsMapClusterGroups(
+        offsets: offsets,
+        clusterRadius: isolationRadius,
+      )
+      .where((group) => group.length == 1)
+      .map((group) => group.single)
+      .toList(growable: false);
+}
+
+List<_StatisticsMapScreenCluster> _statisticsMapScreenClusters({
+  required List<Offset> offsets,
+  double clusterRadius = _statisticsMapLonelyMarkerRadius,
+}) {
+  return statisticsMapClusterGroups(
+        offsets: offsets,
+        clusterRadius: clusterRadius,
+      )
+      .map((group) {
+        final averageDx = group.fold<double>(
+              0,
+              (sum, index) => sum + offsets[index].dx,
+            ) /
+            group.length;
+        final averageDy = group.fold<double>(
+              0,
+              (sum, index) => sum + offsets[index].dy,
+            ) /
+            group.length;
+        return _StatisticsMapScreenCluster(
+          markerIndexes: group,
+          center: Offset(averageDx, averageDy),
+        );
+      })
+      .toList(growable: false);
+}
+
 maplibre.LatLngBounds? _statisticsMapBounds(
   List<_StatisticsMapMarkerData> markers,
 ) {
@@ -237,6 +383,37 @@ maplibre.LatLngBounds? _statisticsMapBounds(
 
 String _statisticsMapSignature(List<_StatisticsMapMarkerData> markers) {
   return markers.map((marker) => marker.signature).join('|');
+}
+
+Object _statisticsMapClusterGeoJson(List<_StatisticsMapMarkerData> markers) {
+  return <String, Object>{
+    'type': 'FeatureCollection',
+    'features': markers
+        .map((marker) {
+          final entry = marker.entry;
+          return <String, Object>{
+            'type': 'Feature',
+            'id': entry.id,
+            'properties': <String, Object>{'entryId': entry.id},
+            'geometry': <String, Object>{
+              'type': 'Point',
+              'coordinates': <double>[
+                entry.locationLongitude!,
+                entry.locationLatitude!,
+              ],
+            },
+          };
+        })
+        .toList(growable: false),
+  };
+}
+
+String _statisticsMapHexColor(Color color) {
+  String component(int value) => value.toRadixString(16).padLeft(2, '0');
+  int channel(double value) => (value * 255).round().clamp(0, 255);
+  return '#${component(channel(color.r))}'
+      '${component(channel(color.g))}'
+      '${component(channel(color.b))}';
 }
 
 maplibre.CameraPosition _statisticsMapInitialCameraPosition(
@@ -370,17 +547,19 @@ Future<void> _showStatisticsMapEntrySheet(
 }
 
 List<Widget> _statisticsMapMarkerWidgets({
-  required BuildContext context,
   required List<_StatisticsMapMarkerData> markers,
+  required List<int> markerIndexes,
   required List<Offset> offsets,
   required Map<DrinkCategory, Color> colors,
+  required Future<void> Function(int index, _StatisticsMapMarkerData marker)
+  onMarkerTap,
 }) {
   return markers.indexed
       .map((markerEntry) {
-        final index = markerEntry.$1;
+        final index = markerIndexes[markerEntry.$1];
         final marker = markerEntry.$2;
         final backgroundColor = colors[marker.entry.category]!;
-        final offset = offsets[index];
+        final offset = offsets[markerEntry.$1];
 
         return Positioned(
           key: Key('statistics-map-slot-${marker.entry.id}'),
@@ -396,11 +575,76 @@ List<Widget> _statisticsMapMarkerWidgets({
                 foregroundColor: _statisticsMapMarkerForegroundColor(
                   backgroundColor,
                 ),
-                onTap: () => _showStatisticsMapEntrySheet(
-                  context,
-                  marker,
+                onTap: () => onMarkerTap(index, marker),
+              ),
+            ),
+          ),
+        );
+      })
+      .toList(growable: false);
+}
+
+List<Widget> _statisticsMapClusterOverlayWidgets({
+  required List<_StatisticsMapMarkerData> markers,
+  required List<Offset> offsets,
+  required Map<DrinkCategory, Color> colors,
+  required Future<void> Function(int index, _StatisticsMapMarkerData marker)
+  onMarkerTap,
+  required Future<void> Function(List<int> markerIndexes) onClusterTap,
+}) {
+  return _statisticsMapScreenClusters(offsets: offsets)
+      .map((cluster) {
+        final offset = cluster.center;
+
+        if (cluster.markerIndexes.length == 1) {
+          final markerIndex = cluster.markerIndexes.single;
+          final marker = markers[markerIndex];
+          final backgroundColor = colors[marker.entry.category]!;
+
+          return Positioned(
+            key: Key('statistics-map-slot-${marker.entry.id}'),
+            left: offset.dx - (_statisticsMapMarkerHitSize / 2),
+            top: offset.dy - (_statisticsMapMarkerHitSize / 2),
+            child: SizedBox(
+              width: _statisticsMapMarkerHitSize,
+              height: _statisticsMapMarkerHitSize,
+              child: Center(
+                child: _StatisticsMapMarker(
+                  entry: marker.entry,
+                  backgroundColor: backgroundColor,
+                  foregroundColor: _statisticsMapMarkerForegroundColor(
+                    backgroundColor,
+                  ),
+                  onTap: () => onMarkerTap(markerIndex, marker),
+                ),
+              ),
+            ),
+          );
+        }
+
+        final clusterKey = cluster.markerIndexes
+            .map((index) => markers[index].entry.id)
+            .join('-');
+        final backgroundColor = colors[markers[cluster.markerIndexes.first]
+            .entry
+            .category]!;
+
+        return Positioned(
+          key: Key('statistics-map-cluster-slot-$clusterKey'),
+          left: offset.dx - (_statisticsMapMarkerHitSize / 2),
+          top: offset.dy - (_statisticsMapMarkerHitSize / 2),
+          child: SizedBox(
+            width: _statisticsMapMarkerHitSize,
+            height: _statisticsMapMarkerHitSize,
+            child: Center(
+              child: _StatisticsMapClusterMarker(
+                markerIds: clusterKey,
+                count: cluster.markerIndexes.length,
+                backgroundColor: backgroundColor,
+                foregroundColor: _statisticsMapMarkerForegroundColor(
                   backgroundColor,
                 ),
+                onTap: () => onClusterTap(cluster.markerIndexes),
               ),
             ),
           ),
@@ -669,6 +913,11 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   List<Offset> _markerOffsets = const <Offset>[];
   bool _isSyncScheduled = false;
   int _projectionRetryEpoch = 0;
+  late double _currentZoom;
+  late final maplibre.OnFeatureInteractionCallback _featureTapListener;
+
+  bool get _usesOverlayClusters =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   double get _projectionScale {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
@@ -678,13 +927,31 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _currentZoom = _statisticsMapInitialCameraPosition(widget.markers).zoom;
+    _featureTapListener = _handleFeatureTap;
+  }
+
+  @override
   void didUpdateWidget(covariant _StatisticsMapCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_statisticsMapSignature(oldWidget.markers) !=
         _statisticsMapSignature(widget.markers)) {
       _projectionRetryEpoch += 1;
+      _currentZoom = _statisticsMapInitialCameraPosition(widget.markers).zoom;
+      _markerOffsets = const <Offset>[];
       _scheduleMarkerSync();
     }
+  }
+
+  @override
+  void dispose() {
+    final controller = _controller;
+    if (controller != null) {
+      controller.onFeatureTapped.remove(_featureTapListener);
+    }
+    super.dispose();
   }
 
   Future<void> _handleStyleLoaded() async {
@@ -693,9 +960,118 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       return;
     }
 
+    if (!_usesOverlayClusters) {
+      await _configureClusterLayers(controller);
+    }
     await _fitStatisticsMapCamera(controller, widget.markers);
     _scheduleMarkerSync();
     _scheduleProjectionRetries();
+  }
+
+  Future<void> _configureClusterLayers(
+    maplibre.MapLibreMapController controller,
+  ) async {
+    final theme = Theme.of(context);
+    final clusterColor = theme.brightness == Brightness.dark
+        ? theme.colorScheme.primaryContainer
+        : theme.colorScheme.primary;
+    final labelColor = _statisticsMapMarkerForegroundColor(clusterColor);
+    final strokeColor = theme.colorScheme.surface;
+
+    for (final layerId in <String>[
+      _statisticsMapClusterCountLayerId,
+      _statisticsMapClusterCircleLayerId,
+    ]) {
+      try {
+        await controller.removeLayer(layerId);
+      } catch (_) {
+        // Ignore style resets while recreating layers.
+      }
+    }
+
+    try {
+      await controller.removeSource(_statisticsMapClusterSourceId);
+    } catch (_) {
+      // Ignore missing source during initial style loads.
+    }
+
+    await controller.addSource(
+      _statisticsMapClusterSourceId,
+      maplibre.GeojsonSourceProperties(
+        data: _statisticsMapClusterGeoJson(widget.markers),
+        cluster: true,
+        clusterRadius: _statisticsMapClusterRadius,
+        clusterMaxZoom: _statisticsMapClusterMaxZoom,
+      ),
+    );
+    await controller.addCircleLayer(
+      _statisticsMapClusterSourceId,
+      _statisticsMapClusterCircleLayerId,
+      maplibre.CircleLayerProperties(
+        circleColor: _statisticsMapHexColor(clusterColor),
+        circleOpacity: 0.96,
+        circleRadius: const <Object>[
+          'step',
+          <Object>['get', 'point_count'],
+          18,
+          3,
+          21,
+          8,
+          24,
+          20,
+          28,
+        ],
+        circleStrokeColor: _statisticsMapHexColor(strokeColor),
+        circleStrokeOpacity: 0.92,
+        circleStrokeWidth: 2.5,
+      ),
+      maxzoom: _statisticsMapDetailMarkerMinZoom,
+      filter: const <Object>['has', 'point_count'],
+      enableInteraction: true,
+    );
+    await controller.addSymbolLayer(
+      _statisticsMapClusterSourceId,
+      _statisticsMapClusterCountLayerId,
+      maplibre.SymbolLayerProperties(
+        textField: '{point_count}',
+        textFont: const <String>['Noto Sans Medium', 'Noto Sans Regular'],
+        textSize: 13,
+        textColor: _statisticsMapHexColor(labelColor),
+        textHaloColor: _statisticsMapHexColor(strokeColor),
+        textHaloWidth: 1.2,
+        textAllowOverlap: true,
+        textIgnorePlacement: true,
+      ),
+      maxzoom: _statisticsMapDetailMarkerMinZoom,
+      filter: const <Object>['has', 'point_count'],
+      enableInteraction: true,
+    );
+  }
+
+  Future<void> _handleFeatureTap(
+    math.Point<double> point,
+    maplibre.LatLng coordinates,
+    String id,
+    String layerId,
+    maplibre.Annotation? annotation,
+  ) async {
+    if (layerId != _statisticsMapClusterCircleLayerId &&
+        layerId != _statisticsMapClusterCountLayerId) {
+      return;
+    }
+
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+
+    final nextZoom = math.min(
+      _currentZoom + _statisticsMapTapResolveZoomStep,
+      _statisticsMapTapResolveMaxZoom,
+    );
+    await controller.animateCamera(
+      maplibre.CameraUpdate.newLatLngZoom(coordinates, nextZoom),
+    );
   }
 
   void _scheduleMarkerSync() {
@@ -745,6 +1121,137 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     }
   }
 
+  void _handleCameraMove(maplibre.CameraPosition cameraPosition) {
+    final previousShowsMarkers = _statisticsMapShowsIndividualMarkers(
+      _currentZoom,
+    );
+    _currentZoom = cameraPosition.zoom;
+    final nextShowsMarkers = _statisticsMapShowsIndividualMarkers(_currentZoom);
+    if (previousShowsMarkers != nextShowsMarkers && mounted) {
+      setState(() {});
+    }
+    _scheduleMarkerSync();
+  }
+
+  void _handleCameraIdle() {
+    _scheduleMarkerSync();
+  }
+
+  Future<void> _handleMarkerTap(
+    int index,
+    _StatisticsMapMarkerData marker,
+    List<Offset> offsets,
+    Map<DrinkCategory, Color> colors,
+  ) async {
+    final tapResolution = resolveStatisticsMapMarkerTap(
+      offsets: offsets,
+      tappedIndex: index,
+      currentZoom: _currentZoom,
+    );
+    if (tapResolution == StatisticsMapTapResolution.zoomIn &&
+        runtime_platform.isMapLibrePlatformSupported) {
+      final controller = _controller;
+      if (controller != null) {
+        final overlappingIndexes = statisticsMapOverlappingMarkerIndexes(
+          offsets: offsets,
+          tappedIndex: index,
+        );
+        final group = overlappingIndexes
+            .map((markerIndex) => widget.markers[markerIndex])
+            .toList(growable: false);
+        await _zoomToMarkerGroup(controller, group);
+        return;
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final backgroundColor = colors[marker.entry.category]!;
+    await _showStatisticsMapEntrySheet(context, marker, backgroundColor);
+  }
+
+  Future<void> _zoomToMarkerGroup(
+    maplibre.MapLibreMapController controller,
+    List<_StatisticsMapMarkerData> markers,
+  ) async {
+    if (markers.isEmpty) {
+      return;
+    }
+
+    if (markers.length == 1) {
+      await controller.animateCamera(
+        maplibre.CameraUpdate.newLatLngZoom(
+          markers.single.position,
+          math.min(
+            _currentZoom + _statisticsMapTapResolveZoomStep,
+            _statisticsMapTapResolveMaxZoom,
+          ),
+        ),
+      );
+      return;
+    }
+
+    final bounds = _statisticsMapBounds(markers);
+    if (bounds != null) {
+      final latitudeSpan =
+          (bounds.northeast.latitude - bounds.southwest.latitude).abs();
+      final longitudeSpan =
+          (bounds.northeast.longitude - bounds.southwest.longitude).abs();
+      if (latitudeSpan > 0.000001 || longitudeSpan > 0.000001) {
+        await controller.animateCamera(
+          maplibre.CameraUpdate.newLatLngBounds(
+            bounds,
+            left: _statisticsMapBoundsPadding,
+            top: _statisticsMapBoundsPadding,
+            right: _statisticsMapBoundsPadding,
+            bottom: _statisticsMapBoundsPadding,
+          ),
+        );
+        return;
+      }
+    }
+
+    final averageLatitude =
+        markers.fold<double>(
+          0,
+          (sum, current) => sum + current.position.latitude,
+        ) /
+        markers.length;
+    final averageLongitude =
+        markers.fold<double>(
+          0,
+          (sum, current) => sum + current.position.longitude,
+        ) /
+        markers.length;
+    await controller.animateCamera(
+      maplibre.CameraUpdate.newLatLngZoom(
+        maplibre.LatLng(averageLatitude, averageLongitude),
+        math.min(
+          _currentZoom + _statisticsMapTapResolveZoomStep,
+          _statisticsMapTapResolveMaxZoom,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleOverlayClusterTap(List<int> markerIndexes) async {
+    if (markerIndexes.isEmpty) {
+      return;
+    }
+
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+
+    final markers = markerIndexes
+        .map((index) => widget.markers[index])
+        .toList(growable: false);
+    await _zoomToMarkerGroup(controller, markers);
+  }
+
   void _scheduleProjectionRetries() {
     final retryEpoch = ++_projectionRetryEpoch;
     const retryDelays = <Duration>[
@@ -782,6 +1289,11 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         color: theme.colorScheme.surface,
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final showsIndividualMarkers =
+                !useMapLibre ||
+                _statisticsMapShowsIndividualMarkers(_currentZoom);
+            final showsOverlayClusters =
+                useMapLibre && _usesOverlayClusters && !showsIndividualMarkers;
             final overlayOffsets =
                 _markerOffsets.length == widget.markers.length
                 ? _markerOffsets
@@ -789,14 +1301,47 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
                     markers: widget.markers,
                     size: constraints.biggest,
                   );
-            final markerOverlay = useMapLibre && overlayOffsets.isNotEmpty
-                ? _statisticsMapMarkerWidgets(
-                    context: context,
+            final overlayChildren = !useMapLibre
+                ? const <Widget>[]
+                : showsOverlayClusters
+                ? _statisticsMapClusterOverlayWidgets(
                     markers: widget.markers,
                     offsets: overlayOffsets,
                     colors: colors,
+                    onMarkerTap: (index, marker) =>
+                        _handleMarkerTap(index, marker, overlayOffsets, colors),
+                    onClusterTap: _handleOverlayClusterTap,
                   )
-                : const <Widget>[];
+                : () {
+                    final visibleMarkerIndexes = showsIndividualMarkers
+                        ? List<int>.generate(
+                            widget.markers.length,
+                            (index) => index,
+                          )
+                        : statisticsMapStandaloneMarkerIndexes(
+                            offsets: overlayOffsets,
+                          );
+                    final visibleMarkers = visibleMarkerIndexes
+                        .map((index) => widget.markers[index])
+                        .toList(growable: false);
+                    final visibleOffsets = visibleMarkerIndexes
+                        .map((index) => overlayOffsets[index])
+                        .toList(growable: false);
+                    return visibleOffsets.isNotEmpty
+                        ? _statisticsMapMarkerWidgets(
+                            markers: visibleMarkers,
+                            markerIndexes: visibleMarkerIndexes,
+                            offsets: visibleOffsets,
+                            colors: colors,
+                            onMarkerTap: (index, marker) => _handleMarkerTap(
+                              index,
+                              marker,
+                              overlayOffsets,
+                              colors,
+                            ),
+                          )
+                        : const <Widget>[];
+                  }();
 
             return Stack(
               children: <Widget>[
@@ -820,19 +1365,23 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
                           attributionButtonPosition:
                               maplibre.AttributionButtonPosition.bottomRight,
                           onMapCreated: (controller) {
+                            _controller?.onFeatureTapped.remove(
+                              _featureTapListener,
+                            );
                             _controller = controller;
+                            controller.onFeatureTapped.add(_featureTapListener);
                             _scheduleProjectionRetries();
                           },
                           onStyleLoadedCallback: _handleStyleLoaded,
-                          onCameraMove: (_) => _scheduleMarkerSync(),
-                          onCameraIdle: _scheduleMarkerSync,
+                          onCameraMove: _handleCameraMove,
+                          onCameraIdle: _handleCameraIdle,
                         )
                       : _StatisticsMapFallbackSurface(
                           markers: widget.markers,
                           colors: colors,
                         ),
                 ),
-                ...markerOverlay,
+                ...overlayChildren,
                 if (!useMapLibre)
                   Positioned(
                     right: 12,
@@ -909,10 +1458,21 @@ class _StatisticsMapFallbackSurface extends StatelessWidget {
                 ),
               ),
               ..._statisticsMapMarkerWidgets(
-                context: context,
                 markers: markers,
+                markerIndexes: List<int>.generate(
+                  markers.length,
+                  (index) => index,
+                ),
                 offsets: offsets,
                 colors: colors,
+                onMarkerTap: (index, marker) async {
+                  final backgroundColor = colors[marker.entry.category]!;
+                  await _showStatisticsMapEntrySheet(
+                    context,
+                    marker,
+                    backgroundColor,
+                  );
+                },
               ),
             ],
           ),
@@ -1004,6 +1564,58 @@ class _StatisticsMapAttributionCard extends StatelessWidget {
   }
 }
 
+class _StatisticsMapClusterMarker extends StatelessWidget {
+  const _StatisticsMapClusterMarker({
+    required this.markerIds,
+    required this.count,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.onTap,
+  });
+
+  final String markerIds;
+  final int count;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: Key('statistics-map-cluster-$markerIds'),
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: _statisticsMapMarkerVisualSize,
+          height: _statisticsMapMarkerVisualSize,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.surface,
+                width: 2.5,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                '$count',
+                key: Key('statistics-map-cluster-count-$markerIds'),
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: foregroundColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StatisticsMapMarker extends StatelessWidget {
   const _StatisticsMapMarker({
     required this.entry,
@@ -1019,8 +1631,6 @@ class _StatisticsMapMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1037,13 +1647,6 @@ class _StatisticsMapMarker extends StatelessWidget {
                 Icons.location_on_rounded,
                 size: _statisticsMapMarkerVisualSize + 8,
                 color: backgroundColor,
-                shadows: <Shadow>[
-                  Shadow(
-                    color: theme.colorScheme.shadow.withValues(alpha: 0.22),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               Positioned(
                 top: 6,

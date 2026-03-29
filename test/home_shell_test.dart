@@ -17,6 +17,7 @@ import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/add_drink_screen.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
+import 'package:glasstrail/src/screens/statistics_screen.dart';
 
 import 'support/test_harness.dart';
 
@@ -2399,6 +2400,86 @@ void main() {
     expect(
       find.byKey(Key('statistics-map-sheet-image-${plainEntry.id}')),
       findsNothing,
+    );
+  });
+
+  test('resolves overlapping statistics map markers to zoom in', () {
+    final resolution = resolveStatisticsMapMarkerTap(
+      offsets: const <Offset>[
+        Offset(120, 160),
+        Offset(138, 176),
+        Offset(260, 320),
+      ],
+      tappedIndex: 0,
+      currentZoom: 14,
+    );
+
+    expect(resolution, StatisticsMapTapResolution.zoomIn);
+    expect(
+      statisticsMapOverlappingMarkerIndexes(
+        offsets: const <Offset>[
+          Offset(120, 160),
+          Offset(138, 176),
+          Offset(260, 320),
+        ],
+        tappedIndex: 0,
+      ),
+      <int>[0, 1],
+    );
+  });
+
+  test('keeps isolated or fully resolved statistics map markers tappable', () {
+    expect(
+      resolveStatisticsMapMarkerTap(
+        offsets: const <Offset>[Offset(120, 160), Offset(182, 230)],
+        tappedIndex: 0,
+        currentZoom: 14,
+      ),
+      StatisticsMapTapResolution.openSheet,
+    );
+
+    expect(
+      resolveStatisticsMapMarkerTap(
+        offsets: const <Offset>[Offset(120, 160), Offset(132, 170)],
+        tappedIndex: 0,
+        currentZoom: 18.5,
+      ),
+      StatisticsMapTapResolution.openSheet,
+    );
+  });
+
+  test(
+    'keeps standalone statistics map markers visible outside dense groups',
+    () {
+      expect(
+        statisticsMapStandaloneMarkerIndexes(
+          offsets: const <Offset>[
+            Offset(60, 80),
+            Offset(180, 220),
+            Offset(214, 246),
+          ],
+        ),
+        <int>[0],
+      );
+    },
+  );
+
+  test('groups dense statistics map markers into overlay clusters', () {
+    expect(
+      statisticsMapClusterGroups(
+        offsets: const <Offset>[
+          Offset(80, 100),
+          Offset(108, 126),
+          Offset(260, 320),
+          Offset(288, 348),
+          Offset(420, 180),
+        ],
+      ),
+      const <List<int>>[
+        <int>[0, 1],
+        <int>[2, 3],
+        <int>[4],
+      ],
     );
   });
 
