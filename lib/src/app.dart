@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'app_controller.dart';
-import 'app_localizations.dart';
 import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';

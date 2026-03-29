@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_controller.dart';
-import '../app_localizations.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../birthday.dart';
+import '../l10n_extensions.dart';
 import '../models.dart';
 import '../widgets/app_media.dart';
 

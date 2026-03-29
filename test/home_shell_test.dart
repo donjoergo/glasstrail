@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,7 +10,6 @@ import 'package:url_launcher_platform_interface/url_launcher_platform_interface.
 
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
-import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
@@ -23,6 +23,9 @@ import 'support/test_harness.dart';
 
 const _transparentPngDataUrl =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRSEAAAAASUVORK5CYII=';
+
+AppLocalizations _l10n(String languageCode) =>
+    lookupAppLocalizations(Locale(languageCode));
 
 Future<({AppController controller, BlockingLocalAppRepository repository})>
 _buildBlockedHarness(AppBusyAction action) async {
@@ -893,7 +896,7 @@ void main() {
       password: 'password123',
       displayName: 'Eintrag Beispiel',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('de')));
+    controller.takeFlashMessage(_l10n('de'));
 
     await controller.updateSettings(
       controller.settings.copyWith(localeCode: 'de'),
@@ -902,7 +905,7 @@ void main() {
       (drink) => drink.id == 'wine-red-wine',
     );
     await controller.addDrinkEntry(drink: redWine, volumeMl: redWine.volumeMl);
-    controller.takeFlashMessage(AppLocalizations(const Locale('de')));
+    controller.takeFlashMessage(_l10n('de'));
 
     await tester.pumpWidget(
       GlassTrailApp(
@@ -1454,7 +1457,7 @@ void main() {
       password: 'password123',
       displayName: 'Streak Card Example',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+    controller.takeFlashMessage(_l10n('en'));
 
     await tester.pumpWidget(
       GlassTrailApp(
@@ -1498,7 +1501,7 @@ void main() {
       password: 'password123',
       displayName: 'Feed Refresh Example',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+    controller.takeFlashMessage(_l10n('en'));
 
     final preferences = await SharedPreferences.getInstance();
     final externalRepository = LocalAppRepository(preferences);
@@ -1571,7 +1574,7 @@ void main() {
       password: 'password123',
       displayName: 'Stats Refresh Example',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+    controller.takeFlashMessage(_l10n('en'));
 
     final preferences = await SharedPreferences.getInstance();
     final externalRepository = LocalAppRepository(preferences);
@@ -1817,7 +1820,7 @@ void main() {
       password: 'password123',
       displayName: 'Stats Overview Example',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+    controller.takeFlashMessage(_l10n('en'));
 
     final preferences = await SharedPreferences.getInstance();
     final externalRepository = LocalAppRepository(preferences);

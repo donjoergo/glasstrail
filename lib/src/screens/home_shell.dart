@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 
-import '../app_localizations.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';

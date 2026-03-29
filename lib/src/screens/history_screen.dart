@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
 import '../app_controller.dart';
-import '../app_localizations.dart';
 import '../app_scope.dart';
+import '../l10n_extensions.dart';
 import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';

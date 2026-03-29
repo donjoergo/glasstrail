@@ -5,13 +5,14 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 import 'package:url_launcher/url_launcher.dart';
 
-import '../app_localizations.dart';
 import '../app_scope.dart';
+import '../l10n_extensions.dart';
 import '../maplibre_web_registration.dart' as maplibre_web_registration;
 import '../models.dart';
 import '../runtime_platform.dart' as runtime_platform;

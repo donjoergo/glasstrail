@@ -2,15 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:glasstrail/src/app_controller.dart';
-import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/app_repository.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/stats_calculator.dart';
 
 import 'support/test_harness.dart';
+
+AppLocalizations _l10n(String languageCode) =>
+    lookupAppLocalizations(Locale(languageCode));
 
 void main() {
   test('bootstraps independent repository reads in parallel', () async {
@@ -127,7 +130,7 @@ void main() {
 
   test('localizes success flash messages and drink names', () async {
     final controller = await buildTestController();
-    final german = AppLocalizations(const Locale('de'));
+    final german = _l10n('de');
 
     await controller.signUp(
       email: 'flash@example.com',
@@ -331,7 +334,7 @@ void main() {
 
   test('localizes mapped repository error messages', () async {
     final controller = await buildTestController();
-    final german = AppLocalizations(const Locale('de'));
+    final german = _l10n('de');
 
     await controller.signUp(
       email: 'duplicate@example.com',
@@ -357,7 +360,7 @@ void main() {
     'removes the current user profile image when updating the profile',
     () async {
       final controller = await buildTestController();
-      final german = AppLocalizations(const Locale('de'));
+      final german = _l10n('de');
 
       await controller.signUp(
         email: 'profile-image@example.com',
@@ -381,7 +384,7 @@ void main() {
 
   test('updates a drink entry and emits a localized success message', () async {
     final controller = await buildTestController();
-    final german = AppLocalizations(const Locale('de'));
+    final german = _l10n('de');
 
     await controller.signUp(
       email: 'edit-entry@example.com',
@@ -415,7 +418,7 @@ void main() {
 
   test('deletes a drink entry and emits a localized success message', () async {
     final controller = await buildTestController();
-    final german = AppLocalizations(const Locale('de'));
+    final german = _l10n('de');
 
     await controller.signUp(
       email: 'delete-entry@example.com',
@@ -446,7 +449,7 @@ void main() {
       password: 'password123',
       displayName: 'Streak Delete Example',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+    controller.takeFlashMessage(_l10n('en'));
 
     final preferences = await SharedPreferences.getInstance();
     final externalRepository = LocalAppRepository(preferences);
