@@ -1,8 +1,8 @@
 # GlassTrail
 
-[![Android Release](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml/badge.svg?branch=release)](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml)
+[![Android Release](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml/badge.svg)](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml)
 [![CI](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml/badge.svg)](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml)
-
+[![Crowdin](https://badges.crowdin.net/glasstrail/localized.svg)](https://crowdin.com/project/glasstrail)
 
 
 GlassTrail is a Flutter app for tracking drinks, reviewing personal habits, and keeping profile and app settings in sync across devices.
