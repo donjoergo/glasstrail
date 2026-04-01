@@ -506,7 +506,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'created with ❤️ and ☕ by Jörg Dorlach',
+                'created with ❤️, ☕ and 🍺 by Jörg Dorlach',
                 key: const Key('profile-about-attribution'),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,

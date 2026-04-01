@@ -505,7 +505,7 @@ void main() {
     expect(find.byKey(const Key('profile-about-section')), findsOneWidget);
     expect(find.text('Glass Trail V1.0.0'), findsOneWidget);
     expect(find.text('GitHub'), findsOneWidget);
-    expect(find.text('created with ❤️ and ☕ by Jörg Dorlach'), findsOneWidget);
+    expect(find.text('created with ❤️, ☕ and 🍺 by Jörg Dorlach'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('profile-about-github-button')));
     await tester.pumpAndSettle();
