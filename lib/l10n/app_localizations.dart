@@ -95,8 +95,10 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('de'),
+    Locale('de', 'DE'),
     Locale('de', 'QM'),
     Locale('en'),
+    Locale('en', 'US'),
   ];
 
   /// No description provided for @appTitle.
@@ -939,8 +941,18 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
     case 'de':
       {
         switch (locale.countryCode) {
+          case 'DE':
+            return AppLocalizationsDeDe();
           case 'QM':
             return AppLocalizationsDeQm();
+        }
+        break;
+      }
+    case 'en':
+      {
+        switch (locale.countryCode) {
+          case 'US':
+            return AppLocalizationsEnUs();
         }
         break;
       }

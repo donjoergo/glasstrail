@@ -18,14 +18,18 @@ Set<String> _messageKeys(Map<String, dynamic> arb) {
 void main() {
   group('AppLocalizations', () {
     test('uses singular day wording for one day in German', () {
-      final l10n = lookupAppLocalizations(const Locale('de'));
+      final l10n = lookupAppLocalizations(
+        const Locale.fromSubtags(languageCode: 'de', countryCode: 'DE'),
+      );
 
       expect(l10n.dayLabel(1), 'Tag');
       expect(l10n.dayLabel(2), 'Tage');
     });
 
     test('uses singular day wording for one day in English', () {
-      final l10n = lookupAppLocalizations(const Locale('en'));
+      final l10n = lookupAppLocalizations(
+        const Locale.fromSubtags(languageCode: 'en', countryCode: 'US'),
+      );
 
       expect(l10n.dayLabel(1), 'day');
       expect(l10n.dayLabel(2), 'days');
@@ -46,12 +50,12 @@ void main() {
     });
 
     test('keeps app_de_QM.arb aligned with the other locale files', () {
-      final english = _readArbFile('lib/l10n/app_en.arb');
-      final german = _readArbFile('lib/l10n/app_de.arb');
+      final english = _readArbFile('lib/l10n/app_en_US.arb');
+      final german = _readArbFile('lib/l10n/app_de_DE.arb');
       final franconian = _readArbFile('lib/l10n/app_de_QM.arb');
 
-      expect(english['@@locale'], 'en');
-      expect(german['@@locale'], 'de');
+      expect(english['@@locale'], 'en_US');
+      expect(german['@@locale'], 'de_DE');
       expect(franconian['@@locale'], 'de_QM');
       expect(_messageKeys(franconian), _messageKeys(german));
       expect(_messageKeys(franconian), _messageKeys(english));
