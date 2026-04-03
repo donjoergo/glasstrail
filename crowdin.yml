@@ -1,8 +1,10 @@
 files:
   - source: /lib/l10n/app_en_US.arb
-    translation: /lib/l10n/app_%locale%.arb
+    translation: /lib/l10n/app_%locale_with_underscore%.arb
     languages_mapping:
-      locale:
+      locale_with_underscore:
+        de: de_DE
         de-DE: de_DE
         de-QM: de_QM
+        en: en_US
         en-US: en_US
