@@ -1,3 +1,8 @@
 files:
   - source: /lib/l10n/app_en_US.arb
     translation: /lib/l10n/app_%locale%.arb
+    languages_mapping:
+      locale:
+        de-DE: de_DE
+        de-QM: de_QM
+        en-US: en_US
