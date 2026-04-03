@@ -87,7 +87,7 @@ void main() {
         user.id,
         const UserSettings(
           themePreference: AppThemePreference.dark,
-          localeCode: 'de',
+          localeCode: 'de_QM',
           unit: AppUnit.oz,
           handedness: AppHandedness.left,
           hiddenGlobalDrinkIds: <String>['beer-pils'],
@@ -101,7 +101,7 @@ void main() {
       final restored = await repository.loadSettings(user.id);
 
       expect(restored.themePreference, AppThemePreference.dark);
-      expect(restored.localeCode, 'de');
+      expect(restored.localeCode, 'de_QM');
       expect(restored.unit, AppUnit.oz);
       expect(restored.handedness, AppHandedness.left);
       expect(restored.hiddenGlobalDrinkIds, <String>['beer-pils']);

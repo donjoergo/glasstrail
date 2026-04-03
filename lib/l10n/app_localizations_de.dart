@@ -352,6 +352,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get german => 'Deutsch';
 
   @override
+  String get franconian => 'Fränggisch';
+
+  @override
   String get handednessRight => 'Rechts';
 
   @override
@@ -446,6 +449,449 @@ class AppLocalizationsDe extends AppLocalizations {
       locale: localeName,
       other: 'Tage',
       one: 'Tag',
+    );
+    return '$_temp0';
+  }
+}
+
+/// The translations for German (`de_QM`).
+class AppLocalizationsDeQm extends AppLocalizationsDe {
+  AppLocalizationsDeQm() : super('de_QM');
+
+  @override
+  String get appTitle => 'Glass Trail';
+
+  @override
+  String get feed => 'Fead';
+
+  @override
+  String get statistics => 'Schdaddisdign';
+
+  @override
+  String get statisticsOverview => 'Üwabligg';
+
+  @override
+  String get statisticsMap => 'Garddn';
+
+  @override
+  String get statisticsGallery => 'Bildla';
+
+  @override
+  String get bar => 'Baa';
+
+  @override
+  String get profile => 'Brofil';
+
+  @override
+  String get welcomeTitle => 'Jeds Gläsla fesdhaldn';
+
+  @override
+  String get welcomeBody =>
+      'Drooch dei Gedrängg ei, schau auf dei Särien und gugg, wia si dei Gwohnheidn so entwickln.';
+
+  @override
+  String get signIn => 'Omeldn';
+
+  @override
+  String get signUp => 'Gondo anleng';
+
+  @override
+  String get email => 'E-Mail';
+
+  @override
+  String get password => 'Bassword';
+
+  @override
+  String get displayName => 'Ozoignoom';
+
+  @override
+  String get birthday => 'Gebordsdooch';
+
+  @override
+  String get optional => 'Wennsd magst';
+
+  @override
+  String get removeBirthday => 'Gebordsdooch wegdoon';
+
+  @override
+  String get pickPhoto => 'Bildla auswähln';
+
+  @override
+  String get pickPhotoSource => 'Wo soll\'s Bildla hergomm?';
+
+  @override
+  String get changePhoto => 'Bildla ändan';
+
+  @override
+  String get takePhoto => 'Mit da Gamera';
+
+  @override
+  String get chooseFromGallery => 'Aus da Galerie';
+
+  @override
+  String get removePhoto => 'Bildla wegdoon';
+
+  @override
+  String get addDrink => 'Gedrängg dazu';
+
+  @override
+  String get searchDrinks => 'Nach Gedrängg suung';
+
+  @override
+  String get recentDrinks => 'Zuledzd gnumma';
+
+  @override
+  String get catalog => 'Gedrängglisdn';
+
+  @override
+  String get location => 'Sdoandord';
+
+  @override
+  String get saveLocationForEntry => 'Sdoandord für den Oindroog merga';
+
+  @override
+  String get locationLoading => 'Dei Sdoandord wird grod ausgfindich gmachd…';
+
+  @override
+  String get locationUnavailable =>
+      'Sdoandord gibt\'s grod ned. Speichern gehd trotzdem.';
+
+  @override
+  String get locationAddressUnavailable =>
+      'Adresse hod ned hinghaud. De Koordinadn werdn awaa trotzdem gspeicherd.';
+
+  @override
+  String get locationDisabledForEntry => 'Sdoandord is für den Oindroog aus.';
+
+  @override
+  String get locationApproximateWarning =>
+      'Android liefert grod bloß an grobn Sdoandord. Mach den genaun Sdoandord in de App-Einsdellunga oo.';
+
+  @override
+  String get openAppSettings => 'App-Einsdellunga';
+
+  @override
+  String get comment => 'Gommendar';
+
+  @override
+  String get confirmDrink => 'Oindroog speichan';
+
+  @override
+  String get save => 'Speichan';
+
+  @override
+  String get cancel => 'Abbrecha';
+
+  @override
+  String get editEntry => 'Oindroog bearbeidn';
+
+  @override
+  String get deleteEntry => 'Oindroog lösch\'n';
+
+  @override
+  String get deleteEntryPrompt =>
+      'Willsd den Gedrängg-Oindroog wirglich lösch\'n? Gommendar und Bildla san dann aa weg.';
+
+  @override
+  String get createCustomDrink => 'Eigens Gedrängg baun';
+
+  @override
+  String get editCustomDrink => 'Eigens Gedrängg bearbeidn';
+
+  @override
+  String get drinkName => 'Gedränggnoom';
+
+  @override
+  String get category => 'Gadegorie';
+
+  @override
+  String get volume => 'Menga';
+
+  @override
+  String get feedHeadline => 'Dei Gedrängg-Gschichd';
+
+  @override
+  String get feedBody =>
+      'In V1 siechsd ersd amol bloß dei eigne Hisdorie. Freind, Gommendare und Cheers kumman späda.';
+
+  @override
+  String get noEntries => 'No koa Gedrängg eigdroong.';
+
+  @override
+  String get startLogging => 'Leg amol mit dem ersdn Oindroog los.';
+
+  @override
+  String get weeklyTotal => 'Woch';
+
+  @override
+  String get monthlyTotal => 'Monad';
+
+  @override
+  String get yearlyTotal => 'Johr';
+
+  @override
+  String get currentStreak => 'Grodde Säri';
+
+  @override
+  String get bestStreak => 'Besde Säri';
+
+  @override
+  String get thisWeek => 'Die Woch';
+
+  @override
+  String get streakPromptStart =>
+      'Logg edzerd a Gedrängg nei und fang dei Säri oo.';
+
+  @override
+  String get streakPromptKeepAlive =>
+      'Logg edzerd a Gedrängg nei, dass dei Säri ned abreißd.';
+
+  @override
+  String get streakPromptStartedToday => 'Sauber! Heud hosd dei Säri ogfang.';
+
+  @override
+  String get streakPromptContinuedToday =>
+      'Sauber! Heud hosd dei Säri weidergführd.';
+
+  @override
+  String get weekdayMondayShort => 'Mo';
+
+  @override
+  String get weekdayTuesdayShort => 'Di';
+
+  @override
+  String get weekdayWednesdayShort => 'Mi';
+
+  @override
+  String get weekdayThursdayShort => 'Do';
+
+  @override
+  String get weekdayFridayShort => 'Fr';
+
+  @override
+  String get weekdaySaturdayShort => 'Sa';
+
+  @override
+  String get weekdaySundayShort => 'So';
+
+  @override
+  String get categoryBreakdown => 'Gadegorien';
+
+  @override
+  String get history => 'Hisdorie';
+
+  @override
+  String get statisticsMapEmptyTitle => 'No koa Gedrängg mit Sdoandord';
+
+  @override
+  String get statisticsMapEmptyBody =>
+      'Mach beim Loggn den Sdoandord oo, dann seggsd des Zeuch aa auf da Garddn.';
+
+  @override
+  String get statisticsGalleryEmptyTitle => 'No koa Gedrängg-Bildla';
+
+  @override
+  String get statisticsGalleryEmptyBody =>
+      'Bildla aus deine Oindräch landen hier ganz alla.';
+
+  @override
+  String get totalDrinks => 'Gedrängg insgsamd';
+
+  @override
+  String get settings => 'Einsdellunga';
+
+  @override
+  String get globalDrinks => 'Globale Gedrängg';
+
+  @override
+  String get barDrinkSortingTab => 'Gedrängg sortiern';
+
+  @override
+  String get barCustomDrinksTab => 'Eigne Gedrängg';
+
+  @override
+  String get barGlobalDrinksBody =>
+      'Sortier globale und eigne Gedrängg in jeder Gadegorie neu und blend des aus, wosd in de Auswahllisdn ned sehn mogsd.';
+
+  @override
+  String get barCustomDrinksBody =>
+      'Bau dei eigne Gedrängg und bearbeid\'s, wia\'s da bassd.';
+
+  @override
+  String get hiddenDrinks => 'Versteggde Gedrängg';
+
+  @override
+  String get hideCategory => 'Gadegorie ausblendn';
+
+  @override
+  String get showCategory => 'Gadegorie ozoing';
+
+  @override
+  String get hideDrink => 'Ausblendn';
+
+  @override
+  String get showDrink => 'Ozoing';
+
+  @override
+  String get allGlobalDrinksHidden =>
+      'Alle globaln Gedrängg in dera Gadegorie san ausblendt.';
+
+  @override
+  String get backend => 'Backend';
+
+  @override
+  String get backendRemoteBody =>
+      'Supabase is ferdich eigrichd und da Abgleich laffd.';
+
+  @override
+  String get backendLocalBody =>
+      'Koa Supabase konfigurierd, drum laffd des Ganze mit\'m lokalen Fallback.';
+
+  @override
+  String get theme => 'Look';
+
+  @override
+  String get language => 'Sprooch';
+
+  @override
+  String get units => 'Einhadn';
+
+  @override
+  String get handedness => 'Bedienseidn';
+
+  @override
+  String get logout => 'Abmeldn';
+
+  @override
+  String get editProfile => 'Brofil bearbeidn';
+
+  @override
+  String get customDrinks => 'Meine eigne Gedrängg';
+
+  @override
+  String get addCustomDrinkAction => 'Eigens Gedrängg dazu';
+
+  @override
+  String get roadmap => 'Wos als Nächsd kummd';
+
+  @override
+  String get about => 'Üwa die App';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get roadmapBody =>
+      'Freind, Social Feed, Erfolge und Import san scho im Gopp, awa no ned in V1 dabei.';
+
+  @override
+  String get themeSystem => 'Sysdem';
+
+  @override
+  String get themeLight => 'Hell';
+
+  @override
+  String get themeDark => 'Dunggla';
+
+  @override
+  String get english => 'Englisch';
+
+  @override
+  String get german => 'Deutsch';
+
+  @override
+  String get franconian => 'Fränggisch';
+
+  @override
+  String get handednessRight => 'Rechds';
+
+  @override
+  String get handednessLeft => 'Linggs';
+
+  @override
+  String get invalidRequired => 'Füll bidde ersd amol alle Pflichtfelder aus.';
+
+  @override
+  String get emptyFilter => 'Für den Filter ham mer nix gfundn.';
+
+  @override
+  String get launchingApp => 'Gedrängg und Einsdellunga wer\'n grod gloodn.';
+
+  @override
+  String get welcomeToGlassTrail => 'Willgomm bei Glass Trail.';
+
+  @override
+  String get welcomeBack => 'Schön, dassd widder do bassd.';
+
+  @override
+  String get profileUpdated => 'Brofil is aktualisierd.';
+
+  @override
+  String get customDrinkSaved => 'Dei eigens Gedrängg is gspeicherd.';
+
+  @override
+  String drinkLogged(String drink) {
+    return '$drink is eigdroong.';
+  }
+
+  @override
+  String get entryUpdated => 'Oindroog is aktualisierd.';
+
+  @override
+  String get entryDeleted => 'Oindroog is glöscht.';
+
+  @override
+  String get somethingWentWrong =>
+      'Aa weng wos is schieflaufn. Versuuch\'s amol nomol.';
+
+  @override
+  String get accountAlreadyExists => 'Für die E-Mail gibbd\'s scho a Gondo.';
+
+  @override
+  String get invalidCredentials => 'E-Mail odder Bassword bassn ned.';
+
+  @override
+  String get profileUpdateFailed => 'Des Brofil hod si ned aktualisiern lassn.';
+
+  @override
+  String get entryUpdateFailed => 'Der Oindroog hod si ned aktualisiern lassn.';
+
+  @override
+  String get entryDeleteFailed => 'Der Oindroog hod si ned lösch\'n lassn.';
+
+  @override
+  String get customDrinkAlreadyExists => 'So a eigens Gedrängg hosd scho.';
+
+  @override
+  String get signUpMissingUser =>
+      'Bei da Regisdrierung is koa Benutzer zruckkumma.';
+
+  @override
+  String get signUpConfirmationRequired =>
+      'Supabase hod di oaglegd, awa d\'E-Mail-Bestädigung is oo. Mach ersd dei Mail färdich und meld di dann oo.';
+
+  @override
+  String get beer => 'Bier';
+
+  @override
+  String get wine => 'Wei';
+
+  @override
+  String get spirits => 'Schnäbs';
+
+  @override
+  String get cocktails => 'Goggdails';
+
+  @override
+  String get nonAlcoholic => 'Ohne Allohol';
+
+  @override
+  String dayLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Däg',
+      one: 'Dog',
     );
     return '$_temp0';
   }

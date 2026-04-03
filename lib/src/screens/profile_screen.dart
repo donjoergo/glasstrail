@@ -4,6 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_controller.dart';
+import '../app_language.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../birthday.dart';
@@ -362,8 +363,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 loadingIndicatorKey: const Key('language-settings-loading'),
                 key: const Key('language-segmented-control'),
                 segments: <ButtonSegment<String>>[
-                  ButtonSegment<String>(value: 'en', label: Text(l10n.english)),
-                  ButtonSegment<String>(value: 'de', label: Text(l10n.german)),
+                  ButtonSegment<String>(
+                    value: kEnglishLocaleCode,
+                    label: Text(l10n.english),
+                  ),
+                  ButtonSegment<String>(
+                    value: kGermanLocaleCode,
+                    label: Text(l10n.german),
+                  ),
+                  ButtonSegment<String>(
+                    value: kFranconianLocaleCode,
+                    label: Text(l10n.franconian),
+                  ),
                 ],
                 onChanged: (value) => _updateSettings(
                   _ProfilePendingSetting.language,

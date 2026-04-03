@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'app_language.dart';
+
 const int kBirthdayReferenceYear = 2000;
 
 DateTime normalizeBirthday(DateTime value) {
@@ -12,7 +14,9 @@ DateTime? normalizeBirthdayOrNull(DateTime? value) {
 }
 
 String formatBirthdayMonthDay(DateTime value, String localeCode) {
-  return DateFormat.MMMd(localeCode).format(normalizeBirthday(value));
+  return DateFormat.MMMd(
+    resolveFrameworkLocaleCode(localeCode),
+  ).format(normalizeBirthday(value));
 }
 
 Future<DateTime?> pickMonthDayBirthday(

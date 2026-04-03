@@ -2,6 +2,8 @@ import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'app_language.dart';
+
 class EntryLocationData {
   const EntryLocationData({
     required this.latitude,
@@ -147,8 +149,8 @@ class PlatformLocationService extends LocationService {
   }
 
   String _localeIdentifier(String localeCode) {
-    return switch (localeCode) {
-      'de' => 'de_DE',
+    return switch (resolveFrameworkLocaleCode(localeCode)) {
+      kGermanLocaleCode => 'de_DE',
       _ => 'en_US',
     };
   }

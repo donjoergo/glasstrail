@@ -349,6 +349,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get german => 'German';
 
   @override
+  String get franconian => 'Franconian';
+
+  @override
   String get handednessRight => 'Right';
 
   @override

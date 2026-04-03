@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_language.dart';
 import 'birthday.dart';
 
 class AppException implements Exception {
@@ -241,7 +242,7 @@ class DrinkDefinition {
   bool get isCustom => ownerUserId != null;
 
   String displayName(String localeCode) {
-    if (localeCode == 'de') {
+    if (usesGermanCopy(localeCode)) {
       final german = localizedNameDe?.trim();
       if (german != null && german.isNotEmpty) {
         return german;
@@ -400,7 +401,7 @@ class UserSettings {
   factory UserSettings.defaults() {
     return const UserSettings(
       themePreference: AppThemePreference.system,
-      localeCode: 'en',
+      localeCode: kEnglishLocaleCode,
       unit: AppUnit.ml,
       handedness: AppHandedness.right,
       hiddenGlobalDrinkIds: <String>[],
@@ -428,7 +429,7 @@ class UserSettings {
   }) {
     return UserSettings(
       themePreference: themePreference ?? this.themePreference,
-      localeCode: localeCode ?? this.localeCode,
+      localeCode: normalizeAppLanguageCode(localeCode ?? this.localeCode),
       unit: unit ?? this.unit,
       handedness: handedness ?? this.handedness,
       hiddenGlobalDrinkIds: hiddenGlobalDrinkIds ?? this.hiddenGlobalDrinkIds,
@@ -442,7 +443,7 @@ class UserSettings {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'themePreference': themePreference.storageValue,
-      'localeCode': localeCode,
+      'localeCode': normalizeAppLanguageCode(localeCode),
       'unit': unit.storageValue,
       'handedness': handedness.storageValue,
       'hiddenGlobalDrinkIds': hiddenGlobalDrinkIds.toList(growable: false),
@@ -461,7 +462,9 @@ class UserSettings {
       themePreference: AppThemePreferenceX.fromStorage(
         _readString(json, 'themePreference', 'theme_preference'),
       ),
-      localeCode: _readString(json, 'localeCode', 'locale_code') ?? 'en',
+      localeCode: normalizeAppLanguageCode(
+        _readString(json, 'localeCode', 'locale_code'),
+      ),
       unit: AppUnitX.fromStorage(_readString(json, 'unit')),
       handedness: AppHandednessX.fromStorage(_readString(json, 'handedness')),
       hiddenGlobalDrinkIds: _readStringList(

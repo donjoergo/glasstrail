@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
+import '../app_language.dart';
 import '../app_controller.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
@@ -41,7 +42,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final theme = Theme.of(context);
     final entries = controller.entries;
     final stats = controller.statistics;
-    final locale = controller.settings.localeCode;
+    final locale = resolveFrameworkLocaleCode(controller.settings.localeCode);
 
     return RefreshIndicator(
       key: const Key('history-refresh-indicator'),

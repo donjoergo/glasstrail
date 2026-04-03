@@ -11,6 +11,7 @@ import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app_language.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
 import '../maplibre_web_registration.dart' as maplibre_web_registration;
@@ -110,7 +111,7 @@ String _statisticsMapStyleString({
       '?version=$_statisticsMapProtomapsBasemapsVersion'
       '&theme=$theme'
       '&tiles=$_statisticsMapProtomapsTilesBuild'
-      '&lang=$localeCode';
+      '&lang=${resolveFrameworkLocaleCode(localeCode)}';
 }
 
 enum StatisticsMapTapResolution { openSheet, zoomIn }
@@ -745,7 +746,9 @@ class _StatisticsOverviewPage extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final stats = controller.statistics;
-    final localeCode = controller.settings.localeCode;
+    final localeCode = resolveFrameworkLocaleCode(
+      controller.settings.localeCode,
+    );
     final colors = _statisticsCategoryColors(theme);
 
     return RefreshIndicator(
@@ -1685,7 +1688,9 @@ class _StatisticsMapEntrySheet extends StatelessWidget {
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final localeCode = controller.settings.localeCode;
+    final localeCode = resolveFrameworkLocaleCode(
+      controller.settings.localeCode,
+    );
     final unit = controller.settings.unit;
     final drinkName = controller.localizedEntryDrinkName(
       entry,
@@ -1939,7 +1944,7 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
                 ),
                 Text(
                   DateFormat.yMMMd(
-                    controller.settings.localeCode,
+                    resolveFrameworkLocaleCode(controller.settings.localeCode),
                   ).format(entry.consumedAt),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -1995,7 +2000,9 @@ class _StatisticsGalleryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
-    final localeCode = controller.settings.localeCode;
+    final localeCode = resolveFrameworkLocaleCode(
+      controller.settings.localeCode,
+    );
     final unit = controller.settings.unit;
     final entries = controller.entries
         .where(_statisticsGalleryHasImage)

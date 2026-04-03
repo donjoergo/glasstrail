@@ -10,6 +10,7 @@ import 'package:url_launcher_platform_interface/url_launcher_platform_interface.
 
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
+import 'package:glasstrail/src/app_language.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
@@ -476,6 +477,59 @@ void main() {
 
     expect(controller.settings.localeCode, 'de');
     expect(find.byKey(const Key('language-settings-loading')), findsNothing);
+  });
+
+  testWidgets('switches to Fränggisch with the de_QM app locale', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'fraenggisch@example.com',
+      password: 'password123',
+      displayName: 'Fraenggisch Beispiel',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.ensureVisible(
+      find.byKey(const Key('language-segmented-control')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('language-segmented-control')),
+        matching: find.text('Franconian'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.settings.localeCode, 'de_QM');
+    expect(
+      AppLocalizations.of(
+        tester.element(find.byType(ProfileScreen)),
+      ).localeName,
+      'de_QM',
+    );
+    expect(
+      Localizations.localeOf(
+        tester.element(find.byType(ProfileScreen)),
+      ).languageCode,
+      'de',
+    );
+    expect(
+      Localizations.localeOf(
+        tester.element(find.byType(ProfileScreen)),
+      ).countryCode,
+      'QM',
+    );
+    expect(find.text('Sprooch'), findsOneWidget);
   });
 
   testWidgets('shows the about section with version and GitHub link', (
@@ -1892,8 +1946,8 @@ void main() {
     expect(bestStreakIconOffset.dy, closeTo(currentStreakIconOffset.dy, 0.1));
 
     final expectedRange =
-        '${DateFormat.MMMd(controller.settings.localeCode).format(bestStart)} - '
-        '${DateFormat.MMMd(controller.settings.localeCode).format(bestEnd)}';
+        '${DateFormat.MMMd(resolveFrameworkLocaleCode(controller.settings.localeCode)).format(bestStart)} - '
+        '${DateFormat.MMMd(resolveFrameworkLocaleCode(controller.settings.localeCode)).format(bestEnd)}';
     expect(
       tester.widget<Text>(
         find.byKey(const Key('stats-card-best-streak-range')),
@@ -2312,7 +2366,7 @@ void main() {
       expect(
         find.text(
           DateFormat.yMMMd(
-            controller.settings.localeCode,
+            resolveFrameworkLocaleCode(controller.settings.localeCode),
           ).add_Hm().format(entry.consumedAt),
         ),
         findsOneWidget,

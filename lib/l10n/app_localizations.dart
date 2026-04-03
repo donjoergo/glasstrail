@@ -95,6 +95,7 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('de'),
+    Locale('de', 'QM'),
     Locale('en'),
   ];
 
@@ -746,6 +747,12 @@ abstract class AppLocalizations {
   /// **'German'**
   String get german;
 
+  /// No description provided for @franconian.
+  ///
+  /// In en, this message translates to:
+  /// **'Franconian'**
+  String get franconian;
+
   /// No description provided for @handednessRight.
   ///
   /// In en, this message translates to:
@@ -927,6 +934,18 @@ class _AppLocalizationsDelegate
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when language+country codes are specified.
+  switch (locale.languageCode) {
+    case 'de':
+      {
+        switch (locale.countryCode) {
+          case 'QM':
+            return AppLocalizationsDeQm();
+        }
+        break;
+      }
+  }
+
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
     case 'de':

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import 'app_language.dart';
 import 'models.dart';
 
 extension AppLocalizationsX on AppLocalizations {
-  Locale get locale => Locale(localeName);
+  Locale get locale => resolveFrameworkLocale(localeName);
 
   String categoryLabel(DrinkCategory category) => switch (category) {
     DrinkCategory.beer => beer,

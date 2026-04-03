@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'app_controller.dart';
+import 'app_language.dart';
 import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';
@@ -136,14 +136,9 @@ class GlassTrailApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: controller.settings.themePreference.themeMode,
-            locale: Locale(controller.settings.localeCode),
+            locale: resolveAppLocale(controller.settings.localeCode),
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
             onGenerateInitialRoutes: (initialRouteName) {
               final routeName = routeMemory.resolveInitialRoute(
                 initialRoute ?? initialRouteName,
@@ -190,12 +185,7 @@ class _BootstrapShell extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       onGenerateInitialRoutes: (initialRouteName) {
         final routeName = AppRoutes.normalize(initialRoute ?? initialRouteName);
         return <Route<dynamic>>[buildRoute(RouteSettings(name: routeName))];

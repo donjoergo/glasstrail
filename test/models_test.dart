@@ -44,6 +44,14 @@ void main() {
         'beer-pils',
       ]);
     });
+
+    test('normalizes unsupported locale codes to English by default', () {
+      final settings = UserSettings.fromJson(<String, dynamic>{
+        'locale_code': 'invalid',
+      });
+
+      expect(settings.localeCode, 'en');
+    });
   });
 
   group('AppUser', () {
@@ -108,6 +116,19 @@ void main() {
       expect(entry.locationLatitude, 52.52);
       expect(entry.locationLongitude, 13.405);
       expect(entry.locationAddress, 'Alexanderplatz 1, 10178 Berlin');
+    });
+  });
+
+  group('DrinkDefinition', () {
+    test('uses German display names for the de_QM locale', () {
+      const drink = DrinkDefinition(
+        id: 'beer-pils',
+        name: 'Pils',
+        localizedNameDe: 'Bier',
+        category: DrinkCategory.beer,
+      );
+
+      expect(drink.displayName('de_QM'), 'Bier');
     });
   });
 }
