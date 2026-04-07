@@ -324,6 +324,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addCustomDrinkAction => 'Eigenes Getränk hinzufügen';
 
   @override
+  String get customDrinksEmptyTitle => 'Noch keine eigenen Getränke';
+
+  @override
+  String get customDrinksEmptyBody =>
+      'Erstelle dein erstes eigenes Getränk, dann erscheint es hier.';
+
+  @override
+  String get statisticsHistoryEmptyTitle => 'Noch keine Historie';
+
+  @override
+  String get statisticsHistoryEmptyBody =>
+      'Geloggte Drinks erscheinen hier als deine persönliche Historie.';
+
+  @override
   String get roadmap => 'Als Nächstes geplant';
 
   @override

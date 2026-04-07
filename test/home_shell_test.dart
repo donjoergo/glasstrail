@@ -1063,6 +1063,39 @@ void main() {
     );
   });
 
+  testWidgets('shows an empty state when no custom drinks exist', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-custom-empty@example.com',
+      password: 'password123',
+      displayName: 'Bar Custom Empty',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+
+    expect(find.byKey(const Key('bar-custom-empty-state')), findsOneWidget);
+    expect(find.text('No custom drinks yet'), findsOneWidget);
+    expect(
+      find.text('Create your first custom drink and it will appear here.'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('bar-add-custom-drink-button')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('shows a spinner while saving a custom drink', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.saveCustomDrink);
     final controller = harness.controller;
@@ -1945,6 +1978,39 @@ void main() {
     expect(find.byKey(Key('history-entry-actions-$entryId')), findsNothing);
   });
 
+  testWidgets('shows an empty state for statistics history without entries', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-history-empty@example.com',
+      password: 'password123',
+      displayName: 'Stats History Empty',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'History');
+
+    expect(
+      find.byKey(const Key('statistics-history-empty-state')),
+      findsOneWidget,
+    );
+    expect(find.text('No history yet'), findsOneWidget);
+    expect(
+      find.text('Logged drinks will appear here as your personal history.'),
+      findsOneWidget,
+    );
+    expect(find.byType(FilterChip), findsNothing);
+  });
+
   testWidgets('filters the compact statistics history by category', (
     tester,
   ) async {
@@ -1990,6 +2056,13 @@ void main() {
 
     expect(find.text('Pils'), findsNothing);
     expect(find.text('Red Wine'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilterChip, 'Non-alcoholic (0)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pils'), findsNothing);
+    expect(find.text('Red Wine'), findsNothing);
+    expect(find.text('No drinks match the current filter.'), findsOneWidget);
   });
 
   testWidgets('shows the map empty state and gallery empty state', (

@@ -692,6 +692,30 @@ abstract class AppLocalizations {
   /// **'Add custom drink'**
   String get addCustomDrinkAction;
 
+  /// No description provided for @customDrinksEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No custom drinks yet'**
+  String get customDrinksEmptyTitle;
+
+  /// No description provided for @customDrinksEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your first custom drink and it will appear here.'**
+  String get customDrinksEmptyBody;
+
+  /// No description provided for @statisticsHistoryEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No history yet'**
+  String get statisticsHistoryEmptyTitle;
+
+  /// No description provided for @statisticsHistoryEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged drinks will appear here as your personal history.'**
+  String get statisticsHistoryEmptyBody;
+
   /// No description provided for @roadmap.
   ///
   /// In en, this message translates to:

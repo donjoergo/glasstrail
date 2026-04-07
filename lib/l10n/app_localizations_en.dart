@@ -321,6 +321,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addCustomDrinkAction => 'Add custom drink';
 
   @override
+  String get customDrinksEmptyTitle => 'No custom drinks yet';
+
+  @override
+  String get customDrinksEmptyBody =>
+      'Create your first custom drink and it will appear here.';
+
+  @override
+  String get statisticsHistoryEmptyTitle => 'No history yet';
+
+  @override
+  String get statisticsHistoryEmptyBody =>
+      'Logged drinks will appear here as your personal history.';
+
+  @override
   String get roadmap => 'Planned next';
 
   @override

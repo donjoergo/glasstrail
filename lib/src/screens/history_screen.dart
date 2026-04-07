@@ -9,6 +9,7 @@ import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../stats_calculator.dart';
+import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -38,7 +39,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
-    final theme = Theme.of(context);
     final entries = controller.entries;
     final stats = controller.statistics;
     final locale = controller.settings.localeCode;
@@ -54,30 +54,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
           _HistoryStreakCard(stats: stats),
           const SizedBox(height: 24),
           if (entries.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                children: <Widget>[
-                  Icon(
-                    Icons.hourglass_empty_rounded,
-                    size: 42,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n.noEntries,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(l10n.startLogging),
-                ],
-              ),
+            AppEmptyStateCard(
+              key: const Key('history-empty-state'),
+              icon: Icons.hourglass_empty_rounded,
+              title: l10n.noEntries,
+              body: l10n.startLogging,
             )
           else
             ...entries.map(

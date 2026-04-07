@@ -17,6 +17,7 @@ import '../maplibre_web_registration.dart' as maplibre_web_registration;
 import '../models.dart';
 import '../runtime_platform.dart' as runtime_platform;
 import '../stats_calculator.dart';
+import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 
 Future<void> _refreshStatistics(BuildContext context) async {
@@ -1835,9 +1836,10 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final allEntries = controller.entries;
     final entries = _selectedCategory == null
-        ? controller.entries
-        : controller.entries
+        ? allEntries
+        : allEntries
               .where((entry) => entry.category == _selectedCategory)
               .toList();
 
@@ -1849,57 +1851,66 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
         children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: DrinkCategory.values.map((category) {
-                final count =
-                    controller.statistics.categoryCounts[category] ?? 0;
-                return FilterChip(
-                  selected: _selectedCategory == category,
-                  showCheckmark: false,
-                  avatar: Icon(
-                    category.icon,
-                    key: Key(
-                      'statistics-history-category-chip-icon-${category.storageValue}',
-                    ),
-                    size: 18,
-                  ),
-                  label: Text('${l10n.categoryLabel(category)} ($count)'),
-                  onSelected: (_) {
-                    setState(() {
-                      _selectedCategory = _selectedCategory == category
-                          ? null
-                          : category;
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 24),
-          if (entries.isEmpty)
+          if (allEntries.isEmpty)
+            AppEmptyStateCard(
+              key: const Key('statistics-history-empty-state'),
+              icon: Icons.history_rounded,
+              title: l10n.statisticsHistoryEmptyTitle,
+              body: l10n.statisticsHistoryEmptyBody,
+            )
+          else ...<Widget>[
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
               ),
-              child: Text(l10n.emptyFilter),
-            )
-          else
-            ...entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _StatisticsHistoryEntryCard(entry: entry),
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: DrinkCategory.values.map((category) {
+                  final count =
+                      controller.statistics.categoryCounts[category] ?? 0;
+                  return FilterChip(
+                    selected: _selectedCategory == category,
+                    showCheckmark: false,
+                    avatar: Icon(
+                      category.icon,
+                      key: Key(
+                        'statistics-history-category-chip-icon-${category.storageValue}',
+                      ),
+                      size: 18,
+                    ),
+                    label: Text('${l10n.categoryLabel(category)} ($count)'),
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedCategory = _selectedCategory == category
+                            ? null
+                            : category;
+                      });
+                    },
+                  );
+                }).toList(),
               ),
             ),
+            const SizedBox(height: 24),
+            if (entries.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(l10n.emptyFilter),
+              )
+            else
+              ...entries.map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _StatisticsHistoryEntryCard(entry: entry),
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -2187,43 +2198,7 @@ class _StatisticsEmptyStateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(icon, size: 36, color: theme.colorScheme.primary),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            body,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
+    return AppEmptyStateCard(key: key, icon: icon, title: title, body: body);
   }
 }
 
