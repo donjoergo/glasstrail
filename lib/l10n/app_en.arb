@@ -40,6 +40,8 @@
   "confirmDrink": "Save entry",
   "save": "Save",
   "cancel": "Cancel",
+  "close": "Close",
+  "whatsNew": "What's new",
   "editEntry": "Edit entry",
   "deleteEntry": "Delete entry",
   "deleteEntryPrompt": "Delete this drink entry? The saved comment and photo will be removed too.",
@@ -48,6 +50,19 @@
   "drinkName": "Drink name",
   "category": "Category",
   "volume": "Volume",
+  "appUpdatedTitle": "App updated",
+  "appUpdatedBody": "{appName} was just updated to {version}. Would you like to read the changelog?",
+  "@appUpdatedBody": {
+    "description": "Body text for the feed changelog card shown after an app update",
+    "placeholders": {
+      "appName": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "feedHeadline": "Your activity feed",
   "feedBody": "This V1 shows your personal history. Friends, comments, and cheers arrive later.",
   "noEntries": "No drinks logged yet.",

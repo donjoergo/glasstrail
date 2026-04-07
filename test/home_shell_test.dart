@@ -16,6 +16,7 @@ import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/add_drink_screen.dart';
+import 'package:glasstrail/src/screens/history_screen.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
 
@@ -23,6 +24,10 @@ import 'support/test_harness.dart';
 
 const _transparentPngDataUrl =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRSEAAAAASUVORK5CYII=';
+const _lastAcknowledgedReleaseKey = 'glasstrail.last_acknowledged_release';
+const _currentReleaseId = '1.0.0+1';
+const _changelogUrl =
+    'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md';
 
 AppLocalizations _l10n(String languageCode) =>
     lookupAppLocalizations(Locale(languageCode));
@@ -97,6 +102,8 @@ Future<void> _scrollBarTargetIntoView(
 class _RecordingUrlLauncherPlatform extends UrlLauncherPlatform {
   final List<String> launchedUrls = <String>[];
   final List<LaunchOptions> launchOptions = <LaunchOptions>[];
+  bool launchResult = true;
+  Object? launchError;
 
   @override
   LinkDelegate? get linkDelegate => null;
@@ -109,9 +116,12 @@ class _RecordingUrlLauncherPlatform extends UrlLauncherPlatform {
 
   @override
   Future<bool> launchUrl(String url, LaunchOptions options) async {
+    if (launchError != null) {
+      throw launchError!;
+    }
     launchedUrls.add(url);
     launchOptions.add(options);
-    return true;
+    return launchResult;
   }
 }
 
@@ -204,6 +214,7 @@ void main() {
     );
     urlLauncherPlatform = _RecordingUrlLauncherPlatform();
     UrlLauncherPlatform.instance = urlLauncherPlatform;
+    debugForceUpdateNotice = false;
   });
 
   testWidgets('opens profile editing on a separate screen', (tester) async {
@@ -510,14 +521,26 @@ void main() {
       findsOneWidget,
     );
 
+    await tester.tap(find.byKey(const Key('profile-about-version-button')));
+    await tester.pumpAndSettle();
+
+    expect(urlLauncherPlatform.launchedUrls, <String>[
+      'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md',
+    ]);
+    expect(
+      urlLauncherPlatform.launchOptions.single.mode,
+      PreferredLaunchMode.inAppBrowserView,
+    );
+
     await tester.tap(find.byKey(const Key('profile-about-github-button')));
     await tester.pumpAndSettle();
 
     expect(urlLauncherPlatform.launchedUrls, <String>[
+      'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md',
       'https://github.com/donjoergo/GlassTrail',
     ]);
     expect(
-      urlLauncherPlatform.launchOptions.single.mode,
+      urlLauncherPlatform.launchOptions.last.mode,
       PreferredLaunchMode.externalApplication,
     );
   });
@@ -770,10 +793,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, 'Pils'));
     await tester.pumpAndSettle();
-    final addDrinkListView = find.descendant(
-      of: find.byType(AddDrinkScreen),
-      matching: find.byType(ListView),
-    ).first;
+    final addDrinkListView = find
+        .descendant(
+          of: find.byType(AddDrinkScreen),
+          matching: find.byType(ListView),
+        )
+        .first;
     await tester.drag(addDrinkListView, const Offset(0, -500));
     await tester.pumpAndSettle();
     final locationToggle = find.byKey(const Key('drink-location-toggle'));
@@ -1541,6 +1566,239 @@ void main() {
     expect(find.text('Details'), findsNothing);
     expect(find.byKey(const Key('history-streak-day-1')), findsOneWidget);
     expect(find.byKey(const Key('history-streak-day-7')), findsOneWidget);
+  });
+
+  testWidgets('does not show the changelog card on first launch', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'update-card-first-launch@example.com',
+      password: 'password123',
+      displayName: 'First Launch Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(find.byKey(const Key('history-update-card')), findsNothing);
+    expect(
+      preferences.getString(_lastAcknowledgedReleaseKey),
+      _currentReleaseId,
+    );
+  });
+
+  testWidgets('shows the changelog card after an app update', (tester) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card@example.com',
+      password: 'password123',
+      displayName: 'Update Card Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final card = find.byKey(const Key('history-update-card'));
+    final streakCard = find.byKey(const Key('history-streak-card'));
+
+    expect(card, findsOneWidget);
+    expect(find.text('App updated'), findsOneWidget);
+    expect(find.byKey(const Key('history-update-card-body')), findsOneWidget);
+    expect(find.textContaining('1.0.0'), findsOneWidget);
+    expect(
+      tester.getTopLeft(card).dy,
+      lessThan(tester.getTopLeft(streakCard).dy),
+    );
+  });
+
+  testWidgets('shows the changelog card when forced by override', (
+    tester,
+  ) async {
+    debugForceUpdateNotice = true;
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'update-card-forced@example.com',
+      password: 'password123',
+      displayName: 'Forced Update Card Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('history-update-card')), findsOneWidget);
+    expect(find.textContaining('1.0.0'), findsOneWidget);
+  });
+
+  testWidgets('dismisses the changelog card until the next update', (
+    tester,
+  ) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card-dismiss@example.com',
+      password: 'password123',
+      displayName: 'Dismiss Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('history-update-card-close-button')));
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(find.byKey(const Key('history-update-card')), findsNothing);
+    expect(
+      preferences.getString(_lastAcknowledgedReleaseKey),
+      _currentReleaseId,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('history-update-card')), findsNothing);
+  });
+
+  testWidgets('opens the changelog and dismisses the card', (tester) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card-open@example.com',
+      password: 'password123',
+      displayName: 'Open Changelog Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('history-update-card-whats-new-button')),
+    );
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(urlLauncherPlatform.launchedUrls, <String>[_changelogUrl]);
+    expect(
+      urlLauncherPlatform.launchOptions.single.mode,
+      PreferredLaunchMode.inAppBrowserView,
+    );
+    expect(
+      preferences.getString(_lastAcknowledgedReleaseKey),
+      _currentReleaseId,
+    );
+    expect(find.byKey(const Key('history-update-card')), findsNothing);
+  });
+
+  testWidgets('keeps the changelog card visible when opening fails', (
+    tester,
+  ) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card-launch-error@example.com',
+      password: 'password123',
+      displayName: 'Launch Error Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+    urlLauncherPlatform.launchResult = false;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('history-update-card-whats-new-button')),
+    );
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(find.byKey(const Key('history-update-card')), findsOneWidget);
+    expect(
+      find.text('Something went wrong. Please try again.'),
+      findsOneWidget,
+    );
+    expect(preferences.getString(_lastAcknowledgedReleaseKey), '0.9.0+1');
+  });
+
+  testWidgets('localizes the changelog card in German', (tester) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card-german@example.com',
+      password: 'password123',
+      displayName: 'German Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+    controller.takeFlashMessage(_l10n('de'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('App aktualisiert'), findsOneWidget);
+    expect(
+      find.textContaining('Glass Trail wurde gerade auf 1.0.0'),
+      findsOneWidget,
+    );
+    expect(find.text('Schließen'), findsOneWidget);
+    expect(find.text('Was gibt\'s Neues'), findsOneWidget);
   });
 
   testWidgets('refreshes the feed with pull to refresh', (tester) async {

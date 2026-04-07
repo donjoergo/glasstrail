@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app_controller.dart';
 import '../app_scope.dart';
@@ -12,6 +16,12 @@ import '../stats_calculator.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 
+@visibleForTesting
+bool debugForceUpdateNotice = const bool.fromEnvironment(
+  'FORCE_UPDATE_NOTICE',
+  defaultValue: false,
+);
+
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -20,6 +30,72 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
+  static const _lastAcknowledgedReleaseKey =
+      'glasstrail.last_acknowledged_release';
+  static final Uri _changelogUri = Uri.parse(
+    'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md',
+  );
+
+  _UpdateNoticeData? _updateNotice;
+  bool _isHandlingUpdateNotice = false;
+
+  LaunchMode get _changelogLaunchMode {
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android ||
+      TargetPlatform.iOS => LaunchMode.inAppBrowserView,
+      _ => LaunchMode.externalApplication,
+    };
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUpdateNotice();
+  }
+
+  Future<void> _loadUpdateNotice() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final version = packageInfo.version.trim();
+      final buildNumber = packageInfo.buildNumber.trim();
+      if (version.isEmpty) {
+        return;
+      }
+
+      final releaseId = buildNumber.isEmpty ? version : '$version+$buildNumber';
+      final preferences = await SharedPreferences.getInstance();
+      if (debugForceUpdateNotice) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _updateNotice = _UpdateNoticeData(
+            releaseId: releaseId,
+            version: version,
+          );
+        });
+        return;
+      }
+      final lastAcknowledgedRelease = preferences.getString(
+        _lastAcknowledgedReleaseKey,
+      );
+      if (lastAcknowledgedRelease == null) {
+        await preferences.setString(_lastAcknowledgedReleaseKey, releaseId);
+        return;
+      }
+      if (lastAcknowledgedRelease == releaseId || !mounted) {
+        return;
+      }
+
+      setState(() {
+        _updateNotice = _UpdateNoticeData(
+          releaseId: releaseId,
+          version: version,
+        );
+      });
+    } catch (_) {}
+  }
+
   Future<void> _refresh() async {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
@@ -32,6 +108,59 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  Future<void> _acknowledgeUpdateNotice({required bool openChangelog}) async {
+    final notice = _updateNotice;
+    if (notice == null || _isHandlingUpdateNotice) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context);
+    var shouldDismiss = false;
+    setState(() {
+      _isHandlingUpdateNotice = true;
+    });
+
+    try {
+      if (openChangelog) {
+        final launched = await launchUrl(
+          _changelogUri,
+          mode: _changelogLaunchMode,
+          browserConfiguration: const BrowserConfiguration(showTitle: true),
+        );
+        if (!launched) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(l10n.somethingWentWrong)));
+          }
+          return;
+        }
+      }
+
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(
+        _lastAcknowledgedReleaseKey,
+        notice.releaseId,
+      );
+      shouldDismiss = true;
+    } catch (_) {
+      if (openChangelog && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.somethingWentWrong)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isHandlingUpdateNotice = false;
+          if (shouldDismiss) {
+            _updateNotice = null;
+          }
+        });
+      }
     }
   }
 
@@ -51,6 +180,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         children: <Widget>[
+          if (_updateNotice case final notice?) ...<Widget>[
+            _HistoryUpdateCard(
+              version: notice.version,
+              isBusy: _isHandlingUpdateNotice,
+              onClose: () => _acknowledgeUpdateNotice(openChangelog: false),
+              onOpenChangelog: () =>
+                  _acknowledgeUpdateNotice(openChangelog: true),
+            ),
+            const SizedBox(height: 24),
+          ],
           _HistoryStreakCard(stats: stats),
           const SizedBox(height: 24),
           if (entries.isEmpty)
@@ -73,6 +212,90 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpdateNoticeData {
+  const _UpdateNoticeData({required this.releaseId, required this.version});
+
+  final String releaseId;
+  final String version;
+}
+
+class _HistoryUpdateCard extends StatelessWidget {
+  const _HistoryUpdateCard({
+    required this.version,
+    required this.isBusy,
+    required this.onClose,
+    required this.onOpenChangelog,
+  });
+
+  final String version;
+  final bool isBusy;
+  final VoidCallback onClose;
+  final VoidCallback onOpenChangelog;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return Container(
+      key: const Key('history-update-card'),
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(36),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            l10n.appUpdatedTitle,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            l10n.appUpdatedBody(l10n.appTitle, version),
+            key: const Key('history-update-card-body'),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 28),
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            spacing: 12,
+            overflowSpacing: 12,
+            children: <Widget>[
+              TextButton(
+                key: const Key('history-update-card-close-button'),
+                onPressed: isBusy ? null : onClose,
+                child: Text(l10n.close),
+              ),
+              FilledButton(
+                key: const Key('history-update-card-whats-new-button'),
+                onPressed: isBusy ? null : onOpenChangelog,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 26,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                child: Text(l10n.whatsNew),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -126,7 +349,7 @@ class _HistoryStreakCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.currentStreak,
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),

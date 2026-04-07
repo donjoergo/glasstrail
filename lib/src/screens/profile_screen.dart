@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -23,6 +24,9 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   static final Uri _gitHubRepositoryUri = Uri.parse(
     'https://github.com/donjoergo/GlassTrail',
+  );
+  static final Uri _changelogUri = Uri.parse(
+    'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md',
   );
 
   _ProfilePendingSetting? _pendingSetting;
@@ -84,6 +88,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  LaunchMode get _changelogLaunchMode {
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android ||
+      TargetPlatform.iOS => LaunchMode.inAppBrowserView,
+      _ => LaunchMode.externalApplication,
+    };
+  }
+
   Future<void> _openGitHubRepository() async {
     final l10n = AppLocalizations.of(context);
 
@@ -91,6 +103,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final launched = await launchUrl(
         _gitHubRepositoryUri,
         mode: LaunchMode.externalApplication,
+      );
+      if (!mounted || launched) {
+        return;
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+    }
+
+    _showMessage(l10n.somethingWentWrong);
+  }
+
+  Future<void> _openChangelog() async {
+    final l10n = AppLocalizations.of(context);
+
+    try {
+      final launched = await launchUrl(
+        _changelogUri,
+        mode: _changelogLaunchMode,
+        browserConfiguration: const BrowserConfiguration(showTitle: true),
       );
       if (!mounted || launched) {
         return;
@@ -465,16 +498,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
               FutureBuilder<String?>(
                 future: _appVersionFuture,
                 builder: (context, snapshot) {
-                  return Text(
-                    _formatAppVersionLabel(l10n, snapshot.data),
-                    key: const Key('profile-about-version'),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: ListTile(
+                      key: const Key('profile-about-version-button'),
+                      onTap: _openChangelog,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      leading: Icon(
+                        Icons.article_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      title: Text(
+                        _formatAppVersionLabel(l10n, snapshot.data),
+                        key: const Key('profile-about-version'),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: Text(
+                        _changelogUri.toString(),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      trailing: const Icon(Icons.open_in_new_rounded),
                     ),
                   );
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest,
@@ -483,10 +539,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: ListTile(
                   key: const Key('profile-about-github-button'),
                   onTap: _openGitHubRepository,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  minVerticalPadding: 0,
+                  visualDensity: const VisualDensity(vertical: -2),
                   leading: Icon(
                     Icons.code_rounded,
                     color: theme.colorScheme.primary,
@@ -500,6 +555,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: Text(
                     _gitHubRepositoryUri.toString(),
                     style: theme.textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   trailing: const Icon(Icons.open_in_new_rounded),
                 ),

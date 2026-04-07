@@ -338,6 +338,18 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get cancel;
 
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @whatsNew.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s new'**
+  String get whatsNew;
+
   /// No description provided for @editEntry.
   ///
   /// In en, this message translates to:
@@ -385,6 +397,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Volume'**
   String get volume;
+
+  /// No description provided for @appUpdatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App updated'**
+  String get appUpdatedTitle;
+
+  /// Body text for the feed changelog card shown after an app update
+  ///
+  /// In en, this message translates to:
+  /// **'{appName} was just updated to {version}. Would you like to read the changelog?'**
+  String appUpdatedBody(String appName, String version);
 
   /// No description provided for @feedHeadline.
   ///

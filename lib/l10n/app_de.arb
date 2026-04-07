@@ -40,6 +40,8 @@
   "confirmDrink": "Eintrag speichern",
   "save": "Speichern",
   "cancel": "Abbrechen",
+  "close": "Schließen",
+  "whatsNew": "Was gibt's Neues",
   "editEntry": "Eintrag bearbeiten",
   "deleteEntry": "Eintrag löschen",
   "deleteEntryPrompt": "Diesen Getränkeeintrag löschen? Der gespeicherte Kommentar und das Foto werden ebenfalls entfernt.",
@@ -48,6 +50,19 @@
   "drinkName": "Getränkename",
   "category": "Kategorie",
   "volume": "Volumen",
+  "appUpdatedTitle": "App aktualisiert",
+  "appUpdatedBody": "{appName} wurde gerade auf {version} aktualisiert. Möchtest du dir die Änderungsnotizen ansehen?",
+  "@appUpdatedBody": {
+    "description": "Body text for the feed changelog card shown after an app update",
+    "placeholders": {
+      "appName": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "feedHeadline": "Dein Aktivitätsfeed",
   "feedBody": "V1 zeigt deine persönliche Historie. Freunde, Kommentare und Cheers folgen später.",
   "noEntries": "Noch keine Getränke erfasst.",

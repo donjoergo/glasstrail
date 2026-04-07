@@ -134,6 +134,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cancel => 'Abbrechen';
 
   @override
+  String get close => 'Schließen';
+
+  @override
+  String get whatsNew => 'Was gibt\'s Neues';
+
+  @override
   String get editEntry => 'Eintrag bearbeiten';
 
   @override
@@ -157,6 +163,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get volume => 'Volumen';
+
+  @override
+  String get appUpdatedTitle => 'App aktualisiert';
+
+  @override
+  String appUpdatedBody(String appName, String version) {
+    return '$appName wurde gerade auf $version aktualisiert. Möchtest du dir die Änderungsnotizen ansehen?';
+  }
 
   @override
   String get feedHeadline => 'Dein Aktivitätsfeed';
