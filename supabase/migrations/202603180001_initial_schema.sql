@@ -147,16 +147,18 @@ alter table public.user_settings enable row level security;
 alter table public.user_drinks enable row level security;
 alter table public.drink_entries enable row level security;
 
-drop policy if exists "Global categories are readable" on public.drink_categories;
-create policy "Global categories are readable"
+drop policy if exists "All users can read the global categories" on public.drink_categories;
+create policy "All users can read the global categories"
 on public.drink_categories
 for select
+to authenticated
 using (true);
 
-drop policy if exists "Global drinks are readable" on public.global_drinks;
-create policy "Global drinks are readable"
+drop policy if exists "All users can read the global drinks" on public.global_drinks;
+create policy "All users can read the global drinks"
 on public.global_drinks
 for select
+to authenticated
 using (true);
 
 drop policy if exists "Users can read own profile" on public.profiles;
