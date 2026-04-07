@@ -445,10 +445,22 @@ class AppLocalizationsDe extends AppLocalizations {
   String get wine => 'Wein';
 
   @override
+  String get sparklingWines => 'Schaumweine';
+
+  @override
+  String get longdrinks => 'Langdrinks';
+
+  @override
   String get spirits => 'Spirituosen';
 
   @override
+  String get shots => 'Shots';
+
+  @override
   String get cocktails => 'Cocktails';
+
+  @override
+  String get appleWines => 'Apfelweine';
 
   @override
   String get nonAlcoholic => 'Alkoholfrei';

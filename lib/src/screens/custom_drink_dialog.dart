@@ -137,6 +137,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
               const SizedBox(height: 12),
               DropdownButtonFormField<DrinkCategory>(
                 initialValue: _category,
+                isExpanded: true,
                 decoration: InputDecoration(labelText: l10n.category),
                 items: DrinkCategory.values
                     .map(

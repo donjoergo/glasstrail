@@ -60,6 +60,45 @@ void main() {
     });
   });
 
+  group('buildDefaultDrinkCatalog', () {
+    test('includes extended global drinks with stable ids and categories', () {
+      final catalog = buildDefaultDrinkCatalog();
+
+      expect(
+        catalog.map((drink) => drink.category).toSet(),
+        containsAll(<DrinkCategory>[
+          DrinkCategory.sparklingWines,
+          DrinkCategory.longdrinks,
+          DrinkCategory.shots,
+          DrinkCategory.appleWines,
+        ]),
+      );
+
+      final champagne = catalog.firstWhere(
+        (drink) => drink.id == 'sparklingWines-champagne',
+      );
+      expect(champagne.category, DrinkCategory.sparklingWines);
+      expect(champagne.name, 'Champagne');
+      expect(champagne.localizedNameDe, 'Champagner');
+      expect(champagne.volumeMl, 120);
+
+      final cocktail = catalog.firstWhere(
+        (drink) => drink.id == 'cocktails-cocktail',
+      );
+      expect(cocktail.volumeMl, 250);
+
+      final tequila = catalog.firstWhere(
+        (drink) => drink.id == 'spirits-tequila',
+      );
+      expect(tequila.category, DrinkCategory.shots);
+
+      final hardSeltzer = catalog.firstWhere(
+        (drink) => drink.id == 'appleWines-hard-seltzer',
+      );
+      expect(hardSeltzer.name, 'Hard Seltzer');
+    });
+  });
+
   group('DrinkEntry', () {
     test('copyWith can clear comment and image independently', () {
       final entry = DrinkEntry(

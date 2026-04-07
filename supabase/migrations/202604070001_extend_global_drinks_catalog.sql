@@ -15,7 +15,13 @@ set
   name_en = excluded.name_en,
   name_de = excluded.name_de;
 
-insert into public.global_drinks (id, category_slug, name_en, name_de, default_volume_ml)
+insert into public.global_drinks (
+  id,
+  category_slug,
+  name_en,
+  name_de,
+  default_volume_ml
+)
 values
   ('beer-pils', 'beer', 'Pils', 'Pils', 330),
   ('beer-helles', 'beer', 'Helles', 'Helles', 500),

@@ -143,8 +143,12 @@
   "signUpConfirmationRequired": "Die Registrierung bei Supabase war erfolgreich, aber die E-Mail-Bestätigung ist aktiviert. Bestätige zuerst die E-Mail und melde dich dann an.",
   "beer": "Bier",
   "wine": "Wein",
+  "sparklingWines": "Schaumweine",
+  "longdrinks": "Langdrinks",
   "spirits": "Spirituosen",
+  "shots": "Shots",
   "cocktails": "Cocktails",
+  "appleWines": "Apfelweine",
   "nonAlcoholic": "Alkoholfrei",
   "dayLabel": "{count, plural, =1{Tag} other{Tage}}",
   "@dayLabel": {

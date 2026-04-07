@@ -143,8 +143,12 @@
   "signUpConfirmationRequired": "Supabase sign-up succeeded, but email confirmation is enabled. Confirm the email first, then sign in.",
   "beer": "Beer",
   "wine": "Wine",
+  "sparklingWines": "Sparkling Wines",
+  "longdrinks": "Longdrinks",
   "spirits": "Spirits",
+  "shots": "Shots",
   "cocktails": "Cocktails",
+  "appleWines": "Apple Wines",
   "nonAlcoholic": "Non-alcoholic",
   "dayLabel": "{count, plural, =1{day} other{days}}",
   "@dayLabel": {

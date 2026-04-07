@@ -770,7 +770,15 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, 'Pils'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('drink-location-toggle')));
+    final addDrinkListView = find.descendant(
+      of: find.byType(AddDrinkScreen),
+      matching: find.byType(ListView),
+    ).first;
+    await tester.drag(addDrinkListView, const Offset(0, -500));
+    await tester.pumpAndSettle();
+    final locationToggle = find.byKey(const Key('drink-location-toggle'));
+    await tester.ensureVisible(locationToggle);
+    await tester.tap(locationToggle);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('drink-location-value')), findsOneWidget);
@@ -882,6 +890,18 @@ void main() {
 
       expect(find.text('Rotwein'), findsOneWidget);
       expect(find.text('Red Wine'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('drink-search-clear-button')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('drink-search-field')),
+        'champ',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Champagner'), findsOneWidget);
+      expect(find.text('Champagne'), findsNothing);
     },
   );
 
@@ -1827,7 +1847,19 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(const Key('stats-category-chip-icon-sparklingWines')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-category-chip-icon-longdrinks')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const Key('stats-category-chip-icon-spirits')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-category-chip-icon-shots')),
       findsOneWidget,
     );
     expect(
@@ -1835,7 +1867,78 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(const Key('stats-category-chip-icon-appleWines')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const Key('stats-category-chip-icon-nonAlcoholic')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows the new global drink categories in the bar', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-new-categories@example.com',
+      password: 'password123',
+      displayName: 'Bar New Categories',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('bar-category-card-sparklingWines')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>(
+          'bar-visible-global-drink-sparklingWines-champagne',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('bar-category-card-longdrinks')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>(
+          'bar-visible-global-drink-longdrinks-cuba-libre',
+        ),
+      ),
+      findsOneWidget,
+    );
+
+    final shotsCard = find.byKey(const Key('bar-category-card-shots'));
+    await _scrollBarTargetIntoView(tester, shotsCard);
+    expect(shotsCard, findsOneWidget);
+    expect(
+      find.byKey(
+        const ValueKey<String>('bar-visible-global-drink-shots-jaegermeister'),
+      ),
+      findsOneWidget,
+    );
+
+    final appleWinesCard = find.byKey(
+      const Key('bar-category-card-appleWines'),
+    );
+    await _scrollBarTargetIntoView(tester, appleWinesCard);
+    expect(appleWinesCard, findsOneWidget);
+    expect(
+      find.byKey(
+        const ValueKey<String>('bar-visible-global-drink-appleWines-cider'),
+      ),
       findsOneWidget,
     );
   });

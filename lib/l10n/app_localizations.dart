@@ -908,17 +908,41 @@ abstract class AppLocalizations {
   /// **'Wine'**
   String get wine;
 
+  /// No description provided for @sparklingWines.
+  ///
+  /// In en, this message translates to:
+  /// **'Sparkling Wines'**
+  String get sparklingWines;
+
+  /// No description provided for @longdrinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Longdrinks'**
+  String get longdrinks;
+
   /// No description provided for @spirits.
   ///
   /// In en, this message translates to:
   /// **'Spirits'**
   String get spirits;
 
+  /// No description provided for @shots.
+  ///
+  /// In en, this message translates to:
+  /// **'Shots'**
+  String get shots;
+
   /// No description provided for @cocktails.
   ///
   /// In en, this message translates to:
   /// **'Cocktails'**
   String get cocktails;
+
+  /// No description provided for @appleWines.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Wines'**
+  String get appleWines;
 
   /// No description provided for @nonAlcoholic.
   ///

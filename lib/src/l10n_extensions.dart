@@ -9,8 +9,12 @@ extension AppLocalizationsX on AppLocalizations {
   String categoryLabel(DrinkCategory category) => switch (category) {
     DrinkCategory.beer => beer,
     DrinkCategory.wine => wine,
+    DrinkCategory.sparklingWines => sparklingWines,
+    DrinkCategory.longdrinks => longdrinks,
     DrinkCategory.spirits => spirits,
+    DrinkCategory.shots => shots,
     DrinkCategory.cocktails => cocktails,
+    DrinkCategory.appleWines => appleWines,
     DrinkCategory.nonAlcoholic => nonAlcoholic,
   };
 
