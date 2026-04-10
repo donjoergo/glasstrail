@@ -517,7 +517,10 @@ void main() {
     expect(find.text('Glass Trail V1.0.0'), findsOneWidget);
     expect(find.text('GitHub'), findsOneWidget);
     expect(
-      find.text('created with ❤️, ☕ and 🍺 by Jörg Dorlach'),
+      find.text(
+        'created with ❤️, ☕ and 🍺 by Jörg Dorlach',
+        findRichText: true,
+      ),
       findsOneWidget,
     );
 

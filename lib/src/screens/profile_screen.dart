@@ -562,12 +562,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                'created with ❤️, ☕ and 🍺 by Jörg Dorlach',
-                key: const Key('profile-about-attribution'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              Text.rich(
+                TextSpan(
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  children: <InlineSpan>[
+                    const TextSpan(text: 'created with '),
+                    TextSpan(
+                      text: '❤️',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontFamily: 'ProfileEmoji',
+                      ),
+                    ),
+                    const TextSpan(text: ', '),
+                    TextSpan(
+                      text: '☕',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontFamily: 'ProfileEmoji',
+                      ),
+                    ),
+                    const TextSpan(text: ' and '),
+                    TextSpan(
+                      text: '🍺',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontFamily: 'ProfileEmoji',
+                      ),
+                    ),
+                    const TextSpan(text: ' by Jörg Dorlach'),
+                  ],
                 ),
+                key: const Key('profile-about-attribution'),
               ),
             ],
           ),

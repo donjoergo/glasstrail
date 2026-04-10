@@ -50,3 +50,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/app_icon.png
+  fonts:
+    - family: ProfileEmoji
+      fonts:
+        - asset: assets/fonts/profile_emoji_subset.ttf
