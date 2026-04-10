@@ -3,7 +3,7 @@ name: Android Release
 on:
   push:
     tags:
-      - "v*"
+      - "*"
 
 permissions:
   contents: write
@@ -68,6 +68,33 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
+      - name: Extract release notes from changelog
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="$RELEASE_TAG"
+          notes_file="$RUNNER_TEMP/release-notes.md"
+
+          awk -v version="$version" '
+            $0 ~ "^## \\[" version "\\]" {
+              capture = 1
+            }
+            capture && $0 ~ "^## \\[" && $0 !~ "^## \\[" version "\\]" {
+              exit
+            }
+            capture && $0 ~ "^\\[[^]]+\\]:" {
+              exit
+            }
+            capture {
+              print
+            }
+          ' CHANGELOG.md > "$notes_file"
+
+          if [ ! -s "$notes_file" ]; then
+            echo "No CHANGELOG entry found for version ${version}."
+            exit 1
+          fi
+
       - name: Publish APK to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,7 +102,7 @@ jobs:
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
             gh release create "$GITHUB_REF_NAME" \
               --title "$GITHUB_REF_NAME" \
-              --generate-notes
+              --notes-file "$RUNNER_TEMP/release-notes.md"
 
           gh release upload "$GITHUB_REF_NAME" \
             "build/app/outputs/flutter-apk/app-release.apk#glasstrail-$GITHUB_REF_NAME.apk" \
