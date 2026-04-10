@@ -4,37 +4,37 @@
 [![CI](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml/badge.svg)](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml)
 [![Crowdin](https://badges.crowdin.net/glasstrail/localized.svg)](https://crowdin.com/project/glasstrail)
 
+[Web App](https://glasstrail.vercel.app/) | [Android App](https://github.com/donjoergo/glasstrail/releases)
 
-GlassTrail is a Flutter app for tracking drinks, reviewing personal habits, and keeping profile and app settings in sync across devices.
-
-By default, this repository uses the hosted Supabase project configured in `lib/src/backend_config.dart`. For tests and explicit bootstrap overrides, the app can still run against a local `SharedPreferences` fallback.
+GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in statistics, and sharing the drinks and cheering with friends. The initial idea was to make a worthy successor to [Beer With Me](https://play.google.com/store/apps/details?id=se.dagsappar.beer&hl=de) with modern design and a few extra perks.
 
 ## Features
 
-- Email/password sign-up and sign-in
-- Personal profile with display name, optional birthday, and optional profile photo
-- Birthday handling with day and month only
+- Intuitive drink logging with photo, location and comment
+- Feed view for past entries
+- Statistics with streaks, category breakdown, map, and gallery
 - Global drink catalog plus user-defined custom drinks
-- Drink logging with optional comment and optional photo
-- Feed/history view for past entries
-- Statistics with streaks, time ranges, and category breakdown
-- Persisted theme, language, unit, and handedness settings
-- Left-handed and right-handed FAB placement
-- English and German UI
-- Bookmarkable routes for every visible app page
+- Bar management with drink sorting, visibility controls, and custom drinks
+- Email/password sign-up and sign-in (as usual)
+- Personal profile with display name, profile photo and birthday
+- Left-handed mode
+- Multi device support: See your drinks, statistics, and profile on multiple devices
+- Multi platform support: Android and Web
+- Multi language support: English and German
 
 ## App Pages
 
 The app exposes one route per visible page. On Flutter Web, routing currently uses hash URLs, so bookmarks look like `/#/feed`.
 
-| Page | Route | Purpose |
-| --- | --- | --- |
-| Auth | `/auth` | Sign in and sign up |
-| Feed | `/feed` | Main history/feed view |
-| Statistics | `/statistics` | Trends, streaks, and category breakdown |
-| Profile | `/profile` | Profile summary and app settings |
-| Edit Profile | `/profile/edit` | Dedicated profile editing page |
-| Add Drink | `/add-drink` | Log a drink from recent, global, or custom options |
+| Page         | Route           | Purpose                                             |
+| ------------ | --------------- | --------------------------------------------------- |
+| Auth         | `/auth`         | Sign in and sign up                                 |
+| Feed         | `/feed`         | Main history/feed view                              |
+| Statistics   | `/statistics`   | Trends, streaks, and category breakdown             |
+| Bar          | `/bar`          | Organize the drink catalog and manage custom drinks |
+| Profile      | `/profile`      | Profile summary and app settings                    |
+| Edit Profile | `/profile/edit` | Dedicated profile editing page                      |
+| Add Drink    | `/add-drink`    | Log a drink from recent, global, or custom options  |
 
 Additional routing behavior:
 
@@ -51,11 +51,13 @@ flowchart TD
     Root["/"] --> Feed["/feed"]
 
     Feed <--> Statistics["/statistics"]
-    Statistics <--> Profile["/profile"]
+    Statistics <--> Bar["/bar"]
+    Bar <--> Profile["/profile"]
     Profile <--> Feed
 
     Feed --> AddDrink["/add-drink"]
     Statistics --> AddDrink
+    Bar --> AddDrink
     Profile --> AddDrink
 
     Profile --> EditProfile["/profile/edit"]
@@ -116,57 +118,7 @@ sequenceDiagram
     C-->>UI: feed + statistics update
 ```
 
-## Backend Modes
-
-### Supabase
-
-Default production runs use:
-
-- `supabase_flutter` for app bootstrap and auth session persistence
-- Postgres tables for profiles, settings, custom drinks, and drink entries
-- Row-level security so users only access their own data
-- Supabase Storage bucket `user-media` for uploaded profile and drink images
-
-Relevant code:
-
-- `lib/src/repository/supabase_app_repository.dart`
-- `lib/src/backend_config.dart`
-
-Schema migrations:
-
-- `supabase/migrations/202603180001_initial_schema.sql`
-- `supabase/migrations/202603180002_optimize_policies.sql`
-- `supabase/migrations/202603180003_add_handedness_to_user_settings.sql`
-- `supabase/migrations/202603180004_drop_nickname_from_profiles.sql`
-
-Seed data:
-
-- `supabase/seed.sql`
-
-### Local Fallback
-
-Tests and explicit empty backend configs use:
-
-- `lib/src/repository/local_app_repository.dart`
-
-This keeps the app runnable without Supabase and makes widget and repository tests deterministic.
-
-## Project Structure
-
-| Path | Purpose |
-| --- | --- |
-| `lib/main.dart` | Bootstrap entry point |
-| `lib/src/app.dart` | Top-level app and route handling |
-| `lib/src/app_routes.dart` | Named routes and tab-route mapping |
-| `lib/src/app_controller.dart` | State orchestration and user actions |
-| `lib/src/models.dart` | Domain models and formatting helpers |
-| `lib/src/screens/` | UI pages and dialogs |
-| `lib/src/repository/` | Backend abstraction and implementations |
-| `supabase/migrations/` | Database schema and policy migrations |
-| `supabase/seed.sql` | Global drink catalog seed data |
-| `test/` | Unit, widget, and repository tests |
-
-## Local Development
+## Development
 
 Install dependencies:
 
@@ -180,26 +132,37 @@ Run the app:
 flutter run
 ```
 
-Override Supabase configuration if needed:
+### Environment Variables
+
+Override flutter environment variables if needed:
+
+| Variable            | Purpose                              |
+| ------------------- | ------------------------------------ |
+| SUPABASE_URL        | Supabase URL                         |
+| SUPABASE_ANON_KEY   | Supabase anon key                    |
+| FORCE_UPDATE_NOTICE | Force update/changlog notice in feed |
+
+Example:
 
 ```bash
 flutter run \
   --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY
+  --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY \
+  --dart-define=FORCE_UPDATE_NOTICE=true
 ```
 
-When working with the Supabase CLI:
-
-- `supabase db reset` reapplies migrations and runs `supabase/seed.sql`
-- `supabase db push` applies schema changes only
-- `supabase db push --include-seed` applies schema changes and seeds a linked remote project
-
-## Verification
+### Verification
 
 Static analysis:
 
 ```bash
 flutter analyze
+```
+
+Format all files:
+
+```bash
+dart format .
 ```
 
 Unit and widget tests:
@@ -214,17 +177,54 @@ Integration tests:
 flutter test integration_test
 ```
 
-## Android Releases
+### Changelog
 
-This repository now includes a tag-driven GitHub Actions workflow at `.github/workflows/android-release.yml` that:
+Use [cider](https://pub.dev/packages/cider) to create a changelog.
 
-- builds a release APK with `flutter build apk --release`
-- creates or updates a GitHub Release for the pushed tag
-- uploads the APK asset to that release page
+Examples:
+
+```bash
+cider log added "new feature"
+```
+
+or 
+
+```bash
+cider log fixed "a bug"
+```
+
+## Deployment and releases
+
+### Creating a Release
+
+1. Update `pubspec.yaml` with the app version you want to ship.
+2. Update the changelog with the command `cider release`
+3. Create and push a tag such as `1.0.0`.
+4. Commit and push that change to `main`.
+5. Merge `main` into `release` branch
+
+```bash
+git tag 1.0.0
+git push origin 1.0.0
+```
+
+When the tag reaches GitHub, the workflow builds `app-release.apk` and attaches it to the matching release as `glasstrail-v1.0.0.apk`.
+
+### Vercel
+
+GlassTrail is connected to Vercel for web deployment.
+
+`release` branch is CD deployed to [glasstrail.vercel.app](https://glasstrail.vercel.app/).
+
+`main` branch is CD deployed to [glasstrailtest.vercel.app](https://glasstrailtest.vercel.app/).
+
+### Android Releases
+
+On every newly created tag, a CD workflow builds an APK and creates a release on GitHub.
+
+#### Keystore
 
 The workflow expects a real Android release keystore. `android/app/build.gradle.kts` reads `android/key.properties` when it exists and uses that release signing config. If the file is absent, local release builds still fall back to the debug key.
-
-### One-Time Setup
 
 Create an upload keystore locally:
 
@@ -252,18 +252,3 @@ Add these repository secrets in GitHub:
 - `ANDROID_KEY_PASSWORD`
 
 No extra Supabase secrets are required for the current production build because the app already has production defaults in `lib/src/backend_config.dart`.
-
-### Creating a Release
-
-1. Update `pubspec.yaml` with the app version you want to ship.
-2. Commit and push that change to `main`.
-3. Create and push a tag such as `v1.0.0`.
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-When the tag reaches GitHub, the workflow builds `app-release.apk` and attaches it to the matching release as `glasstrail-v1.0.0.apk`.
-
-If you later want Play Store deployment, metadata management, screenshots, or beta lanes, add Fastlane then. For APKs on GitHub Releases alone, the GitHub Actions workflow is the simpler setup.
