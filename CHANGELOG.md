@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bigger app bar titles
   - apk builds are now named glasstrail-vX.X.X-release.apk
 - Refactor: Renamed HistoryScreen to FeedScreen
+- removed the backend info card from the profile screen
 
 ### Fixed
 - Fix warning in web regarding missing emoji font subset

@@ -560,6 +560,29 @@ void main() {
     );
   });
 
+  testWidgets('does not show backend information on the profile screen', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-backend@example.com',
+      password: 'password123',
+      displayName: 'Profile Backend Example',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+
+    expect(find.text(_l10n('en').backend), findsNothing);
+  });
+
   testWidgets('moves the add-drink fab for left-handed mode', (tester) async {
     tester.view.physicalSize = const Size(430, 1000);
     tester.view.devicePixelRatio = 1.0;
