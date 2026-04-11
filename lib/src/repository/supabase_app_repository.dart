@@ -243,6 +243,10 @@ class SupabaseAppRepository implements AppRepository {
   }) async {
     try {
       final id = drinkId ?? _uuid.v4();
+      final previousImagePath = await _loadCustomDrinkImagePath(
+        userId: userId,
+        drinkId: drinkId,
+      );
       final finalImagePath = await _resolveMediaPath(
         userId: userId,
         imagePath: imagePath,
@@ -261,6 +265,10 @@ class SupabaseAppRepository implements AppRepository {
           }, onConflict: 'id')
           .select()
           .single();
+
+      if (previousImagePath != finalImagePath) {
+        await _deleteMediaPathIfOwned(previousImagePath, userId);
+      }
 
       return _userDrinkToDefinition(Map<String, dynamic>.from(row));
     } on StorageException catch (error) {
@@ -627,6 +635,28 @@ class SupabaseAppRepository implements AppRepository {
       locationLongitude: (row['location_longitude'] as num?)?.toDouble(),
       locationAddress: row['location_address'] as String?,
     );
+  }
+
+  Future<String?> _loadCustomDrinkImagePath({
+    required String userId,
+    required String? drinkId,
+  }) async {
+    if (drinkId == null) {
+      return null;
+    }
+
+    final row = await _client
+        .from('user_drinks')
+        .select('image_path')
+        .eq('id', drinkId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    final imagePath = (row?['image_path'] as String?)?.trim();
+    if (imagePath == null || imagePath.isEmpty) {
+      return null;
+    }
+    return imagePath;
   }
 
   Future<String?> _resolveMediaPath({
