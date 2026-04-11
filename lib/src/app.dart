@@ -157,8 +157,7 @@ class GlassTrailApp extends StatelessWidget {
                 settings: routeSettings,
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
-                pageBuilder: (_, __, ___) =>
-                    _AppRouteScreen(routeName: routeName),
+                pageBuilder: (_, _, _) => _AppRouteScreen(routeName: routeName),
               );
             }
             return MaterialPageRoute<void>(

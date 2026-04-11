@@ -84,7 +84,7 @@ class _HomeShellState extends State<HomeShell> {
     unawaited(routeMemory.rememberRoute(normalizedRoute));
     unawaited(
       SystemNavigator.routeInformationUpdated(
-        location: normalizedRoute,
+        uri: Uri.parse(normalizedRoute),
         replace: true,
       ),
     );
