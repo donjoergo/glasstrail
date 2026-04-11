@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor: Renamed HistoryScreen to FeedScreen
 - Removed the backend info card from the profile screen
 - Highlight delete and remove actions in red
+- added dedicated routes for statistics and bar tabs
 
 ### Fixed
 - Fix warning in web regarding missing emoji font subset

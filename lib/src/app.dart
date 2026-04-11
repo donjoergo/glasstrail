@@ -148,11 +148,21 @@ class GlassTrailApp extends StatelessWidget {
           Route<dynamic> buildRoute(RouteSettings settings) {
             final routeName = AppRoutes.normalize(settings.name);
             unawaited(routeMemory.rememberRoute(routeName));
+            final routeSettings = RouteSettings(
+              name: routeName,
+              arguments: settings.arguments,
+            );
+            if (AppRoutes.isHomeShellRoute(routeName)) {
+              return PageRouteBuilder<void>(
+                settings: routeSettings,
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+                pageBuilder: (_, __, ___) =>
+                    _AppRouteScreen(routeName: routeName),
+              );
+            }
             return MaterialPageRoute<void>(
-              settings: RouteSettings(
-                name: routeName,
-                arguments: settings.arguments,
-              ),
+              settings: routeSettings,
               builder: (_) => _AppRouteScreen(routeName: routeName),
             );
           }
@@ -367,11 +377,14 @@ class _AppRouteScreen extends StatelessWidget {
       );
     }
 
+    if (normalizedRoute == AppRoutes.feed ||
+        AppRoutes.isStatisticsRoute(normalizedRoute) ||
+        AppRoutes.isBarRoute(normalizedRoute) ||
+        normalizedRoute == AppRoutes.profile) {
+      return HomeShell(routeName: normalizedRoute);
+    }
+
     return switch (normalizedRoute) {
-      AppRoutes.feed ||
-      AppRoutes.statistics ||
-      AppRoutes.bar ||
-      AppRoutes.profile => HomeShell(routeName: normalizedRoute),
       AppRoutes.addDrink => const AddDrinkScreen(),
       AppRoutes.editProfile => const EditProfileScreen(),
       AppRoutes.auth => const HomeShell(routeName: AppRoutes.feed),

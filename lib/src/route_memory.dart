@@ -20,6 +20,8 @@ class RouteMemory {
   String _lastRoute;
   bool _openFeedAfterNextAuth;
 
+  String get lastRoute => _lastRoute;
+
   static Future<RouteMemory> create() async {
     final preferences = await SharedPreferences.getInstance();
     return RouteMemory._(preferences);

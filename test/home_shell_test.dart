@@ -11,12 +11,14 @@ import 'package:url_launcher_platform_interface/url_launcher_platform_interface.
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_routes.dart';
+import 'package:glasstrail/src/app_scope.dart';
 import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/add_drink_screen.dart';
 import 'package:glasstrail/src/screens/feed_screen.dart';
+import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
 
@@ -74,6 +76,16 @@ Future<void> _openStatisticsSection(WidgetTester tester, String label) async {
   await tester.ensureVisible(tab.first);
   await tester.tap(tab.first);
   await tester.pumpAndSettle();
+}
+
+String? _homeShellRouteName(WidgetTester tester) {
+  return ModalRoute.of(tester.element(find.byType(HomeShell)))?.settings.name;
+}
+
+String _rememberedRoute(WidgetTester tester) {
+  return AppScope.routeMemoryOf(
+    tester.element(find.byType(HomeShell)),
+  ).lastRoute;
 }
 
 Finder _profileScrollable() => find.descendant(
@@ -489,6 +501,98 @@ void main() {
         moreOrLessEquals(expectedCenters[index], epsilon: 24),
       );
     }
+  });
+
+  testWidgets('updates the route when selecting statistics tabs', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'statistics-route-tabs@example.com',
+      password: 'password123',
+      displayName: 'Statistics Route Tabs',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsSection(tester, 'Map');
+    expect(_homeShellRouteName(tester), AppRoutes.statistics);
+    expect(_rememberedRoute(tester), AppRoutes.statisticsMap);
+    expect(find.byKey(const Key('statistics-map-empty-state')), findsOneWidget);
+
+    await _openStatisticsSection(tester, 'History');
+    expect(_homeShellRouteName(tester), AppRoutes.statistics);
+    expect(_rememberedRoute(tester), AppRoutes.statisticsHistory);
+    expect(
+      find.byKey(const Key('statistics-history-empty-state')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'keeps the old route until the statistics tab animation completes',
+    (tester) async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'statistics-route-animation@example.com',
+        password: 'password123',
+        displayName: 'Statistics Route Animation',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.statistics,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final mapTab = find.descendant(
+        of: find.byKey(const Key('statistics-tab-bar')),
+        matching: find.text('Map', skipOffstage: false),
+      );
+      await tester.tap(mapTab.first);
+      await tester.pump();
+
+      expect(_rememberedRoute(tester), AppRoutes.statistics);
+
+      await tester.pumpAndSettle();
+
+      expect(_rememberedRoute(tester), AppRoutes.statisticsMap);
+    },
+  );
+
+  testWidgets('updates the route when swiping statistics tabs', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'statistics-route-swipe@example.com',
+      password: 'password123',
+      displayName: 'Statistics Route Swipe',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(TabBarView), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+
+    expect(_homeShellRouteName(tester), AppRoutes.statistics);
+    expect(_rememberedRoute(tester), AppRoutes.statisticsMap);
+    expect(find.byKey(const Key('statistics-map-empty-state')), findsOneWidget);
   });
 
   testWidgets('shows a field-local spinner while saving settings', (
@@ -1177,6 +1281,86 @@ void main() {
       find.byKey(const Key('profile-add-custom-drink-button')),
       findsNothing,
     );
+  });
+
+  testWidgets('updates the route when selecting the bar custom tab', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-route-tabs@example.com',
+      password: 'password123',
+      displayName: 'Bar Route Tabs',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+
+    expect(_homeShellRouteName(tester), AppRoutes.bar);
+    expect(_rememberedRoute(tester), AppRoutes.barCustom);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+  });
+
+  testWidgets('keeps the old route until the bar tab animation completes', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-route-animation@example.com',
+      password: 'password123',
+      displayName: 'Bar Route Animation',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('bar-custom-tab')));
+    await tester.pump();
+
+    expect(_rememberedRoute(tester), AppRoutes.bar);
+
+    await tester.pumpAndSettle();
+
+    expect(_rememberedRoute(tester), AppRoutes.barCustom);
+  });
+
+  testWidgets('updates the route when swiping bar tabs', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-route-swipe@example.com',
+      password: 'password123',
+      displayName: 'Bar Route Swipe',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(TabBarView), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+
+    expect(_homeShellRouteName(tester), AppRoutes.bar);
+    expect(_rememberedRoute(tester), AppRoutes.barCustom);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
   });
 
   testWidgets('shows an empty state when no custom drinks exist', (

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
+import 'package:glasstrail/src/app_scope.dart';
 import 'package:glasstrail/src/locale_memory.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/photo_service.dart';
@@ -50,6 +51,12 @@ Color? _foregroundColor(ButtonStyle? style) =>
 
 BorderSide? _borderSide(ButtonStyle? style) =>
     style?.side?.resolve(<WidgetState>{});
+
+String _rememberedRoute(WidgetTester tester) {
+  return AppScope.routeMemoryOf(
+    tester.element(find.byType(HomeShell)),
+  ).lastRoute;
+}
 
 void main() {
   testWidgets('shows a bootstrap screen until the controller is ready', (
@@ -112,7 +119,7 @@ void main() {
     },
   );
 
-  testWidgets('restores the last visited bar route after a web reload', (
+  testWidgets('restores the last visited bar subroute after a web reload', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -139,8 +146,12 @@ void main() {
 
     await tester.tap(find.text('Bar'));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('bar-custom-tab')));
+    await tester.pumpAndSettle();
+
     final barRoute = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(barRoute?.settings.name, AppRoutes.bar);
+    expect(_rememberedRoute(tester), AppRoutes.barCustom);
 
     final reloadedController = await AppController.bootstrapWithRepository(
       repository,
@@ -155,7 +166,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
-    expect(route?.settings.name, AppRoutes.bar);
+    expect(route?.settings.name, AppRoutes.barCustom);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
   });
 
   testWidgets('starts in feed after a native app restart', (tester) async {
@@ -566,6 +578,79 @@ void main() {
     expect(find.text('Category breakdown'), findsOneWidget);
   });
 
+  testWidgets('opens bookmarked statistics subroutes for authenticated users', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'statistics-subroute@example.com',
+      password: 'password123',
+      displayName: 'Statistics Subroute',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statisticsMap,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-map-empty-state')), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.statisticsMap);
+  });
+
+  testWidgets('opens bookmarked bar subroutes for authenticated users', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-subroute@example.com',
+      password: 'password123',
+      displayName: 'Bar Subroute',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.barCustom,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.barCustom);
+  });
+
+  testWidgets('uses transitionless routes for home shell subroutes', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'transitionless-subroute@example.com',
+      password: 'password123',
+      displayName: 'Transitionless Subroute',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statisticsMap,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route, isA<PageRoute<void>>());
+    expect((route! as PageRoute<void>).transitionDuration, Duration.zero);
+    expect(route.reverseTransitionDuration, Duration.zero);
+  });
+
   testWidgets('restores the protected route after sign-in', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final preferences = await SharedPreferences.getInstance();
@@ -607,6 +692,50 @@ void main() {
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(route?.settings.name, AppRoutes.statistics);
+  });
+
+  testWidgets('restores the protected bar subroute after sign-in', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    await repository.signUp(
+      email: 'protected-bar-login@example.com',
+      password: 'password123',
+      displayName: 'Protected Bar Login',
+    );
+    await repository.signOut();
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.barCustom,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('signin-email-field')),
+      'protected-bar-login@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signin-password-field')),
+      'password123',
+    );
+    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
+    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.barCustom);
   });
 
   testWidgets('restores the protected route after sign-up', (tester) async {

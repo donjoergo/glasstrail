@@ -11,6 +11,7 @@ import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app_routes.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
 import '../maplibre_web_registration.dart' as maplibre_web_registration;
@@ -694,49 +695,114 @@ List<Widget> _statisticsMapAttributionChildren(ThemeData theme) {
   ];
 }
 
-class StatisticsScreen extends StatelessWidget {
-  const StatisticsScreen({super.key});
+class StatisticsScreen extends StatefulWidget {
+  const StatisticsScreen({
+    super.key,
+    required this.routeName,
+    required this.onRouteSelected,
+  });
+
+  final String routeName;
+  final ValueChanged<String> onRouteSelected;
+
+  @override
+  State<StatisticsScreen> createState() => _StatisticsScreenState();
+}
+
+class _StatisticsScreenState extends State<StatisticsScreen>
+    with SingleTickerProviderStateMixin {
+  static const _tabCount = 4;
+  static const _settledTabOffsetEpsilon = 0.0001;
+
+  late final TabController _tabController;
+  bool _isUpdatingControllerFromRoute = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: _tabCount,
+      vsync: this,
+      initialIndex: AppRoutes.statisticsTabIndexForRoute(widget.routeName),
+    )..addListener(_handleTabControllerChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant StatisticsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final targetIndex = AppRoutes.statisticsTabIndexForRoute(widget.routeName);
+    if (_tabController.index == targetIndex) {
+      return;
+    }
+    _isUpdatingControllerFromRoute = true;
+    _tabController.index = targetIndex;
+    _isUpdatingControllerFromRoute = false;
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_handleTabControllerChange);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _handleTabControllerChange() {
+    if (_isUpdatingControllerFromRoute ||
+        !mounted ||
+        _tabController.indexIsChanging ||
+        _tabController.offset.abs() > _settledTabOffsetEpsilon) {
+      return;
+    }
+
+    final currentIndex = AppRoutes.statisticsTabIndexForRoute(widget.routeName);
+    if (_tabController.index == currentIndex) {
+      return;
+    }
+
+    widget.onRouteSelected(
+      AppRoutes.statisticsRouteForIndex(_tabController.index),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
-    return DefaultTabController(
-      length: 4,
-      child: Column(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TabBar(
-                key: const Key('statistics-tab-bar'),
-                dividerColor: Colors.transparent,
-                tabs: <Widget>[
-                  Tab(text: l10n.statisticsOverview),
-                  Tab(text: l10n.statisticsMap),
-                  Tab(text: l10n.statisticsGallery),
-                  Tab(text: l10n.history),
-                ],
-              ),
+    return Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
             ),
-          ),
-          Expanded(
-            child: TabBarView(
-              children: <Widget>[
-                const _StatisticsOverviewPage(),
-                const _StatisticsMapPage(),
-                const _StatisticsGalleryPage(),
-                const _StatisticsHistoryPage(),
+            child: TabBar(
+              key: const Key('statistics-tab-bar'),
+              controller: _tabController,
+              dividerColor: Colors.transparent,
+              tabs: <Widget>[
+                Tab(text: l10n.statisticsOverview),
+                Tab(text: l10n.statisticsMap),
+                Tab(text: l10n.statisticsGallery),
+                Tab(text: l10n.history),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: <Widget>[
+              const _StatisticsOverviewPage(),
+              const _StatisticsMapPage(),
+              const _StatisticsGalleryPage(),
+              const _StatisticsHistoryPage(),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

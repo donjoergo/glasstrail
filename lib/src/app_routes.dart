@@ -3,7 +3,13 @@ class AppRoutes {
   static const auth = '/auth';
   static const feed = '/feed';
   static const statistics = '/statistics';
+  static const statisticsOverview = '/statistics/overview';
+  static const statisticsMap = '/statistics/map';
+  static const statisticsGallery = '/statistics/gallery';
+  static const statisticsHistory = '/statistics/history';
   static const bar = '/bar';
+  static const barSorting = '/bar/sorting';
+  static const barCustom = '/bar/custom';
   static const profile = '/profile';
   static const addDrink = '/add-drink';
   static const editProfile = '/profile/edit';
@@ -15,11 +21,58 @@ class AppRoutes {
       auth ||
       feed ||
       statistics ||
+      statisticsOverview ||
+      statisticsMap ||
+      statisticsGallery ||
+      statisticsHistory ||
       bar ||
+      barSorting ||
+      barCustom ||
       profile ||
       addDrink ||
       editProfile => routeName,
       _ => root,
+    };
+  }
+
+  static bool isStatisticsRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    return switch (normalized) {
+      statistics ||
+      statisticsOverview ||
+      statisticsMap ||
+      statisticsGallery ||
+      statisticsHistory => true,
+      _ => false,
+    };
+  }
+
+  static bool isBarRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    return switch (normalized) {
+      bar || barSorting || barCustom => true,
+      _ => false,
+    };
+  }
+
+  static String homePrimaryRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    return switch (normalized) {
+      root || feed => feed,
+      _ when isStatisticsRoute(normalized) => statistics,
+      _ when isBarRoute(normalized) => bar,
+      profile => profile,
+      _ => feed,
+    };
+  }
+
+  static bool isHomeShellRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    return switch (normalized) {
+      feed || profile => true,
+      _ when isStatisticsRoute(normalized) => true,
+      _ when isBarRoute(normalized) => true,
+      _ => false,
     };
   }
 
@@ -28,7 +81,13 @@ class AppRoutes {
     return switch (normalized) {
       feed ||
       statistics ||
+      statisticsOverview ||
+      statisticsMap ||
+      statisticsGallery ||
+      statisticsHistory ||
       bar ||
+      barSorting ||
+      barCustom ||
       profile ||
       addDrink ||
       editProfile => normalized,
@@ -39,15 +98,63 @@ class AppRoutes {
   static bool isRestorable(String? routeName) {
     final normalized = normalize(routeName);
     return switch (normalized) {
-      feed || statistics || bar || profile || addDrink || editProfile => true,
+      feed ||
+      statistics ||
+      statisticsOverview ||
+      statisticsMap ||
+      statisticsGallery ||
+      statisticsHistory ||
+      bar ||
+      barSorting ||
+      barCustom ||
+      profile ||
+      addDrink ||
+      editProfile => true,
       _ => false,
     };
   }
 
-  static int homeTabIndex(String routeName) {
+  static int statisticsTabIndexForRoute(String? routeName) {
     final normalized = normalize(routeName);
     return switch (normalized) {
-      root || feed => 0,
+      statistics || statisticsOverview => 0,
+      statisticsMap => 1,
+      statisticsGallery => 2,
+      statisticsHistory => 3,
+      _ => 0,
+    };
+  }
+
+  static String statisticsRouteForIndex(int index) {
+    return switch (index) {
+      0 => statisticsOverview,
+      1 => statisticsMap,
+      2 => statisticsGallery,
+      3 => statisticsHistory,
+      _ => statisticsOverview,
+    };
+  }
+
+  static int barTabIndexForRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    return switch (normalized) {
+      bar || barSorting => 0,
+      barCustom => 1,
+      _ => 0,
+    };
+  }
+
+  static String barRouteForIndex(int index) {
+    return switch (index) {
+      0 => barSorting,
+      1 => barCustom,
+      _ => barSorting,
+    };
+  }
+
+  static int homeTabIndex(String routeName) {
+    return switch (homePrimaryRoute(routeName)) {
+      feed => 0,
       statistics => 1,
       bar => 2,
       profile => 3,
