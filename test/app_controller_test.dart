@@ -416,6 +416,46 @@ void main() {
     expect(controller.takeFlashMessage(german), 'Eintrag aktualisiert.');
   });
 
+  test(
+    'deletes a custom drink and emits a localized success message',
+    () async {
+      final controller = await buildTestController();
+      final german = _l10n('de');
+
+      await controller.signUp(
+        email: 'delete-custom-drink@example.com',
+        password: 'password123',
+        displayName: 'Delete Custom Drink Example',
+      );
+      controller.takeFlashMessage(german);
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+      );
+      controller.takeFlashMessage(german);
+
+      final drink = controller.customDrinks.single;
+      await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl);
+      controller.takeFlashMessage(german);
+
+      final success = await controller.deleteCustomDrink(drink);
+
+      expect(success, isTrue);
+      expect(controller.customDrinks, isEmpty);
+      expect(controller.entries, hasLength(1));
+      expect(
+        controller.localizedEntryDrinkName(
+          controller.entries.single,
+          localeCode: 'de',
+        ),
+        'Office Brew',
+      );
+      expect(controller.takeFlashMessage(german), 'Eigenes Getränk gelöscht.');
+    },
+  );
+
   test('deletes a drink entry and emits a localized success message', () async {
     final controller = await buildTestController();
     final german = _l10n('de');
@@ -568,6 +608,14 @@ class _BootstrapProbeRepository implements AppRepository {
   Future<void> deleteDrinkEntry({
     required String userId,
     required DrinkEntry entry,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteCustomDrink({
+    required String userId,
+    required DrinkDefinition drink,
   }) {
     throw UnimplementedError();
   }

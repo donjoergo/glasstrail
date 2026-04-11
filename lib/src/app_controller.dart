@@ -14,6 +14,7 @@ enum _FlashMessageKind {
   welcomeBack,
   profileUpdated,
   customDrinkSaved,
+  customDrinkDeleted,
   drinkLogged,
   drinkEntryUpdated,
   drinkEntryDeleted,
@@ -27,6 +28,7 @@ enum AppBusyAction {
   signOut,
   updateProfile,
   saveCustomDrink,
+  deleteCustomDrink,
   addDrinkEntry,
   updateSettings,
   updateDrinkEntry,
@@ -313,6 +315,7 @@ class AppController extends ChangeNotifier {
       _FlashMessageKind.welcomeBack => l10n.welcomeBack,
       _FlashMessageKind.profileUpdated => l10n.profileUpdated,
       _FlashMessageKind.customDrinkSaved => l10n.customDrinkSaved,
+      _FlashMessageKind.customDrinkDeleted => l10n.customDrinkDeleted,
       _FlashMessageKind.drinkLogged => l10n.drinkLogged(
         localizedDrinkName(
           message.drinkId!,
@@ -446,6 +449,22 @@ class AppController extends ChangeNotifier {
       _customDrinks = next;
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.customDrinkSaved,
+      );
+    });
+  }
+
+  Future<bool> deleteCustomDrink(DrinkDefinition drink) async {
+    final user = _currentUser;
+    if (user == null || !drink.isCustom) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.deleteCustomDrink, () async {
+      await _repository.deleteCustomDrink(userId: user.id, drink: drink);
+      _customDrinks = _customDrinks
+          .where((candidate) => candidate.id != drink.id)
+          .toList(growable: false);
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.customDrinkDeleted,
       );
     });
   }
@@ -683,6 +702,7 @@ class AppController extends ChangeNotifier {
       'The profile could not be updated.' => l10n.profileUpdateFailed,
       'You already have a custom drink with that name.' =>
         l10n.customDrinkAlreadyExists,
+      'The custom drink could not be deleted.' => l10n.customDrinkDeleteFailed,
       'Sign-up did not return a user.' => l10n.signUpMissingUser,
       'Supabase sign-up succeeded, but email confirmation is enabled. Confirm the email first, then sign in.' =>
         l10n.signUpConfirmationRequired,

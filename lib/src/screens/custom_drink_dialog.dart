@@ -106,18 +106,34 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
     }
   }
 
+  Future<void> _confirmDelete() async {
+    final drink = widget.initialDrink;
+    if (drink == null) {
+      return;
+    }
+    final deleted = await showDialog<bool>(
+      context: context,
+      builder: (_) =>
+          _DeleteCustomDrinkDialog(drink: drink, parentContext: context),
+    );
+    if (!mounted || deleted != true) {
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
+    final theme = Theme.of(context);
     final isBusy = controller.isBusy;
     final isSavingDrink = controller.isBusyFor(AppBusyAction.saveCustomDrink);
+    final isEditingDrink = widget.initialDrink != null;
 
     return AlertDialog(
       title: Text(
-        widget.initialDrink == null
-            ? l10n.createCustomDrink
-            : l10n.editCustomDrink,
+        isEditingDrink ? l10n.editCustomDrink : l10n.createCustomDrink,
       ),
       content: SizedBox(
         width: 420,
@@ -213,6 +229,15 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
         ),
       ),
       actions: <Widget>[
+        if (isEditingDrink)
+          TextButton(
+            key: const Key('custom-drink-delete-button'),
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.error,
+            ),
+            onPressed: isBusy ? null : _confirmDelete,
+            child: Text(l10n.deleteCustomDrink),
+          ),
         TextButton(
           key: const Key('custom-drink-cancel-button'),
           onPressed: isBusy ? null : () => Navigator.of(context).pop(),
@@ -227,6 +252,78 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Text(l10n.save),
+        ),
+      ],
+    );
+  }
+}
+
+class _DeleteCustomDrinkDialog extends StatefulWidget {
+  const _DeleteCustomDrinkDialog({
+    required this.drink,
+    required this.parentContext,
+  });
+
+  final DrinkDefinition drink;
+  final BuildContext parentContext;
+
+  @override
+  State<_DeleteCustomDrinkDialog> createState() =>
+      _DeleteCustomDrinkDialogState();
+}
+
+class _DeleteCustomDrinkDialogState extends State<_DeleteCustomDrinkDialog> {
+  Future<void> _delete() async {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final success = await controller.deleteCustomDrink(widget.drink);
+    final message = controller.takeFlashMessage(l10n);
+    if (message != null && widget.parentContext.mounted) {
+      ScaffoldMessenger.of(
+        widget.parentContext,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+    if (!mounted || !success) {
+      return;
+    }
+    Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final theme = Theme.of(context);
+    final isBusy = controller.isBusy;
+    final isDeleting = controller.isBusyFor(AppBusyAction.deleteCustomDrink);
+
+    return AlertDialog(
+      title: Text(l10n.deleteCustomDrink),
+      content: Text(l10n.deleteCustomDrinkPrompt),
+      actions: <Widget>[
+        TextButton(
+          key: const Key('delete-custom-drink-cancel-button'),
+          onPressed: isBusy ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          key: const Key('delete-custom-drink-confirm-button'),
+          style: FilledButton.styleFrom(
+            backgroundColor: theme.colorScheme.error,
+            foregroundColor: theme.colorScheme.onError,
+          ),
+          onPressed: isBusy ? null : _delete,
+          child: isDeleting
+              ? SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      theme.colorScheme.onError,
+                    ),
+                  ),
+                )
+              : Text(l10n.deleteCustomDrink),
         ),
       ],
     );

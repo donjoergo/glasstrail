@@ -171,6 +171,22 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
+  Future<void> deleteCustomDrink({
+    required String userId,
+    required DrinkDefinition drink,
+  }) async {
+    final map = _readJsonMap(_customDrinksKey);
+    final raw = List<dynamic>.from((map[userId] as List?) ?? const <dynamic>[]);
+    final initialLength = raw.length;
+    raw.removeWhere((item) => (item as Map)['id'] == drink.id);
+    if (raw.length == initialLength) {
+      throw const AppException('The custom drink could not be deleted.');
+    }
+    map[userId] = raw;
+    await _writeJsonMap(_customDrinksKey, map);
+  }
+
+  @override
   Future<List<DrinkEntry>> loadEntries(String userId) async {
     final map = _readJsonMap(_entriesKey);
     final raw = (map[userId] as List?) ?? const <dynamic>[];

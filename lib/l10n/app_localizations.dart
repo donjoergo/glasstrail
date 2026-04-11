@@ -380,6 +380,18 @@ abstract class AppLocalizations {
   /// **'Edit custom drink'**
   String get editCustomDrink;
 
+  /// No description provided for @deleteCustomDrink.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete custom drink'**
+  String get deleteCustomDrink;
+
+  /// No description provided for @deleteCustomDrinkPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this custom drink? Existing history entries will remain available.'**
+  String get deleteCustomDrinkPrompt;
+
   /// No description provided for @drinkName.
   ///
   /// In en, this message translates to:
@@ -848,6 +860,12 @@ abstract class AppLocalizations {
   /// **'Custom drink saved.'**
   String get customDrinkSaved;
 
+  /// No description provided for @customDrinkDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom drink deleted.'**
+  String get customDrinkDeleted;
+
   /// Shown after logging a drink entry
   ///
   /// In en, this message translates to:
@@ -901,6 +919,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The drink entry could not be deleted.'**
   String get entryDeleteFailed;
+
+  /// No description provided for @customDrinkDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The custom drink could not be deleted.'**
+  String get customDrinkDeleteFailed;
 
   /// No description provided for @customDrinkAlreadyExists.
   ///

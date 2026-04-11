@@ -156,6 +156,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get editCustomDrink => 'Eigenes Getränk bearbeiten';
 
   @override
+  String get deleteCustomDrink => 'Eigenes Getränk löschen';
+
+  @override
+  String get deleteCustomDrinkPrompt =>
+      'Dieses eigene Getränk löschen? Bereits erfasste Einträge bleiben erhalten.';
+
+  @override
   String get drinkName => 'Getränkename';
 
   @override
@@ -407,6 +414,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get customDrinkSaved => 'Eigenes Getränk gespeichert.';
 
   @override
+  String get customDrinkDeleted => 'Eigenes Getränk gelöscht.';
+
+  @override
   String drinkLogged(String drink) {
     return '$drink erfasst.';
   }
@@ -439,6 +449,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get entryDeleteFailed =>
       'Der Getränkeeintrag konnte nicht gelöscht werden.';
+
+  @override
+  String get customDrinkDeleteFailed =>
+      'Das eigene Getränk konnte nicht gelöscht werden.';
 
   @override
   String get customDrinkAlreadyExists =>

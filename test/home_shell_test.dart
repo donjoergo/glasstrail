@@ -1232,6 +1232,135 @@ void main() {
   });
 
   testWidgets(
+    'deletes a custom drink from the edit dialog and keeps history visible',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'delete-custom-ui@example.com',
+        password: 'password123',
+        displayName: 'Delete Custom Ui',
+      );
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+      );
+      final customDrink = controller.customDrinks.single;
+      await controller.addDrinkEntry(
+        drink: customDrink,
+        volumeMl: customDrink.volumeMl,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.bar,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openBarCustomDrinksTab(tester);
+      await tester.tap(
+        find.byKey(Key('bar-edit-custom-drink-${customDrink.id}')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('custom-drink-delete-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('custom-drink-delete-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('delete-custom-drink-confirm-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.customDrinks, isEmpty);
+      expect(
+        find.byKey(Key('bar-custom-drink-${customDrink.id}')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('bar-custom-empty-state')), findsOneWidget);
+
+      await _openStatisticsTab(tester);
+      await _openStatisticsSection(tester, 'History');
+
+      expect(find.text('Office Brew'), findsOneWidget);
+    },
+  );
+
+  testWidgets('shows a spinner while deleting a custom drink', (tester) async {
+    final harness = await _buildBlockedHarness(AppBusyAction.deleteCustomDrink);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'delete-custom-busy@example.com',
+      password: 'password123',
+      displayName: 'Delete Custom Busy',
+    );
+
+    await controller.saveCustomDrink(
+      name: 'Night Cap',
+      category: DrinkCategory.cocktails,
+      volumeMl: 200,
+    );
+    final customDrink = controller.customDrinks.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+    await tester.tap(
+      find.byKey(Key('bar-edit-custom-drink-${customDrink.id}')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('custom-drink-delete-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('delete-custom-drink-confirm-button')),
+    );
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('delete-custom-drink-confirm-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextButton>(
+            find.byKey(const Key('delete-custom-drink-cancel-button')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-custom-empty-state')), findsOneWidget);
+  });
+
+  testWidgets(
     'renders hidden global drinks in bar and removes them from add drink',
     (tester) async {
       final controller = await buildTestController();

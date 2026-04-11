@@ -226,6 +226,17 @@ class BlockingLocalAppRepository extends LocalAppRepository {
   }
 
   @override
+  Future<void> deleteCustomDrink({
+    required String userId,
+    required DrinkDefinition drink,
+  }) {
+    return _runBlocked(
+      AppBusyAction.deleteCustomDrink,
+      () => super.deleteCustomDrink(userId: userId, drink: drink),
+    );
+  }
+
+  @override
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,

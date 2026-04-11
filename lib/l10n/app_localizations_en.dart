@@ -155,6 +155,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editCustomDrink => 'Edit custom drink';
 
   @override
+  String get deleteCustomDrink => 'Delete custom drink';
+
+  @override
+  String get deleteCustomDrinkPrompt =>
+      'Delete this custom drink? Existing history entries will remain available.';
+
+  @override
   String get drinkName => 'Drink name';
 
   @override
@@ -404,6 +411,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get customDrinkSaved => 'Custom drink saved.';
 
   @override
+  String get customDrinkDeleted => 'Custom drink deleted.';
+
+  @override
   String drinkLogged(String drink) {
     return '$drink logged.';
   }
@@ -432,6 +442,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get entryDeleteFailed => 'The drink entry could not be deleted.';
+
+  @override
+  String get customDrinkDeleteFailed =>
+      'The custom drink could not be deleted.';
 
   @override
   String get customDrinkAlreadyExists =>

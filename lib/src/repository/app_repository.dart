@@ -33,6 +33,11 @@ abstract class AppRepository {
     String? imagePath,
   });
 
+  Future<void> deleteCustomDrink({
+    required String userId,
+    required DrinkDefinition drink,
+  });
+
   Future<List<DrinkEntry>> loadEntries(String userId);
 
   Future<DrinkEntry> addDrinkEntry({

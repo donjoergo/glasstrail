@@ -271,6 +271,31 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
+  Future<void> deleteCustomDrink({
+    required String userId,
+    required DrinkDefinition drink,
+  }) async {
+    try {
+      final rows = await _client
+          .from('user_drinks')
+          .delete()
+          .eq('id', drink.id)
+          .eq('user_id', userId)
+          .select('id');
+
+      if ((rows as List<dynamic>).isEmpty) {
+        throw const AppException('The custom drink could not be deleted.');
+      }
+
+      await _deleteMediaPathIfOwned(drink.imagePath, userId);
+    } on StorageException catch (error) {
+      throw AppException(error.message);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
   Future<List<DrinkEntry>> loadEntries(String userId) async {
     try {
       final rows = await _client
