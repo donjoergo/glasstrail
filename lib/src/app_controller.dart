@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 
-import 'app_localizations.dart';
 import 'backend_config.dart';
 import 'birthday.dart';
+import 'l10n_extensions.dart';
 import 'models.dart';
 import 'repository/app_repository.dart';
 import 'repository/repository_factory.dart';

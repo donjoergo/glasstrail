@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 
 import '../app_controller.dart';
-import '../app_localizations.dart';
 import '../app_scope.dart';
+import '../l10n_extensions.dart';
 import '../location_service.dart';
 import '../models.dart';
 import '../photo_pick_flow.dart';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,13 +10,13 @@ import 'package:url_launcher_platform_interface/url_launcher_platform_interface.
 
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
-import 'package:glasstrail/src/app_localizations.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/add_drink_screen.dart';
+import 'package:glasstrail/src/screens/feed_screen.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
 
@@ -23,6 +24,13 @@ import 'support/test_harness.dart';
 
 const _transparentPngDataUrl =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRSEAAAAASUVORK5CYII=';
+const _lastAcknowledgedReleaseKey = 'glasstrail.last_acknowledged_release';
+const _currentReleaseId = '1.0.0+1';
+const _changelogUrl =
+    'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md';
+
+AppLocalizations _l10n(String languageCode) =>
+    lookupAppLocalizations(Locale(languageCode));
 
 Future<({AppController controller, BlockingLocalAppRepository repository})>
 _buildBlockedHarness(AppBusyAction action) async {
@@ -94,6 +102,8 @@ Future<void> _scrollBarTargetIntoView(
 class _RecordingUrlLauncherPlatform extends UrlLauncherPlatform {
   final List<String> launchedUrls = <String>[];
   final List<LaunchOptions> launchOptions = <LaunchOptions>[];
+  bool launchResult = true;
+  Object? launchError;
 
   @override
   LinkDelegate? get linkDelegate => null;
@@ -106,9 +116,12 @@ class _RecordingUrlLauncherPlatform extends UrlLauncherPlatform {
 
   @override
   Future<bool> launchUrl(String url, LaunchOptions options) async {
+    if (launchError != null) {
+      throw launchError!;
+    }
     launchedUrls.add(url);
     launchOptions.add(options);
-    return true;
+    return launchResult;
   }
 }
 
@@ -153,6 +166,18 @@ Finder _statisticsMapMarkers() {
         key.value.startsWith('statistics-map-marker-') &&
         !key.value.startsWith('statistics-map-marker-icon-');
   });
+}
+
+Finder _appBarRichText(String text) {
+  return find.descendant(
+    of: find.byType(AppBar),
+    matching: find.byWidgetPredicate((widget) {
+      if (widget is! RichText) {
+        return false;
+      }
+      return widget.text.toPlainText() == text;
+    }),
+  );
 }
 
 Future<List<DrinkEntry>> _seedGalleryEntries(
@@ -201,6 +226,7 @@ void main() {
     );
     urlLauncherPlatform = _RecordingUrlLauncherPlatform();
     UrlLauncherPlatform.instance = urlLauncherPlatform;
+    debugForceUpdateNotice = false;
   });
 
   testWidgets('opens profile editing on a separate screen', (tester) async {
@@ -502,18 +528,59 @@ void main() {
     expect(find.byKey(const Key('profile-about-section')), findsOneWidget);
     expect(find.text('Glass Trail V1.0.0'), findsOneWidget);
     expect(find.text('GitHub'), findsOneWidget);
-    expect(find.text('created with ❤️ and ☕ by Jörg Dorlach'), findsOneWidget);
+    expect(
+      find.text(
+        'created with ❤️, ☕ and 🍺 by Jörg Dorlach',
+        findRichText: true,
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('profile-about-version-button')));
+    await tester.pumpAndSettle();
+
+    expect(urlLauncherPlatform.launchedUrls, <String>[
+      'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md',
+    ]);
+    expect(
+      urlLauncherPlatform.launchOptions.single.mode,
+      PreferredLaunchMode.inAppBrowserView,
+    );
 
     await tester.tap(find.byKey(const Key('profile-about-github-button')));
     await tester.pumpAndSettle();
 
     expect(urlLauncherPlatform.launchedUrls, <String>[
+      'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md',
       'https://github.com/donjoergo/GlassTrail',
     ]);
     expect(
-      urlLauncherPlatform.launchOptions.single.mode,
+      urlLauncherPlatform.launchOptions.last.mode,
       PreferredLaunchMode.externalApplication,
     );
+  });
+
+  testWidgets('does not show backend information on the profile screen', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-backend@example.com',
+      password: 'password123',
+      displayName: 'Profile Backend Example',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+
+    expect(find.text(_l10n('en').backend), findsNothing);
   });
 
   testWidgets('moves the add-drink fab for left-handed mode', (tester) async {
@@ -764,7 +831,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, 'Pils'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('drink-location-toggle')));
+    final addDrinkListView = find
+        .descendant(
+          of: find.byType(AddDrinkScreen),
+          matching: find.byType(ListView),
+        )
+        .first;
+    await tester.drag(addDrinkListView, const Offset(0, -500));
+    await tester.pumpAndSettle();
+    final locationToggle = find.byKey(const Key('drink-location-toggle'));
+    await tester.ensureVisible(locationToggle);
+    await tester.tap(locationToggle);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('drink-location-value')), findsOneWidget);
@@ -876,6 +953,18 @@ void main() {
 
       expect(find.text('Rotwein'), findsOneWidget);
       expect(find.text('Red Wine'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('drink-search-clear-button')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('drink-search-field')),
+        'champ',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Champagner'), findsOneWidget);
+      expect(find.text('Champagne'), findsNothing);
     },
   );
 
@@ -893,7 +982,7 @@ void main() {
       password: 'password123',
       displayName: 'Eintrag Beispiel',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('de')));
+    controller.takeFlashMessage(_l10n('de'));
 
     await controller.updateSettings(
       controller.settings.copyWith(localeCode: 'de'),
@@ -902,7 +991,7 @@ void main() {
       (drink) => drink.id == 'wine-red-wine',
     );
     await controller.addDrinkEntry(drink: redWine, volumeMl: redWine.volumeMl);
-    controller.takeFlashMessage(AppLocalizations(const Locale('de')));
+    controller.takeFlashMessage(_l10n('de'));
 
     await tester.pumpWidget(
       GlassTrailApp(
@@ -1054,6 +1143,39 @@ void main() {
     expect(
       find.byKey(const Key('profile-add-custom-drink-button')),
       findsNothing,
+    );
+  });
+
+  testWidgets('shows an empty state when no custom drinks exist', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-custom-empty@example.com',
+      password: 'password123',
+      displayName: 'Bar Custom Empty',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+
+    expect(find.byKey(const Key('bar-custom-empty-state')), findsOneWidget);
+    expect(find.text('No custom drinks yet'), findsOneWidget);
+    expect(
+      find.text('Create your first custom drink and it will appear here.'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('bar-add-custom-drink-button')),
+      findsOneWidget,
     );
   });
 
@@ -1454,7 +1576,7 @@ void main() {
       password: 'password123',
       displayName: 'Streak Card Example',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+    controller.takeFlashMessage(_l10n('en'));
 
     await tester.pumpWidget(
       GlassTrailApp(
@@ -1464,15 +1586,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
     expect(
-      tester.widget<Text>(
-        find.byKey(const Key('history-streak-current-value')),
-      ),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-current-value'))),
       isA<Text>().having((widget) => widget.data, 'data', '0 days'),
     );
     expect(
-      tester.widget<Text>(find.byKey(const Key('history-streak-message'))),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-message'))),
       isA<Text>().having(
         (widget) => widget.data,
         'data',
@@ -1480,8 +1600,241 @@ void main() {
       ),
     );
     expect(find.text('Details'), findsNothing);
-    expect(find.byKey(const Key('history-streak-day-1')), findsOneWidget);
-    expect(find.byKey(const Key('history-streak-day-7')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-day-1')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-day-7')), findsOneWidget);
+  });
+
+  testWidgets('does not show the changelog card on first launch', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'update-card-first-launch@example.com',
+      password: 'password123',
+      displayName: 'First Launch Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(find.byKey(const Key('feed-update-card')), findsNothing);
+    expect(
+      preferences.getString(_lastAcknowledgedReleaseKey),
+      _currentReleaseId,
+    );
+  });
+
+  testWidgets('shows the changelog card after an app update', (tester) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card@example.com',
+      password: 'password123',
+      displayName: 'Update Card Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final card = find.byKey(const Key('feed-update-card'));
+    final streakCard = find.byKey(const Key('feed-streak-card'));
+
+    expect(card, findsOneWidget);
+    expect(find.text('App updated'), findsOneWidget);
+    expect(find.byKey(const Key('feed-update-card-body')), findsOneWidget);
+    expect(find.textContaining('1.0.0'), findsOneWidget);
+    expect(
+      tester.getTopLeft(card).dy,
+      lessThan(tester.getTopLeft(streakCard).dy),
+    );
+  });
+
+  testWidgets('shows the changelog card when forced by override', (
+    tester,
+  ) async {
+    debugForceUpdateNotice = true;
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'update-card-forced@example.com',
+      password: 'password123',
+      displayName: 'Forced Update Card Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-update-card')), findsOneWidget);
+    expect(find.textContaining('1.0.0'), findsOneWidget);
+  });
+
+  testWidgets('dismisses the changelog card until the next update', (
+    tester,
+  ) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card-dismiss@example.com',
+      password: 'password123',
+      displayName: 'Dismiss Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('feed-update-card-close-button')));
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(find.byKey(const Key('feed-update-card')), findsNothing);
+    expect(
+      preferences.getString(_lastAcknowledgedReleaseKey),
+      _currentReleaseId,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-update-card')), findsNothing);
+  });
+
+  testWidgets('opens the changelog and dismisses the card', (tester) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card-open@example.com',
+      password: 'password123',
+      displayName: 'Open Changelog Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('feed-update-card-whats-new-button')),
+    );
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(urlLauncherPlatform.launchedUrls, <String>[_changelogUrl]);
+    expect(
+      urlLauncherPlatform.launchOptions.single.mode,
+      PreferredLaunchMode.inAppBrowserView,
+    );
+    expect(
+      preferences.getString(_lastAcknowledgedReleaseKey),
+      _currentReleaseId,
+    );
+    expect(find.byKey(const Key('feed-update-card')), findsNothing);
+  });
+
+  testWidgets('keeps the changelog card visible when opening fails', (
+    tester,
+  ) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card-launch-error@example.com',
+      password: 'password123',
+      displayName: 'Launch Error Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+    urlLauncherPlatform.launchResult = false;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const Key('feed-update-card-whats-new-button')),
+    );
+    await tester.pumpAndSettle();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(find.byKey(const Key('feed-update-card')), findsOneWidget);
+    expect(
+      find.text('Something went wrong. Please try again.'),
+      findsOneWidget,
+    );
+    expect(preferences.getString(_lastAcknowledgedReleaseKey), '0.9.0+1');
+  });
+
+  testWidgets('localizes the changelog card in German', (tester) async {
+    final controller = await buildTestController(
+      initialValues: <String, Object>{_lastAcknowledgedReleaseKey: '0.9.0+1'},
+    );
+    await controller.signUp(
+      email: 'update-card-german@example.com',
+      password: 'password123',
+      displayName: 'German Example',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+    controller.takeFlashMessage(_l10n('de'));
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('App aktualisiert'), findsOneWidget);
+    expect(
+      find.textContaining('Glass Trail wurde gerade auf 1.0.0'),
+      findsOneWidget,
+    );
+    expect(find.text('Schließen'), findsOneWidget);
+    expect(find.text('Was gibt\'s Neues'), findsOneWidget);
   });
 
   testWidgets('refreshes the feed with pull to refresh', (tester) async {
@@ -1498,7 +1851,7 @@ void main() {
       password: 'password123',
       displayName: 'Feed Refresh Example',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+    controller.takeFlashMessage(_l10n('en'));
 
     final preferences = await SharedPreferences.getInstance();
     final externalRepository = LocalAppRepository(preferences);
@@ -1515,9 +1868,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<Text>(
-        find.byKey(const Key('history-streak-current-value')),
-      ),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-current-value'))),
       isA<Text>().having((widget) => widget.data, 'data', '0 days'),
     );
     expect(find.text('Pils'), findsNothing);
@@ -1533,7 +1884,7 @@ void main() {
     expect(find.text('Pils'), findsNothing);
 
     await tester.drag(
-      find.byKey(const Key('history-list-view')),
+      find.byKey(const Key('feed-list-view')),
       const Offset(0, 300),
     );
     await tester.pump();
@@ -1541,13 +1892,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<Text>(
-        find.byKey(const Key('history-streak-current-value')),
-      ),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-current-value'))),
       isA<Text>().having((widget) => widget.data, 'data', '1 day'),
     );
     expect(
-      tester.widget<Text>(find.byKey(const Key('history-streak-message'))),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-message'))),
       isA<Text>().having(
         (widget) => widget.data,
         'data',
@@ -1571,7 +1920,7 @@ void main() {
       password: 'password123',
       displayName: 'Stats Refresh Example',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+    controller.takeFlashMessage(_l10n('en'));
 
     final preferences = await SharedPreferences.getInstance();
     final externalRepository = LocalAppRepository(preferences);
@@ -1788,7 +2137,19 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(const Key('stats-category-chip-icon-sparklingWines')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-category-chip-icon-longdrinks')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const Key('stats-category-chip-icon-spirits')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('stats-category-chip-icon-shots')),
       findsOneWidget,
     );
     expect(
@@ -1796,7 +2157,78 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(const Key('stats-category-chip-icon-appleWines')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const Key('stats-category-chip-icon-nonAlcoholic')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows the new global drink categories in the bar', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-new-categories@example.com',
+      password: 'password123',
+      displayName: 'Bar New Categories',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('bar-category-card-sparklingWines')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>(
+          'bar-visible-global-drink-sparklingWines-champagne',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('bar-category-card-longdrinks')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey<String>(
+          'bar-visible-global-drink-longdrinks-cuba-libre',
+        ),
+      ),
+      findsOneWidget,
+    );
+
+    final shotsCard = find.byKey(const Key('bar-category-card-shots'));
+    await _scrollBarTargetIntoView(tester, shotsCard);
+    expect(shotsCard, findsOneWidget);
+    expect(
+      find.byKey(
+        const ValueKey<String>('bar-visible-global-drink-shots-jaegermeister'),
+      ),
+      findsOneWidget,
+    );
+
+    final appleWinesCard = find.byKey(
+      const Key('bar-category-card-appleWines'),
+    );
+    await _scrollBarTargetIntoView(tester, appleWinesCard);
+    expect(appleWinesCard, findsOneWidget);
+    expect(
+      find.byKey(
+        const ValueKey<String>('bar-visible-global-drink-appleWines-cider'),
+      ),
       findsOneWidget,
     );
   });
@@ -1817,7 +2249,7 @@ void main() {
       password: 'password123',
       displayName: 'Stats Overview Example',
     );
-    controller.takeFlashMessage(AppLocalizations(const Locale('en')));
+    controller.takeFlashMessage(_l10n('en'));
 
     final preferences = await SharedPreferences.getInstance();
     final externalRepository = LocalAppRepository(preferences);
@@ -1935,8 +2367,41 @@ void main() {
 
     expect(find.text('Water'), findsOneWidget);
     expect(find.text('Should stay out of compact stats history'), findsNothing);
-    expect(find.byKey(Key('history-entry-image-$entryId')), findsNothing);
-    expect(find.byKey(Key('history-entry-actions-$entryId')), findsNothing);
+    expect(find.byKey(Key('feed-entry-image-$entryId')), findsNothing);
+    expect(find.byKey(Key('feed-entry-actions-$entryId')), findsNothing);
+  });
+
+  testWidgets('shows an empty state for statistics history without entries', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-history-empty@example.com',
+      password: 'password123',
+      displayName: 'Stats History Empty',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'History');
+
+    expect(
+      find.byKey(const Key('statistics-history-empty-state')),
+      findsOneWidget,
+    );
+    expect(find.text('No history yet'), findsOneWidget);
+    expect(
+      find.text('Logged drinks will appear here as your personal history.'),
+      findsOneWidget,
+    );
+    expect(find.byType(FilterChip), findsNothing);
   });
 
   testWidgets('filters the compact statistics history by category', (
@@ -1984,6 +2449,13 @@ void main() {
 
     expect(find.text('Pils'), findsNothing);
     expect(find.text('Red Wine'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilterChip, 'Non-alcoholic (0)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pils'), findsNothing);
+    expect(find.text('Red Wine'), findsNothing);
+    expect(find.text('No drinks match the current filter.'), findsOneWidget);
   });
 
   testWidgets('shows the map empty state and gallery empty state', (
@@ -2749,6 +3221,79 @@ void main() {
     expect(fourthRect.left, lessThan(fifthRect.left));
   });
 
+  testWidgets('uses a square rail surface on wider screens', (tester) async {
+    _setSurfaceSize(tester, const Size(1200, 1366));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'wide-shell@example.com',
+      password: 'password123',
+      displayName: 'Wide Shell',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+
+    final railContainer = tester.widget<Container>(
+      find.byKey(const Key('home-shell-wide-rail-shell')),
+    );
+    expect(railContainer.decoration, isNull);
+    expect(railContainer.color, isNotNull);
+  });
+
+  testWidgets(
+    'renders dynamic size properties for the home shell app bar title',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1200, 1366));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'responsive-title@example.com',
+        password: 'password123',
+        displayName: 'Responsive Title',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.profile,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final wideTitle = tester.widget<RichText>(_appBarRichText('Profile'));
+      final wideStyle = (wideTitle.text as TextSpan).style;
+
+      expect(wideStyle?.fontSize, 24);
+      expect(wideStyle?.fontWeight, FontWeight.w800);
+
+      _setSurfaceSize(tester, const Size(400, 800));
+      await tester.pumpAndSettle();
+
+      final narrowTitle = tester.widget<RichText>(_appBarRichText('Profile'));
+      final narrowStyle = (narrowTitle.text as TextSpan).style;
+
+      expect(narrowStyle?.fontSize, 20);
+      expect(narrowStyle?.fontWeight, FontWeight.w800);
+    },
+  );
+
   testWidgets(
     'edits entry comment and image from history without exposing drink controls',
     (tester) async {
@@ -2785,12 +3330,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(Key('history-entry-image-$entryId')), findsOneWidget);
+      expect(find.byKey(Key('feed-entry-image-$entryId')), findsOneWidget);
       expect(find.text('before-edit.png'), findsNothing);
 
-      await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+      await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
+      await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
       await tester.pumpAndSettle();
 
       final commentField = tester.widget<TextFormField>(
@@ -2847,9 +3392,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
     await tester.pumpAndSettle();
     await _tapPhotoAction(
       tester,
@@ -2889,9 +3434,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('edit-entry-comment-field')),
@@ -2953,9 +3498,9 @@ void main() {
 
     expect(find.text('Pils'), findsOneWidget);
 
-    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(Key('history-entry-delete-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-delete-$entryId')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('delete-entry-confirm-button')));
     await tester.pumpAndSettle();
@@ -2965,7 +3510,7 @@ void main() {
     expect(find.text('No drinks logged yet.'), findsOneWidget);
 
     final streakValue = tester.widget<Text>(
-      find.byKey(const Key('history-streak-current-value')),
+      find.byKey(const Key('feed-streak-current-value')),
     );
     expect(streakValue.data, '0 days');
   });
@@ -2994,9 +3539,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(Key('history-entry-delete-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-delete-$entryId')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('delete-entry-confirm-button')));
     await tester.pump();

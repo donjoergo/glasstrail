@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 
 import '../app_controller.dart';
-import '../app_localizations.dart';
 import '../app_scope.dart';
+import '../l10n_extensions.dart';
 import '../models.dart';
+import '../widgets/app_empty_state_card.dart';
 import 'custom_drink_dialog.dart';
 
 class BarScreen extends StatefulWidget {
@@ -248,11 +250,11 @@ class _BarCustomDrinksTab extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               if (controller.customDrinks.isEmpty)
-                Text(
-                  l10n.emptyFilter,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                AppEmptyStateCard(
+                  key: const Key('bar-custom-empty-state'),
+                  icon: Icons.local_bar_outlined,
+                  title: l10n.customDrinksEmptyTitle,
+                  body: l10n.customDrinksEmptyBody,
                 )
               else
                 ...controller.customDrinks.map(

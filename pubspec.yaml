@@ -1,7 +1,7 @@
 name: glasstrail
 description: "GlassTrail is a personal drink-tracking app built with Flutter."
 publish_to: 'none'
-version: 1.0.1+1
+version: 1.1.1
 
 environment:
   sdk: ^3.11.1
@@ -35,11 +35,23 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+  cider: ^0.2.9
   flutter_lints: ^6.0.0
   url_launcher_platform_interface: ^2.3.2
   flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
+
+cider:
+  link_template:
+    tag: https://github.com/donjoergo/glasstrail/releases/tag/%tag%
+    diff: https://github.com/donjoergo/glasstrail/compare/%from%...%to%
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - assets/icon/app_icon.png
+  fonts:
+    - family: ProfileEmoji
+      fonts:
+        - asset: assets/fonts/profile_emoji_subset.ttf

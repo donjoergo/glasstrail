@@ -1,23 +1,101 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app_controller.dart';
-import '../app_localizations.dart';
 import '../app_scope.dart';
+import '../l10n_extensions.dart';
 import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../stats_calculator.dart';
+import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 
-class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+@visibleForTesting
+bool debugForceUpdateNotice = const bool.fromEnvironment(
+  'FORCE_UPDATE_NOTICE',
+  defaultValue: false,
+);
+
+class FeedScreen extends StatefulWidget {
+  const FeedScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  State<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class _FeedScreenState extends State<FeedScreen> {
+  static const _lastAcknowledgedReleaseKey =
+      'glasstrail.last_acknowledged_release';
+  static final Uri _changelogUri = Uri.parse(
+    'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md',
+  );
+
+  _UpdateNoticeData? _updateNotice;
+  bool _isHandlingUpdateNotice = false;
+
+  LaunchMode get _changelogLaunchMode {
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android ||
+      TargetPlatform.iOS => LaunchMode.inAppBrowserView,
+      _ => LaunchMode.externalApplication,
+    };
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUpdateNotice();
+  }
+
+  Future<void> _loadUpdateNotice() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final version = packageInfo.version.trim();
+      final buildNumber = packageInfo.buildNumber.trim();
+      if (version.isEmpty) {
+        return;
+      }
+
+      final releaseId = buildNumber.isEmpty ? version : '$version+$buildNumber';
+      final preferences = await SharedPreferences.getInstance();
+      if (debugForceUpdateNotice) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _updateNotice = _UpdateNoticeData(
+            releaseId: releaseId,
+            version: version,
+          );
+        });
+        return;
+      }
+      final lastAcknowledgedRelease = preferences.getString(
+        _lastAcknowledgedReleaseKey,
+      );
+      if (lastAcknowledgedRelease == null) {
+        await preferences.setString(_lastAcknowledgedReleaseKey, releaseId);
+        return;
+      }
+      if (lastAcknowledgedRelease == releaseId || !mounted) {
+        return;
+      }
+
+      setState(() {
+        _updateNotice = _UpdateNoticeData(
+          releaseId: releaseId,
+          version: version,
+        );
+      });
+    } catch (_) {}
+  }
+
   Future<void> _refresh() async {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
@@ -33,50 +111,93 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  Future<void> _acknowledgeUpdateNotice({required bool openChangelog}) async {
+    final notice = _updateNotice;
+    if (notice == null || _isHandlingUpdateNotice) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context);
+    var shouldDismiss = false;
+    setState(() {
+      _isHandlingUpdateNotice = true;
+    });
+
+    try {
+      if (openChangelog) {
+        final launched = await launchUrl(
+          _changelogUri,
+          mode: _changelogLaunchMode,
+          browserConfiguration: const BrowserConfiguration(showTitle: true),
+        );
+        if (!launched) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(l10n.somethingWentWrong)));
+          }
+          return;
+        }
+      }
+
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(
+        _lastAcknowledgedReleaseKey,
+        notice.releaseId,
+      );
+      shouldDismiss = true;
+    } catch (_) {
+      if (openChangelog && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.somethingWentWrong)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isHandlingUpdateNotice = false;
+          if (shouldDismiss) {
+            _updateNotice = null;
+          }
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
-    final theme = Theme.of(context);
     final entries = controller.entries;
     final stats = controller.statistics;
     final locale = controller.settings.localeCode;
 
     return RefreshIndicator(
-      key: const Key('history-refresh-indicator'),
+      key: const Key('feed-refresh-indicator'),
       onRefresh: _refresh,
       child: ListView(
-        key: const Key('history-list-view'),
+        key: const Key('feed-list-view'),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         children: <Widget>[
-          _HistoryStreakCard(stats: stats),
+          if (_updateNotice case final notice?) ...<Widget>[
+            _FeedUpdateCard(
+              version: notice.version,
+              isBusy: _isHandlingUpdateNotice,
+              onClose: () => _acknowledgeUpdateNotice(openChangelog: false),
+              onOpenChangelog: () =>
+                  _acknowledgeUpdateNotice(openChangelog: true),
+            ),
+            const SizedBox(height: 24),
+          ],
+          _FeedStreakCard(stats: stats),
           const SizedBox(height: 24),
           if (entries.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                children: <Widget>[
-                  Icon(
-                    Icons.hourglass_empty_rounded,
-                    size: 42,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n.noEntries,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(l10n.startLogging),
-                ],
-              ),
+            AppEmptyStateCard(
+              key: const Key('feed-empty-state'),
+              icon: Icons.hourglass_empty_rounded,
+              title: l10n.noEntries,
+              body: l10n.startLogging,
             )
           else
             ...entries.map(
@@ -97,8 +218,92 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
-class _HistoryStreakCard extends StatelessWidget {
-  const _HistoryStreakCard({required this.stats});
+class _UpdateNoticeData {
+  const _UpdateNoticeData({required this.releaseId, required this.version});
+
+  final String releaseId;
+  final String version;
+}
+
+class _FeedUpdateCard extends StatelessWidget {
+  const _FeedUpdateCard({
+    required this.version,
+    required this.isBusy,
+    required this.onClose,
+    required this.onOpenChangelog,
+  });
+
+  final String version;
+  final bool isBusy;
+  final VoidCallback onClose;
+  final VoidCallback onOpenChangelog;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return Container(
+      key: const Key('feed-update-card'),
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(36),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            l10n.appUpdatedTitle,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            l10n.appUpdatedBody(l10n.appTitle, version),
+            key: const Key('feed-update-card-body'),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 28),
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            spacing: 12,
+            overflowSpacing: 12,
+            children: <Widget>[
+              TextButton(
+                key: const Key('feed-update-card-close-button'),
+                onPressed: isBusy ? null : onClose,
+                child: Text(l10n.close),
+              ),
+              FilledButton(
+                key: const Key('feed-update-card-whats-new-button'),
+                onPressed: isBusy ? null : onOpenChangelog,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 26,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                child: Text(l10n.whatsNew),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedStreakCard extends StatelessWidget {
+  const _FeedStreakCard({required this.stats});
 
   final AppStatistics stats;
 
@@ -111,7 +316,7 @@ class _HistoryStreakCard extends StatelessWidget {
     final accentColors = _accentColors(theme);
 
     return Container(
-      key: const Key('history-streak-card'),
+      key: const Key('feed-streak-card'),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -144,14 +349,14 @@ class _HistoryStreakCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.currentStreak,
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               Text(
-                key: const Key('history-streak-current-value'),
+                key: const Key('feed-streak-current-value'),
                 streakValue,
                 textAlign: TextAlign.right,
                 style: theme.textTheme.headlineSmall?.copyWith(
@@ -180,7 +385,7 @@ class _HistoryStreakCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            key: const Key('history-streak-message'),
+            key: const Key('feed-streak-message'),
             _streakMessage(l10n, stats),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: accentColors.messageColor,
@@ -267,7 +472,7 @@ class _WeekProgressIndicator extends StatelessWidget {
         : theme.colorScheme.onSurfaceVariant;
 
     return Column(
-      key: Key('history-streak-day-${day.weekday}'),
+      key: Key('feed-streak-day-${day.weekday}'),
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Container(
@@ -400,7 +605,7 @@ class _DrinkEntryCard extends StatelessWidget {
                         children: <Widget>[
                           Icon(
                             Icons.location_on_outlined,
-                            key: Key('history-entry-location-icon-${entry.id}'),
+                            key: Key('feed-entry-location-icon-${entry.id}'),
                             size: 16,
                             color: theme.colorScheme.primary,
                           ),
@@ -408,7 +613,7 @@ class _DrinkEntryCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               locationAddress,
-                              key: Key('history-entry-location-${entry.id}'),
+                              key: Key('feed-entry-location-${entry.id}'),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -433,19 +638,19 @@ class _DrinkEntryCard extends StatelessWidget {
                   child: Text(unit.formatVolume(entry.volumeMl)),
                 ),
               PopupMenuButton<_DrinkEntryAction>(
-                key: Key('history-entry-actions-${entry.id}'),
+                key: Key('feed-entry-actions-${entry.id}'),
                 enabled: !controller.isBusy,
                 onSelected: (action) {
                   _handleAction(context, action);
                 },
                 itemBuilder: (context) => <PopupMenuEntry<_DrinkEntryAction>>[
                   PopupMenuItem<_DrinkEntryAction>(
-                    key: Key('history-entry-edit-${entry.id}'),
+                    key: Key('feed-entry-edit-${entry.id}'),
                     value: _DrinkEntryAction.edit,
                     child: Text(AppLocalizations.of(context).editEntry),
                   ),
                   PopupMenuItem<_DrinkEntryAction>(
-                    key: Key('history-entry-delete-${entry.id}'),
+                    key: Key('feed-entry-delete-${entry.id}'),
                     value: _DrinkEntryAction.delete,
                     child: Text(AppLocalizations.of(context).deleteEntry),
                   ),
@@ -460,7 +665,7 @@ class _DrinkEntryCard extends StatelessWidget {
           if (entry.imagePath != null) ...<Widget>[
             const SizedBox(height: 14),
             AppPhotoPreview(
-              key: Key('history-entry-image-${entry.id}'),
+              key: Key('feed-entry-image-${entry.id}'),
               imagePath: entry.imagePath,
               cropPortraitToSquare: true,
               enableFullscreenOnTap: true,

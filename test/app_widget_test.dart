@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
+import 'package:glasstrail/src/locale_memory.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
@@ -35,6 +36,12 @@ Future<void> _tapPhotoAction(
   }
 
   await tester.tap(sourceOption);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _switchToSignUp(WidgetTester tester) async {
+  await tester.ensureVisible(find.byKey(const Key('auth-mode-segmented')));
+  await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
   await tester.pumpAndSettle();
 }
 
@@ -207,7 +214,61 @@ void main() {
     expect(brandTitle.softWrap, isFalse);
     expect(find.text('Track every glass'), findsOneWidget);
     expect(find.text('Glass Trail'), findsOneWidget);
+    expect(find.byKey(const Key('auth-language-selector')), findsOneWidget);
+    expect(find.byKey(const Key('auth-language-dropdown')), findsOneWidget);
+    expect(find.byIcon(Icons.language_rounded), findsOneWidget);
+    expect(
+      find.byKey(const Key('auth-language-segmented-control')),
+      findsNothing,
+    );
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+  });
+
+  testWidgets('shows the current auth language in a dedicated dropdown', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('auth-language-dropdown')), findsOneWidget);
+    expect(find.text('Deutsch'), findsOneWidget);
+    expect(find.text('Jedes Glas festhalten'), findsOneWidget);
+  });
+
+  testWidgets('updates and remembers auth language from the dropdown', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final localeMemory = await LocaleMemory.create();
+    final controller = await buildTestController();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        localeMemory: localeMemory,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('auth-language-dropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Deutsch').last);
+    await tester.pumpAndSettle();
+
+    expect(controller.settings.localeCode, 'de');
+    expect(localeMemory.localeCode, 'de');
+    expect(find.text('Jedes Glas festhalten'), findsOneWidget);
   });
 
   testWidgets('configures browser autofill hints for auth fields', (
@@ -230,8 +291,7 @@ void main() {
     expect(signInEmailField.autofillHints, contains(AutofillHints.email));
     expect(signInPasswordField.autofillHints, contains(AutofillHints.password));
 
-    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
-    await tester.pumpAndSettle();
+    await _switchToSignUp(tester);
 
     final signUpEmailField = fieldByLabel('Email');
     final signUpPasswordField = fieldByLabel('Password');
@@ -258,9 +318,7 @@ void main() {
     await tester.pumpWidget(app);
     await tester.pumpAndSettle();
 
-    final segmentedButtonFinder = find.byWidgetPredicate(
-      (widget) => widget is SegmentedButton,
-    );
+    final segmentedButtonFinder = find.byKey(const Key('auth-mode-segmented'));
     final segmentedButton = tester.widget<SegmentedButton<Object?>>(
       segmentedButtonFinder,
     );
@@ -271,9 +329,10 @@ void main() {
     final cardRect = tester.getRect(find.byType(Card));
     final segmentedRect = tester.getRect(segmentedButtonFinder);
     expect(segmentedRect.width, closeTo(cardRect.width - 48, 0.01));
+    expect(find.byKey(const Key('auth-language-dropdown')), findsOneWidget);
+    expect(tester.takeException(), isNull);
 
-    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
-    await tester.pumpAndSettle();
+    await _switchToSignUp(tester);
 
     expect(tester.takeException(), isNull);
   });
@@ -289,8 +348,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
-    await tester.pumpAndSettle();
+    await _switchToSignUp(tester);
     await _tapPhotoAction(tester, find.text('Pick photo'));
 
     expect(find.byKey(const Key('auth-profile-image-preview')), findsOneWidget);
@@ -311,8 +369,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
-    await tester.pumpAndSettle();
+    await _switchToSignUp(tester);
     await tester.ensureVisible(find.text('Pick photo'));
     await tester.tap(find.text('Pick photo'));
     await tester.pumpAndSettle();
@@ -350,8 +407,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
-    await tester.pumpAndSettle();
+    await _switchToSignUp(tester);
     await tester.enterText(
       find.byKey(const Key('signup-email-field')),
       'busy-signup@example.com',
@@ -386,7 +442,7 @@ void main() {
     repository.unblock();
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
   });
 
   testWidgets('submits sign-in on enter from the password field', (
@@ -420,7 +476,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
     expect(find.byKey(const Key('auth-submit-button')), findsNothing);
   });
 
@@ -503,7 +559,7 @@ void main() {
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsNothing);
+    expect(find.byKey(const Key('feed-streak-card')), findsNothing);
     expect(find.text('Category breakdown'), findsOneWidget);
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
@@ -522,8 +578,7 @@ void main() {
       findsNothing,
     );
 
-    await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
-    await tester.pumpAndSettle();
+    await _switchToSignUp(tester);
 
     await tester.enterText(
       find.byKey(const Key('signup-email-field')),
@@ -601,7 +656,7 @@ void main() {
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
     expect(find.byType(HomeShell), findsOneWidget);
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));

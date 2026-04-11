@@ -49,3 +49,4 @@ app.*.map.json
 /android/*.keystore
 
 /resources
+.codex

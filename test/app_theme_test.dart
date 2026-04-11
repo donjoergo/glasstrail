@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/src/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
   testWidgets('dark theme text styles satisfy WCAG contrast on surfaces', (
     tester,
   ) async {

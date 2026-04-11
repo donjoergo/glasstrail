@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 
 import '../app_controller.dart';
-import '../app_localizations.dart';
 import '../app_scope.dart';
+import '../l10n_extensions.dart';
 import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';
@@ -136,6 +137,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
               const SizedBox(height: 12),
               DropdownButtonFormField<DrinkCategory>(
                 initialValue: _category,
+                isExpanded: true,
                 decoration: InputDecoration(labelText: l10n.category),
                 items: DrinkCategory.values
                     .map(

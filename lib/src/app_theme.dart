@@ -114,28 +114,37 @@ class AppTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surface,
-        indicatorColor: scheme.primary.withValues(alpha: 0.14),
+        backgroundColor: scheme.primary.withValues(alpha: 0.1),
+        indicatorColor: scheme.primary.withValues(alpha: 0.24),
         labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>((states) {
           final color = states.contains(WidgetState.selected)
               ? scheme.onSurface
-              : scheme.onSurfaceVariant;
+              : scheme.onSurface.withValues(alpha: 0.8);
           return textTheme.labelMedium?.copyWith(
             color: color,
             fontWeight: FontWeight.w700,
           );
         }),
+        iconTheme: WidgetStateProperty.resolveWith<IconThemeData?>((states) {
+          final color = states.contains(WidgetState.selected)
+              ? scheme.primary
+              : scheme.onSurface.withValues(alpha: 0.8);
+          return IconThemeData(color: color);
+        }),
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: scheme.surface,
+        backgroundColor: scheme.primary.withValues(alpha: 0.1),
+        indicatorColor: scheme.primary.withValues(alpha: 0.24),
         selectedIconTheme: IconThemeData(color: scheme.primary),
-        unselectedIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
+        unselectedIconTheme: IconThemeData(
+          color: scheme.onSurface.withValues(alpha: 0.8),
+        ),
         selectedLabelTextStyle: textTheme.labelMedium?.copyWith(
           color: scheme.onSurface,
           fontWeight: FontWeight.w700,
         ),
         unselectedLabelTextStyle: textTheme.labelMedium?.copyWith(
-          color: scheme.onSurfaceVariant,
+          color: scheme.onSurface.withValues(alpha: 0.8),
           fontWeight: FontWeight.w600,
         ),
       ),
