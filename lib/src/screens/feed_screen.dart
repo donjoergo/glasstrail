@@ -22,14 +22,14 @@ bool debugForceUpdateNotice = const bool.fromEnvironment(
   defaultValue: false,
 );
 
-class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+class FeedScreen extends StatefulWidget {
+  const FeedScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  State<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class _FeedScreenState extends State<FeedScreen> {
   static const _lastAcknowledgedReleaseKey =
       'glasstrail.last_acknowledged_release';
   static final Uri _changelogUri = Uri.parse(
@@ -173,15 +173,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final locale = controller.settings.localeCode;
 
     return RefreshIndicator(
-      key: const Key('history-refresh-indicator'),
+      key: const Key('feed-refresh-indicator'),
       onRefresh: _refresh,
       child: ListView(
-        key: const Key('history-list-view'),
+        key: const Key('feed-list-view'),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         children: <Widget>[
           if (_updateNotice case final notice?) ...<Widget>[
-            _HistoryUpdateCard(
+            _FeedUpdateCard(
               version: notice.version,
               isBusy: _isHandlingUpdateNotice,
               onClose: () => _acknowledgeUpdateNotice(openChangelog: false),
@@ -190,11 +190,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             const SizedBox(height: 24),
           ],
-          _HistoryStreakCard(stats: stats),
+          _FeedStreakCard(stats: stats),
           const SizedBox(height: 24),
           if (entries.isEmpty)
             AppEmptyStateCard(
-              key: const Key('history-empty-state'),
+              key: const Key('feed-empty-state'),
               icon: Icons.hourglass_empty_rounded,
               title: l10n.noEntries,
               body: l10n.startLogging,
@@ -225,8 +225,8 @@ class _UpdateNoticeData {
   final String version;
 }
 
-class _HistoryUpdateCard extends StatelessWidget {
-  const _HistoryUpdateCard({
+class _FeedUpdateCard extends StatelessWidget {
+  const _FeedUpdateCard({
     required this.version,
     required this.isBusy,
     required this.onClose,
@@ -244,7 +244,7 @@ class _HistoryUpdateCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      key: const Key('history-update-card'),
+      key: const Key('feed-update-card'),
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
@@ -263,7 +263,7 @@ class _HistoryUpdateCard extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             l10n.appUpdatedBody(l10n.appTitle, version),
-            key: const Key('history-update-card-body'),
+            key: const Key('feed-update-card-body'),
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
               height: 1.35,
@@ -276,12 +276,12 @@ class _HistoryUpdateCard extends StatelessWidget {
             overflowSpacing: 12,
             children: <Widget>[
               TextButton(
-                key: const Key('history-update-card-close-button'),
+                key: const Key('feed-update-card-close-button'),
                 onPressed: isBusy ? null : onClose,
                 child: Text(l10n.close),
               ),
               FilledButton(
-                key: const Key('history-update-card-whats-new-button'),
+                key: const Key('feed-update-card-whats-new-button'),
                 onPressed: isBusy ? null : onOpenChangelog,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
@@ -302,8 +302,8 @@ class _HistoryUpdateCard extends StatelessWidget {
   }
 }
 
-class _HistoryStreakCard extends StatelessWidget {
-  const _HistoryStreakCard({required this.stats});
+class _FeedStreakCard extends StatelessWidget {
+  const _FeedStreakCard({required this.stats});
 
   final AppStatistics stats;
 
@@ -316,7 +316,7 @@ class _HistoryStreakCard extends StatelessWidget {
     final accentColors = _accentColors(theme);
 
     return Container(
-      key: const Key('history-streak-card'),
+      key: const Key('feed-streak-card'),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -356,7 +356,7 @@ class _HistoryStreakCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                key: const Key('history-streak-current-value'),
+                key: const Key('feed-streak-current-value'),
                 streakValue,
                 textAlign: TextAlign.right,
                 style: theme.textTheme.headlineSmall?.copyWith(
@@ -385,7 +385,7 @@ class _HistoryStreakCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            key: const Key('history-streak-message'),
+            key: const Key('feed-streak-message'),
             _streakMessage(l10n, stats),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: accentColors.messageColor,
@@ -472,7 +472,7 @@ class _WeekProgressIndicator extends StatelessWidget {
         : theme.colorScheme.onSurfaceVariant;
 
     return Column(
-      key: Key('history-streak-day-${day.weekday}'),
+      key: Key('feed-streak-day-${day.weekday}'),
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Container(
@@ -605,7 +605,7 @@ class _DrinkEntryCard extends StatelessWidget {
                         children: <Widget>[
                           Icon(
                             Icons.location_on_outlined,
-                            key: Key('history-entry-location-icon-${entry.id}'),
+                            key: Key('feed-entry-location-icon-${entry.id}'),
                             size: 16,
                             color: theme.colorScheme.primary,
                           ),
@@ -613,7 +613,7 @@ class _DrinkEntryCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               locationAddress,
-                              key: Key('history-entry-location-${entry.id}'),
+                              key: Key('feed-entry-location-${entry.id}'),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -638,19 +638,19 @@ class _DrinkEntryCard extends StatelessWidget {
                   child: Text(unit.formatVolume(entry.volumeMl)),
                 ),
               PopupMenuButton<_DrinkEntryAction>(
-                key: Key('history-entry-actions-${entry.id}'),
+                key: Key('feed-entry-actions-${entry.id}'),
                 enabled: !controller.isBusy,
                 onSelected: (action) {
                   _handleAction(context, action);
                 },
                 itemBuilder: (context) => <PopupMenuEntry<_DrinkEntryAction>>[
                   PopupMenuItem<_DrinkEntryAction>(
-                    key: Key('history-entry-edit-${entry.id}'),
+                    key: Key('feed-entry-edit-${entry.id}'),
                     value: _DrinkEntryAction.edit,
                     child: Text(AppLocalizations.of(context).editEntry),
                   ),
                   PopupMenuItem<_DrinkEntryAction>(
-                    key: Key('history-entry-delete-${entry.id}'),
+                    key: Key('feed-entry-delete-${entry.id}'),
                     value: _DrinkEntryAction.delete,
                     child: Text(AppLocalizations.of(context).deleteEntry),
                   ),
@@ -665,7 +665,7 @@ class _DrinkEntryCard extends StatelessWidget {
           if (entry.imagePath != null) ...<Widget>[
             const SizedBox(height: 14),
             AppPhotoPreview(
-              key: Key('history-entry-image-${entry.id}'),
+              key: Key('feed-entry-image-${entry.id}'),
               imagePath: entry.imagePath,
               cropPortraitToSquare: true,
               enableFullscreenOnTap: true,

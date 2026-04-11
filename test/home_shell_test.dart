@@ -16,7 +16,7 @@ import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/add_drink_screen.dart';
-import 'package:glasstrail/src/screens/history_screen.dart';
+import 'package:glasstrail/src/screens/feed_screen.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
 
@@ -1563,15 +1563,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
     expect(
-      tester.widget<Text>(
-        find.byKey(const Key('history-streak-current-value')),
-      ),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-current-value'))),
       isA<Text>().having((widget) => widget.data, 'data', '0 days'),
     );
     expect(
-      tester.widget<Text>(find.byKey(const Key('history-streak-message'))),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-message'))),
       isA<Text>().having(
         (widget) => widget.data,
         'data',
@@ -1579,8 +1577,8 @@ void main() {
       ),
     );
     expect(find.text('Details'), findsNothing);
-    expect(find.byKey(const Key('history-streak-day-1')), findsOneWidget);
-    expect(find.byKey(const Key('history-streak-day-7')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-day-1')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-day-7')), findsOneWidget);
   });
 
   testWidgets('does not show the changelog card on first launch', (
@@ -1603,7 +1601,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final preferences = await SharedPreferences.getInstance();
-    expect(find.byKey(const Key('history-update-card')), findsNothing);
+    expect(find.byKey(const Key('feed-update-card')), findsNothing);
     expect(
       preferences.getString(_lastAcknowledgedReleaseKey),
       _currentReleaseId,
@@ -1629,12 +1627,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final card = find.byKey(const Key('history-update-card'));
-    final streakCard = find.byKey(const Key('history-streak-card'));
+    final card = find.byKey(const Key('feed-update-card'));
+    final streakCard = find.byKey(const Key('feed-streak-card'));
 
     expect(card, findsOneWidget);
     expect(find.text('App updated'), findsOneWidget);
-    expect(find.byKey(const Key('history-update-card-body')), findsOneWidget);
+    expect(find.byKey(const Key('feed-update-card-body')), findsOneWidget);
     expect(find.textContaining('1.0.0'), findsOneWidget);
     expect(
       tester.getTopLeft(card).dy,
@@ -1663,7 +1661,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-update-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-update-card')), findsOneWidget);
     expect(find.textContaining('1.0.0'), findsOneWidget);
   });
 
@@ -1688,11 +1686,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('history-update-card-close-button')));
+    await tester.tap(find.byKey(const Key('feed-update-card-close-button')));
     await tester.pumpAndSettle();
 
     final preferences = await SharedPreferences.getInstance();
-    expect(find.byKey(const Key('history-update-card')), findsNothing);
+    expect(find.byKey(const Key('feed-update-card')), findsNothing);
     expect(
       preferences.getString(_lastAcknowledgedReleaseKey),
       _currentReleaseId,
@@ -1708,7 +1706,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-update-card')), findsNothing);
+    expect(find.byKey(const Key('feed-update-card')), findsNothing);
   });
 
   testWidgets('opens the changelog and dismisses the card', (tester) async {
@@ -1731,7 +1729,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.byKey(const Key('history-update-card-whats-new-button')),
+      find.byKey(const Key('feed-update-card-whats-new-button')),
     );
     await tester.pumpAndSettle();
 
@@ -1745,7 +1743,7 @@ void main() {
       preferences.getString(_lastAcknowledgedReleaseKey),
       _currentReleaseId,
     );
-    expect(find.byKey(const Key('history-update-card')), findsNothing);
+    expect(find.byKey(const Key('feed-update-card')), findsNothing);
   });
 
   testWidgets('keeps the changelog card visible when opening fails', (
@@ -1771,12 +1769,12 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(
-      find.byKey(const Key('history-update-card-whats-new-button')),
+      find.byKey(const Key('feed-update-card-whats-new-button')),
     );
     await tester.pumpAndSettle();
 
     final preferences = await SharedPreferences.getInstance();
-    expect(find.byKey(const Key('history-update-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-update-card')), findsOneWidget);
     expect(
       find.text('Something went wrong. Please try again.'),
       findsOneWidget,
@@ -1847,9 +1845,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<Text>(
-        find.byKey(const Key('history-streak-current-value')),
-      ),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-current-value'))),
       isA<Text>().having((widget) => widget.data, 'data', '0 days'),
     );
     expect(find.text('Pils'), findsNothing);
@@ -1865,7 +1861,7 @@ void main() {
     expect(find.text('Pils'), findsNothing);
 
     await tester.drag(
-      find.byKey(const Key('history-list-view')),
+      find.byKey(const Key('feed-list-view')),
       const Offset(0, 300),
     );
     await tester.pump();
@@ -1873,13 +1869,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<Text>(
-        find.byKey(const Key('history-streak-current-value')),
-      ),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-current-value'))),
       isA<Text>().having((widget) => widget.data, 'data', '1 day'),
     );
     expect(
-      tester.widget<Text>(find.byKey(const Key('history-streak-message'))),
+      tester.widget<Text>(find.byKey(const Key('feed-streak-message'))),
       isA<Text>().having(
         (widget) => widget.data,
         'data',
@@ -2350,8 +2344,8 @@ void main() {
 
     expect(find.text('Water'), findsOneWidget);
     expect(find.text('Should stay out of compact stats history'), findsNothing);
-    expect(find.byKey(Key('history-entry-image-$entryId')), findsNothing);
-    expect(find.byKey(Key('history-entry-actions-$entryId')), findsNothing);
+    expect(find.byKey(Key('feed-entry-image-$entryId')), findsNothing);
+    expect(find.byKey(Key('feed-entry-actions-$entryId')), findsNothing);
   });
 
   testWidgets('shows an empty state for statistics history without entries', (
@@ -3313,12 +3307,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(Key('history-entry-image-$entryId')), findsOneWidget);
+      expect(find.byKey(Key('feed-entry-image-$entryId')), findsOneWidget);
       expect(find.text('before-edit.png'), findsNothing);
 
-      await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+      await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
+      await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
       await tester.pumpAndSettle();
 
       final commentField = tester.widget<TextFormField>(
@@ -3375,9 +3369,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
     await tester.pumpAndSettle();
     await _tapPhotoAction(
       tester,
@@ -3417,9 +3411,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(Key('history-entry-edit-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('edit-entry-comment-field')),
@@ -3481,9 +3475,9 @@ void main() {
 
     expect(find.text('Pils'), findsOneWidget);
 
-    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(Key('history-entry-delete-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-delete-$entryId')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('delete-entry-confirm-button')));
     await tester.pumpAndSettle();
@@ -3493,7 +3487,7 @@ void main() {
     expect(find.text('No drinks logged yet.'), findsOneWidget);
 
     final streakValue = tester.widget<Text>(
-      find.byKey(const Key('history-streak-current-value')),
+      find.byKey(const Key('feed-streak-current-value')),
     );
     expect(streakValue.data, '0 days');
   });
@@ -3522,9 +3516,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(Key('history-entry-actions-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(Key('history-entry-delete-$entryId')));
+    await tester.tap(find.byKey(Key('feed-entry-delete-$entryId')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('delete-entry-confirm-button')));
     await tester.pump();

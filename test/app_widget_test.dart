@@ -442,7 +442,7 @@ void main() {
     repository.unblock();
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
   });
 
   testWidgets('submits sign-in on enter from the password field', (
@@ -476,7 +476,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
     expect(find.byKey(const Key('auth-submit-button')), findsNothing);
   });
 
@@ -559,7 +559,7 @@ void main() {
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsNothing);
+    expect(find.byKey(const Key('feed-streak-card')), findsNothing);
     expect(find.text('Category breakdown'), findsOneWidget);
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
@@ -656,7 +656,7 @@ void main() {
     await tester.tap(find.byKey(const Key('auth-submit-button')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('history-streak-card')), findsOneWidget);
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
     expect(find.byType(HomeShell), findsOneWidget);
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));

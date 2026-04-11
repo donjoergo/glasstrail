@@ -5,7 +5,7 @@ import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';
 import 'bar_screen.dart';
-import 'history_screen.dart';
+import 'feed_screen.dart';
 import 'profile_screen.dart';
 import 'statistics_screen.dart';
 
@@ -15,7 +15,7 @@ class HomeShell extends StatelessWidget {
   final String routeName;
 
   static const _pages = <Widget>[
-    HistoryScreen(),
+    FeedScreen(),
     StatisticsScreen(),
     BarScreen(),
     ProfileScreen(),
