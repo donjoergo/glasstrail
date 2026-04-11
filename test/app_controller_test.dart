@@ -332,6 +332,46 @@ void main() {
     },
   );
 
+  test(
+    'removes a custom drink photo when saving an existing custom drink',
+    () async {
+      final controller = await buildTestController();
+      final german = _l10n('de');
+
+      await controller.signUp(
+        email: 'custom-photo-remove@example.com',
+        password: 'password123',
+        displayName: 'Custom Photo Remove',
+      );
+      controller.takeFlashMessage(german);
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+        imagePath: '/tmp/custom-drink.png',
+      );
+      controller.takeFlashMessage(german);
+
+      final existing = controller.customDrinks.single;
+
+      final success = await controller.saveCustomDrink(
+        drinkId: existing.id,
+        name: existing.name,
+        category: existing.category,
+        volumeMl: existing.volumeMl,
+        imagePath: null,
+      );
+
+      expect(success, isTrue);
+      expect(controller.customDrinks.single.imagePath, isNull);
+      expect(
+        controller.takeFlashMessage(german),
+        'Eigenes Getränk gespeichert.',
+      );
+    },
+  );
+
   test('localizes mapped repository error messages', () async {
     final controller = await buildTestController();
     final german = _l10n('de');
