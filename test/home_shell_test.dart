@@ -168,6 +168,18 @@ Finder _statisticsMapMarkers() {
   });
 }
 
+Finder _appBarRichText(String text) {
+  return find.descendant(
+    of: find.byType(AppBar),
+    matching: find.byWidgetPredicate((widget) {
+      if (widget is! RichText) {
+        return false;
+      }
+      return widget.text.toPlainText() == text;
+    }),
+  );
+}
+
 Future<List<DrinkEntry>> _seedGalleryEntries(
   AppController controller, {
   required int count,
@@ -3191,6 +3203,79 @@ void main() {
     expect(thirdRect.left, lessThan(fourthRect.left));
     expect(fourthRect.left, lessThan(fifthRect.left));
   });
+
+  testWidgets('uses a square rail surface on wider screens', (tester) async {
+    _setSurfaceSize(tester, const Size(1200, 1366));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'wide-shell@example.com',
+      password: 'password123',
+      displayName: 'Wide Shell',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+
+    final railContainer = tester.widget<Container>(
+      find.byKey(const Key('home-shell-wide-rail-shell')),
+    );
+    expect(railContainer.decoration, isNull);
+    expect(railContainer.color, isNotNull);
+  });
+
+  testWidgets(
+    'renders dynamic size properties for the home shell app bar title',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1200, 1366));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'responsive-title@example.com',
+        password: 'password123',
+        displayName: 'Responsive Title',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.profile,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final wideTitle = tester.widget<RichText>(_appBarRichText('Profile'));
+      final wideStyle = (wideTitle.text as TextSpan).style;
+
+      expect(wideStyle?.fontSize, 24);
+      expect(wideStyle?.fontWeight, FontWeight.w800);
+
+      _setSurfaceSize(tester, const Size(400, 800));
+      await tester.pumpAndSettle();
+
+      final narrowTitle = tester.widget<RichText>(_appBarRichText('Profile'));
+      final narrowStyle = (narrowTitle.text as TextSpan).style;
+
+      expect(narrowStyle?.fontSize, 20);
+      expect(narrowStyle?.fontWeight, FontWeight.w800);
+    },
+  );
 
   testWidgets(
     'edits entry comment and image from history without exposing drink controls',

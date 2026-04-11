@@ -46,6 +46,13 @@ class HomeShell extends StatelessWidget {
     final isLeftHanded = handedness == AppHandedness.left;
     final titles = <String>[l10n.feed, l10n.statistics, l10n.bar, l10n.profile];
     final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final appBarTitleStyle = theme.textTheme.headlineSmall?.copyWith(
+      fontSize: isWide ? 24 : 20,
+      fontWeight: FontWeight.w800,
+      color: theme.colorScheme.onSurface,
+      height: 1,
+      // letterSpacing: -0.4,
+    );
     final fab = FloatingActionButton.extended(
       key: const Key('global-add-drink-fab'),
       onPressed: () => _openAddDrink(context),
@@ -55,18 +62,18 @@ class HomeShell extends StatelessWidget {
 
     if (isWide) {
       return Scaffold(
-        appBar: AppBar(title: Text(titles[currentIndex])),
+        appBar: AppBar(
+          title: Text(titles[currentIndex], style: appBarTitleStyle),
+        ),
         body: Stack(
           children: <Widget>[
             Row(
               children: <Widget>[
                 Container(
+                  key: const Key('home-shell-wide-rail-shell'),
                   width: 112,
                   margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(28),
-                  ),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   child: NavigationRail(
                     selectedIndex: currentIndex,
                     useIndicator: true,
@@ -74,13 +81,13 @@ class HomeShell extends StatelessWidget {
                         _openHomeRoute(context, index),
                     destinations: <NavigationRailDestination>[
                       NavigationRailDestination(
-                        icon: const Icon(Icons.view_timeline_outlined),
-                        selectedIcon: const Icon(Icons.view_timeline_rounded),
+                        icon: const Icon(Icons.rss_feed_outlined),
+                        selectedIcon: const Icon(Icons.rss_feed_rounded),
                         label: Text(l10n.feed),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.pie_chart_outline_rounded),
-                        selectedIcon: const Icon(Icons.pie_chart_rounded),
+                        icon: const Icon(Icons.bar_chart_outlined),
+                        selectedIcon: const Icon(Icons.bar_chart_rounded),
                         label: Text(l10n.statistics),
                       ),
                       NavigationRailDestination(
@@ -111,7 +118,9 @@ class HomeShell extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(titles[currentIndex])),
+      appBar: AppBar(
+        title: Text(titles[currentIndex], style: appBarTitleStyle),
+      ),
       body: _pages[currentIndex],
       floatingActionButton: fab,
       floatingActionButtonLocation: isLeftHanded
@@ -122,13 +131,13 @@ class HomeShell extends StatelessWidget {
         onDestinationSelected: (index) => _openHomeRoute(context, index),
         destinations: <NavigationDestination>[
           NavigationDestination(
-            icon: const Icon(Icons.view_timeline_outlined),
-            selectedIcon: const Icon(Icons.view_timeline_rounded),
+            icon: const Icon(Icons.rss_feed_outlined),
+            selectedIcon: const Icon(Icons.rss_feed_rounded),
             label: l10n.feed,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.pie_chart_outline_rounded),
-            selectedIcon: const Icon(Icons.pie_chart_rounded),
+            icon: const Icon(Icons.bar_chart_outlined),
+            selectedIcon: const Icon(Icons.bar_chart_rounded),
             label: l10n.statistics,
           ),
           NavigationDestination(

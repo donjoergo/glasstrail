@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
 import '../app_controller.dart';
+import '../app_locale_catalog.dart';
 import '../birthday.dart';
 import '../app_scope.dart';
 import '../photo_pick_flow.dart';
@@ -107,13 +108,17 @@ class _AuthScreenState extends State<AuthScreen> {
       ).showSnackBar(SnackBar(content: Text(message)));
     }
     if (success) {
-      FocusScope.of(context).unfocus();
-      TextInput.finishAutofillContext();
+      final localeMemory = AppScope.localeMemoryOf(context);
+      final routeMemory = AppScope.routeMemoryOf(context);
       final arguments = ModalRoute.of(context)?.settings.arguments;
       final redirectRoute = arguments is String ? arguments : null;
-      final targetRoute = await AppScope.routeMemoryOf(
-        context,
-      ).consumePostAuthRoute(redirectRoute);
+      await localeMemory.rememberLocale(controller.settings.localeCode);
+      if (!mounted) {
+        return;
+      }
+      FocusScope.of(context).unfocus();
+      TextInput.finishAutofillContext();
+      final targetRoute = await routeMemory.consumePostAuthRoute(redirectRoute);
       if (!mounted) {
         return;
       }
@@ -121,12 +126,29 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _updateLocale(String localeCode) async {
+    final controller = AppScope.controllerOf(context);
+    final nextLocale = AppLocaleCatalog.normalizeCode(localeCode);
+    if (controller.settings.localeCode == nextLocale) {
+      return;
+    }
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: nextLocale),
+    );
+    if (!mounted) {
+      return;
+    }
+    await AppScope.localeMemoryOf(context).rememberLocale(nextLocale);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
-    final localeCode = controller.settings.localeCode;
+    final localeCode = AppLocaleCatalog.normalizeCode(
+      controller.settings.localeCode,
+    );
     final isBusy = controller.isBusy;
     final isSubmitting = controller.isBusyFor(
       _mode == _AuthMode.signIn ? AppBusyAction.signIn : AppBusyAction.signUp,
@@ -179,9 +201,17 @@ class _AuthScreenState extends State<AuthScreen> {
                               style: theme.textTheme.bodyLarge,
                             ),
                             const SizedBox(height: 20),
+                            _buildLanguageSelector(
+                              theme: theme,
+                              l10n: l10n,
+                              localeCode: localeCode,
+                              isBusy: isBusy,
+                            ),
+                            const SizedBox(height: 28),
                             SizedBox(
                               width: double.infinity,
                               child: SegmentedButton<_AuthMode>(
+                                key: const Key('auth-mode-segmented'),
                                 segments: <ButtonSegment<_AuthMode>>[
                                   ButtonSegment<_AuthMode>(
                                     value: _AuthMode.signIn,
@@ -245,6 +275,95 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageSelector({
+    required ThemeData theme,
+    required AppLocalizations l10n,
+    required String localeCode,
+    required bool isBusy,
+  }) {
+    return Container(
+      key: const Key('auth-language-selector'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.language_rounded, color: theme.colorScheme.primary),
+              const SizedBox(width: 10),
+              Text(
+                l10n.language,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            key: const Key('auth-language-dropdown'),
+            initialValue: localeCode,
+            isExpanded: true,
+            menuMaxHeight: 280,
+            borderRadius: BorderRadius.circular(20),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 14,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.35),
+                ),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.18),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.primary,
+                  width: 1.4,
+                ),
+              ),
+            ),
+            items: AppLocaleCatalog.options
+                .map(
+                  (option) => DropdownMenuItem<String>(
+                    value: option.code,
+                    child: Text(
+                      option.nativeLabel,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: isBusy
+                ? null
+                : (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    _updateLocale(value);
+                  },
+          ),
+        ],
       ),
     );
   }

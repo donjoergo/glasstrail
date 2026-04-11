@@ -5,8 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Language picker in auth page
+
+### Changed
+- Branding
+  - New icons for feed and statistics
+  - Improved splash screen
+  - Added theme-color for mobile browsers
+  - Bigger app bar titles
+  - apk builds are now named glasstrail-vX.X.X-release.apk
+
 ### Fixed
-- bundle a web emoji font subset for the profile attribution
+- Fix warning in web regarding missing emoji font subset
 
 ## [1.1.0] - 2026-04-10
 ### Added

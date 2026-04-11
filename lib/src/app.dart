@@ -10,6 +10,7 @@ import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';
 import 'backend_config.dart';
+import 'locale_memory.dart';
 import 'location_service.dart';
 import 'models.dart';
 import 'photo_service.dart';
@@ -20,6 +21,7 @@ import 'screens/edit_profile_screen.dart';
 import 'screens/home_shell.dart';
 
 const _appDisplayTitle = 'Glass Trail';
+const _brandIconAsset = 'assets/icon/app_icon.png';
 
 class GlassTrailBootstrapApp extends StatefulWidget {
   const GlassTrailBootstrapApp({
@@ -30,6 +32,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
     this.initialRoute,
     this.controllerFuture,
     this.routeMemoryFuture,
+    this.localeMemoryFuture,
   });
 
   final PhotoService photoService;
@@ -38,6 +41,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
   final String? initialRoute;
   final Future<AppController>? controllerFuture;
   final Future<RouteMemory>? routeMemoryFuture;
+  final Future<LocaleMemory>? localeMemoryFuture;
 
   @override
   State<GlassTrailBootstrapApp> createState() => _GlassTrailBootstrapAppState();
@@ -67,12 +71,14 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
             photoService: widget.photoService,
             locationService: widget.locationService,
             routeMemory: bootstrapData.routeMemory,
+            localeMemory: bootstrapData.localeMemory,
             initialRoute: widget.initialRoute,
           );
         }
         return _BootstrapShell(
           hasError: snapshot.hasError,
           initialRoute: widget.initialRoute,
+          localeCode: snapshot.data?.localeCode ?? 'en',
         );
       },
     );
@@ -87,8 +93,25 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
         (kIsWeb
             ? RouteMemory.create()
             : Future<RouteMemory>.value(RouteMemory.disabled()));
+    final Future<LocaleMemory> localeMemoryFuture =
+        widget.localeMemoryFuture ?? LocaleMemory.create();
     final routeMemory = await routeMemoryFuture;
-    return _BootstrapData(controller: controller, routeMemory: routeMemory);
+    final localeMemory = await localeMemoryFuture;
+    var bootstrapLocaleCode = localeMemory.localeCode;
+    if (controller.isAuthenticated) {
+      bootstrapLocaleCode = controller.settings.localeCode;
+      await localeMemory.rememberLocale(bootstrapLocaleCode);
+    } else if (controller.settings.localeCode != bootstrapLocaleCode) {
+      await controller.updateSettings(
+        controller.settings.copyWith(localeCode: bootstrapLocaleCode),
+      );
+    }
+    return _BootstrapData(
+      controller: controller,
+      routeMemory: routeMemory,
+      localeMemory: localeMemory,
+      localeCode: bootstrapLocaleCode,
+    );
   }
 }
 
@@ -99,13 +122,16 @@ class GlassTrailApp extends StatelessWidget {
     required this.photoService,
     this.locationService = const PlatformLocationService(),
     RouteMemory? routeMemory,
+    LocaleMemory? localeMemory,
     this.initialRoute,
-  }) : routeMemory = routeMemory ?? RouteMemory.disabled();
+  }) : routeMemory = routeMemory ?? RouteMemory.disabled(),
+       localeMemory = localeMemory ?? LocaleMemory.disabled();
 
   final AppController controller;
   final PhotoService photoService;
   final LocationService locationService;
   final RouteMemory routeMemory;
+  final LocaleMemory localeMemory;
   final String? initialRoute;
 
   @override
@@ -115,6 +141,7 @@ class GlassTrailApp extends StatelessWidget {
       photoService: photoService,
       locationService: locationService,
       routeMemory: routeMemory,
+      localeMemory: localeMemory,
       child: AnimatedBuilder(
         animation: controller,
         builder: (context, _) {
@@ -168,9 +195,14 @@ class GlassTrailApp extends StatelessWidget {
 }
 
 class _BootstrapShell extends StatelessWidget {
-  const _BootstrapShell({required this.hasError, this.initialRoute});
+  const _BootstrapShell({
+    required this.hasError,
+    required this.localeCode,
+    this.initialRoute,
+  });
 
   final bool hasError;
+  final String localeCode;
   final String? initialRoute;
 
   @override
@@ -189,6 +221,7 @@ class _BootstrapShell extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
+      locale: Locale(localeCode),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
         AppLocalizations.delegate,
@@ -242,13 +275,20 @@ class _BootstrapScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      CircleAvatar(
-                        radius: 28,
-                        backgroundColor: theme.colorScheme.primary.withValues(
-                          alpha: 0.12,
+                      Material(
+                        elevation: 16,
+                        shadowColor: theme.colorScheme.shadow.withValues(
+                          alpha: 0.28,
                         ),
-                        foregroundColor: theme.colorScheme.primary,
-                        child: const Icon(Icons.auto_awesome_rounded, size: 28),
+                        borderRadius: BorderRadius.circular(24),
+                        clipBehavior: Clip.antiAlias,
+                        child: SizedBox.square(
+                          dimension: 86,
+                          child: Image.asset(
+                            _brandIconAsset,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 18),
                       Text(
@@ -290,10 +330,17 @@ class _BootstrapScreen extends StatelessWidget {
 }
 
 class _BootstrapData {
-  const _BootstrapData({required this.controller, required this.routeMemory});
+  const _BootstrapData({
+    required this.controller,
+    required this.routeMemory,
+    required this.localeMemory,
+    required this.localeCode,
+  });
 
   final AppController controller;
   final RouteMemory routeMemory;
+  final LocaleMemory localeMemory;
+  final String localeCode;
 }
 
 class _AppRouteScreen extends StatelessWidget {
