@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fix warning in web regarding missing emoji font subset
+- center the bar custom drinks empty state card
 
 ## [1.1.0] - 2026-04-10
 ### Added

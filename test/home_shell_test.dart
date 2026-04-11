@@ -1149,6 +1149,12 @@ void main() {
   testWidgets('shows an empty state when no custom drinks exist', (
     tester,
   ) async {
+    _setSurfaceSize(tester, const Size(1000, 1200));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
     final controller = await buildTestController();
     await controller.signUp(
       email: 'bar-custom-empty@example.com',
@@ -1167,7 +1173,10 @@ void main() {
 
     await _openBarCustomDrinksTab(tester);
 
-    expect(find.byKey(const Key('bar-custom-empty-state')), findsOneWidget);
+    final emptyState = find.byKey(const Key('bar-custom-empty-state'));
+    final customSection = find.byKey(const Key('bar-custom-drinks-section'));
+
+    expect(emptyState, findsOneWidget);
     expect(find.text('No custom drinks yet'), findsOneWidget);
     expect(
       find.text('Create your first custom drink and it will appear here.'),
@@ -1177,6 +1186,11 @@ void main() {
       find.byKey(const Key('bar-add-custom-drink-button')),
       findsOneWidget,
     );
+
+    final emptyStateRect = tester.getRect(emptyState);
+    final customSectionRect = tester.getRect(customSection);
+    expect(emptyStateRect.width, lessThan(400));
+    expect(emptyStateRect.center.dx, closeTo(customSectionRect.center.dx, 0.1));
   });
 
   testWidgets('shows a spinner while saving a custom drink', (tester) async {

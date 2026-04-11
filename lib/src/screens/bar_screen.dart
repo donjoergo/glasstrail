@@ -250,11 +250,17 @@ class _BarCustomDrinksTab extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               if (controller.customDrinks.isEmpty)
-                AppEmptyStateCard(
-                  key: const Key('bar-custom-empty-state'),
-                  icon: Icons.local_bar_outlined,
-                  title: l10n.customDrinksEmptyTitle,
-                  body: l10n.customDrinksEmptyBody,
+                Align(
+                  alignment: Alignment.center,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: AppEmptyStateCard(
+                      key: const Key('bar-custom-empty-state'),
+                      icon: Icons.local_bar_outlined,
+                      title: l10n.customDrinksEmptyTitle,
+                      body: l10n.customDrinksEmptyBody,
+                    ),
+                  ),
                 )
               else
                 ...controller.customDrinks.map(
