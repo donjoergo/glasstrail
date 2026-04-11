@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the backend info card from the profile screen
 - Highlight delete and remove actions in red
 - added dedicated routes for statistics and bar tabs
+- Category chips in statistics are now only shown when corresponding data is available
 
 ### Fixed
 - Fix warning in web regarding missing emoji font subset

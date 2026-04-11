@@ -2513,38 +2513,6 @@ void main() {
       find.byKey(const Key('stats-category-chip-icon-beer')),
       findsOneWidget,
     );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-wine')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-sparklingWines')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-longdrinks')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-spirits')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-shots')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-cocktails')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-appleWines')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-nonAlcoholic')),
-      findsOneWidget,
-    );
   });
 
   testWidgets('shows the new global drink categories in the bar', (
@@ -2830,13 +2798,6 @@ void main() {
 
     expect(find.text('Pils'), findsNothing);
     expect(find.text('Red Wine'), findsOneWidget);
-
-    await tester.tap(find.widgetWithText(FilterChip, 'Non-alcoholic (0)'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Pils'), findsNothing);
-    expect(find.text('Red Wine'), findsNothing);
-    expect(find.text('No drinks match the current filter.'), findsOneWidget);
   });
 
   testWidgets('shows the map empty state and gallery empty state', (

@@ -859,17 +859,22 @@ class _StatisticsOverviewPage extends StatelessWidget {
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: DrinkCategory.values.map((category) {
-                    final count = stats.categoryCounts[category] ?? 0;
-                    return _StatisticsLegendChip(
-                      iconKey: Key(
-                        'stats-category-chip-icon-${category.storageValue}',
-                      ),
-                      label: '${l10n.categoryLabel(category)} ($count)',
-                      icon: category.icon,
-                      accentColor: colors[category]!,
-                    );
-                  }).toList(),
+                  children: DrinkCategory.values
+                      .where(
+                        (category) => (stats.categoryCounts[category] ?? 0) > 0,
+                      )
+                      .map((category) {
+                        final count = stats.categoryCounts[category] ?? 0;
+                        return _StatisticsLegendChip(
+                          iconKey: Key(
+                            'stats-category-chip-icon-${category.storageValue}',
+                          ),
+                          label: '${l10n.categoryLabel(category)} ($count)',
+                          icon: category.icon,
+                          accentColor: colors[category]!,
+                        );
+                      })
+                      .toList(),
                 ),
               ],
             ),
@@ -1938,29 +1943,38 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
               child: Wrap(
                 spacing: 10,
                 runSpacing: 10,
-                children: DrinkCategory.values.map((category) {
-                  final count =
-                      controller.statistics.categoryCounts[category] ?? 0;
-                  return FilterChip(
-                    selected: _selectedCategory == category,
-                    showCheckmark: false,
-                    avatar: Icon(
-                      category.icon,
-                      key: Key(
-                        'statistics-history-category-chip-icon-${category.storageValue}',
-                      ),
-                      size: 18,
-                    ),
-                    label: Text('${l10n.categoryLabel(category)} ($count)'),
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedCategory = _selectedCategory == category
-                            ? null
-                            : category;
-                      });
-                    },
-                  );
-                }).toList(),
+                children: DrinkCategory.values
+                    .where(
+                      (category) =>
+                          (controller.statistics.categoryCounts[category] ??
+                                  0) >
+                              0 ||
+                          _selectedCategory == category,
+                    )
+                    .map((category) {
+                      final count =
+                          controller.statistics.categoryCounts[category] ?? 0;
+                      return FilterChip(
+                        selected: _selectedCategory == category,
+                        showCheckmark: false,
+                        avatar: Icon(
+                          category.icon,
+                          key: Key(
+                            'statistics-history-category-chip-icon-${category.storageValue}',
+                          ),
+                          size: 18,
+                        ),
+                        label: Text('${l10n.categoryLabel(category)} ($count)'),
+                        onSelected: (_) {
+                          setState(() {
+                            _selectedCategory = _selectedCategory == category
+                                ? null
+                                : category;
+                          });
+                        },
+                      );
+                    })
+                    .toList(),
               ),
             ),
             const SizedBox(height: 24),
