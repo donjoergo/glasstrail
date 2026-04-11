@@ -32,6 +32,15 @@ const _changelogUrl =
 AppLocalizations _l10n(String languageCode) =>
     lookupAppLocalizations(Locale(languageCode));
 
+Color? _foregroundColor(ButtonStyle? style) =>
+    style?.foregroundColor?.resolve(<WidgetState>{});
+
+Color? _backgroundColor(ButtonStyle? style) =>
+    style?.backgroundColor?.resolve(<WidgetState>{});
+
+BorderSide? _borderSide(ButtonStyle? style) =>
+    style?.side?.resolve(<WidgetState>{});
+
 Future<({AppController controller, BlockingLocalAppRepository repository})>
 _buildBlockedHarness(AppBusyAction action) async {
   final repository = await buildBlockingLocalRepository(blockedAction: action);
@@ -375,6 +384,30 @@ void main() {
     expect(
       birthdayRect.top,
       moreOrLessEquals(removeBirthdayRect.top, epsilon: 0.01),
+    );
+
+    final theme = Theme.of(
+      tester.element(find.byKey(const Key('edit-profile-save-button'))),
+    );
+    final removePhotoButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('edit-profile-remove-photo-button')),
+    );
+    final removeBirthdayButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('edit-profile-remove-birthday-button')),
+    );
+
+    expect(_foregroundColor(removePhotoButton.style), theme.colorScheme.error);
+    expect(
+      _borderSide(removePhotoButton.style),
+      BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.72)),
+    );
+    expect(
+      _foregroundColor(removeBirthdayButton.style),
+      theme.colorScheme.error,
+    );
+    expect(
+      _borderSide(removeBirthdayButton.style),
+      BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.72)),
     );
   });
 
@@ -1292,9 +1325,30 @@ void main() {
         find.byKey(const Key('custom-drink-delete-button')),
         findsOneWidget,
       );
+      final dialogTheme = Theme.of(
+        tester.element(find.byKey(const Key('custom-drink-delete-button'))),
+      );
+      final deleteButton = tester.widget<TextButton>(
+        find.byKey(const Key('custom-drink-delete-button')),
+      );
+      expect(
+        _foregroundColor(deleteButton.style),
+        dialogTheme.colorScheme.error,
+      );
 
       await tester.tap(find.byKey(const Key('custom-drink-delete-button')));
       await tester.pumpAndSettle();
+      final confirmButton = tester.widget<FilledButton>(
+        find.byKey(const Key('delete-custom-drink-confirm-button')),
+      );
+      expect(
+        _backgroundColor(confirmButton.style),
+        dialogTheme.colorScheme.error,
+      );
+      expect(
+        _foregroundColor(confirmButton.style),
+        dialogTheme.colorScheme.onError,
+      );
       await tester.tap(
         find.byKey(const Key('delete-custom-drink-confirm-button')),
       );
@@ -3489,6 +3543,22 @@ void main() {
       expect(find.text('before-edit.png'), findsNothing);
       expect(find.byKey(const Key('drink-search-field')), findsNothing);
       expect(find.byKey(const Key('drink-volume-field')), findsNothing);
+      final editDialogTheme = Theme.of(
+        tester.element(find.byKey(const Key('edit-entry-remove-photo-button'))),
+      );
+      final removePhotoButton = tester.widget<OutlinedButton>(
+        find.byKey(const Key('edit-entry-remove-photo-button')),
+      );
+      expect(
+        _foregroundColor(removePhotoButton.style),
+        editDialogTheme.colorScheme.error,
+      );
+      expect(
+        _borderSide(removePhotoButton.style),
+        BorderSide(
+          color: editDialogTheme.colorScheme.error.withValues(alpha: 0.72),
+        ),
+      );
 
       await tester.enterText(
         find.byKey(const Key('edit-entry-comment-field')),
@@ -3643,8 +3713,21 @@ void main() {
 
     await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
+    final deleteMenuLabel = tester.widget<Text>(find.text('Delete entry').last);
+    final menuTheme = Theme.of(
+      tester.element(find.byKey(const Key('feed-streak-card'))),
+    );
+    expect(deleteMenuLabel.style?.color, menuTheme.colorScheme.error);
     await tester.tap(find.byKey(Key('feed-entry-delete-$entryId')));
     await tester.pumpAndSettle();
+    final confirmButton = tester.widget<FilledButton>(
+      find.byKey(const Key('delete-entry-confirm-button')),
+    );
+    expect(_backgroundColor(confirmButton.style), menuTheme.colorScheme.error);
+    expect(
+      _foregroundColor(confirmButton.style),
+      menuTheme.colorScheme.onError,
+    );
     await tester.tap(find.byKey(const Key('delete-entry-confirm-button')));
     await tester.pumpAndSettle();
 

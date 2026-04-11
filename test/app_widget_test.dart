@@ -45,6 +45,12 @@ Future<void> _switchToSignUp(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Color? _foregroundColor(ButtonStyle? style) =>
+    style?.foregroundColor?.resolve(<WidgetState>{});
+
+BorderSide? _borderSide(ButtonStyle? style) =>
+    style?.side?.resolve(<WidgetState>{});
+
 void main() {
   testWidgets('shows a bootstrap screen until the controller is ready', (
     tester,
@@ -356,6 +362,43 @@ void main() {
     expect(photoService.pickedPresets, <ImageUploadPreset>[
       ImageUploadPreset.profile,
     ]);
+  });
+
+  testWidgets('styles sign-up remove actions as destructive', (tester) async {
+    final controller = await buildTestController();
+    final photoService = RecordingPhotoService();
+
+    await tester.pumpWidget(
+      GlassTrailApp(controller: controller, photoService: photoService),
+    );
+    await tester.pumpAndSettle();
+
+    await _switchToSignUp(tester);
+    await tester.tap(find.byKey(const Key('auth-birthday-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await _tapPhotoAction(tester, find.text('Pick photo'));
+
+    final theme = Theme.of(
+      tester.element(find.byKey(const Key('auth-remove-photo-button'))),
+    );
+    final removeBirthdayButton = tester.widget<IconButton>(
+      find.byKey(const Key('auth-remove-birthday-button')),
+    );
+    final removePhotoButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('auth-remove-photo-button')),
+    );
+
+    expect(
+      _foregroundColor(removeBirthdayButton.style),
+      theme.colorScheme.error,
+    );
+    expect(_foregroundColor(removePhotoButton.style), theme.colorScheme.error);
+    expect(
+      _borderSide(removePhotoButton.style),
+      BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.72)),
+    );
   });
 
   testWidgets('offers the Android camera option for sign-up photos', (

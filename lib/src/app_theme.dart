@@ -8,6 +8,28 @@ class AppTheme {
   static const _secondary = Color(0xFF4D908E);
   static const _tertiary = Color(0xFFE9C46A);
 
+  static ButtonStyle destructiveTextButtonStyle(ColorScheme scheme) =>
+      TextButton.styleFrom(foregroundColor: scheme.error);
+
+  static ButtonStyle destructiveOutlinedButtonStyle(ColorScheme scheme) =>
+      OutlinedButton.styleFrom(
+        foregroundColor: scheme.error,
+        side: BorderSide(color: scheme.error.withValues(alpha: 0.72)),
+      );
+
+  static ButtonStyle destructiveFilledButtonStyle(ColorScheme scheme) =>
+      FilledButton.styleFrom(
+        backgroundColor: scheme.error,
+        foregroundColor: scheme.onError,
+      );
+
+  static ButtonStyle destructiveIconButtonStyle(ColorScheme scheme) =>
+      IconButton.styleFrom(foregroundColor: scheme.error);
+
+  static TextStyle destructiveMenuTextStyle(ThemeData theme) =>
+      theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error) ??
+      TextStyle(color: theme.colorScheme.error);
+
   static ThemeData get lightTheme {
     final scheme =
         ColorScheme.fromSeed(

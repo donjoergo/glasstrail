@@ -35,7 +35,7 @@ void main() {
   testWidgets('dark theme form labels and chip labels satisfy WCAG contrast', (
     tester,
   ) async {
-    final theme = await _pumpDarkTheme(tester);
+    final theme = await _pumpTheme(tester, AppTheme.darkTheme);
     final scheme = theme.colorScheme;
     final inputFill = theme.inputDecorationTheme.fillColor!;
     final chipBackground = theme.chipTheme.backgroundColor!;
@@ -64,12 +64,52 @@ void main() {
       greaterThanOrEqualTo(4.5),
     );
   });
+
+  testWidgets('destructive action styles use error colors in both themes', (
+    tester,
+  ) async {
+    for (final themeData in <ThemeData>[
+      AppTheme.lightTheme,
+      AppTheme.darkTheme,
+    ]) {
+      final theme = await _pumpTheme(tester, themeData);
+      final scheme = theme.colorScheme;
+
+      final textStyle = AppTheme.destructiveTextButtonStyle(scheme);
+      final outlinedStyle = AppTheme.destructiveOutlinedButtonStyle(scheme);
+      final filledStyle = AppTheme.destructiveFilledButtonStyle(scheme);
+      final iconStyle = AppTheme.destructiveIconButtonStyle(scheme);
+
+      expect(textStyle.foregroundColor?.resolve(<WidgetState>{}), scheme.error);
+      expect(
+        outlinedStyle.foregroundColor?.resolve(<WidgetState>{}),
+        scheme.error,
+      );
+      expect(
+        outlinedStyle.side?.resolve(<WidgetState>{}),
+        BorderSide(color: scheme.error.withValues(alpha: 0.72)),
+      );
+      expect(
+        filledStyle.backgroundColor?.resolve(<WidgetState>{}),
+        scheme.error,
+      );
+      expect(
+        filledStyle.foregroundColor?.resolve(<WidgetState>{}),
+        scheme.onError,
+      );
+      expect(iconStyle.foregroundColor?.resolve(<WidgetState>{}), scheme.error);
+      expect(AppTheme.destructiveMenuTextStyle(theme).color, scheme.error);
+    }
+  });
 }
 
-Future<ThemeData> _pumpDarkTheme(WidgetTester tester) async {
+Future<ThemeData> _pumpDarkTheme(WidgetTester tester) =>
+    _pumpTheme(tester, AppTheme.darkTheme);
+
+Future<ThemeData> _pumpTheme(WidgetTester tester, ThemeData themeData) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.darkTheme,
+      theme: themeData,
       home: const Scaffold(body: SizedBox()),
     ),
   );

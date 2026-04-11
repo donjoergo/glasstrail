@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_theme.dart';
 import '../app_controller.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
@@ -529,6 +530,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
                       ),
                       if (_imagePath != null)
                         OutlinedButton.icon(
+                          style: AppTheme.destructiveOutlinedButtonStyle(
+                            theme.colorScheme,
+                          ),
                           onPressed: isBusy
                               ? null
                               : () {

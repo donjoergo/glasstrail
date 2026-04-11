@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_theme.dart';
 import '../app_controller.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
@@ -204,6 +205,9 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                   ),
                   if (_imagePath != null)
                     OutlinedButton.icon(
+                      style: AppTheme.destructiveOutlinedButtonStyle(
+                        theme.colorScheme,
+                      ),
                       onPressed: isBusy
                           ? null
                           : () {
@@ -232,9 +236,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
         if (isEditingDrink)
           TextButton(
             key: const Key('custom-drink-delete-button'),
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.error,
-            ),
+            style: AppTheme.destructiveTextButtonStyle(theme.colorScheme),
             onPressed: isBusy ? null : _confirmDelete,
             child: Text(l10n.deleteCustomDrink),
           ),
@@ -308,10 +310,7 @@ class _DeleteCustomDrinkDialogState extends State<_DeleteCustomDrinkDialog> {
         ),
         FilledButton(
           key: const Key('delete-custom-drink-confirm-button'),
-          style: FilledButton.styleFrom(
-            backgroundColor: theme.colorScheme.error,
-            foregroundColor: theme.colorScheme.onError,
-          ),
+          style: AppTheme.destructiveFilledButtonStyle(theme.colorScheme),
           onPressed: isBusy ? null : _delete,
           child: isDeleting
               ? SizedBox.square(
