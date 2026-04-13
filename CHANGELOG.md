@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - Fix failing tests in CI pipeline
+- apk now correctly named glasstrail-vX.X.X-release.apk
 
 ## [1.2.0] - 2026-04-13
 ### Added
