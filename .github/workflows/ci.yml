@@ -37,3 +37,11 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+      - name: Build
+        run: flutter build apk --release
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
