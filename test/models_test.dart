@@ -95,6 +95,14 @@ void main() {
       final beerCan = catalog.firstWhere((drink) => drink.id == 'beer-can');
       expect(beerCan.localizedNameDe, 'Dosenbier');
 
+      final nonAlcoholicBeer = catalog.firstWhere(
+        (drink) => drink.id == 'beer-non-alcoholic',
+      );
+      expect(nonAlcoholicBeer.category, DrinkCategory.beer);
+      expect(nonAlcoholicBeer.name, 'Non-alcoholic Beer');
+      expect(nonAlcoholicBeer.localizedNameDe, 'Alkoholfreies Bier');
+      expect(nonAlcoholicBeer.volumeMl, 500);
+
       final genericShot = catalog.firstWhere(
         (drink) => drink.id == 'shots-shot',
       );
@@ -110,6 +118,22 @@ void main() {
         (drink) => drink.id == 'appleWines-hard-seltzer',
       );
       expect(hardSeltzer.name, 'Hard Seltzer');
+
+      final mateTea = catalog.firstWhere(
+        (drink) => drink.id == 'nonAlcoholic-mate-tea',
+      );
+      expect(mateTea.category, DrinkCategory.nonAlcoholic);
+      expect(mateTea.name, 'Mate Tea');
+      expect(mateTea.localizedNameDe, 'Mate Tee');
+      expect(mateTea.volumeMl, 300);
+
+      final clubMate = catalog.firstWhere(
+        (drink) => drink.id == 'nonAlcoholic-club-mate',
+      );
+      expect(clubMate.category, DrinkCategory.nonAlcoholic);
+      expect(clubMate.name, 'Club-Mate');
+      expect(clubMate.localizedNameDe, 'Club-Mate');
+      expect(clubMate.volumeMl, 500);
     });
   });
 

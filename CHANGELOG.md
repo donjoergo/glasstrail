@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Language picker in auth page
 - Custom Drinks can now be deleted
 - BeerWithMe data import
+- Added non-alcoholic beer, mate tea and club-mate to global drinks
 
 ### Changed
 - Branding
