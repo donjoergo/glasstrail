@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom Drinks can now be deleted
 - BeerWithMe data import
 - Added non-alcoholic beer, mate tea and club-mate to global drinks
+- Statistics overview now includes an all-time total card
 
 ### Changed
 - Branding

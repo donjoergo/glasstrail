@@ -132,54 +132,81 @@ class _StatisticsOverviewPanel extends StatelessWidget {
           ),
           child: Column(
             children: <Widget>[
-              IntrinsicHeight(
-                child: Row(
-                  key: const Key('stats-overview-totals-row'),
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Expanded(
-                      child: _OverviewMetricTile(
-                        icon: Icons.calendar_view_week_rounded,
-                        iconKey: const Key('stats-card-icon-weekly'),
-                        label: l10n.weeklyTotal,
-                        value: '${stats.weeklyTotal}',
-                        valueKey: const Key('stats-card-value-weekly'),
-                        accentColor: theme.colorScheme.primary,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
-                        isCompact: isCompact,
-                      ),
+              Column(
+                key: const Key('stats-overview-totals-row'),
+                children: <Widget>[
+                  IntrinsicHeight(
+                    child: Row(
+                      key: const Key('stats-overview-totals-row-top'),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Expanded(
+                          child: _OverviewMetricTile(
+                            icon: Icons.calendar_view_week_rounded,
+                            iconKey: const Key('stats-card-icon-weekly'),
+                            label: l10n.weeklyTotal,
+                            value: '${stats.weeklyTotal}',
+                            valueKey: const Key('stats-card-value-weekly'),
+                            accentColor: theme.colorScheme.primary,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            isCompact: isCompact,
+                          ),
+                        ),
+                        SizedBox(width: tileSpacing),
+                        Expanded(
+                          child: _OverviewMetricTile(
+                            icon: Icons.calendar_month_rounded,
+                            iconKey: const Key('stats-card-icon-monthly'),
+                            label: l10n.monthlyTotal,
+                            value: '${stats.monthlyTotal}',
+                            valueKey: const Key('stats-card-value-monthly'),
+                            accentColor: theme.colorScheme.secondary,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            isCompact: isCompact,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(width: tileSpacing),
-                    Expanded(
-                      child: _OverviewMetricTile(
-                        icon: Icons.calendar_month_rounded,
-                        iconKey: const Key('stats-card-icon-monthly'),
-                        label: l10n.monthlyTotal,
-                        value: '${stats.monthlyTotal}',
-                        valueKey: const Key('stats-card-value-monthly'),
-                        accentColor: theme.colorScheme.secondary,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
-                        isCompact: isCompact,
-                      ),
+                  ),
+                  SizedBox(height: tileSpacing),
+                  IntrinsicHeight(
+                    child: Row(
+                      key: const Key('stats-overview-totals-row-bottom'),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Expanded(
+                          child: _OverviewMetricTile(
+                            icon: Icons.event_available_rounded,
+                            iconKey: const Key('stats-card-icon-yearly'),
+                            label: l10n.yearlyTotal,
+                            value: '${stats.yearlyTotal}',
+                            valueKey: const Key('stats-card-value-yearly'),
+                            accentColor: theme.colorScheme.tertiary,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            isCompact: isCompact,
+                          ),
+                        ),
+                        SizedBox(width: tileSpacing),
+                        Expanded(
+                          child: _OverviewMetricTile(
+                            icon: Icons.all_inclusive_rounded,
+                            iconKey: const Key('stats-card-icon-total'),
+                            label: l10n.totalDrinks,
+                            value: '${stats.totalEntries}',
+                            valueKey: const Key('stats-card-value-total'),
+                            accentColor: theme.colorScheme.error,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            isCompact: isCompact,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(width: tileSpacing),
-                    Expanded(
-                      child: _OverviewMetricTile(
-                        icon: Icons.event_available_rounded,
-                        iconKey: const Key('stats-card-icon-yearly'),
-                        label: l10n.yearlyTotal,
-                        value: '${stats.yearlyTotal}',
-                        valueKey: const Key('stats-card-value-yearly'),
-                        accentColor: theme.colorScheme.tertiary,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
-                        isCompact: isCompact,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               SizedBox(height: tileSpacing),
               IntrinsicHeight(

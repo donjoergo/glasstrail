@@ -2803,6 +2803,10 @@ void main() {
       tester.widget<Text>(find.byKey(const Key('stats-card-value-weekly'))),
       isA<Text>().having((widget) => widget.data, 'data', '0'),
     );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('stats-card-value-total'))),
+      isA<Text>().having((widget) => widget.data, 'data', '0'),
+    );
 
     await externalRepository.addDrinkEntry(
       user: controller.currentUser!,
@@ -2822,6 +2826,10 @@ void main() {
 
     expect(
       tester.widget<Text>(find.byKey(const Key('stats-card-value-weekly'))),
+      isA<Text>().having((widget) => widget.data, 'data', '1'),
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('stats-card-value-total'))),
       isA<Text>().having((widget) => widget.data, 'data', '1'),
     );
   });
@@ -2981,6 +2989,7 @@ void main() {
     expect(find.byKey(const Key('stats-card-icon-weekly')), findsOneWidget);
     expect(find.byKey(const Key('stats-card-icon-monthly')), findsOneWidget);
     expect(find.byKey(const Key('stats-card-icon-yearly')), findsOneWidget);
+    expect(find.byKey(const Key('stats-card-icon-total')), findsOneWidget);
     expect(
       find.byKey(const Key('stats-card-icon-current-streak')),
       findsOneWidget,
@@ -3134,6 +3143,9 @@ void main() {
     final yearlyIconOffset = tester.getTopLeft(
       find.byKey(const Key('stats-card-icon-yearly')),
     );
+    final totalIconOffset = tester.getTopLeft(
+      find.byKey(const Key('stats-card-icon-total')),
+    );
     final currentStreakIconOffset = tester.getTopLeft(
       find.byKey(const Key('stats-card-icon-current-streak')),
     );
@@ -3142,9 +3154,14 @@ void main() {
     );
 
     expect(monthlyIconOffset.dy, closeTo(weeklyIconOffset.dy, 0.1));
-    expect(yearlyIconOffset.dy, closeTo(weeklyIconOffset.dy, 0.1));
-    expect(currentStreakIconOffset.dy, greaterThan(weeklyIconOffset.dy));
+    expect(yearlyIconOffset.dy, greaterThan(weeklyIconOffset.dy));
+    expect(totalIconOffset.dy, closeTo(yearlyIconOffset.dy, 0.1));
+    expect(currentStreakIconOffset.dy, greaterThan(yearlyIconOffset.dy));
     expect(bestStreakIconOffset.dy, closeTo(currentStreakIconOffset.dy, 0.1));
+    expect(
+      tester.widget<Text>(find.byKey(const Key('stats-card-value-total'))),
+      isA<Text>().having((widget) => widget.data, 'data', '3'),
+    );
 
     final expectedRange =
         '${DateFormat.MMMd(controller.settings.localeCode).format(bestStart)} - '
