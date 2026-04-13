@@ -4406,14 +4406,7 @@ void main() {
 
     await _openProfileTab(tester);
     final logoutButton = find.byKey(const Key('profile-logout-button'));
-    await tester.scrollUntilVisible(
-      logoutButton,
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.ensureVisible(logoutButton);
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-    await tester.pumpAndSettle();
+    await _scrollProfileTargetIntoView(tester, logoutButton);
     await tester.tap(logoutButton);
     await tester.pump();
 

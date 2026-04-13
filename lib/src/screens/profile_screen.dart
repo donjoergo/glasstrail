@@ -799,6 +799,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 20),
+        SizedBox(width: double.infinity, child: logoutButton),
+        const SizedBox(height: 20),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -819,8 +821,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        SizedBox(width: double.infinity, child: logoutButton),
         const SizedBox(height: 20),
         Container(
           key: const Key('profile-about-section'),
