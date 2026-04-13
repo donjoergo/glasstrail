@@ -245,13 +245,19 @@ class _StatisticsOverviewPanel extends StatelessWidget {
       return null;
     }
 
+    final currentYear = DateTime.now().year;
+    final showYear = start.year != currentYear || end.year != currentYear;
+
     if (DateUtils.isSameDay(start, end)) {
-      return DateFormat.MMMd(localeCode).format(start);
+      final singleDayFormatter = showYear
+          ? DateFormat.yMMMd(localeCode)
+          : DateFormat.MMMd(localeCode);
+      return singleDayFormatter.format(start);
     }
 
-    final formatter = start.year == end.year
-        ? DateFormat.MMMd(localeCode)
-        : DateFormat.yMMMd(localeCode);
+    final formatter = showYear || start.year != end.year
+        ? DateFormat.yMMMd(localeCode)
+        : DateFormat.MMMd(localeCode);
     return '${formatter.format(start)} - ${formatter.format(end)}';
   }
 

@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Center the bar custom drinks empty state card
 - Removing a photo from a custom drink now also deletes the image from DB
 - Keep custom drink edit dialogs from overflowing when a photo preview is shown
+- Show the year for best streaks outside the current year
 
 ## [1.1.0] - 2026-04-10
 ### Added

@@ -3157,6 +3157,74 @@ void main() {
     );
   });
 
+  testWidgets('shows the year for a best streak outside the current year', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-overview-last-year@example.com',
+      password: 'password123',
+      displayName: 'Stats Overview Last Year',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+    final today = DateTime.now();
+    final bestStart = DateTime(today.year - 1, 12, 28);
+    final bestEnd = bestStart.add(const Duration(days: 2));
+
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: bestStart,
+    );
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: bestStart.add(const Duration(days: 1)),
+    );
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: bestEnd,
+    );
+    await controller.refreshData();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+
+    final expectedRange =
+        '${DateFormat.yMMMd(controller.settings.localeCode).format(bestStart)} - '
+        '${DateFormat.yMMMd(controller.settings.localeCode).format(bestEnd)}';
+    expect(
+      tester.widget<Text>(
+        find.byKey(const Key('stats-card-best-streak-range')),
+      ),
+      isA<Text>().having((widget) => widget.data, 'data', expectedRange),
+    );
+  });
+
   testWidgets('shows a compact history view inside statistics', (tester) async {
     tester.view.physicalSize = const Size(430, 1000);
     tester.view.devicePixelRatio = 1.0;
