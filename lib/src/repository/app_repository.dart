@@ -50,6 +50,8 @@ abstract class AppRepository {
     double? locationLongitude,
     String? locationAddress,
     DateTime? consumedAt,
+    String? importSource,
+    String? importSourceId,
   });
 
   Future<DrinkEntry> updateDrinkEntry({

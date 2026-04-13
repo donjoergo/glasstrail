@@ -773,8 +773,170 @@ abstract class AppLocalizations {
   /// No description provided for @roadmapBody.
   ///
   /// In en, this message translates to:
-  /// **'Friends, social feed, achievements, and import are part of the plan but intentionally not shipped in V1.'**
+  /// **'Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.'**
   String get roadmapBody;
+
+  /// No description provided for @beerWithMeImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Beer With Me Import'**
+  String get beerWithMeImport;
+
+  /// No description provided for @beerWithMeImportBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.'**
+  String get beerWithMeImportBody;
+
+  /// No description provided for @beerWithMeImportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Beer With Me export'**
+  String get beerWithMeImportAction;
+
+  /// No description provided for @beerWithMeImportEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected Beer With Me export does not contain any entries.'**
+  String get beerWithMeImportEmpty;
+
+  /// No description provided for @beerWithMeImportInvalidFile.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected file is not a valid Beer With Me export.'**
+  String get beerWithMeImportInvalidFile;
+
+  /// No description provided for @beerWithMeImportReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Beer With Me export could not be read.'**
+  String get beerWithMeImportReadFailed;
+
+  /// No description provided for @beerWithMeImportConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Beer With Me export?'**
+  String get beerWithMeImportConfirmTitle;
+
+  /// No description provided for @beerWithMeImportConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will import {count} entries into your GlassTrail history.'**
+  String beerWithMeImportConfirmBody(int count);
+
+  /// No description provided for @beerWithMeImportProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing {processed} of {total} entries'**
+  String beerWithMeImportProgress(int processed, int total);
+
+  /// No description provided for @beerWithMeImportProgressDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'{imported} imported, {skipped} duplicates, {errors} errors'**
+  String beerWithMeImportProgressDetails(int imported, int skipped, int errors);
+
+  /// No description provided for @beerWithMeImportCancelAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel import'**
+  String get beerWithMeImportCancelAction;
+
+  /// No description provided for @beerWithMeImportCancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling after the current entry...'**
+  String get beerWithMeImportCancelling;
+
+  /// No description provided for @beerWithMeImportResultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Beer With Me import result'**
+  String get beerWithMeImportResultTitle;
+
+  /// No description provided for @beerWithMeImportResultCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Import cancelled after {processed} of {total} entries.'**
+  String beerWithMeImportResultCancelled(int processed, int total);
+
+  /// No description provided for @beerWithMeImportResultTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total entries: {count}'**
+  String beerWithMeImportResultTotal(int count);
+
+  /// No description provided for @beerWithMeImportResultImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported successfully: {count}'**
+  String beerWithMeImportResultImported(int count);
+
+  /// No description provided for @beerWithMeImportResultSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped as duplicates: {count}'**
+  String beerWithMeImportResultSkipped(int count);
+
+  /// No description provided for @beerWithMeImportResultErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'Errors: {count}'**
+  String beerWithMeImportResultErrors(int count);
+
+  /// No description provided for @beerWithMeImportErrorListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed entries'**
+  String get beerWithMeImportErrorListTitle;
+
+  /// No description provided for @beerWithMeImportInvalidEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'The entry is not a valid JSON object.'**
+  String get beerWithMeImportInvalidEntry;
+
+  /// No description provided for @beerWithMeImportMissingId.
+  ///
+  /// In en, this message translates to:
+  /// **'BeerWithMe ID missing'**
+  String get beerWithMeImportMissingId;
+
+  /// No description provided for @beerWithMeImportMissingGlassType.
+  ///
+  /// In en, this message translates to:
+  /// **'BeerWithMe drink type missing'**
+  String get beerWithMeImportMissingGlassType;
+
+  /// No description provided for @beerWithMeImportMissingTimestamp.
+  ///
+  /// In en, this message translates to:
+  /// **'Timestamp missing'**
+  String get beerWithMeImportMissingTimestamp;
+
+  /// No description provided for @beerWithMeImportInvalidTimestamp.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid timestamp'**
+  String get beerWithMeImportInvalidTimestamp;
+
+  /// No description provided for @beerWithMeImportUnknownGlassType.
+  ///
+  /// In en, this message translates to:
+  /// **'BeerWithMe type \"{glassType}\" not supported.'**
+  String beerWithMeImportUnknownGlassType(String glassType);
+
+  /// No description provided for @beerWithMeImportMissingMappedDrink.
+  ///
+  /// In en, this message translates to:
+  /// **'GlassTrail could not find the mapped drink for \"{glassType}\".'**
+  String beerWithMeImportMissingMappedDrink(String glassType);
+
+  /// No description provided for @beerWithMeImportAlreadyImported.
+  ///
+  /// In en, this message translates to:
+  /// **'BeerWithMe entry was already imported.'**
+  String get beerWithMeImportAlreadyImported;
 
   /// No description provided for @themeSystem.
   ///

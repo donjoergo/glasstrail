@@ -18,6 +18,8 @@ set
 insert into public.global_drinks (id, category_slug, name_en, name_de, default_volume_ml)
 values
   ('beer-pils', 'beer', 'Pils', 'Pils', 330),
+  ('beer-classic', 'beer', 'Beer', 'Bier', 500),
+  ('beer-can', 'beer', 'Beer Can', 'Dosenbier', 500),
   ('beer-helles', 'beer', 'Helles', 'Helles', 500),
   ('beer-weizen', 'beer', 'Weizen', 'Weizen', 500),
   ('beer-kellerbier', 'beer', 'Kellerbier', 'Kellerbier', 500),
@@ -49,6 +51,7 @@ values
   ('spirits-rum', 'spirits', 'Rum', 'Rum', 40),
   ('spirits-whiskey', 'spirits', 'Whiskey', 'Whiskey', 40),
   ('spirits-cognac', 'spirits', 'Cognac', 'Cognac', 40),
+  ('shots-shot', 'shots', 'Shot', 'Shot', 20),
   ('shots-jaegermeister', 'shots', 'Jägermeister', 'Jägermeister', 20),
   ('shots-berliner-luft', 'shots', 'Berliner Luft', 'Berliner Luft', 20),
   ('shots-pfeffi', 'shots', 'Pfeffi', 'Pfeffi', 20),

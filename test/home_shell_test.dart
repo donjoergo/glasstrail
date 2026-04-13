@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
@@ -12,6 +14,7 @@ import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/app_scope.dart';
+import 'package:glasstrail/src/import_file_service.dart';
 import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
@@ -696,6 +699,304 @@ void main() {
       PreferredLaunchMode.externalApplication,
     );
   });
+
+  testWidgets('imports a BeerWithMe export from the profile screen', (
+    tester,
+  ) async {
+    final l10n = _l10n('en');
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-import@example.com',
+      password: 'password123',
+      displayName: 'Profile Import Example',
+    );
+
+    final importFileService = TestImportFileService(
+      file: SelectedImportFile(
+        name: 'history.json',
+        contents: jsonEncode(<Map<String, Object?>>[
+          <String, Object?>{
+            'id': 1,
+            'timestamp': '2022-06-06T22:55:15.000+02:00',
+            'glassType': 'WineRose',
+            'address': 'no_address',
+          },
+        ]),
+      ),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        importFileService: importFileService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await _scrollProfileTargetIntoView(
+      tester,
+      find.byKey(const Key('profile-import-section')),
+    );
+
+    await tester.tap(find.byKey(const Key('profile-import-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+        matching: find.widgetWithText(
+          FilledButton,
+          l10n.beerWithMeImportAction,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('beer-with-me-import-result-dialog')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('beer-with-me-import-summary-imported')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('beer-with-me-import-summary-skipped')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('beer-with-me-import-summary-errors')),
+      findsNothing,
+    );
+    expect(find.text(l10n.beerWithMeImportResultImported(1)), findsOneWidget);
+    expect(find.text(l10n.beerWithMeImportResultSkipped(0)), findsNothing);
+    expect(find.text(l10n.beerWithMeImportResultErrors(0)), findsNothing);
+    expect(
+      find.byKey(const Key('beer-with-me-import-summary-total')),
+      findsOneWidget,
+    );
+    expect(controller.entries.single.importSourceId, '1');
+    expect(controller.entries.single.locationAddress, isNull);
+  });
+
+  testWidgets('shows BeerWithMe import progress while the import is running', (
+    tester,
+  ) async {
+    final l10n = _l10n('en');
+    final harness = await _buildBlockedHarness(AppBusyAction.addDrinkEntry);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'profile-import-progress@example.com',
+      password: 'password123',
+      displayName: 'Profile Import Progress Example',
+    );
+
+    final importFileService = TestImportFileService(
+      file: SelectedImportFile(
+        name: 'history.json',
+        contents: jsonEncode(<Map<String, Object?>>[
+          <String, Object?>{
+            'id': 2,
+            'timestamp': '2022-06-06T22:55:15.000+02:00',
+            'glassType': 'WineRose',
+            'address': 'no_address',
+          },
+        ]),
+      ),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        importFileService: importFileService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await _scrollProfileTargetIntoView(
+      tester,
+      find.byKey(const Key('profile-import-section')),
+    );
+
+    await tester.tap(find.byKey(const Key('profile-import-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+        matching: find.widgetWithText(
+          FilledButton,
+          l10n.beerWithMeImportAction,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('profile-import-progress-indicator')),
+      findsOneWidget,
+    );
+    expect(find.text(l10n.beerWithMeImportProgress(0, 1)), findsOneWidget);
+    expect(
+      find.text(l10n.beerWithMeImportProgressDetails(0, 0, 0)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('profile-import-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(FilledButton, l10n.beerWithMeImportCancelAction),
+      findsOneWidget,
+    );
+    final cancelButton = tester.widget<FilledButton>(
+      find.byKey(const Key('profile-import-cancel-button')),
+    );
+    final profileTheme = Theme.of(
+      tester.element(find.byKey(const Key('profile-import-section'))),
+    );
+    expect(
+      _backgroundColor(cancelButton.style),
+      profileTheme.colorScheme.errorContainer,
+    );
+    expect(
+      _foregroundColor(cancelButton.style),
+      profileTheme.colorScheme.onErrorContainer,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('beer-with-me-import-result-dialog')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'can cancel a running BeerWithMe import from the profile screen',
+    (tester) async {
+      final l10n = _l10n('en');
+      final harness = await _buildBlockedHarness(AppBusyAction.addDrinkEntry);
+      final controller = harness.controller;
+      final repository = harness.repository;
+      await controller.signUp(
+        email: 'profile-import-cancel@example.com',
+        password: 'password123',
+        displayName: 'Profile Import Cancel Example',
+      );
+
+      final importFileService = TestImportFileService(
+        file: SelectedImportFile(
+          name: 'history.json',
+          contents: jsonEncode(<Map<String, Object?>>[
+            <String, Object?>{
+              'id': 3,
+              'timestamp': '2022-06-06T22:55:15.000+02:00',
+              'glassType': 'WineRose',
+              'address': 'no_address',
+            },
+            <String, Object?>{
+              'id': 4,
+              'timestamp': '2022-06-06T23:10:00.000+02:00',
+              'glassType': 'Beer',
+              'address': 'no_address',
+            },
+          ]),
+        ),
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          importFileService: importFileService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openProfileTab(tester);
+      await _scrollProfileTargetIntoView(
+        tester,
+        find.byKey(const Key('profile-import-section')),
+      );
+
+      await tester.tap(find.byKey(const Key('profile-import-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+          matching: find.widgetWithText(
+            FilledButton,
+            l10n.beerWithMeImportAction,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('profile-import-cancel-button')));
+      await tester.pump();
+
+      expect(controller.isBeerWithMeImportCancellationRequested, isTrue);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byKey(const Key('profile-import-cancel-button')),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(find.text(l10n.beerWithMeImportCancelling), findsOneWidget);
+
+      repository.unblock();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('beer-with-me-import-result-dialog')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-status-banner')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-summary-imported')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-summary-skipped')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-summary-errors')),
+        findsNothing,
+      );
+      expect(
+        find.text(l10n.beerWithMeImportResultCancelled(1, 2)),
+        findsOneWidget,
+      );
+      expect(
+        controller.entries.map((entry) => entry.importSourceId),
+        contains('3'),
+      );
+      expect(
+        controller.entries.map((entry) => entry.importSourceId),
+        isNot(contains('4')),
+      );
+    },
+  );
 
   testWidgets('does not show backend information on the profile screen', (
     tester,

@@ -10,6 +10,7 @@ import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';
 import 'backend_config.dart';
+import 'import_file_service.dart';
 import 'locale_memory.dart';
 import 'location_service.dart';
 import 'models.dart';
@@ -27,6 +28,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
   const GlassTrailBootstrapApp({
     super.key,
     required this.photoService,
+    this.importFileService = const FileSelectorImportFileService(),
     this.locationService = const PlatformLocationService(),
     this.backendConfig,
     this.initialRoute,
@@ -36,6 +38,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
   });
 
   final PhotoService photoService;
+  final ImportFileService importFileService;
   final LocationService locationService;
   final BackendConfig? backendConfig;
   final String? initialRoute;
@@ -69,6 +72,7 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
           return GlassTrailApp(
             controller: bootstrapData.controller,
             photoService: widget.photoService,
+            importFileService: widget.importFileService,
             locationService: widget.locationService,
             routeMemory: bootstrapData.routeMemory,
             localeMemory: bootstrapData.localeMemory,
@@ -120,6 +124,7 @@ class GlassTrailApp extends StatelessWidget {
     super.key,
     required this.controller,
     required this.photoService,
+    this.importFileService = const FileSelectorImportFileService(),
     this.locationService = const PlatformLocationService(),
     RouteMemory? routeMemory,
     LocaleMemory? localeMemory,
@@ -129,6 +134,7 @@ class GlassTrailApp extends StatelessWidget {
 
   final AppController controller;
   final PhotoService photoService;
+  final ImportFileService importFileService;
   final LocationService locationService;
   final RouteMemory routeMemory;
   final LocaleMemory localeMemory;
@@ -139,6 +145,7 @@ class GlassTrailApp extends StatelessWidget {
     return AppScope(
       controller: controller,
       photoService: photoService,
+      importFileService: importFileService,
       locationService: locationService,
       routeMemory: routeMemory,
       localeMemory: localeMemory,

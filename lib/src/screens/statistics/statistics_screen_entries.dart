@@ -179,11 +179,7 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
   }
 
   String? _normalizedLocationAddress(String? value) {
-    final trimmed = value?.trim();
-    if (trimmed == null || trimmed.isEmpty) {
-      return null;
-    }
-    return trimmed;
+    return normalizeLocationAddress(value);
   }
 }
 
@@ -287,11 +283,7 @@ class _StatisticsGalleryPage extends StatelessWidget {
   }
 
   String? _normalizedLocationAddress(String? value) {
-    final normalized = value?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    return normalized;
+    return normalizeLocationAddress(value);
   }
 }
 

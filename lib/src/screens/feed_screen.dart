@@ -681,11 +681,7 @@ class _DrinkEntryCard extends StatelessWidget {
   }
 
   String? _normalizedLocationAddress(String? value) {
-    final trimmed = value?.trim();
-    if (trimmed == null || trimmed.isEmpty) {
-      return null;
-    }
-    return trimmed;
+    return normalizeLocationAddress(value);
   }
 }
 

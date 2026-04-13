@@ -210,6 +210,8 @@ class LocalAppRepository implements AppRepository {
     double? locationLongitude,
     String? locationAddress,
     DateTime? consumedAt,
+    String? importSource,
+    String? importSourceId,
   }) async {
     final map = _readJsonMap(_entriesKey);
     final raw = List<dynamic>.from(
@@ -232,6 +234,8 @@ class LocalAppRepository implements AppRepository {
       locationLatitude: locationLatitude,
       locationLongitude: locationLongitude,
       locationAddress: _normalizeLocationAddress(locationAddress),
+      importSource: importSource?.trim(),
+      importSourceId: importSourceId?.trim(),
     );
 
     raw.add(entry.toJson());
@@ -339,10 +343,6 @@ class LocalAppRepository implements AppRepository {
   }
 
   String? _normalizeLocationAddress(String? value) {
-    final trimmed = value?.trim();
-    if (trimmed == null || trimmed.isEmpty) {
-      return null;
-    }
-    return trimmed;
+    return normalizeLocationAddress(value);
   }
 }

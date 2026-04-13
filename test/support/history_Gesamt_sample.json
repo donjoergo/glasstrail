@@ -1,0 +1,227 @@
+[
+  {
+    "id": 338274483,
+    "timestamp": "2026-03-29T21:11:31.000+02:00",
+    "glassType": "Beer",
+    "longitude": 10.8827774,
+    "latitude": 49.5635995,
+    "accuracy": 14.09000015258789,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 338274545,
+    "timestamp": "2026-03-29T21:12:18.000+02:00",
+    "glassType": "BeerCan",
+    "longitude": 10.8827381,
+    "latitude": 49.5636092,
+    "accuracy": 48.18600082397461,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 338274561,
+    "timestamp": "2026-03-29T21:12:30.000+02:00",
+    "glassType": "BeerWheat",
+    "longitude": 10.8827734,
+    "latitude": 49.5636023,
+    "accuracy": 13.89900016784668,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 338274579,
+    "timestamp": "2026-03-29T21:12:43.000+02:00",
+    "glassType": "BeerStout",
+    "longitude": 10.8827488,
+    "latitude": 49.5636042,
+    "accuracy": 13.81700038909912,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 338274590,
+    "timestamp": "2026-03-29T21:12:55.000+02:00",
+    "glassType": "BeerMass",
+    "longitude": 10.8827626,
+    "latitude": 49.5636059,
+    "accuracy": 15.28499984741211,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 338274693,
+    "timestamp": "2026-03-29T21:14:18.000+02:00",
+    "glassType": "BeerGoassMass",
+    "longitude": 10.8827627,
+    "latitude": 49.5636016,
+    "accuracy": 14.088000297546388,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 338274707,
+    "timestamp": "2026-03-29T21:14:29.000+02:00",
+    "glassType": "BeerKolsch",
+    "longitude": 10.8827574,
+    "latitude": 49.5636024,
+    "accuracy": 14.428000450134276,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339766593,
+    "timestamp": "2026-04-11T17:50:34.000+02:00",
+    "glassType": "WineRed",
+    "longitude": 10.8828606,
+    "latitude": 49.5636104,
+    "accuracy": 9.727999687194824,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339766767,
+    "timestamp": "2026-04-11T17:51:03.000+02:00",
+    "glassType": "WineWhite",
+    "longitude": 10.882839,
+    "latitude": 49.5636087,
+    "accuracy": 6.525000095367432,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339766831,
+    "timestamp": "2026-04-11T17:51:14.000+02:00",
+    "glassType": "WineRose",
+    "longitude": 10.8828293,
+    "latitude": 49.5636049,
+    "accuracy": 6.00600004196167,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339768039,
+    "timestamp": "2026-04-11T17:54:35.000+02:00",
+    "glassType": "Spritzer",
+    "longitude": 10.8828191,
+    "latitude": 49.5635922,
+    "accuracy": 6.709000110626221,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339769809,
+    "timestamp": "2026-04-11T17:59:31.000+02:00",
+    "glassType": "Weinschorle",
+    "longitude": 10.8828238,
+    "latitude": 49.5636028,
+    "accuracy": 4.666999816894531,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339769885,
+    "timestamp": "2026-04-11T17:59:43.000+02:00",
+    "glassType": "WineMulled",
+    "longitude": 10.8828311,
+    "latitude": 49.5636,
+    "accuracy": 5.534999847412109,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339770013,
+    "timestamp": "2026-04-11T18:00:01.000+02:00",
+    "glassType": "Champagne",
+    "longitude": 10.8828276,
+    "latitude": 49.5635762,
+    "accuracy": 14.769000053405762,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339770131,
+    "timestamp": "2026-04-11T18:00:21.000+02:00",
+    "glassType": "Grog",
+    "longitude": 10.8827681,
+    "latitude": 49.5635752,
+    "accuracy": 19.381000518798828,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339770263,
+    "timestamp": "2026-04-11T18:00:42.000+02:00",
+    "glassType": "GrogGT",
+    "longitude": 10.8828134,
+    "latitude": 49.5635771,
+    "accuracy": 19.131999969482425,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339770372,
+    "timestamp": "2026-04-11T18:01:00.000+02:00",
+    "glassType": "GrogCubaLibre",
+    "longitude": 10.8828486,
+    "latitude": 49.5635162,
+    "accuracy": 24.094999313354492,
+    "address": "Am Buck 4\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339770489,
+    "timestamp": "2026-04-11T18:01:22.000+02:00",
+    "glassType": "Whisky",
+    "longitude": 10.8827901,
+    "latitude": 49.563573,
+    "accuracy": 16.19499969482422,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339770554,
+    "timestamp": "2026-04-11T18:01:33.000+02:00",
+    "glassType": "Rum",
+    "longitude": 10.8827986,
+    "latitude": 49.563583,
+    "accuracy": 10.789999961853027,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339770631,
+    "timestamp": "2026-04-11T18:01:45.000+02:00",
+    "glassType": "Cognac",
+    "longitude": 10.8828676,
+    "latitude": 49.5635898,
+    "accuracy": 12.21500015258789,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339770714,
+    "timestamp": "2026-04-11T18:01:58.000+02:00",
+    "glassType": "Shot",
+    "longitude": 10.8828969,
+    "latitude": 49.5636046,
+    "accuracy": 28.024999618530273,
+    "address": "Am Buck 14\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339770800,
+    "timestamp": "2026-04-11T18:02:11.000+02:00",
+    "glassType": "CiderRibbed",
+    "longitude": 10.8829211,
+    "latitude": 49.5636284,
+    "accuracy": 23.350000381469727,
+    "address": "Am Buck 14\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339772326,
+    "timestamp": "2026-04-11T18:06:10.000+02:00",
+    "glassType": "Cider",
+    "longitude": 10.8827474,
+    "latitude": 49.5635744,
+    "accuracy": 23.249000549316406,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339773192,
+    "timestamp": "2026-04-11T18:08:32.000+02:00",
+    "glassType": "Seltzer",
+    "longitude": 10.8828356,
+    "latitude": 49.5635923,
+    "accuracy": 22.540000915527344,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  },
+  {
+    "id": 339775876,
+    "timestamp": "2026-04-11T18:15:11.000+02:00",
+    "glassType": "Cocktail",
+    "longitude": 10.8828478,
+    "latitude": 49.5636049,
+    "accuracy": 3.950999975204468,
+    "address": "Am Buck 19\nHerzogenaurach\nDeutschland"
+  }
+]

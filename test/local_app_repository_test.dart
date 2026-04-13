@@ -221,6 +221,32 @@ void main() {
       expect(restored.single.locationAddress, 'Marienplatz 1, 80331 Munich');
     });
 
+    test('persists import metadata for a drink entry', () async {
+      final user = await repository.signUp(
+        email: 'import-entry@example.com',
+        password: 'secret',
+        displayName: 'Import Entry User',
+      );
+
+      await repository.addDrinkEntry(
+        user: user,
+        drink: const DrinkDefinition(
+          id: 'beer-classic',
+          name: 'Beer',
+          category: DrinkCategory.beer,
+          volumeMl: 500,
+        ),
+        consumedAt: DateTime(2022, 6, 6, 22, 55, 15),
+        importSource: 'beer_with_me',
+        importSourceId: '172120176',
+      );
+
+      final restored = await repository.loadEntries(user.id);
+
+      expect(restored.single.importSource, 'beer_with_me');
+      expect(restored.single.importSourceId, '172120176');
+    });
+
     test(
       'normalizes empty entry comments to null and removes images',
       () async {

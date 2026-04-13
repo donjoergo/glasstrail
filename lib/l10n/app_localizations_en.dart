@@ -366,7 +366,120 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roadmapBody =>
-      'Friends, social feed, achievements, and import are part of the plan but intentionally not shipped in V1.';
+      'Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.';
+
+  @override
+  String get beerWithMeImport => 'Beer With Me Import';
+
+  @override
+  String get beerWithMeImportBody =>
+      'Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.';
+
+  @override
+  String get beerWithMeImportAction => 'Import Beer With Me export';
+
+  @override
+  String get beerWithMeImportEmpty =>
+      'The selected Beer With Me export does not contain any entries.';
+
+  @override
+  String get beerWithMeImportInvalidFile =>
+      'The selected file is not a valid Beer With Me export.';
+
+  @override
+  String get beerWithMeImportReadFailed =>
+      'The Beer With Me export could not be read.';
+
+  @override
+  String get beerWithMeImportConfirmTitle => 'Import Beer With Me export?';
+
+  @override
+  String beerWithMeImportConfirmBody(int count) {
+    return 'This will import $count entries into your GlassTrail history.';
+  }
+
+  @override
+  String beerWithMeImportProgress(int processed, int total) {
+    return 'Importing $processed of $total entries';
+  }
+
+  @override
+  String beerWithMeImportProgressDetails(
+    int imported,
+    int skipped,
+    int errors,
+  ) {
+    return '$imported imported, $skipped duplicates, $errors errors';
+  }
+
+  @override
+  String get beerWithMeImportCancelAction => 'Cancel import';
+
+  @override
+  String get beerWithMeImportCancelling =>
+      'Cancelling after the current entry...';
+
+  @override
+  String get beerWithMeImportResultTitle => 'Beer With Me import result';
+
+  @override
+  String beerWithMeImportResultCancelled(int processed, int total) {
+    return 'Import cancelled after $processed of $total entries.';
+  }
+
+  @override
+  String beerWithMeImportResultTotal(int count) {
+    return 'Total entries: $count';
+  }
+
+  @override
+  String beerWithMeImportResultImported(int count) {
+    return 'Imported successfully: $count';
+  }
+
+  @override
+  String beerWithMeImportResultSkipped(int count) {
+    return 'Skipped as duplicates: $count';
+  }
+
+  @override
+  String beerWithMeImportResultErrors(int count) {
+    return 'Errors: $count';
+  }
+
+  @override
+  String get beerWithMeImportErrorListTitle => 'Failed entries';
+
+  @override
+  String get beerWithMeImportInvalidEntry =>
+      'The entry is not a valid JSON object.';
+
+  @override
+  String get beerWithMeImportMissingId => 'BeerWithMe ID missing';
+
+  @override
+  String get beerWithMeImportMissingGlassType =>
+      'BeerWithMe drink type missing';
+
+  @override
+  String get beerWithMeImportMissingTimestamp => 'Timestamp missing';
+
+  @override
+  String get beerWithMeImportInvalidTimestamp => 'Invalid timestamp';
+
+  @override
+  String beerWithMeImportUnknownGlassType(String glassType) {
+    return 'BeerWithMe type \"$glassType\" not supported.';
+  }
+
+  @override
+  String beerWithMeImportMissingMappedDrink(String glassType) {
+    return 'GlassTrail could not find the mapped drink for \"$glassType\".';
+  }
+
+  @override
+  String get beerWithMeImportAlreadyImported =>
+      'BeerWithMe entry was already imported.';
 
   @override
   String get themeSystem => 'System';

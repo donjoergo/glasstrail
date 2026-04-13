@@ -123,7 +123,116 @@
   "roadmap": "Planned next",
   "about": "About",
   "github": "GitHub",
-  "roadmapBody": "Friends, social feed, achievements, and import are part of the plan but intentionally not shipped in V1.",
+  "roadmapBody": "Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.",
+  "beerWithMeImport": "Beer With Me Import",
+  "beerWithMeImportBody": "Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.",
+  "beerWithMeImportAction": "Import Beer With Me export",
+  "beerWithMeImportEmpty": "The selected Beer With Me export does not contain any entries.",
+  "beerWithMeImportInvalidFile": "The selected file is not a valid Beer With Me export.",
+  "beerWithMeImportReadFailed": "The Beer With Me export could not be read.",
+  "beerWithMeImportConfirmTitle": "Import Beer With Me export?",
+  "beerWithMeImportConfirmBody": "This will import {count} entries into your GlassTrail history.",
+  "@beerWithMeImportConfirmBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportProgress": "Importing {processed} of {total} entries",
+  "@beerWithMeImportProgress": {
+    "placeholders": {
+      "processed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportProgressDetails": "{imported} imported, {skipped} duplicates, {errors} errors",
+  "@beerWithMeImportProgressDetails": {
+    "placeholders": {
+      "imported": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "errors": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportCancelAction": "Cancel import",
+  "beerWithMeImportCancelling": "Cancelling after the current entry...",
+  "beerWithMeImportResultTitle": "Beer With Me import result",
+  "beerWithMeImportResultCancelled": "Import cancelled after {processed} of {total} entries.",
+  "@beerWithMeImportResultCancelled": {
+    "placeholders": {
+      "processed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportResultTotal": "Total entries: {count}",
+  "@beerWithMeImportResultTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportResultImported": "Imported successfully: {count}",
+  "@beerWithMeImportResultImported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportResultSkipped": "Skipped as duplicates: {count}",
+  "@beerWithMeImportResultSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportResultErrors": "Errors: {count}",
+  "@beerWithMeImportResultErrors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportErrorListTitle": "Failed entries",
+  "beerWithMeImportInvalidEntry": "The entry is not a valid JSON object.",
+  "beerWithMeImportMissingId": "BeerWithMe ID missing",
+  "beerWithMeImportMissingGlassType": "BeerWithMe drink type missing",
+  "beerWithMeImportMissingTimestamp": "Timestamp missing",
+  "beerWithMeImportInvalidTimestamp": "Invalid timestamp",
+  "beerWithMeImportUnknownGlassType": "BeerWithMe type \"{glassType}\" not supported.",
+  "@beerWithMeImportUnknownGlassType": {
+    "placeholders": {
+      "glassType": {
+        "type": "String"
+      }
+    }
+  },
+  "beerWithMeImportMissingMappedDrink": "GlassTrail could not find the mapped drink for \"{glassType}\".",
+  "@beerWithMeImportMissingMappedDrink": {
+    "placeholders": {
+      "glassType": {
+        "type": "String"
+      }
+    }
+  },
+  "beerWithMeImportAlreadyImported": "BeerWithMe entry was already imported.",
   "themeSystem": "System",
   "themeLight": "Light",
   "themeDark": "Dark",
