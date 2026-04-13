@@ -199,8 +199,8 @@ cider log fixed "a bug"
 
 1. Update `pubspec.yaml` with the app version you want to ship.
 2. Update the changelog with the command `cider release`
-3. Create and push a tag such as `1.0.0`.
-4. Commit and push that change to `main`.
+3. Commit and push that change to `main`.
+4. Create and push a tag such as `1.0.0`.
 5. Merge `main` into `release` branch
 
 ```bash
