@@ -20,10 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor: Renamed HistoryScreen to FeedScreen
 - Removed the backend info card from the profile screen
 - Highlight delete and remove actions in red
-- added dedicated routes for statistics and bar tabs
+- Added dedicated routes for statistics and bar tabs
 - Category chips in statistics are now only shown when corresponding data is available
-- refactor statistics screen files
+- Refactor statistics screen files
 - Moved logout button above roadmap info
+- Default new custom drinks to beer in the custom drink dialog.
 
 ### Fixed
 - Fix warning in web regarding missing emoji font subset

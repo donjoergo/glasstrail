@@ -1711,6 +1711,39 @@ void main() {
     expect(emptyStateRect.center.dx, closeTo(customSectionRect.center.dx, 0.1));
   });
 
+  testWidgets('defaults new custom drinks to beer', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'custom-default-category@example.com',
+      password: 'password123',
+      displayName: 'Custom Default Category',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+    final addCustomDrinkButton = find.byKey(
+      const Key('bar-add-custom-drink-button'),
+    );
+    await _scrollBarTargetIntoView(tester, addCustomDrinkButton);
+    await tester.tap(addCustomDrinkButton);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).first, 'Test Lager');
+    await tester.tap(find.byKey(const Key('custom-drink-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(controller.customDrinks, hasLength(1));
+    expect(controller.customDrinks.single.category, DrinkCategory.beer);
+  });
+
   testWidgets('shows a spinner while saving a custom drink', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.saveCustomDrink);
     final controller = harness.controller;

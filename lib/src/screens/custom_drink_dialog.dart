@@ -23,7 +23,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _volumeController;
-  DrinkCategory _category = DrinkCategory.nonAlcoholic;
+  DrinkCategory _category = DrinkCategory.beer;
   String? _imagePath;
   bool _didHydrateInitialVolume = false;
   bool _volumeEditedManually = false;
@@ -34,7 +34,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
     final initial = widget.initialDrink;
     _nameController = TextEditingController(text: initial?.name ?? '');
     _volumeController = TextEditingController();
-    _category = initial?.category ?? DrinkCategory.nonAlcoholic;
+    _category = initial?.category ?? DrinkCategory.beer;
     _imagePath = initial?.imagePath;
   }
 
