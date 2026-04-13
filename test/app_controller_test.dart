@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:glasstrail/src/app_controller.dart';
+import 'package:glasstrail/src/beer_with_me_import.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/app_repository.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
@@ -148,6 +149,186 @@ void main() {
     await controller.addDrinkEntry(drink: redWine, volumeMl: redWine.volumeMl);
 
     expect(controller.takeFlashMessage(german), 'Rotwein erfasst.');
+  });
+
+  test(
+    'imports BeerWithMe exports with duplicates, errors, and no_address',
+    () async {
+      final controller = await buildTestController();
+      final german = _l10n('de');
+      await controller.signUp(
+        email: 'import@example.com',
+        password: 'password123',
+        displayName: 'Import Beispiel',
+      );
+      await controller.updateSettings(
+        controller.settings.copyWith(localeCode: 'de'),
+      );
+
+      final exportFile = parseBeerWithMeExportFile('''
+      [
+        {
+          "id": 172120176,
+          "timestamp": "2022-06-06T22:55:15.000+02:00",
+          "glassType": "WineRose",
+          "address": "no_address"
+        },
+        {
+          "id": 172120177,
+          "timestamp": "2022-06-06T23:10:00.000+02:00",
+          "glassType": "Beer",
+          "longitude": 10.8827774,
+          "latitude": 49.5635995,
+          "address": "Am Buck 19\\nHerzogenaurach\\nDeutschland"
+        },
+        {
+          "id": 172120178,
+          "timestamp": "2022-06-06T23:20:00.000+02:00",
+          "glassType": "UnknownType"
+        }
+      ]
+    ''');
+
+      final firstImport = await controller.importBeerWithMeExport(exportFile);
+
+      expect(firstImport.totalRows, 3);
+      expect(firstImport.importedCount, 2);
+      expect(firstImport.skippedDuplicateCount, 0);
+      expect(firstImport.errorCount, 1);
+      expect(
+        firstImport.errors.single.message,
+        german.beerWithMeImportUnknownGlassType('UnknownType'),
+      );
+
+      final rose = controller.entries.firstWhere(
+        (entry) => entry.importSourceId == '172120176',
+      );
+      expect(rose.drinkId, 'wine-rosé-wine');
+      expect(rose.volumeMl, 150);
+      expect(rose.locationAddress, isNull);
+      expect(rose.locationLatitude, isNull);
+      expect(rose.locationLongitude, isNull);
+
+      final beer = controller.entries.firstWhere(
+        (entry) => entry.importSourceId == '172120177',
+      );
+      expect(beer.drinkId, 'beer-classic');
+      expect(beer.volumeMl, 500);
+      expect(beer.locationAddress, 'Am Buck 19, Herzogenaurach, Deutschland');
+      expect(beer.locationLatitude, 49.5635995);
+      expect(beer.locationLongitude, 10.8827774);
+      expect(beer.importSource, beerWithMeImportSource);
+
+      final secondImport = await controller.importBeerWithMeExport(exportFile);
+
+      expect(secondImport.totalRows, 3);
+      expect(secondImport.importedCount, 0);
+      expect(secondImport.skippedDuplicateCount, 2);
+      expect(secondImport.errorCount, 1);
+    },
+  );
+
+  test(
+    'publishes BeerWithMe import progress while the import is pending',
+    () async {
+      final repository = await buildBlockingLocalRepository(
+        blockedAction: AppBusyAction.addDrinkEntry,
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+      await controller.signUp(
+        email: 'import-progress@example.com',
+        password: 'password123',
+        displayName: 'Import Progress Example',
+      );
+
+      final exportFile = parseBeerWithMeExportFile('''
+      [
+        {
+          "id": 172120179,
+          "timestamp": "2022-06-06T22:55:15.000+02:00",
+          "glassType": "WineRose",
+          "address": "no_address"
+        }
+      ]
+    ''');
+
+      final importFuture = controller.importBeerWithMeExport(exportFile);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.isBusyFor(AppBusyAction.importBeerWithMe), isTrue);
+      expect(
+        controller.beerWithMeImportProgress,
+        const TypeMatcher<BeerWithMeImportProgress>(),
+      );
+      expect(controller.beerWithMeImportProgress?.totalCount, 1);
+      expect(controller.beerWithMeImportProgress?.processedCount, 0);
+      expect(controller.beerWithMeImportProgress?.importedCount, 0);
+      expect(controller.beerWithMeImportProgress?.errorCount, 0);
+
+      repository.unblock();
+      final result = await importFuture;
+
+      expect(result.importedCount, 1);
+      expect(controller.beerWithMeImportProgress, isNull);
+      expect(controller.isBusy, isFalse);
+    },
+  );
+
+  test('cancels BeerWithMe import after the current row finishes', () async {
+    final repository = await buildBlockingLocalRepository(
+      blockedAction: AppBusyAction.addDrinkEntry,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    await controller.signUp(
+      email: 'import-cancel@example.com',
+      password: 'password123',
+      displayName: 'Import Cancel Example',
+    );
+
+    final exportFile = parseBeerWithMeExportFile('''
+      [
+        {
+          "id": 172120180,
+          "timestamp": "2022-06-06T22:55:15.000+02:00",
+          "glassType": "WineRose",
+          "address": "no_address"
+        },
+        {
+          "id": 172120181,
+          "timestamp": "2022-06-06T23:10:00.000+02:00",
+          "glassType": "Beer",
+          "address": "no_address"
+        }
+      ]
+    ''');
+
+    final importFuture = controller.importBeerWithMeExport(exportFile);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.requestBeerWithMeImportCancellation(), isTrue);
+    expect(controller.isBeerWithMeImportCancellationRequested, isTrue);
+
+    repository.unblock();
+    final result = await importFuture;
+
+    expect(result.wasCancelled, isTrue);
+    expect(result.totalRows, 2);
+    expect(result.processedCount, 1);
+    expect(result.importedCount, 1);
+    expect(result.skippedDuplicateCount, 0);
+    expect(result.errorCount, 0);
+    expect(
+      controller.entries.map((entry) => entry.importSourceId),
+      contains('172120180'),
+    );
+    expect(
+      controller.entries.map((entry) => entry.importSourceId),
+      isNot(contains('172120181')),
+    );
+    expect(controller.isBeerWithMeImportCancellationRequested, isFalse);
+    expect(controller.isBusy, isFalse);
   });
 
   test(
@@ -332,6 +513,46 @@ void main() {
     },
   );
 
+  test(
+    'removes a custom drink photo when saving an existing custom drink',
+    () async {
+      final controller = await buildTestController();
+      final german = _l10n('de');
+
+      await controller.signUp(
+        email: 'custom-photo-remove@example.com',
+        password: 'password123',
+        displayName: 'Custom Photo Remove',
+      );
+      controller.takeFlashMessage(german);
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+        imagePath: '/tmp/custom-drink.png',
+      );
+      controller.takeFlashMessage(german);
+
+      final existing = controller.customDrinks.single;
+
+      final success = await controller.saveCustomDrink(
+        drinkId: existing.id,
+        name: existing.name,
+        category: existing.category,
+        volumeMl: existing.volumeMl,
+        imagePath: null,
+      );
+
+      expect(success, isTrue);
+      expect(controller.customDrinks.single.imagePath, isNull);
+      expect(
+        controller.takeFlashMessage(german),
+        'Eigenes Getränk gespeichert.',
+      );
+    },
+  );
+
   test('localizes mapped repository error messages', () async {
     final controller = await buildTestController();
     final german = _l10n('de');
@@ -415,6 +636,46 @@ void main() {
     expect(controller.entries.single.imagePath, isNull);
     expect(controller.takeFlashMessage(german), 'Eintrag aktualisiert.');
   });
+
+  test(
+    'deletes a custom drink and emits a localized success message',
+    () async {
+      final controller = await buildTestController();
+      final german = _l10n('de');
+
+      await controller.signUp(
+        email: 'delete-custom-drink@example.com',
+        password: 'password123',
+        displayName: 'Delete Custom Drink Example',
+      );
+      controller.takeFlashMessage(german);
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+      );
+      controller.takeFlashMessage(german);
+
+      final drink = controller.customDrinks.single;
+      await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl);
+      controller.takeFlashMessage(german);
+
+      final success = await controller.deleteCustomDrink(drink);
+
+      expect(success, isTrue);
+      expect(controller.customDrinks, isEmpty);
+      expect(controller.entries, hasLength(1));
+      expect(
+        controller.localizedEntryDrinkName(
+          controller.entries.single,
+          localeCode: 'de',
+        ),
+        'Office Brew',
+      );
+      expect(controller.takeFlashMessage(german), 'Eigenes Getränk gelöscht.');
+    },
+  );
 
   test('deletes a drink entry and emits a localized success message', () async {
     final controller = await buildTestController();
@@ -560,6 +821,8 @@ class _BootstrapProbeRepository implements AppRepository {
     double? locationLongitude,
     String? locationAddress,
     DateTime? consumedAt,
+    String? importSource,
+    String? importSourceId,
   }) {
     throw UnimplementedError();
   }
@@ -568,6 +831,14 @@ class _BootstrapProbeRepository implements AppRepository {
   Future<void> deleteDrinkEntry({
     required String userId,
     required DrinkEntry entry,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteCustomDrink({
+    required String userId,
+    required DrinkDefinition drink,
   }) {
     throw UnimplementedError();
   }

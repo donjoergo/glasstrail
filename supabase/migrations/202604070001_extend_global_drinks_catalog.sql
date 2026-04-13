@@ -3,7 +3,7 @@ values
   ('beer', 1, 'Beer', 'Bier'),
   ('wine', 2, 'Wine', 'Wein'),
   ('sparklingWines', 3, 'Sparkling Wines', 'Schaumweine'),
-  ('longdrinks', 4, 'Longdrinks', 'Langdrinks'),
+  ('longdrinks', 4, 'Longdrinks', 'Longdrinks'),
   ('spirits', 5, 'Spirits', 'Spirituosen'),
   ('shots', 6, 'Shots', 'Shots'),
   ('cocktails', 7, 'Cocktails', 'Cocktails'),

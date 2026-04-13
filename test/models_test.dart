@@ -87,6 +87,28 @@ void main() {
       );
       expect(cocktail.volumeMl, 250);
 
+      final beer = catalog.firstWhere((drink) => drink.id == 'beer-classic');
+      expect(beer.category, DrinkCategory.beer);
+      expect(beer.localizedNameDe, 'Bier');
+      expect(beer.volumeMl, 500);
+
+      final beerCan = catalog.firstWhere((drink) => drink.id == 'beer-can');
+      expect(beerCan.localizedNameDe, 'Dosenbier');
+
+      final nonAlcoholicBeer = catalog.firstWhere(
+        (drink) => drink.id == 'beer-non-alcoholic',
+      );
+      expect(nonAlcoholicBeer.category, DrinkCategory.beer);
+      expect(nonAlcoholicBeer.name, 'Non-alcoholic Beer');
+      expect(nonAlcoholicBeer.localizedNameDe, 'Alkoholfreies Bier');
+      expect(nonAlcoholicBeer.volumeMl, 500);
+
+      final genericShot = catalog.firstWhere(
+        (drink) => drink.id == 'shots-shot',
+      );
+      expect(genericShot.category, DrinkCategory.shots);
+      expect(genericShot.volumeMl, 20);
+
       final tequila = catalog.firstWhere(
         (drink) => drink.id == 'spirits-tequila',
       );
@@ -96,10 +118,37 @@ void main() {
         (drink) => drink.id == 'appleWines-hard-seltzer',
       );
       expect(hardSeltzer.name, 'Hard Seltzer');
+
+      final mateTea = catalog.firstWhere(
+        (drink) => drink.id == 'nonAlcoholic-mate-tea',
+      );
+      expect(mateTea.category, DrinkCategory.nonAlcoholic);
+      expect(mateTea.name, 'Mate Tea');
+      expect(mateTea.localizedNameDe, 'Mate Tee');
+      expect(mateTea.volumeMl, 300);
+
+      final clubMate = catalog.firstWhere(
+        (drink) => drink.id == 'nonAlcoholic-club-mate',
+      );
+      expect(clubMate.category, DrinkCategory.nonAlcoholic);
+      expect(clubMate.name, 'Club-Mate');
+      expect(clubMate.localizedNameDe, 'Club-Mate');
+      expect(clubMate.volumeMl, 500);
     });
   });
 
   group('DrinkEntry', () {
+    test(
+      'normalizes multiline location addresses into comma-separated text',
+      () {
+        expect(
+          normalizeLocationAddress('Am Buck 19\nHerzogenaurach\nDeutschland'),
+          'Am Buck 19, Herzogenaurach, Deutschland',
+        );
+        expect(normalizeLocationAddress('  \n  '), isNull);
+      },
+    );
+
     test('copyWith can clear comment and image independently', () {
       final entry = DrinkEntry(
         id: 'entry-1',
@@ -114,6 +163,8 @@ void main() {
         locationLatitude: 52.52,
         locationLongitude: 13.405,
         locationAddress: 'Alexanderplatz 1, 10178 Berlin',
+        importSource: 'beer_with_me',
+        importSourceId: '123',
       );
 
       final updated = entry.copyWith(comment: 'Updated', clearImagePath: true);
@@ -124,6 +175,8 @@ void main() {
       expect(updated.locationLatitude, 52.52);
       expect(updated.locationLongitude, 13.405);
       expect(updated.locationAddress, 'Alexanderplatz 1, 10178 Berlin');
+      expect(updated.importSource, 'beer_with_me');
+      expect(updated.importSourceId, '123');
       expect(cleared.comment, isNull);
       expect(cleared.drinkId, entry.drinkId);
       expect(cleared.consumedAt, entry.consumedAt);
@@ -141,12 +194,16 @@ void main() {
         'location_latitude': 52.52,
         'location_longitude': 13.405,
         'location_address': 'Alexanderplatz 1, 10178 Berlin',
+        'import_source': 'beer_with_me',
+        'import_source_id': '456',
       });
 
       expect(entry.volumeMl, 250);
       expect(entry.locationLatitude, 52.52);
       expect(entry.locationLongitude, 13.405);
       expect(entry.locationAddress, 'Alexanderplatz 1, 10178 Berlin');
+      expect(entry.importSource, 'beer_with_me');
+      expect(entry.importSourceId, '456');
     });
   });
 }

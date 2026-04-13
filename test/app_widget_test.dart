@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
+import 'package:glasstrail/src/app_scope.dart';
 import 'package:glasstrail/src/locale_memory.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/route_memory.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
+import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,6 +45,36 @@ Future<void> _switchToSignUp(WidgetTester tester) async {
   await tester.ensureVisible(find.byKey(const Key('auth-mode-segmented')));
   await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
   await tester.pumpAndSettle();
+}
+
+Color? _foregroundColor(ButtonStyle? style) =>
+    style?.foregroundColor?.resolve(<WidgetState>{});
+
+BorderSide? _borderSide(ButtonStyle? style) =>
+    style?.side?.resolve(<WidgetState>{});
+
+String _rememberedRoute(WidgetTester tester) {
+  return AppScope.routeMemoryOf(
+    tester.element(find.byType(HomeShell)),
+  ).lastRoute;
+}
+
+Finder _profileScrollable() => find.descendant(
+  of: find.byType(ProfileScreen),
+  matching: find.byType(Scrollable),
+);
+
+Future<void> _scrollProfileTargetIntoView(
+  WidgetTester tester,
+  Finder target,
+) async {
+  await tester.scrollUntilVisible(
+    target,
+    200,
+    scrollable: _profileScrollable(),
+  );
+  await Scrollable.ensureVisible(tester.element(target), alignment: 0.5);
+  await tester.pump();
 }
 
 void main() {
@@ -106,7 +138,7 @@ void main() {
     },
   );
 
-  testWidgets('restores the last visited bar route after a web reload', (
+  testWidgets('restores the last visited bar subroute after a web reload', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -133,8 +165,12 @@ void main() {
 
     await tester.tap(find.text('Bar'));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('bar-custom-tab')));
+    await tester.pumpAndSettle();
+
     final barRoute = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(barRoute?.settings.name, AppRoutes.bar);
+    expect(_rememberedRoute(tester), AppRoutes.barCustom);
 
     final reloadedController = await AppController.bootstrapWithRepository(
       repository,
@@ -149,7 +185,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
-    expect(route?.settings.name, AppRoutes.bar);
+    expect(route?.settings.name, AppRoutes.barCustom);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
   });
 
   testWidgets('starts in feed after a native app restart', (tester) async {
@@ -358,6 +395,43 @@ void main() {
     ]);
   });
 
+  testWidgets('styles sign-up remove actions as destructive', (tester) async {
+    final controller = await buildTestController();
+    final photoService = RecordingPhotoService();
+
+    await tester.pumpWidget(
+      GlassTrailApp(controller: controller, photoService: photoService),
+    );
+    await tester.pumpAndSettle();
+
+    await _switchToSignUp(tester);
+    await tester.tap(find.byKey(const Key('auth-birthday-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await _tapPhotoAction(tester, find.text('Pick photo'));
+
+    final theme = Theme.of(
+      tester.element(find.byKey(const Key('auth-remove-photo-button'))),
+    );
+    final removeBirthdayButton = tester.widget<IconButton>(
+      find.byKey(const Key('auth-remove-birthday-button')),
+    );
+    final removePhotoButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('auth-remove-photo-button')),
+    );
+
+    expect(
+      _foregroundColor(removeBirthdayButton.style),
+      theme.colorScheme.error,
+    );
+    expect(_foregroundColor(removePhotoButton.style), theme.colorScheme.error);
+    expect(
+      _borderSide(removePhotoButton.style),
+      BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.72)),
+    );
+  });
+
   testWidgets('offers the Android camera option for sign-up photos', (
     tester,
   ) async {
@@ -523,6 +597,79 @@ void main() {
     expect(find.text('Category breakdown'), findsOneWidget);
   });
 
+  testWidgets('opens bookmarked statistics subroutes for authenticated users', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'statistics-subroute@example.com',
+      password: 'password123',
+      displayName: 'Statistics Subroute',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statisticsMap,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-map-empty-state')), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.statisticsMap);
+  });
+
+  testWidgets('opens bookmarked bar subroutes for authenticated users', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-subroute@example.com',
+      password: 'password123',
+      displayName: 'Bar Subroute',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.barCustom,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.barCustom);
+  });
+
+  testWidgets('uses transitionless routes for home shell subroutes', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'transitionless-subroute@example.com',
+      password: 'password123',
+      displayName: 'Transitionless Subroute',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statisticsMap,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route, isA<PageRoute<void>>());
+    expect((route! as PageRoute<void>).transitionDuration, Duration.zero);
+    expect(route.reverseTransitionDuration, Duration.zero);
+  });
+
   testWidgets('restores the protected route after sign-in', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final preferences = await SharedPreferences.getInstance();
@@ -564,6 +711,50 @@ void main() {
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(route?.settings.name, AppRoutes.statistics);
+  });
+
+  testWidgets('restores the protected bar subroute after sign-in', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    await repository.signUp(
+      email: 'protected-bar-login@example.com',
+      password: 'password123',
+      displayName: 'Protected Bar Login',
+    );
+    await repository.signOut();
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.barCustom,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('signin-email-field')),
+      'protected-bar-login@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('signin-password-field')),
+      'password123',
+    );
+    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
+    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.barCustom);
   });
 
   testWidgets('restores the protected route after sign-up', (tester) async {
@@ -631,14 +822,7 @@ void main() {
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
     final logoutButton = find.byKey(const Key('profile-logout-button'));
-    await tester.scrollUntilVisible(
-      logoutButton,
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.ensureVisible(logoutButton);
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-    await tester.pumpAndSettle();
+    await _scrollProfileTargetIntoView(tester, logoutButton);
     await tester.tap(logoutButton);
     await tester.pumpAndSettle();
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_theme.dart';
 import '../app_controller.dart';
 import '../app_scope.dart';
 import '../birthday.dart';
@@ -201,6 +202,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                           key: const Key(
                                             'edit-profile-remove-photo-button',
                                           ),
+                                          style:
+                                              AppTheme.destructiveOutlinedButtonStyle(
+                                                theme.colorScheme,
+                                              ),
                                           onPressed: isBusy
                                               ? null
                                               : () {
@@ -272,15 +277,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 key: const Key(
                                   'edit-profile-remove-birthday-button',
                                 ),
-                                style: OutlinedButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                  minimumSize: const Size(0, 40),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                  ),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
+                                style:
+                                    AppTheme.destructiveOutlinedButtonStyle(
+                                      theme.colorScheme,
+                                    ).copyWith(
+                                      visualDensity: VisualDensity.compact,
+                                      minimumSize: const WidgetStatePropertyAll(
+                                        Size(0, 40),
+                                      ),
+                                      padding: const WidgetStatePropertyAll(
+                                        EdgeInsets.symmetric(horizontal: 12),
+                                      ),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
                                 onPressed: isBusy
                                     ? null
                                     : () {

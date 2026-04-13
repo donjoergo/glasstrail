@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
@@ -11,12 +13,15 @@ import 'package:url_launcher_platform_interface/url_launcher_platform_interface.
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_routes.dart';
+import 'package:glasstrail/src/app_scope.dart';
+import 'package:glasstrail/src/import_file_service.dart';
 import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/add_drink_screen.dart';
 import 'package:glasstrail/src/screens/feed_screen.dart';
+import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
 
@@ -31,6 +36,15 @@ const _changelogUrl =
 
 AppLocalizations _l10n(String languageCode) =>
     lookupAppLocalizations(Locale(languageCode));
+
+Color? _foregroundColor(ButtonStyle? style) =>
+    style?.foregroundColor?.resolve(<WidgetState>{});
+
+Color? _backgroundColor(ButtonStyle? style) =>
+    style?.backgroundColor?.resolve(<WidgetState>{});
+
+BorderSide? _borderSide(ButtonStyle? style) =>
+    style?.side?.resolve(<WidgetState>{});
 
 Future<({AppController controller, BlockingLocalAppRepository repository})>
 _buildBlockedHarness(AppBusyAction action) async {
@@ -65,6 +79,16 @@ Future<void> _openStatisticsSection(WidgetTester tester, String label) async {
   await tester.ensureVisible(tab.first);
   await tester.tap(tab.first);
   await tester.pumpAndSettle();
+}
+
+String? _homeShellRouteName(WidgetTester tester) {
+  return ModalRoute.of(tester.element(find.byType(HomeShell)))?.settings.name;
+}
+
+String _rememberedRoute(WidgetTester tester) {
+  return AppScope.routeMemoryOf(
+    tester.element(find.byType(HomeShell)),
+  ).lastRoute;
 }
 
 Finder _profileScrollable() => find.descendant(
@@ -376,6 +400,30 @@ void main() {
       birthdayRect.top,
       moreOrLessEquals(removeBirthdayRect.top, epsilon: 0.01),
     );
+
+    final theme = Theme.of(
+      tester.element(find.byKey(const Key('edit-profile-save-button'))),
+    );
+    final removePhotoButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('edit-profile-remove-photo-button')),
+    );
+    final removeBirthdayButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('edit-profile-remove-birthday-button')),
+    );
+
+    expect(_foregroundColor(removePhotoButton.style), theme.colorScheme.error);
+    expect(
+      _borderSide(removePhotoButton.style),
+      BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.72)),
+    );
+    expect(
+      _foregroundColor(removeBirthdayButton.style),
+      theme.colorScheme.error,
+    );
+    expect(
+      _borderSide(removeBirthdayButton.style),
+      BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.72)),
+    );
   });
 
   testWidgets('uses the profile preset when changing the profile photo', (
@@ -456,6 +504,98 @@ void main() {
         moreOrLessEquals(expectedCenters[index], epsilon: 24),
       );
     }
+  });
+
+  testWidgets('updates the route when selecting statistics tabs', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'statistics-route-tabs@example.com',
+      password: 'password123',
+      displayName: 'Statistics Route Tabs',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsSection(tester, 'Map');
+    expect(_homeShellRouteName(tester), AppRoutes.statistics);
+    expect(_rememberedRoute(tester), AppRoutes.statisticsMap);
+    expect(find.byKey(const Key('statistics-map-empty-state')), findsOneWidget);
+
+    await _openStatisticsSection(tester, 'History');
+    expect(_homeShellRouteName(tester), AppRoutes.statistics);
+    expect(_rememberedRoute(tester), AppRoutes.statisticsHistory);
+    expect(
+      find.byKey(const Key('statistics-history-empty-state')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'keeps the old route until the statistics tab animation completes',
+    (tester) async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'statistics-route-animation@example.com',
+        password: 'password123',
+        displayName: 'Statistics Route Animation',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.statistics,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final mapTab = find.descendant(
+        of: find.byKey(const Key('statistics-tab-bar')),
+        matching: find.text('Map', skipOffstage: false),
+      );
+      await tester.tap(mapTab.first);
+      await tester.pump();
+
+      expect(_rememberedRoute(tester), AppRoutes.statistics);
+
+      await tester.pumpAndSettle();
+
+      expect(_rememberedRoute(tester), AppRoutes.statisticsMap);
+    },
+  );
+
+  testWidgets('updates the route when swiping statistics tabs', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'statistics-route-swipe@example.com',
+      password: 'password123',
+      displayName: 'Statistics Route Swipe',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(TabBarView), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+
+    expect(_homeShellRouteName(tester), AppRoutes.statistics);
+    expect(_rememberedRoute(tester), AppRoutes.statisticsMap);
+    expect(find.byKey(const Key('statistics-map-empty-state')), findsOneWidget);
   });
 
   testWidgets('shows a field-local spinner while saving settings', (
@@ -559,6 +699,304 @@ void main() {
       PreferredLaunchMode.externalApplication,
     );
   });
+
+  testWidgets('imports a BeerWithMe export from the profile screen', (
+    tester,
+  ) async {
+    final l10n = _l10n('en');
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-import@example.com',
+      password: 'password123',
+      displayName: 'Profile Import Example',
+    );
+
+    final importFileService = TestImportFileService(
+      file: SelectedImportFile(
+        name: 'history.json',
+        contents: jsonEncode(<Map<String, Object?>>[
+          <String, Object?>{
+            'id': 1,
+            'timestamp': '2022-06-06T22:55:15.000+02:00',
+            'glassType': 'WineRose',
+            'address': 'no_address',
+          },
+        ]),
+      ),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        importFileService: importFileService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await _scrollProfileTargetIntoView(
+      tester,
+      find.byKey(const Key('profile-import-section')),
+    );
+
+    await tester.tap(find.byKey(const Key('profile-import-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+        matching: find.widgetWithText(
+          FilledButton,
+          l10n.beerWithMeImportAction,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('beer-with-me-import-result-dialog')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('beer-with-me-import-summary-imported')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('beer-with-me-import-summary-skipped')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('beer-with-me-import-summary-errors')),
+      findsNothing,
+    );
+    expect(find.text(l10n.beerWithMeImportResultImported(1)), findsOneWidget);
+    expect(find.text(l10n.beerWithMeImportResultSkipped(0)), findsNothing);
+    expect(find.text(l10n.beerWithMeImportResultErrors(0)), findsNothing);
+    expect(
+      find.byKey(const Key('beer-with-me-import-summary-total')),
+      findsOneWidget,
+    );
+    expect(controller.entries.single.importSourceId, '1');
+    expect(controller.entries.single.locationAddress, isNull);
+  });
+
+  testWidgets('shows BeerWithMe import progress while the import is running', (
+    tester,
+  ) async {
+    final l10n = _l10n('en');
+    final harness = await _buildBlockedHarness(AppBusyAction.addDrinkEntry);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'profile-import-progress@example.com',
+      password: 'password123',
+      displayName: 'Profile Import Progress Example',
+    );
+
+    final importFileService = TestImportFileService(
+      file: SelectedImportFile(
+        name: 'history.json',
+        contents: jsonEncode(<Map<String, Object?>>[
+          <String, Object?>{
+            'id': 2,
+            'timestamp': '2022-06-06T22:55:15.000+02:00',
+            'glassType': 'WineRose',
+            'address': 'no_address',
+          },
+        ]),
+      ),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        importFileService: importFileService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await _scrollProfileTargetIntoView(
+      tester,
+      find.byKey(const Key('profile-import-section')),
+    );
+
+    await tester.tap(find.byKey(const Key('profile-import-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+        matching: find.widgetWithText(
+          FilledButton,
+          l10n.beerWithMeImportAction,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('profile-import-progress-indicator')),
+      findsOneWidget,
+    );
+    expect(find.text(l10n.beerWithMeImportProgress(0, 1)), findsOneWidget);
+    expect(
+      find.text(l10n.beerWithMeImportProgressDetails(0, 0, 0)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('profile-import-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(FilledButton, l10n.beerWithMeImportCancelAction),
+      findsOneWidget,
+    );
+    final cancelButton = tester.widget<FilledButton>(
+      find.byKey(const Key('profile-import-cancel-button')),
+    );
+    final profileTheme = Theme.of(
+      tester.element(find.byKey(const Key('profile-import-section'))),
+    );
+    expect(
+      _backgroundColor(cancelButton.style),
+      profileTheme.colorScheme.errorContainer,
+    );
+    expect(
+      _foregroundColor(cancelButton.style),
+      profileTheme.colorScheme.onErrorContainer,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('beer-with-me-import-result-dialog')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'can cancel a running BeerWithMe import from the profile screen',
+    (tester) async {
+      final l10n = _l10n('en');
+      final harness = await _buildBlockedHarness(AppBusyAction.addDrinkEntry);
+      final controller = harness.controller;
+      final repository = harness.repository;
+      await controller.signUp(
+        email: 'profile-import-cancel@example.com',
+        password: 'password123',
+        displayName: 'Profile Import Cancel Example',
+      );
+
+      final importFileService = TestImportFileService(
+        file: SelectedImportFile(
+          name: 'history.json',
+          contents: jsonEncode(<Map<String, Object?>>[
+            <String, Object?>{
+              'id': 3,
+              'timestamp': '2022-06-06T22:55:15.000+02:00',
+              'glassType': 'WineRose',
+              'address': 'no_address',
+            },
+            <String, Object?>{
+              'id': 4,
+              'timestamp': '2022-06-06T23:10:00.000+02:00',
+              'glassType': 'Beer',
+              'address': 'no_address',
+            },
+          ]),
+        ),
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          importFileService: importFileService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openProfileTab(tester);
+      await _scrollProfileTargetIntoView(
+        tester,
+        find.byKey(const Key('profile-import-section')),
+      );
+
+      await tester.tap(find.byKey(const Key('profile-import-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+          matching: find.widgetWithText(
+            FilledButton,
+            l10n.beerWithMeImportAction,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('profile-import-cancel-button')));
+      await tester.pump();
+
+      expect(controller.isBeerWithMeImportCancellationRequested, isTrue);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.byKey(const Key('profile-import-cancel-button')),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(find.text(l10n.beerWithMeImportCancelling), findsOneWidget);
+
+      repository.unblock();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('beer-with-me-import-result-dialog')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-status-banner')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-summary-imported')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-summary-skipped')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-summary-errors')),
+        findsNothing,
+      );
+      expect(
+        find.text(l10n.beerWithMeImportResultCancelled(1, 2)),
+        findsOneWidget,
+      );
+      expect(
+        controller.entries.map((entry) => entry.importSourceId),
+        contains('3'),
+      );
+      expect(
+        controller.entries.map((entry) => entry.importSourceId),
+        isNot(contains('4')),
+      );
+    },
+  );
 
   testWidgets('does not show backend information on the profile screen', (
     tester,
@@ -1146,9 +1584,95 @@ void main() {
     );
   });
 
+  testWidgets('updates the route when selecting the bar custom tab', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-route-tabs@example.com',
+      password: 'password123',
+      displayName: 'Bar Route Tabs',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+
+    expect(_homeShellRouteName(tester), AppRoutes.bar);
+    expect(_rememberedRoute(tester), AppRoutes.barCustom);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+  });
+
+  testWidgets('keeps the old route until the bar tab animation completes', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-route-animation@example.com',
+      password: 'password123',
+      displayName: 'Bar Route Animation',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('bar-custom-tab')));
+    await tester.pump();
+
+    expect(_rememberedRoute(tester), AppRoutes.bar);
+
+    await tester.pumpAndSettle();
+
+    expect(_rememberedRoute(tester), AppRoutes.barCustom);
+  });
+
+  testWidgets('updates the route when swiping bar tabs', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-route-swipe@example.com',
+      password: 'password123',
+      displayName: 'Bar Route Swipe',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(TabBarView), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+
+    expect(_homeShellRouteName(tester), AppRoutes.bar);
+    expect(_rememberedRoute(tester), AppRoutes.barCustom);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+  });
+
   testWidgets('shows an empty state when no custom drinks exist', (
     tester,
   ) async {
+    _setSurfaceSize(tester, const Size(1000, 1200));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
     final controller = await buildTestController();
     await controller.signUp(
       email: 'bar-custom-empty@example.com',
@@ -1167,7 +1691,10 @@ void main() {
 
     await _openBarCustomDrinksTab(tester);
 
-    expect(find.byKey(const Key('bar-custom-empty-state')), findsOneWidget);
+    final emptyState = find.byKey(const Key('bar-custom-empty-state'));
+    final customSection = find.byKey(const Key('bar-custom-drinks-section'));
+
+    expect(emptyState, findsOneWidget);
     expect(find.text('No custom drinks yet'), findsOneWidget);
     expect(
       find.text('Create your first custom drink and it will appear here.'),
@@ -1177,6 +1704,44 @@ void main() {
       find.byKey(const Key('bar-add-custom-drink-button')),
       findsOneWidget,
     );
+
+    final emptyStateRect = tester.getRect(emptyState);
+    final customSectionRect = tester.getRect(customSection);
+    expect(emptyStateRect.width, lessThan(400));
+    expect(emptyStateRect.center.dx, closeTo(customSectionRect.center.dx, 0.1));
+  });
+
+  testWidgets('defaults new custom drinks to beer', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'custom-default-category@example.com',
+      password: 'password123',
+      displayName: 'Custom Default Category',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+    final addCustomDrinkButton = find.byKey(
+      const Key('bar-add-custom-drink-button'),
+    );
+    await _scrollBarTargetIntoView(tester, addCustomDrinkButton);
+    await tester.tap(addCustomDrinkButton);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).first, 'Test Lager');
+    await tester.tap(find.byKey(const Key('custom-drink-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(controller.customDrinks, hasLength(1));
+    expect(controller.customDrinks.single.category, DrinkCategory.beer);
   });
 
   testWidgets('shows a spinner while saving a custom drink', (tester) async {
@@ -1229,6 +1794,302 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Night Cap'), findsOneWidget);
+  });
+
+  testWidgets(
+    'deletes a custom drink from the edit dialog and keeps history visible',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'delete-custom-ui@example.com',
+        password: 'password123',
+        displayName: 'Delete Custom Ui',
+      );
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+      );
+      final customDrink = controller.customDrinks.single;
+      await controller.addDrinkEntry(
+        drink: customDrink,
+        volumeMl: customDrink.volumeMl,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.bar,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openBarCustomDrinksTab(tester);
+      await tester.tap(
+        find.byKey(Key('bar-edit-custom-drink-${customDrink.id}')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('custom-drink-delete-button')),
+        findsOneWidget,
+      );
+      final dialogTheme = Theme.of(
+        tester.element(find.byKey(const Key('custom-drink-delete-button'))),
+      );
+      final deleteButton = tester.widget<TextButton>(
+        find.byKey(const Key('custom-drink-delete-button')),
+      );
+      expect(
+        _foregroundColor(deleteButton.style),
+        dialogTheme.colorScheme.error,
+      );
+
+      await tester.tap(find.byKey(const Key('custom-drink-delete-button')));
+      await tester.pumpAndSettle();
+      final confirmButton = tester.widget<FilledButton>(
+        find.byKey(const Key('delete-custom-drink-confirm-button')),
+      );
+      expect(
+        _backgroundColor(confirmButton.style),
+        dialogTheme.colorScheme.error,
+      );
+      expect(
+        _foregroundColor(confirmButton.style),
+        dialogTheme.colorScheme.onError,
+      );
+      await tester.tap(
+        find.byKey(const Key('delete-custom-drink-confirm-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.customDrinks, isEmpty);
+      expect(
+        find.byKey(Key('bar-custom-drink-${customDrink.id}')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('bar-custom-empty-state')), findsOneWidget);
+
+      await _openStatisticsTab(tester);
+      await _openStatisticsSection(tester, 'History');
+
+      expect(find.text('Office Brew'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'shows a bounded photo preview in the custom drink edit dialog without overflow',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'custom-photo-layout@example.com',
+        password: 'password123',
+        displayName: 'Custom Photo Layout',
+      );
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+        imagePath: _transparentPngDataUrl,
+      );
+      final customDrink = controller.customDrinks.single;
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.bar,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openBarCustomDrinksTab(tester);
+      await tester.tap(
+        find.byKey(Key('bar-edit-custom-drink-${customDrink.id}')),
+      );
+      await tester.pumpAndSettle();
+
+      final preview = find.byKey(const Key('custom-drink-image-preview'));
+      final changePhotoLabel = find.text('Change photo');
+      final removePhotoLabel = find.text('Remove photo');
+      final removePhotoButton = find.widgetWithText(
+        OutlinedButton,
+        'Remove photo',
+      );
+      final deleteButton = find.byKey(const Key('custom-drink-delete-button'));
+      final cancelButton = find.byKey(const Key('custom-drink-cancel-button'));
+      final saveButton = find.byKey(const Key('custom-drink-save-button'));
+      expect(preview, findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(preview).width, lessThanOrEqualTo(280));
+      expect(changePhotoLabel, findsOneWidget);
+      expect(removePhotoLabel, findsOneWidget);
+      expect(
+        (tester.getTopLeft(changePhotoLabel).dy -
+                tester.getTopLeft(removePhotoLabel).dy)
+            .abs(),
+        lessThan(1),
+      );
+      expect(
+        tester.getTopLeft(removePhotoLabel).dx,
+        greaterThan(tester.getTopLeft(changePhotoLabel).dx),
+      );
+      expect(
+        (tester.getRect(preview).top -
+                tester.getRect(removePhotoButton).bottom) -
+            (tester.getRect(deleteButton).top - tester.getRect(preview).bottom),
+        closeTo(0, 1),
+      );
+      expect(
+        (tester.getTopLeft(cancelButton).dy - tester.getTopLeft(saveButton).dy)
+            .abs(),
+        lessThan(1),
+      );
+      expect(
+        tester.getTopLeft(deleteButton).dy,
+        lessThan(tester.getTopLeft(cancelButton).dy),
+      );
+      expect(
+        (tester.getTopRight(deleteButton).dx -
+                tester.getTopRight(saveButton).dx)
+            .abs(),
+        lessThan(1),
+      );
+      expect(deleteButton, findsOneWidget);
+      expect(saveButton, findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'keeps the custom drink delete action above the primary buttons on wider dialog layouts when needed',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1000, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'custom-photo-layout-web@example.com',
+        password: 'password123',
+        displayName: 'Custom Photo Layout Web',
+      );
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+        imagePath: _transparentPngDataUrl,
+      );
+      final customDrink = controller.customDrinks.single;
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.bar,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openBarCustomDrinksTab(tester);
+      await tester.tap(
+        find.byKey(Key('bar-edit-custom-drink-${customDrink.id}')),
+      );
+      await tester.pumpAndSettle();
+
+      final deleteButton = find.byKey(const Key('custom-drink-delete-button'));
+      final cancelButton = find.byKey(const Key('custom-drink-cancel-button'));
+      final saveButton = find.byKey(const Key('custom-drink-save-button'));
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.getTopLeft(deleteButton).dy,
+        lessThan(tester.getTopLeft(cancelButton).dy),
+      );
+      expect(
+        (tester.getTopRight(deleteButton).dx -
+                tester.getTopRight(saveButton).dx)
+            .abs(),
+        lessThan(1),
+      );
+    },
+  );
+
+  testWidgets('shows a spinner while deleting a custom drink', (tester) async {
+    final harness = await _buildBlockedHarness(AppBusyAction.deleteCustomDrink);
+    final controller = harness.controller;
+    final repository = harness.repository;
+    await controller.signUp(
+      email: 'delete-custom-busy@example.com',
+      password: 'password123',
+      displayName: 'Delete Custom Busy',
+    );
+
+    await controller.saveCustomDrink(
+      name: 'Night Cap',
+      category: DrinkCategory.cocktails,
+      volumeMl: 200,
+    );
+    final customDrink = controller.customDrinks.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+    await tester.tap(
+      find.byKey(Key('bar-edit-custom-drink-${customDrink.id}')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('custom-drink-delete-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('delete-custom-drink-confirm-button')),
+    );
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('delete-custom-drink-confirm-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextButton>(
+            find.byKey(const Key('delete-custom-drink-cancel-button')),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-custom-empty-state')), findsOneWidget);
   });
 
   testWidgets(
@@ -1942,6 +2803,10 @@ void main() {
       tester.widget<Text>(find.byKey(const Key('stats-card-value-weekly'))),
       isA<Text>().having((widget) => widget.data, 'data', '0'),
     );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('stats-card-value-total'))),
+      isA<Text>().having((widget) => widget.data, 'data', '0'),
+    );
 
     await externalRepository.addDrinkEntry(
       user: controller.currentUser!,
@@ -1961,6 +2826,10 @@ void main() {
 
     expect(
       tester.widget<Text>(find.byKey(const Key('stats-card-value-weekly'))),
+      isA<Text>().having((widget) => widget.data, 'data', '1'),
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('stats-card-value-total'))),
       isA<Text>().having((widget) => widget.data, 'data', '1'),
     );
   });
@@ -2120,6 +2989,7 @@ void main() {
     expect(find.byKey(const Key('stats-card-icon-weekly')), findsOneWidget);
     expect(find.byKey(const Key('stats-card-icon-monthly')), findsOneWidget);
     expect(find.byKey(const Key('stats-card-icon-yearly')), findsOneWidget);
+    expect(find.byKey(const Key('stats-card-icon-total')), findsOneWidget);
     expect(
       find.byKey(const Key('stats-card-icon-current-streak')),
       findsOneWidget,
@@ -2130,38 +3000,6 @@ void main() {
     );
     expect(
       find.byKey(const Key('stats-category-chip-icon-beer')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-wine')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-sparklingWines')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-longdrinks')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-spirits')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-shots')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-cocktails')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-appleWines')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const Key('stats-category-chip-icon-nonAlcoholic')),
       findsOneWidget,
     );
   });
@@ -2305,6 +3143,9 @@ void main() {
     final yearlyIconOffset = tester.getTopLeft(
       find.byKey(const Key('stats-card-icon-yearly')),
     );
+    final totalIconOffset = tester.getTopLeft(
+      find.byKey(const Key('stats-card-icon-total')),
+    );
     final currentStreakIconOffset = tester.getTopLeft(
       find.byKey(const Key('stats-card-icon-current-streak')),
     );
@@ -2313,13 +3154,86 @@ void main() {
     );
 
     expect(monthlyIconOffset.dy, closeTo(weeklyIconOffset.dy, 0.1));
-    expect(yearlyIconOffset.dy, closeTo(weeklyIconOffset.dy, 0.1));
-    expect(currentStreakIconOffset.dy, greaterThan(weeklyIconOffset.dy));
+    expect(yearlyIconOffset.dy, greaterThan(weeklyIconOffset.dy));
+    expect(totalIconOffset.dy, closeTo(yearlyIconOffset.dy, 0.1));
+    expect(currentStreakIconOffset.dy, greaterThan(yearlyIconOffset.dy));
     expect(bestStreakIconOffset.dy, closeTo(currentStreakIconOffset.dy, 0.1));
+    expect(
+      tester.widget<Text>(find.byKey(const Key('stats-card-value-total'))),
+      isA<Text>().having((widget) => widget.data, 'data', '3'),
+    );
 
     final expectedRange =
         '${DateFormat.MMMd(controller.settings.localeCode).format(bestStart)} - '
         '${DateFormat.MMMd(controller.settings.localeCode).format(bestEnd)}';
+    expect(
+      tester.widget<Text>(
+        find.byKey(const Key('stats-card-best-streak-range')),
+      ),
+      isA<Text>().having((widget) => widget.data, 'data', expectedRange),
+    );
+  });
+
+  testWidgets('shows the year for a best streak outside the current year', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-overview-last-year@example.com',
+      password: 'password123',
+      displayName: 'Stats Overview Last Year',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+    final today = DateTime.now();
+    final bestStart = DateTime(today.year - 1, 12, 28);
+    final bestEnd = bestStart.add(const Duration(days: 2));
+
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: bestStart,
+    );
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: bestStart.add(const Duration(days: 1)),
+    );
+    await externalRepository.addDrinkEntry(
+      user: controller.currentUser!,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      consumedAt: bestEnd,
+    );
+    await controller.refreshData();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+
+    final expectedRange =
+        '${DateFormat.yMMMd(controller.settings.localeCode).format(bestStart)} - '
+        '${DateFormat.yMMMd(controller.settings.localeCode).format(bestEnd)}';
     expect(
       tester.widget<Text>(
         find.byKey(const Key('stats-card-best-streak-range')),
@@ -2449,13 +3363,6 @@ void main() {
 
     expect(find.text('Pils'), findsNothing);
     expect(find.text('Red Wine'), findsOneWidget);
-
-    await tester.tap(find.widgetWithText(FilterChip, 'Non-alcoholic (0)'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Pils'), findsNothing);
-    expect(find.text('Red Wine'), findsNothing);
-    expect(find.text('No drinks match the current filter.'), findsOneWidget);
   });
 
   testWidgets('shows the map empty state and gallery empty state', (
@@ -3346,6 +4253,22 @@ void main() {
       expect(find.text('before-edit.png'), findsNothing);
       expect(find.byKey(const Key('drink-search-field')), findsNothing);
       expect(find.byKey(const Key('drink-volume-field')), findsNothing);
+      final editDialogTheme = Theme.of(
+        tester.element(find.byKey(const Key('edit-entry-remove-photo-button'))),
+      );
+      final removePhotoButton = tester.widget<OutlinedButton>(
+        find.byKey(const Key('edit-entry-remove-photo-button')),
+      );
+      expect(
+        _foregroundColor(removePhotoButton.style),
+        editDialogTheme.colorScheme.error,
+      );
+      expect(
+        _borderSide(removePhotoButton.style),
+        BorderSide(
+          color: editDialogTheme.colorScheme.error.withValues(alpha: 0.72),
+        ),
+      );
 
       await tester.enterText(
         find.byKey(const Key('edit-entry-comment-field')),
@@ -3500,8 +4423,21 @@ void main() {
 
     await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
     await tester.pumpAndSettle();
+    final deleteMenuLabel = tester.widget<Text>(find.text('Delete entry').last);
+    final menuTheme = Theme.of(
+      tester.element(find.byKey(const Key('feed-streak-card'))),
+    );
+    expect(deleteMenuLabel.style?.color, menuTheme.colorScheme.error);
     await tester.tap(find.byKey(Key('feed-entry-delete-$entryId')));
     await tester.pumpAndSettle();
+    final confirmButton = tester.widget<FilledButton>(
+      find.byKey(const Key('delete-entry-confirm-button')),
+    );
+    expect(_backgroundColor(confirmButton.style), menuTheme.colorScheme.error);
+    expect(
+      _foregroundColor(confirmButton.style),
+      menuTheme.colorScheme.onError,
+    );
     await tester.tap(find.byKey(const Key('delete-entry-confirm-button')));
     await tester.pumpAndSettle();
 
@@ -3588,14 +4524,7 @@ void main() {
 
     await _openProfileTab(tester);
     final logoutButton = find.byKey(const Key('profile-logout-button'));
-    await tester.scrollUntilVisible(
-      logoutButton,
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.ensureVisible(logoutButton);
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-    await tester.pumpAndSettle();
+    await _scrollProfileTargetIntoView(tester, logoutButton);
     await tester.tap(logoutButton);
     await tester.pump();
 

@@ -56,6 +56,44 @@ void main() {
       expect(userTwoEntries, isEmpty);
     });
 
+    test(
+      'deletes only the selected custom drink and keeps existing entries',
+      () async {
+        final user = await repository.signUp(
+          email: 'delete-custom@example.com',
+          password: 'secret',
+          displayName: 'Delete Custom User',
+        );
+
+        final first = await repository.saveCustomDrink(
+          userId: user.id,
+          name: 'Office Brew',
+          category: DrinkCategory.nonAlcoholic,
+          volumeMl: 300,
+        );
+        await repository.saveCustomDrink(
+          userId: user.id,
+          name: 'Night Cap',
+          category: DrinkCategory.cocktails,
+          volumeMl: 200,
+        );
+        await repository.addDrinkEntry(
+          user: user,
+          drink: first,
+          volumeMl: first.volumeMl,
+        );
+
+        await repository.deleteCustomDrink(userId: user.id, drink: first);
+
+        final restoredDrinks = await repository.loadCustomDrinks(user.id);
+        final restoredEntries = await repository.loadEntries(user.id);
+        expect(restoredDrinks, hasLength(1));
+        expect(restoredDrinks.single.name, 'Night Cap');
+        expect(restoredEntries, hasLength(1));
+        expect(restoredEntries.single.drinkName, 'Office Brew');
+      },
+    );
+
     test('restores the active session and rejects duplicate emails', () async {
       final user = await repository.signUp(
         email: 'duplicate@example.com',
@@ -181,6 +219,32 @@ void main() {
       expect(restored.single.locationLatitude, 48.137);
       expect(restored.single.locationLongitude, 11.575);
       expect(restored.single.locationAddress, 'Marienplatz 1, 80331 Munich');
+    });
+
+    test('persists import metadata for a drink entry', () async {
+      final user = await repository.signUp(
+        email: 'import-entry@example.com',
+        password: 'secret',
+        displayName: 'Import Entry User',
+      );
+
+      await repository.addDrinkEntry(
+        user: user,
+        drink: const DrinkDefinition(
+          id: 'beer-classic',
+          name: 'Beer',
+          category: DrinkCategory.beer,
+          volumeMl: 500,
+        ),
+        consumedAt: DateTime(2022, 6, 6, 22, 55, 15),
+        importSource: 'beer_with_me',
+        importSourceId: '172120176',
+      );
+
+      final restored = await repository.loadEntries(user.id);
+
+      expect(restored.single.importSource, 'beer_with_me');
+      expect(restored.single.importSourceId, '172120176');
     });
 
     test(

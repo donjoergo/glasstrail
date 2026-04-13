@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app_theme.dart';
 import '../app_controller.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
@@ -652,7 +653,10 @@ class _DrinkEntryCard extends StatelessWidget {
                   PopupMenuItem<_DrinkEntryAction>(
                     key: Key('feed-entry-delete-${entry.id}'),
                     value: _DrinkEntryAction.delete,
-                    child: Text(AppLocalizations.of(context).deleteEntry),
+                    child: Text(
+                      AppLocalizations.of(context).deleteEntry,
+                      style: AppTheme.destructiveMenuTextStyle(theme),
+                    ),
                   ),
                 ],
               ),
@@ -677,11 +681,7 @@ class _DrinkEntryCard extends StatelessWidget {
   }
 
   String? _normalizedLocationAddress(String? value) {
-    final trimmed = value?.trim();
-    if (trimmed == null || trimmed.isEmpty) {
-      return null;
-    }
-    return trimmed;
+    return normalizeLocationAddress(value);
   }
 }
 
@@ -848,6 +848,9 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                   if (_imagePath != null)
                     OutlinedButton.icon(
                       key: const Key('edit-entry-remove-photo-button'),
+                      style: AppTheme.destructiveOutlinedButtonStyle(
+                        theme.colorScheme,
+                      ),
                       onPressed: isBusy
                           ? null
                           : () {
@@ -928,6 +931,7 @@ class _DeleteDrinkEntryDialogState extends State<_DeleteDrinkEntryDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
+    final theme = Theme.of(context);
     final isBusy = controller.isBusy;
     final isDeleting = controller.isBusyFor(AppBusyAction.deleteDrinkEntry);
 
@@ -942,11 +946,17 @@ class _DeleteDrinkEntryDialogState extends State<_DeleteDrinkEntryDialog> {
         ),
         FilledButton(
           key: const Key('delete-entry-confirm-button'),
+          style: AppTheme.destructiveFilledButtonStyle(theme.colorScheme),
           onPressed: isBusy ? null : _delete,
           child: isDeleting
-              ? const SizedBox.square(
+              ? SizedBox.square(
                   dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      theme.colorScheme.onError,
+                    ),
+                  ),
                 )
               : Text(l10n.deleteEntry),
         ),

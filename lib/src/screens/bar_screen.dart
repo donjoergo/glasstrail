@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_routes.dart';
 import '../app_controller.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
@@ -9,13 +10,72 @@ import '../widgets/app_empty_state_card.dart';
 import 'custom_drink_dialog.dart';
 
 class BarScreen extends StatefulWidget {
-  const BarScreen({super.key});
+  const BarScreen({
+    super.key,
+    required this.routeName,
+    required this.onRouteSelected,
+  });
+
+  final String routeName;
+  final ValueChanged<String> onRouteSelected;
 
   @override
   State<BarScreen> createState() => _BarScreenState();
 }
 
-class _BarScreenState extends State<BarScreen> {
+class _BarScreenState extends State<BarScreen>
+    with SingleTickerProviderStateMixin {
+  static const _tabCount = 2;
+  static const _settledTabOffsetEpsilon = 0.0001;
+
+  late final TabController _tabController;
+  bool _isUpdatingControllerFromRoute = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: _tabCount,
+      vsync: this,
+      initialIndex: AppRoutes.barTabIndexForRoute(widget.routeName),
+    )..addListener(_handleTabControllerChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant BarScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final targetIndex = AppRoutes.barTabIndexForRoute(widget.routeName);
+    if (_tabController.index == targetIndex) {
+      return;
+    }
+    _isUpdatingControllerFromRoute = true;
+    _tabController.index = targetIndex;
+    _isUpdatingControllerFromRoute = false;
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_handleTabControllerChange);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _handleTabControllerChange() {
+    if (_isUpdatingControllerFromRoute ||
+        !mounted ||
+        _tabController.indexIsChanging ||
+        _tabController.offset.abs() > _settledTabOffsetEpsilon) {
+      return;
+    }
+
+    final currentIndex = AppRoutes.barTabIndexForRoute(widget.routeName);
+    if (_tabController.index == currentIndex) {
+      return;
+    }
+
+    widget.onRouteSelected(AppRoutes.barRouteForIndex(_tabController.index));
+  }
+
   Future<void> _showCustomDrinkDialog([DrinkDefinition? drink]) async {
     final l10n = AppLocalizations.of(context);
     await showDialog<void>(
@@ -61,46 +121,45 @@ class _BarScreenState extends State<BarScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TabBar(
-                key: const Key('bar-tab-bar'),
-                dividerColor: Colors.transparent,
-                indicatorSize: TabBarIndicatorSize.tab,
-                tabs: <Widget>[
-                  Tab(
-                    key: const Key('bar-sort-tab'),
-                    text: l10n.barDrinkSortingTab,
-                  ),
-                  Tab(
-                    key: const Key('bar-custom-tab'),
-                    text: l10n.barCustomDrinksTab,
-                  ),
-                ],
-              ),
+    return Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
             ),
-          ),
-          Expanded(
-            child: TabBarView(
-              children: <Widget>[
-                _BarDrinkSortingTab(runCatalogAction: _runCatalogAction),
-                _BarCustomDrinksTab(
-                  showCustomDrinkDialog: _showCustomDrinkDialog,
+            child: TabBar(
+              key: const Key('bar-tab-bar'),
+              controller: _tabController,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              tabs: <Widget>[
+                Tab(
+                  key: const Key('bar-sort-tab'),
+                  text: l10n.barDrinkSortingTab,
+                ),
+                Tab(
+                  key: const Key('bar-custom-tab'),
+                  text: l10n.barCustomDrinksTab,
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: <Widget>[
+              _BarDrinkSortingTab(runCatalogAction: _runCatalogAction),
+              _BarCustomDrinksTab(
+                showCustomDrinkDialog: _showCustomDrinkDialog,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -250,11 +309,17 @@ class _BarCustomDrinksTab extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               if (controller.customDrinks.isEmpty)
-                AppEmptyStateCard(
-                  key: const Key('bar-custom-empty-state'),
-                  icon: Icons.local_bar_outlined,
-                  title: l10n.customDrinksEmptyTitle,
-                  body: l10n.customDrinksEmptyBody,
+                Align(
+                  alignment: Alignment.center,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 360),
+                    child: AppEmptyStateCard(
+                      key: const Key('bar-custom-empty-state'),
+                      icon: Icons.local_bar_outlined,
+                      title: l10n.customDrinksEmptyTitle,
+                      body: l10n.customDrinksEmptyBody,
+                    ),
+                  ),
                 )
               else
                 ...controller.customDrinks.map(

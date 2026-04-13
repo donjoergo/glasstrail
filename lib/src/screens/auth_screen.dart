@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_theme.dart';
 import '../app_controller.dart';
 import '../app_locale_catalog.dart';
 import '../birthday.dart';
@@ -493,6 +494,7 @@ class _AuthScreenState extends State<AuthScreen> {
     String localeCode,
     bool isBusy,
   ) {
+    final theme = Theme.of(context);
     return AutofillGroup(
       child: Form(
         key: _signUpKey,
@@ -538,6 +540,7 @@ class _AuthScreenState extends State<AuthScreen> {
               children: <Widget>[
                 Expanded(
                   child: FilledButton.tonalIcon(
+                    key: const Key('auth-birthday-button'),
                     onPressed: isBusy ? null : _pickBirthday,
                     icon: const Icon(Icons.cake_outlined),
                     label: Text(
@@ -550,6 +553,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 if (_birthday != null) ...<Widget>[
                   const SizedBox(width: 8),
                   IconButton(
+                    key: const Key('auth-remove-birthday-button'),
+                    style: AppTheme.destructiveIconButtonStyle(
+                      theme.colorScheme,
+                    ),
                     onPressed: isBusy
                         ? null
                         : () {
@@ -599,6 +606,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 if (_profileImagePath != null)
                   OutlinedButton.icon(
+                    key: const Key('auth-remove-photo-button'),
+                    style: AppTheme.destructiveOutlinedButtonStyle(
+                      theme.colorScheme,
+                    ),
                     onPressed: isBusy
                         ? null
                         : () {

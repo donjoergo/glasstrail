@@ -47,6 +47,8 @@
   "deleteEntryPrompt": "Diesen Getränkeeintrag löschen? Der gespeicherte Kommentar und das Foto werden ebenfalls entfernt.",
   "createCustomDrink": "Eigenes Getränk erstellen",
   "editCustomDrink": "Eigenes Getränk bearbeiten",
+  "deleteCustomDrink": "Eigenes Getränk löschen",
+  "deleteCustomDrinkPrompt": "Dieses eigene Getränk löschen? Bereits erfasste Einträge bleiben erhalten.",
   "drinkName": "Getränkename",
   "category": "Kategorie",
   "volume": "Volumen",
@@ -121,7 +123,116 @@
   "roadmap": "Als Nächstes geplant",
   "about": "Über die App",
   "github": "GitHub",
-  "roadmapBody": "Freunde, Social Feed, Erfolge und Import sind im Plan, aber bewusst nicht Teil von V1.",
+  "roadmapBody": "Freunde, Social Feed und Erfolge sind im Plan, aber bewusst nicht Teil von V1.",
+  "beerWithMeImport": "Beer With Me-Import",
+  "beerWithMeImportBody": "Importiere einen Beer With Me-Export in deine GlassTrail-Historie. Bereits importierte Beer With Me-Einträge werden automatisch erkannt und übersprungen.",
+  "beerWithMeImportAction": "Beer With Me-Export importieren",
+  "beerWithMeImportEmpty": "Der ausgewählte Beer With Me-Export enthält keine Einträge.",
+  "beerWithMeImportInvalidFile": "Die ausgewählte Datei ist kein gültiger Beer With Me-Export.",
+  "beerWithMeImportReadFailed": "Der Beer With Me-Export konnte nicht gelesen werden.",
+  "beerWithMeImportConfirmTitle": "Beer With Me-Export importieren?",
+  "beerWithMeImportConfirmBody": "Dadurch werden {count} Einträge in deine GlassTrail-Historie importiert.",
+  "@beerWithMeImportConfirmBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportProgress": "Importiere {processed} von {total} Einträgen",
+  "@beerWithMeImportProgress": {
+    "placeholders": {
+      "processed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportProgressDetails": "{imported} importiert, {skipped} Duplikate, {errors} Fehler",
+  "@beerWithMeImportProgressDetails": {
+    "placeholders": {
+      "imported": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "errors": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportCancelAction": "Import abbrechen",
+  "beerWithMeImportCancelling": "Wird nach dem aktuellen Eintrag abgebrochen...",
+  "beerWithMeImportResultTitle": "Beer With Me-Import abgeschlossen",
+  "beerWithMeImportResultCancelled": "Import nach {processed} von {total} Einträgen abgebrochen.",
+  "@beerWithMeImportResultCancelled": {
+    "placeholders": {
+      "processed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportResultTotal": "Einträge insgesamt: {count}",
+  "@beerWithMeImportResultTotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportResultImported": "Erfolgreich importiert: {count}",
+  "@beerWithMeImportResultImported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportResultSkipped": "Als Duplikate übersprungen: {count}",
+  "@beerWithMeImportResultSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportResultErrors": "Fehler: {count}",
+  "@beerWithMeImportResultErrors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beerWithMeImportErrorListTitle": "Fehlgeschlagene Einträge",
+  "beerWithMeImportInvalidEntry": "Der Eintrag ist kein gültiges JSON-Objekt",
+  "beerWithMeImportMissingId": "Beer With Me-ID fehlt",
+  "beerWithMeImportMissingGlassType": "Beer With Me-Getränketyp fehlt",
+  "beerWithMeImportMissingTimestamp": "Zeitstempel fehlt",
+  "beerWithMeImportInvalidTimestamp": "Zeitstempel ist ungültig",
+  "beerWithMeImportUnknownGlassType": "BeerWithMe-Typ „{glassType}“ wird nicht unterstützt",
+  "@beerWithMeImportUnknownGlassType": {
+    "placeholders": {
+      "glassType": {
+        "type": "String"
+      }
+    }
+  },
+  "beerWithMeImportMissingMappedDrink": "GlassTrail konnte das gemappte Getränk für „{glassType}“ nicht finden.",
+  "@beerWithMeImportMissingMappedDrink": {
+    "placeholders": {
+      "glassType": {
+        "type": "String"
+      }
+    }
+  },
+  "beerWithMeImportAlreadyImported": "BeerWithMe-Eintrag wurde bereits importiert",
   "themeSystem": "System",
   "themeLight": "Hell",
   "themeDark": "Dunkel",
@@ -136,6 +247,7 @@
   "welcomeBack": "Willkommen zurück.",
   "profileUpdated": "Profil aktualisiert.",
   "customDrinkSaved": "Eigenes Getränk gespeichert.",
+  "customDrinkDeleted": "Eigenes Getränk gelöscht.",
   "drinkLogged": "{drink} erfasst.",
   "@drinkLogged": {
     "description": "Shown after logging a drink entry",
@@ -153,13 +265,14 @@
   "profileUpdateFailed": "Das Profil konnte nicht aktualisiert werden.",
   "entryUpdateFailed": "Der Getränkeeintrag konnte nicht aktualisiert werden.",
   "entryDeleteFailed": "Der Getränkeeintrag konnte nicht gelöscht werden.",
+  "customDrinkDeleteFailed": "Das eigene Getränk konnte nicht gelöscht werden.",
   "customDrinkAlreadyExists": "Du hast bereits ein eigenes Getränk mit diesem Namen.",
   "signUpMissingUser": "Die Registrierung hat keinen Benutzer zurückgegeben.",
   "signUpConfirmationRequired": "Die Registrierung bei Supabase war erfolgreich, aber die E-Mail-Bestätigung ist aktiviert. Bestätige zuerst die E-Mail und melde dich dann an.",
   "beer": "Bier",
   "wine": "Wein",
   "sparklingWines": "Schaumweine",
-  "longdrinks": "Langdrinks",
+  "longdrinks": "Longdrinks",
   "spirits": "Spirituosen",
   "shots": "Shots",
   "cocktails": "Cocktails",

@@ -33,6 +33,11 @@ abstract class AppRepository {
     String? imagePath,
   });
 
+  Future<void> deleteCustomDrink({
+    required String userId,
+    required DrinkDefinition drink,
+  });
+
   Future<List<DrinkEntry>> loadEntries(String userId);
 
   Future<DrinkEntry> addDrinkEntry({
@@ -45,6 +50,8 @@ abstract class AppRepository {
     double? locationLongitude,
     String? locationAddress,
     DateTime? consumedAt,
+    String? importSource,
+    String? importSourceId,
   });
 
   Future<DrinkEntry> updateDrinkEntry({

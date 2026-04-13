@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
 import '../app_routes.dart';
@@ -9,42 +12,110 @@ import 'feed_screen.dart';
 import 'profile_screen.dart';
 import 'statistics_screen.dart';
 
-class HomeShell extends StatelessWidget {
+class HomeShell extends StatefulWidget {
   const HomeShell({super.key, required this.routeName});
 
   final String routeName;
 
-  static const _pages = <Widget>[
-    FeedScreen(),
-    StatisticsScreen(),
-    BarScreen(),
-    ProfileScreen(),
-  ];
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  late String _currentRouteName;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentRouteName = AppRoutes.normalize(widget.routeName);
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routeName == widget.routeName) {
+      return;
+    }
+    final normalizedRoute = AppRoutes.normalize(widget.routeName);
+    if (_currentRouteName == normalizedRoute) {
+      return;
+    }
+    _currentRouteName = normalizedRoute;
+  }
 
   Future<void> _openAddDrink(BuildContext context) async {
     await Navigator.of(context).pushNamed(AppRoutes.addDrink);
   }
 
+  String _targetRouteForHomeIndex(BuildContext context, int index) {
+    final routeMemory = AppScope.routeMemoryOf(context).lastRoute;
+    return switch (index) {
+      0 => AppRoutes.feed,
+      1 =>
+        AppRoutes.isStatisticsRoute(routeMemory)
+            ? routeMemory
+            : AppRoutes.statistics,
+      2 => AppRoutes.isBarRoute(routeMemory) ? routeMemory : AppRoutes.bar,
+      3 => AppRoutes.profile,
+      _ => AppRoutes.feed,
+    };
+  }
+
   void _openHomeRoute(BuildContext context, int index) {
-    final targetRoute = AppRoutes.homeRouteForIndex(index);
-    final currentRoute = AppRoutes.homeRouteForIndex(
-      AppRoutes.homeTabIndex(routeName),
-    );
-    if (targetRoute == currentRoute) {
+    final targetRoute = _targetRouteForHomeIndex(context, index);
+    final currentRoute = AppRoutes.homePrimaryRoute(_currentRouteName);
+    if (AppRoutes.homePrimaryRoute(targetRoute) == currentRoute) {
       return;
     }
     Navigator.of(context).pushReplacementNamed(targetRoute);
   }
 
+  void _updateHomeSubroute(String routeName) {
+    final normalizedRoute = AppRoutes.normalize(routeName);
+    if (_currentRouteName == normalizedRoute) {
+      return;
+    }
+
+    setState(() {
+      _currentRouteName = normalizedRoute;
+    });
+
+    final routeMemory = AppScope.routeMemoryOf(context);
+    unawaited(routeMemory.rememberRoute(normalizedRoute));
+    unawaited(
+      SystemNavigator.routeInformationUpdated(
+        uri: Uri.parse(normalizedRoute),
+        replace: true,
+      ),
+    );
+  }
+
+  Widget _buildCurrentPage() {
+    return switch (AppRoutes.homePrimaryRoute(_currentRouteName)) {
+      AppRoutes.feed => const FeedScreen(),
+      AppRoutes.statistics => StatisticsScreen(
+        routeName: _currentRouteName,
+        onRouteSelected: _updateHomeSubroute,
+      ),
+      AppRoutes.bar => BarScreen(
+        routeName: _currentRouteName,
+        onRouteSelected: _updateHomeSubroute,
+      ),
+      AppRoutes.profile => const ProfileScreen(),
+      _ => const FeedScreen(),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
-    final currentIndex = AppRoutes.homeTabIndex(routeName);
+    final currentIndex = AppRoutes.homeTabIndex(_currentRouteName);
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
     final handedness = controller.settings.handedness;
     final isLeftHanded = handedness == AppHandedness.left;
     final titles = <String>[l10n.feed, l10n.statistics, l10n.bar, l10n.profile];
+    final currentPage = _buildCurrentPage();
     final isWide = MediaQuery.sizeOf(context).width >= 900;
     final appBarTitleStyle = theme.textTheme.headlineSmall?.copyWith(
       fontSize: isWide ? 24 : 20,
@@ -103,7 +174,7 @@ class HomeShell extends StatelessWidget {
                     ],
                   ),
                 ),
-                Expanded(child: _pages[currentIndex]),
+                Expanded(child: currentPage),
               ],
             ),
             PositionedDirectional(
@@ -121,7 +192,7 @@ class HomeShell extends StatelessWidget {
       appBar: AppBar(
         title: Text(titles[currentIndex], style: appBarTitleStyle),
       ),
-      body: _pages[currentIndex],
+      body: currentPage,
       floatingActionButton: fab,
       floatingActionButtonLocation: isLeftHanded
           ? FloatingActionButtonLocation.startFloat

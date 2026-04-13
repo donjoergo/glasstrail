@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'backend_config.dart';
+import 'beer_with_me_import.dart';
 import 'birthday.dart';
 import 'l10n_extensions.dart';
 import 'models.dart';
@@ -14,6 +16,7 @@ enum _FlashMessageKind {
   welcomeBack,
   profileUpdated,
   customDrinkSaved,
+  customDrinkDeleted,
   drinkLogged,
   drinkEntryUpdated,
   drinkEntryDeleted,
@@ -27,7 +30,9 @@ enum AppBusyAction {
   signOut,
   updateProfile,
   saveCustomDrink,
+  deleteCustomDrink,
   addDrinkEntry,
+  importBeerWithMe,
   updateSettings,
   updateDrinkEntry,
   deleteDrinkEntry,
@@ -56,6 +61,37 @@ class _FlashMessage {
   final String? fallbackDrinkName;
 }
 
+@immutable
+class BeerWithMeImportProgress {
+  const BeerWithMeImportProgress({
+    required this.totalCount,
+    required this.processedCount,
+    required this.importedCount,
+    required this.skippedDuplicateCount,
+    required this.errorCount,
+  });
+
+  final int totalCount;
+  final int processedCount;
+  final int importedCount;
+  final int skippedDuplicateCount;
+  final int errorCount;
+
+  double get progressValue {
+    if (totalCount <= 0) {
+      return 0;
+    }
+    final value = processedCount / totalCount;
+    if (value < 0) {
+      return 0;
+    }
+    if (value > 1) {
+      return 1;
+    }
+    return value;
+  }
+}
+
 class AppController extends ChangeNotifier {
   AppController._(this._repository);
 
@@ -68,6 +104,8 @@ class AppController extends ChangeNotifier {
   List<DrinkEntry> _entries = const <DrinkEntry>[];
   bool _isBusy = false;
   AppBusyAction? _busyAction;
+  BeerWithMeImportProgress? _beerWithMeImportProgress;
+  bool _cancelBeerWithMeImportRequested = false;
   _FlashMessage? _flashMessage;
 
   static Future<AppController> bootstrap({BackendConfig? backendConfig}) async {
@@ -98,12 +136,26 @@ class AppController extends ChangeNotifier {
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
   bool get isBusy => _isBusy;
   AppBusyAction? get busyAction => _busyAction;
+  BeerWithMeImportProgress? get beerWithMeImportProgress =>
+      _beerWithMeImportProgress;
+  bool get isBeerWithMeImportCancellationRequested =>
+      _cancelBeerWithMeImportRequested;
   bool get isAuthenticated => _currentUser != null;
   String get backendLabel => _repository.backendLabel;
   bool get usesRemoteBackend => _repository.usesRemoteBackend;
   AppStatistics get statistics => StatsCalculator.fromEntries(_entries);
 
   bool isBusyFor(AppBusyAction action) => _busyAction == action;
+
+  bool requestBeerWithMeImportCancellation() {
+    if (_busyAction != AppBusyAction.importBeerWithMe ||
+        _cancelBeerWithMeImportRequested) {
+      return false;
+    }
+    _cancelBeerWithMeImportRequested = true;
+    notifyListeners();
+    return true;
+  }
 
   List<DrinkDefinition> get availableDrinks {
     final drinks = <DrinkDefinition>[];
@@ -313,6 +365,7 @@ class AppController extends ChangeNotifier {
       _FlashMessageKind.welcomeBack => l10n.welcomeBack,
       _FlashMessageKind.profileUpdated => l10n.profileUpdated,
       _FlashMessageKind.customDrinkSaved => l10n.customDrinkSaved,
+      _FlashMessageKind.customDrinkDeleted => l10n.customDrinkDeleted,
       _FlashMessageKind.drinkLogged => l10n.drinkLogged(
         localizedDrinkName(
           message.drinkId!,
@@ -450,6 +503,22 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<bool> deleteCustomDrink(DrinkDefinition drink) async {
+    final user = _currentUser;
+    if (user == null || !drink.isCustom) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.deleteCustomDrink, () async {
+      await _repository.deleteCustomDrink(userId: user.id, drink: drink);
+      _customDrinks = _customDrinks
+          .where((candidate) => candidate.id != drink.id)
+          .toList(growable: false);
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.customDrinkDeleted,
+      );
+    });
+  }
+
   Future<bool> addDrinkEntry({
     required DrinkDefinition drink,
     required double? volumeMl,
@@ -481,6 +550,199 @@ class AppController extends ChangeNotifier {
         fallbackDrinkName: entry.drinkName,
       );
     });
+  }
+
+  Future<BeerWithMeImportResult> importBeerWithMeExport(
+    BeerWithMeImportFile exportFile,
+  ) async {
+    final user = _currentUser;
+    final l10n = lookupAppLocalizations(Locale(_settings.localeCode));
+    final totalRows = exportFile.rows.length;
+    if (user == null) {
+      return BeerWithMeImportResult(
+        totalRows: totalRows,
+        processedCount: 0,
+        importedCount: 0,
+        skippedDuplicateCount: 0,
+        errors: <BeerWithMeImportError>[
+          BeerWithMeImportError(rowNumber: 0, message: l10n.somethingWentWrong),
+        ],
+      );
+    }
+
+    _isBusy = true;
+    _busyAction = AppBusyAction.importBeerWithMe;
+    _cancelBeerWithMeImportRequested = false;
+    _beerWithMeImportProgress = BeerWithMeImportProgress(
+      totalCount: totalRows,
+      processedCount: 0,
+      importedCount: 0,
+      skippedDuplicateCount: 0,
+      errorCount: 0,
+    );
+    notifyListeners();
+
+    try {
+      final entries = <DrinkEntry>[..._entries];
+      final knownImportIds = _entries
+          .where(
+            (entry) =>
+                entry.importSource == beerWithMeImportSource &&
+                entry.importSourceId != null &&
+                entry.importSourceId!.isNotEmpty,
+          )
+          .map((entry) => entry.importSourceId!)
+          .toSet();
+      final drinksById = <String, DrinkDefinition>{
+        for (final drink in allDrinks) drink.id: drink,
+      };
+
+      var importedCount = 0;
+      var skippedDuplicateCount = 0;
+      var processedCount = 0;
+      var wasCancelled = false;
+      final errors = <BeerWithMeImportError>[];
+
+      void publishProgress() {
+        _beerWithMeImportProgress = BeerWithMeImportProgress(
+          totalCount: totalRows,
+          processedCount: processedCount,
+          importedCount: importedCount,
+          skippedDuplicateCount: skippedDuplicateCount,
+          errorCount: errors.length,
+        );
+        notifyListeners();
+      }
+
+      for (final row in exportFile.rows) {
+        if (_cancelBeerWithMeImportRequested) {
+          wasCancelled = true;
+          break;
+        }
+        try {
+          BeerWithMeImportRecord record;
+          try {
+            record = decodeBeerWithMeImportRow(row);
+          } on BeerWithMeImportRowException catch (error) {
+            errors.add(
+              BeerWithMeImportError(
+                rowNumber: error.rowNumber,
+                sourceId: error.sourceId,
+                glassType: error.glassType,
+                message: _beerWithMeRowErrorMessage(l10n, error),
+              ),
+            );
+            continue;
+          } catch (_) {
+            errors.add(
+              BeerWithMeImportError(
+                rowNumber: row.rowNumber,
+                message: l10n.beerWithMeImportInvalidEntry,
+              ),
+            );
+            continue;
+          }
+
+          if (knownImportIds.contains(record.sourceId)) {
+            skippedDuplicateCount++;
+            continue;
+          }
+
+          final mappedDrinkId = beerWithMeGlassTypeToDrinkId[record.glassType];
+          if (mappedDrinkId == null) {
+            errors.add(
+              BeerWithMeImportError(
+                rowNumber: record.rowNumber,
+                sourceId: record.sourceId,
+                glassType: record.glassType,
+                message: l10n.beerWithMeImportUnknownGlassType(
+                  record.glassType,
+                ),
+              ),
+            );
+            continue;
+          }
+
+          final drink = drinksById[mappedDrinkId];
+          if (drink == null) {
+            errors.add(
+              BeerWithMeImportError(
+                rowNumber: record.rowNumber,
+                sourceId: record.sourceId,
+                glassType: record.glassType,
+                message: l10n.beerWithMeImportMissingMappedDrink(
+                  record.glassType,
+                ),
+              ),
+            );
+            continue;
+          }
+
+          try {
+            final entry = await _repository.addDrinkEntry(
+              user: user,
+              drink: drink,
+              volumeMl: drink.volumeMl,
+              locationLatitude: record.locationLatitude,
+              locationLongitude: record.locationLongitude,
+              locationAddress: record.locationAddress,
+              consumedAt: record.consumedAt,
+              importSource: beerWithMeImportSource,
+              importSourceId: record.sourceId,
+            );
+            entries.add(entry);
+            knownImportIds.add(record.sourceId);
+            importedCount++;
+          } on AppException catch (error) {
+            final localizedMessage = _localizedRawMessage(error.message, l10n);
+            if (localizedMessage == l10n.beerWithMeImportAlreadyImported) {
+              skippedDuplicateCount++;
+              knownImportIds.add(record.sourceId);
+              continue;
+            }
+            errors.add(
+              BeerWithMeImportError(
+                rowNumber: record.rowNumber,
+                sourceId: record.sourceId,
+                glassType: record.glassType,
+                message: localizedMessage,
+              ),
+            );
+          } catch (_) {
+            errors.add(
+              BeerWithMeImportError(
+                rowNumber: record.rowNumber,
+                sourceId: record.sourceId,
+                glassType: record.glassType,
+                message: l10n.somethingWentWrong,
+              ),
+            );
+          }
+        } finally {
+          processedCount++;
+          publishProgress();
+        }
+      }
+
+      entries.sort(
+        (left, right) => right.consumedAt.compareTo(left.consumedAt),
+      );
+      _entries = entries;
+      return BeerWithMeImportResult(
+        totalRows: totalRows,
+        processedCount: processedCount,
+        importedCount: importedCount,
+        skippedDuplicateCount: skippedDuplicateCount,
+        errors: List<BeerWithMeImportError>.unmodifiable(errors),
+        wasCancelled: wasCancelled,
+      );
+    } finally {
+      _cancelBeerWithMeImportRequested = false;
+      _beerWithMeImportProgress = null;
+      _isBusy = false;
+      _busyAction = null;
+      notifyListeners();
+    }
   }
 
   Future<bool> updateSettings(UserSettings settings) async {
@@ -683,13 +945,33 @@ class AppController extends ChangeNotifier {
       'The profile could not be updated.' => l10n.profileUpdateFailed,
       'You already have a custom drink with that name.' =>
         l10n.customDrinkAlreadyExists,
+      'The custom drink could not be deleted.' => l10n.customDrinkDeleteFailed,
       'Sign-up did not return a user.' => l10n.signUpMissingUser,
       'Supabase sign-up succeeded, but email confirmation is enabled. Confirm the email first, then sign in.' =>
         l10n.signUpConfirmationRequired,
+      'This BeerWithMe entry was already imported.' =>
+        l10n.beerWithMeImportAlreadyImported,
       'The drink entry could not be updated.' => l10n.entryUpdateFailed,
       'The drink entry could not be deleted.' => l10n.entryDeleteFailed,
       'Something went wrong. Please try again.' => l10n.somethingWentWrong,
       _ => message,
+    };
+  }
+
+  String _beerWithMeRowErrorMessage(
+    AppLocalizations l10n,
+    BeerWithMeImportRowException error,
+  ) {
+    return switch (error.code) {
+      BeerWithMeImportRowErrorCode.invalidEntry =>
+        l10n.beerWithMeImportInvalidEntry,
+      BeerWithMeImportRowErrorCode.missingId => l10n.beerWithMeImportMissingId,
+      BeerWithMeImportRowErrorCode.missingGlassType =>
+        l10n.beerWithMeImportMissingGlassType,
+      BeerWithMeImportRowErrorCode.missingTimestamp =>
+        l10n.beerWithMeImportMissingTimestamp,
+      BeerWithMeImportRowErrorCode.invalidTimestamp =>
+        l10n.beerWithMeImportInvalidTimestamp,
     };
   }
 }

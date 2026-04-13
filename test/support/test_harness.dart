@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
+import 'package:glasstrail/src/import_file_service.dart';
 import 'package:glasstrail/src/location_service.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
@@ -100,6 +101,15 @@ class RecordingLocationService extends LocationService {
     openAppSettingsCalls++;
     return openSettingsResult;
   }
+}
+
+class TestImportFileService extends ImportFileService {
+  const TestImportFileService({this.file});
+
+  final SelectedImportFile? file;
+
+  @override
+  Future<SelectedImportFile?> pickJsonFile() async => file;
 }
 
 Future<AppController> buildTestController({
@@ -226,6 +236,17 @@ class BlockingLocalAppRepository extends LocalAppRepository {
   }
 
   @override
+  Future<void> deleteCustomDrink({
+    required String userId,
+    required DrinkDefinition drink,
+  }) {
+    return _runBlocked(
+      AppBusyAction.deleteCustomDrink,
+      () => super.deleteCustomDrink(userId: userId, drink: drink),
+    );
+  }
+
+  @override
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,
@@ -236,6 +257,8 @@ class BlockingLocalAppRepository extends LocalAppRepository {
     double? locationLongitude,
     String? locationAddress,
     DateTime? consumedAt,
+    String? importSource,
+    String? importSourceId,
   }) {
     return _runBlocked(
       AppBusyAction.addDrinkEntry,
@@ -249,6 +272,8 @@ class BlockingLocalAppRepository extends LocalAppRepository {
         locationLongitude: locationLongitude,
         locationAddress: locationAddress,
         consumedAt: consumedAt,
+        importSource: importSource,
+        importSourceId: importSourceId,
       ),
     );
   }

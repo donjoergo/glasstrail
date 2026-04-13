@@ -305,6 +305,8 @@ class DrinkEntry {
     this.locationLatitude,
     this.locationLongitude,
     this.locationAddress,
+    this.importSource,
+    this.importSourceId,
   });
 
   final String id;
@@ -319,6 +321,8 @@ class DrinkEntry {
   final double? locationLatitude;
   final double? locationLongitude;
   final String? locationAddress;
+  final String? importSource;
+  final String? importSourceId;
 
   DrinkEntry copyWith({
     String? drinkId,
@@ -334,6 +338,8 @@ class DrinkEntry {
     double? locationLongitude,
     String? locationAddress,
     bool clearLocation = false,
+    String? importSource,
+    String? importSourceId,
   }) {
     return DrinkEntry(
       id: id,
@@ -354,6 +360,8 @@ class DrinkEntry {
       locationAddress: clearLocation
           ? null
           : locationAddress ?? this.locationAddress,
+      importSource: importSource ?? this.importSource,
+      importSourceId: importSourceId ?? this.importSourceId,
     );
   }
 
@@ -371,6 +379,8 @@ class DrinkEntry {
       'locationLatitude': locationLatitude,
       'locationLongitude': locationLongitude,
       'locationAddress': locationAddress,
+      'importSource': importSource,
+      'importSourceId': importSourceId,
     };
   }
 
@@ -396,6 +406,8 @@ class DrinkEntry {
         'location_longitude',
       ),
       locationAddress: _readString(json, 'locationAddress', 'location_address'),
+      importSource: _readString(json, 'importSource', 'import_source'),
+      importSourceId: _readString(json, 'importSourceId', 'import_source_id'),
     );
   }
 }
@@ -512,6 +524,23 @@ String? _readString(
   return json[fallback] as String?;
 }
 
+String? normalizeLocationAddress(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return null;
+  }
+
+  final lines = trimmed
+      .split(RegExp(r'[\r\n]+'))
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList(growable: false);
+  if (lines.isEmpty) {
+    return null;
+  }
+  return lines.join(', ');
+}
+
 double? _readDouble(
   Map<String, dynamic> json,
   String primary, [
@@ -602,6 +631,8 @@ Map<DrinkCategory, List<String>> _readDrinkOrderOverrides(
 List<DrinkDefinition> buildDefaultDrinkCatalog() {
   const defaults = <(String, DrinkCategory, String, String, double?)>[
     ('beer-pils', DrinkCategory.beer, 'Pils', 'Pils', 330),
+    ('beer-classic', DrinkCategory.beer, 'Beer', 'Bier', 500),
+    ('beer-can', DrinkCategory.beer, 'Beer Can', 'Dosenbier', 500),
     ('beer-helles', DrinkCategory.beer, 'Helles', 'Helles', 500),
     ('beer-weizen', DrinkCategory.beer, 'Weizen', 'Weizen', 500),
     ('beer-kellerbier', DrinkCategory.beer, 'Kellerbier', 'Kellerbier', 500),
@@ -612,6 +643,13 @@ List<DrinkDefinition> buildDefaultDrinkCatalog() {
     ('beer-mass', DrinkCategory.beer, 'Maß', 'Maß', 1000),
     ('beer-stout', DrinkCategory.beer, 'Stout', 'Stout', 330),
     ('beer-radler', DrinkCategory.beer, 'Radler', 'Radler', 500),
+    (
+      'beer-non-alcoholic',
+      DrinkCategory.beer,
+      'Non-alcoholic Beer',
+      'Alkoholfreies Bier',
+      500,
+    ),
     ('wine-red-wine', DrinkCategory.wine, 'Red Wine', 'Rotwein', 150),
     ('wine-white-wine', DrinkCategory.wine, 'White Wine', 'Weißwein', 150),
     ('wine-rosé-wine', DrinkCategory.wine, 'Rosé Wine', 'Roséwein', 150),
@@ -687,6 +725,7 @@ List<DrinkDefinition> buildDefaultDrinkCatalog() {
     ('spirits-rum', DrinkCategory.spirits, 'Rum', 'Rum', 40),
     ('spirits-whiskey', DrinkCategory.spirits, 'Whiskey', 'Whiskey', 40),
     ('spirits-cognac', DrinkCategory.spirits, 'Cognac', 'Cognac', 40),
+    ('shots-shot', DrinkCategory.shots, 'Shot', 'Shot', 20),
     (
       'shots-jaegermeister',
       DrinkCategory.shots,
@@ -753,6 +792,20 @@ List<DrinkDefinition> buildDefaultDrinkCatalog() {
       250,
     ),
     ('nonAlcoholic-tea', DrinkCategory.nonAlcoholic, 'Tea', 'Tee', 300),
+    (
+      'nonAlcoholic-mate-tea',
+      DrinkCategory.nonAlcoholic,
+      'Mate Tea',
+      'Mate Tee',
+      300,
+    ),
+    (
+      'nonAlcoholic-club-mate',
+      DrinkCategory.nonAlcoholic,
+      'Club-Mate',
+      'Club-Mate',
+      500,
+    ),
     (
       'nonAlcoholic-coffee',
       DrinkCategory.nonAlcoholic,

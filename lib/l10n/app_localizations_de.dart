@@ -156,6 +156,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get editCustomDrink => 'Eigenes Getränk bearbeiten';
 
   @override
+  String get deleteCustomDrink => 'Eigenes Getränk löschen';
+
+  @override
+  String get deleteCustomDrinkPrompt =>
+      'Dieses eigene Getränk löschen? Bereits erfasste Einträge bleiben erhalten.';
+
+  @override
   String get drinkName => 'Getränkename';
 
   @override
@@ -362,7 +369,120 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get roadmapBody =>
-      'Freunde, Social Feed, Erfolge und Import sind im Plan, aber bewusst nicht Teil von V1.';
+      'Freunde, Social Feed und Erfolge sind im Plan, aber bewusst nicht Teil von V1.';
+
+  @override
+  String get beerWithMeImport => 'Beer With Me-Import';
+
+  @override
+  String get beerWithMeImportBody =>
+      'Importiere einen Beer With Me-Export in deine GlassTrail-Historie. Bereits importierte Beer With Me-Einträge werden automatisch erkannt und übersprungen.';
+
+  @override
+  String get beerWithMeImportAction => 'Beer With Me-Export importieren';
+
+  @override
+  String get beerWithMeImportEmpty =>
+      'Der ausgewählte Beer With Me-Export enthält keine Einträge.';
+
+  @override
+  String get beerWithMeImportInvalidFile =>
+      'Die ausgewählte Datei ist kein gültiger Beer With Me-Export.';
+
+  @override
+  String get beerWithMeImportReadFailed =>
+      'Der Beer With Me-Export konnte nicht gelesen werden.';
+
+  @override
+  String get beerWithMeImportConfirmTitle => 'Beer With Me-Export importieren?';
+
+  @override
+  String beerWithMeImportConfirmBody(int count) {
+    return 'Dadurch werden $count Einträge in deine GlassTrail-Historie importiert.';
+  }
+
+  @override
+  String beerWithMeImportProgress(int processed, int total) {
+    return 'Importiere $processed von $total Einträgen';
+  }
+
+  @override
+  String beerWithMeImportProgressDetails(
+    int imported,
+    int skipped,
+    int errors,
+  ) {
+    return '$imported importiert, $skipped Duplikate, $errors Fehler';
+  }
+
+  @override
+  String get beerWithMeImportCancelAction => 'Import abbrechen';
+
+  @override
+  String get beerWithMeImportCancelling =>
+      'Wird nach dem aktuellen Eintrag abgebrochen...';
+
+  @override
+  String get beerWithMeImportResultTitle => 'Beer With Me-Import abgeschlossen';
+
+  @override
+  String beerWithMeImportResultCancelled(int processed, int total) {
+    return 'Import nach $processed von $total Einträgen abgebrochen.';
+  }
+
+  @override
+  String beerWithMeImportResultTotal(int count) {
+    return 'Einträge insgesamt: $count';
+  }
+
+  @override
+  String beerWithMeImportResultImported(int count) {
+    return 'Erfolgreich importiert: $count';
+  }
+
+  @override
+  String beerWithMeImportResultSkipped(int count) {
+    return 'Als Duplikate übersprungen: $count';
+  }
+
+  @override
+  String beerWithMeImportResultErrors(int count) {
+    return 'Fehler: $count';
+  }
+
+  @override
+  String get beerWithMeImportErrorListTitle => 'Fehlgeschlagene Einträge';
+
+  @override
+  String get beerWithMeImportInvalidEntry =>
+      'Der Eintrag ist kein gültiges JSON-Objekt';
+
+  @override
+  String get beerWithMeImportMissingId => 'Beer With Me-ID fehlt';
+
+  @override
+  String get beerWithMeImportMissingGlassType =>
+      'Beer With Me-Getränketyp fehlt';
+
+  @override
+  String get beerWithMeImportMissingTimestamp => 'Zeitstempel fehlt';
+
+  @override
+  String get beerWithMeImportInvalidTimestamp => 'Zeitstempel ist ungültig';
+
+  @override
+  String beerWithMeImportUnknownGlassType(String glassType) {
+    return 'BeerWithMe-Typ „$glassType“ wird nicht unterstützt';
+  }
+
+  @override
+  String beerWithMeImportMissingMappedDrink(String glassType) {
+    return 'GlassTrail konnte das gemappte Getränk für „$glassType“ nicht finden.';
+  }
+
+  @override
+  String get beerWithMeImportAlreadyImported =>
+      'BeerWithMe-Eintrag wurde bereits importiert';
 
   @override
   String get themeSystem => 'System';
@@ -407,6 +527,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get customDrinkSaved => 'Eigenes Getränk gespeichert.';
 
   @override
+  String get customDrinkDeleted => 'Eigenes Getränk gelöscht.';
+
+  @override
   String drinkLogged(String drink) {
     return '$drink erfasst.';
   }
@@ -441,6 +564,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Der Getränkeeintrag konnte nicht gelöscht werden.';
 
   @override
+  String get customDrinkDeleteFailed =>
+      'Das eigene Getränk konnte nicht gelöscht werden.';
+
+  @override
   String get customDrinkAlreadyExists =>
       'Du hast bereits ein eigenes Getränk mit diesem Namen.';
 
@@ -462,7 +589,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sparklingWines => 'Schaumweine';
 
   @override
-  String get longdrinks => 'Langdrinks';
+  String get longdrinks => 'Longdrinks';
 
   @override
   String get spirits => 'Spirituosen';

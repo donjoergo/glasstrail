@@ -243,6 +243,10 @@ class SupabaseAppRepository implements AppRepository {
   }) async {
     try {
       final id = drinkId ?? _uuid.v4();
+      final previousImagePath = await _loadCustomDrinkImagePath(
+        userId: userId,
+        drinkId: drinkId,
+      );
       final finalImagePath = await _resolveMediaPath(
         userId: userId,
         imagePath: imagePath,
@@ -262,7 +266,36 @@ class SupabaseAppRepository implements AppRepository {
           .select()
           .single();
 
+      if (previousImagePath != finalImagePath) {
+        await _deleteMediaPathIfOwned(previousImagePath, userId);
+      }
+
       return _userDrinkToDefinition(Map<String, dynamic>.from(row));
+    } on StorageException catch (error) {
+      throw AppException(error.message);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<void> deleteCustomDrink({
+    required String userId,
+    required DrinkDefinition drink,
+  }) async {
+    try {
+      final rows = await _client
+          .from('user_drinks')
+          .delete()
+          .eq('id', drink.id)
+          .eq('user_id', userId)
+          .select('id');
+
+      if ((rows as List<dynamic>).isEmpty) {
+        throw const AppException('The custom drink could not be deleted.');
+      }
+
+      await _deleteMediaPathIfOwned(drink.imagePath, userId);
     } on StorageException catch (error) {
       throw AppException(error.message);
     } on PostgrestException catch (error) {
@@ -298,8 +331,12 @@ class SupabaseAppRepository implements AppRepository {
     double? locationLongitude,
     String? locationAddress,
     DateTime? consumedAt,
+    String? importSource,
+    String? importSourceId,
   }) async {
     try {
+      final trimmedImportSource = importSource?.trim();
+      final trimmedImportSourceId = importSourceId?.trim();
       final finalImagePath = await _resolveMediaPath(
         userId: user.id,
         imagePath: imagePath,
@@ -321,6 +358,8 @@ class SupabaseAppRepository implements AppRepository {
             'location_latitude': locationLatitude,
             'location_longitude': locationLongitude,
             'location_address': _normalizeLocationAddress(locationAddress),
+            'import_source': trimmedImportSource,
+            'import_source_id': trimmedImportSourceId,
             'consumed_at': (consumedAt ?? DateTime.now())
                 .toUtc()
                 .toIso8601String(),
@@ -332,6 +371,13 @@ class SupabaseAppRepository implements AppRepository {
     } on StorageException catch (error) {
       throw AppException(error.message);
     } on PostgrestException catch (error) {
+      if (_isDuplicateImportConflict(
+        error,
+        importSource: importSource,
+        importSourceId: importSourceId,
+      )) {
+        throw const AppException('This BeerWithMe entry was already imported.');
+      }
       throw AppException(error.message);
     }
   }
@@ -601,7 +647,52 @@ class SupabaseAppRepository implements AppRepository {
       locationLatitude: (row['location_latitude'] as num?)?.toDouble(),
       locationLongitude: (row['location_longitude'] as num?)?.toDouble(),
       locationAddress: row['location_address'] as String?,
+      importSource: row['import_source'] as String?,
+      importSourceId: row['import_source_id'] as String?,
     );
+  }
+
+  bool _isDuplicateImportConflict(
+    PostgrestException error, {
+    required String? importSource,
+    required String? importSourceId,
+  }) {
+    final normalizedSource = importSource?.trim();
+    final normalizedSourceId = importSourceId?.trim();
+    if (normalizedSource == null ||
+        normalizedSource.isEmpty ||
+        normalizedSourceId == null ||
+        normalizedSourceId.isEmpty) {
+      return false;
+    }
+
+    final message = error.message.toLowerCase();
+    final details = (error.details?.toString() ?? '').toLowerCase();
+    return error.code == '23505' &&
+        (message.contains('import_source') ||
+            details.contains('import_source'));
+  }
+
+  Future<String?> _loadCustomDrinkImagePath({
+    required String userId,
+    required String? drinkId,
+  }) async {
+    if (drinkId == null) {
+      return null;
+    }
+
+    final row = await _client
+        .from('user_drinks')
+        .select('image_path')
+        .eq('id', drinkId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    final imagePath = (row?['image_path'] as String?)?.trim();
+    if (imagePath == null || imagePath.isEmpty) {
+      return null;
+    }
+    return imagePath;
   }
 
   Future<String?> _resolveMediaPath({
@@ -733,11 +824,7 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   String? _normalizeLocationAddress(String? value) {
-    final trimmed = value?.trim();
-    if (trimmed == null || trimmed.isEmpty) {
-      return null;
-    }
-    return trimmed;
+    return normalizeLocationAddress(value);
   }
 
   String _fallbackDisplayName(String? email) {
