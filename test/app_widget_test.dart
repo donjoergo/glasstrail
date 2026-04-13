@@ -134,7 +134,7 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      expect(find.text('Category breakdown'), findsOneWidget);
+      expect(find.byKey(const Key('stats-overview-panel')), findsOneWidget);
     },
   );
 
@@ -594,7 +594,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Category breakdown'), findsOneWidget);
+    expect(find.byKey(const Key('stats-overview-panel')), findsOneWidget);
   });
 
   testWidgets('opens bookmarked statistics subroutes for authenticated users', (
@@ -692,7 +692,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
-    expect(find.text('Category breakdown'), findsNothing);
+    expect(find.byKey(const Key('stats-overview-panel')), findsNothing);
 
     await tester.enterText(
       find.byKey(const Key('signin-email-field')),
@@ -707,7 +707,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('feed-streak-card')), findsNothing);
-    expect(find.text('Category breakdown'), findsOneWidget);
+    expect(find.byKey(const Key('stats-overview-panel')), findsOneWidget);
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(route?.settings.name, AppRoutes.statistics);
