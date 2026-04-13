@@ -30,7 +30,7 @@ void main() {
       );
       expect(german.categoryLabel(DrinkCategory.sparklingWines), 'Schaumweine');
       expect(english.categoryLabel(DrinkCategory.longdrinks), 'Longdrinks');
-      expect(german.categoryLabel(DrinkCategory.longdrinks), 'Langdrinks');
+      expect(german.categoryLabel(DrinkCategory.longdrinks), 'Longdrinks');
       expect(english.categoryLabel(DrinkCategory.shots), 'Shots');
       expect(german.categoryLabel(DrinkCategory.shots), 'Shots');
       expect(english.categoryLabel(DrinkCategory.appleWines), 'Apple Wines');

@@ -589,7 +589,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sparklingWines => 'Schaumweine';
 
   @override
-  String get longdrinks => 'Langdrinks';
+  String get longdrinks => 'Longdrinks';
 
   @override
   String get spirits => 'Spirituosen';
