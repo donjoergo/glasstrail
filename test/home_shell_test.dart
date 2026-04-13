@@ -1552,6 +1552,152 @@ void main() {
     },
   );
 
+  testWidgets(
+    'shows a bounded photo preview in the custom drink edit dialog without overflow',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'custom-photo-layout@example.com',
+        password: 'password123',
+        displayName: 'Custom Photo Layout',
+      );
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+        imagePath: _transparentPngDataUrl,
+      );
+      final customDrink = controller.customDrinks.single;
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.bar,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openBarCustomDrinksTab(tester);
+      await tester.tap(
+        find.byKey(Key('bar-edit-custom-drink-${customDrink.id}')),
+      );
+      await tester.pumpAndSettle();
+
+      final preview = find.byKey(const Key('custom-drink-image-preview'));
+      final changePhotoLabel = find.text('Change photo');
+      final removePhotoLabel = find.text('Remove photo');
+      final removePhotoButton = find.widgetWithText(
+        OutlinedButton,
+        'Remove photo',
+      );
+      final deleteButton = find.byKey(const Key('custom-drink-delete-button'));
+      final cancelButton = find.byKey(const Key('custom-drink-cancel-button'));
+      final saveButton = find.byKey(const Key('custom-drink-save-button'));
+      expect(preview, findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(preview).width, lessThanOrEqualTo(280));
+      expect(changePhotoLabel, findsOneWidget);
+      expect(removePhotoLabel, findsOneWidget);
+      expect(
+        (tester.getTopLeft(changePhotoLabel).dy -
+                tester.getTopLeft(removePhotoLabel).dy)
+            .abs(),
+        lessThan(1),
+      );
+      expect(
+        tester.getTopLeft(removePhotoLabel).dx,
+        greaterThan(tester.getTopLeft(changePhotoLabel).dx),
+      );
+      expect(
+        (tester.getRect(preview).top -
+                tester.getRect(removePhotoButton).bottom) -
+            (tester.getRect(deleteButton).top - tester.getRect(preview).bottom),
+        closeTo(0, 1),
+      );
+      expect(
+        (tester.getTopLeft(cancelButton).dy - tester.getTopLeft(saveButton).dy)
+            .abs(),
+        lessThan(1),
+      );
+      expect(
+        tester.getTopLeft(deleteButton).dy,
+        lessThan(tester.getTopLeft(cancelButton).dy),
+      );
+      expect(
+        (tester.getTopRight(deleteButton).dx -
+                tester.getTopRight(saveButton).dx)
+            .abs(),
+        lessThan(1),
+      );
+      expect(deleteButton, findsOneWidget);
+      expect(saveButton, findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'keeps the custom drink delete action above the primary buttons on wider dialog layouts when needed',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1000, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'custom-photo-layout-web@example.com',
+        password: 'password123',
+        displayName: 'Custom Photo Layout Web',
+      );
+
+      await controller.saveCustomDrink(
+        name: 'Office Brew',
+        category: DrinkCategory.nonAlcoholic,
+        volumeMl: 300,
+        imagePath: _transparentPngDataUrl,
+      );
+      final customDrink = controller.customDrinks.single;
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: AppRoutes.bar,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openBarCustomDrinksTab(tester);
+      await tester.tap(
+        find.byKey(Key('bar-edit-custom-drink-${customDrink.id}')),
+      );
+      await tester.pumpAndSettle();
+
+      final deleteButton = find.byKey(const Key('custom-drink-delete-button'));
+      final cancelButton = find.byKey(const Key('custom-drink-cancel-button'));
+      final saveButton = find.byKey(const Key('custom-drink-save-button'));
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.getTopLeft(deleteButton).dy,
+        lessThan(tester.getTopLeft(cancelButton).dy),
+      );
+      expect(
+        (tester.getTopRight(deleteButton).dx -
+                tester.getTopRight(saveButton).dx)
+            .abs(),
+        lessThan(1),
+      );
+    },
+  );
+
   testWidgets('shows a spinner while deleting a custom drink', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.deleteCustomDrink);
     final controller = harness.controller;
