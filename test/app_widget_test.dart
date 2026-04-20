@@ -12,6 +12,7 @@ import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/route_memory.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
+import 'package:glasstrail/src/widgets/app_media.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -887,6 +888,10 @@ void main() {
         find.byKey(const Key('friend-profile-sign-in-button')),
         findsOneWidget,
       );
+      final avatar = tester.widget<AppAvatar>(
+        find.byKey(const Key('friend-profile-avatar')),
+      );
+      expect(avatar.radius, 72);
 
       await tester.tap(find.byKey(const Key('friend-profile-sign-in-button')));
       await tester.pumpAndSettle();

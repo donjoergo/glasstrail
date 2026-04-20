@@ -74,7 +74,7 @@ function profileHtml(profile, request) {
   const cta = language === 'de' ? 'Anmelden' : 'Sign in';
   const profileUrl = publicProfileUrl(profile.profileShareCode);
   const appUrl = appProfileUrl(profile.profileShareCode);
-  const imageUrl = profileImageUrl(profile.profileShareCode);
+  const imageUrl = profileImageUrl(profile);
 
   return `<!doctype html>
 <html lang="${language}">
@@ -250,8 +250,14 @@ function appProfileUrl(code) {
   return `${publicBaseUrl()}/#${friendProfilePath(code)}`;
 }
 
-function profileImageUrl(code) {
-  return `${publicProfileUrl(code)}/image`;
+function profileImageUrl(profile) {
+  const value = typeof profile.profileImageUrl === 'string'
+    ? profile.profileImageUrl.trim()
+    : '';
+  if (value.length > 0) {
+    return value;
+  }
+  return `${publicProfileUrl(profile.profileShareCode)}/image`;
 }
 
 function friendProfilePath(code) {

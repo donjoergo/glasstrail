@@ -42,7 +42,7 @@ Deno.serve(async (request) => {
       return imageResponse(profile);
     }
 
-    return jsonResponse(publicProfileJson(profile), 200);
+    return jsonResponse(publicProfileJson(profile, request), 200);
   } catch (error) {
     console.error(error);
     return serverErrorResponse();
@@ -83,11 +83,14 @@ async function loadProfile(code: string): Promise<ProfileRow | null> {
   return data as ProfileRow | null;
 }
 
-function publicProfileJson(profile: ProfileRow): Record<string, string | null> {
+function publicProfileJson(
+  profile: ProfileRow,
+  request: Request,
+): Record<string, string | null> {
   return {
     id: profile.id,
     displayName: displayName(profile),
-    profileImageUrl: profileImageUrl(profile),
+    profileImageUrl: profileImageUrl(request),
     profileShareCode: profile.profile_share_code,
   };
 }
@@ -148,12 +151,12 @@ function displayName(profile: ProfileRow): string {
   return value.length === 0 ? 'Glass Trail User' : value;
 }
 
-function publicProfileUrl(code: string): string {
-  return `${publicBaseUrl()}${friendProfilePath(code)}`;
-}
-
-function profileImageUrl(profile: ProfileRow): string {
-  return `${publicProfileUrl(profile.profile_share_code)}/image`;
+function profileImageUrl(request: Request): string {
+  const url = new URL(request.url);
+  url.search = '';
+  url.hash = '';
+  url.pathname = `${trimTrailingSlash(url.pathname)}/image`;
+  return url.toString();
 }
 
 function iconUrl(): string {
@@ -171,10 +174,6 @@ function publicBaseUrl(): string {
   return trimTrailingSlash(configured.length === 0
     ? defaultPublicBaseUrl
     : configured);
-}
-
-function friendProfilePath(code: string): string {
-  return `/friends/profile/${encodeURIComponent(code)}`;
 }
 
 function isSafeProfileImagePath(profile: ProfileRow, imagePath: string): boolean {

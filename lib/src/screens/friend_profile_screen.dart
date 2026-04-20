@@ -7,6 +7,8 @@ import '../app_scope.dart';
 import '../models.dart';
 import '../widgets/app_media.dart';
 
+const double _friendProfileAvatarRadius = 72;
+
 class FriendProfileScreen extends StatefulWidget {
   const FriendProfileScreen({super.key, required this.shareCode});
 
@@ -258,12 +260,13 @@ class _FriendProfileCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           AppAvatar(
+            key: const Key('friend-profile-avatar'),
             imagePath: profile.profileImagePath,
-            radius: 46,
+            radius: _friendProfileAvatarRadius,
             backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.14),
             fallback: Text(
               profile.initials,
-              style: theme.textTheme.headlineSmall?.copyWith(
+              style: theme.textTheme.headlineLarge?.copyWith(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w800,
               ),
