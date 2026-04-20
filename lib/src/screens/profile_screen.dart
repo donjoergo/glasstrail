@@ -722,15 +722,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  user.email,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
                               ],
                             ),
                           ),
@@ -1312,15 +1303,6 @@ class _FriendConnectionTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  profile.email,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 4),

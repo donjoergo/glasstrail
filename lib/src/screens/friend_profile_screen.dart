@@ -168,7 +168,6 @@ class _VisibleFriendProfile {
     required this.displayName,
     required this.initials,
     required this.isPublic,
-    this.email,
     this.profileImagePath,
     this.profileShareCode,
   });
@@ -176,7 +175,6 @@ class _VisibleFriendProfile {
   factory _VisibleFriendProfile.fromFriendProfile(FriendProfile profile) {
     return _VisibleFriendProfile(
       id: profile.id,
-      email: profile.email,
       displayName: profile.displayName,
       initials: profile.initials,
       profileImagePath: profile.profileImagePath,
@@ -199,7 +197,6 @@ class _VisibleFriendProfile {
   }
 
   final String id;
-  final String? email;
   final String displayName;
   final String initials;
   final String? profileImagePath;
@@ -281,17 +278,6 @@ class _FriendProfileCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          if (profile.email != null && profile.email!.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 4),
-            Text(
-              profile.email!,
-              key: const Key('friend-profile-email'),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
           const SizedBox(height: 18),
           Container(
             key: const Key('friend-profile-status'),
