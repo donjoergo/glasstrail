@@ -168,8 +168,7 @@ Configure these Supabase function secrets before deployment:
 | ------ | ------- |
 | SUPABASE_URL | Supabase project URL |
 | SUPABASE_SERVICE_ROLE_KEY | Server-only key for reading limited profile preview data and signing profile images |
-| FRIEND_PROFILE_PUBLIC_BASE_URL | Public Glass Trail base URL, defaults to `https://glasstrail.vercel.app` |
-| FRIEND_PROFILE_APP_ICON_PATH | Optional fallback preview image path, defaults to `/icons/Icon-512.png` |
+| FRIEND_PROFILE_APP_ICON_URL | Optional absolute fallback preview image URL, defaults to `https://glasstrail.vercel.app/icons/Icon-512.png` |
 
 The Supabase function is configured as public in `supabase/config.toml`:
 
@@ -182,7 +181,6 @@ Configure these Vercel environment variables if the defaults are not correct:
 | Variable | Purpose |
 | -------- | ------- |
 | FRIEND_PROFILE_DATA_BASE_URL | Supabase preview data endpoint, defaults to the production `friend-profile-preview` function URL |
-| FRIEND_PROFILE_PUBLIC_BASE_URL | Public Glass Trail base URL, defaults to `https://glasstrail.vercel.app` |
 
 ### Verification
 

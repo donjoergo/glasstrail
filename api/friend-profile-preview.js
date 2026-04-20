@@ -1,6 +1,5 @@
 const defaultDataBaseUrl =
   'https://lzuxlcfjnekgjukqxoza.functions.supabase.co/friend-profile-preview';
-const defaultPublicBaseUrl = 'https://glasstrail.vercel.app';
 
 module.exports = async function handler(request, response) {
   if (request.method !== 'GET') {
@@ -35,7 +34,7 @@ function profileCodeFromRequest(request) {
     return safeDecode(rawCode).trim();
   }
 
-  const url = new URL(request.url ?? '/', publicBaseUrl());
+  const url = new URL(request.url ?? '/', requestOrigin(request));
   return safeDecode(url.searchParams.get('code') ?? '').trim();
 }
 
@@ -72,9 +71,10 @@ function profileHtml(profile, request) {
     ? 'Melde dich an, um die Freundschaftsanfrage in Glass Trail anzusehen.'
     : 'Sign in to view the friend request in Glass Trail.';
   const cta = language === 'de' ? 'Anmelden' : 'Sign in';
-  const profileUrl = publicProfileUrl(profile.profileShareCode);
-  const appUrl = appProfileUrl(profile.profileShareCode);
-  const imageUrl = profileImageUrl(profile);
+  const origin = requestOrigin(request);
+  const profileUrl = publicProfileUrl(profile.profileShareCode, origin);
+  const appUrl = appProfileUrl(profile.profileShareCode, origin);
+  const imageUrl = profileImageUrl(profile, origin);
 
   return `<!doctype html>
 <html lang="${language}">
@@ -235,29 +235,43 @@ function dataBaseUrl() {
     : configured);
 }
 
-function publicBaseUrl() {
-  const configured = process.env.FRIEND_PROFILE_PUBLIC_BASE_URL?.trim() ?? '';
-  return trimTrailingSlash(configured.length === 0
-    ? defaultPublicBaseUrl
-    : configured);
+function requestOrigin(request) {
+  const host = firstHeaderValue(request, 'x-forwarded-host') ??
+    firstHeaderValue(request, 'host');
+  if (host != null && host.length > 0) {
+    const proto = firstHeaderValue(request, 'x-forwarded-proto') ?? 'https';
+    return `${proto}://${host}`;
+  }
+
+  const url = new URL(request.url ?? '/', 'http://localhost');
+  return url.origin;
 }
 
-function publicProfileUrl(code) {
-  return `${publicBaseUrl()}${friendProfilePath(code)}`;
+function firstHeaderValue(request, name) {
+  const value = request.headers?.[name] ?? request.headers?.[name.toLowerCase()];
+  const normalized = Array.isArray(value) ? value[0] : value;
+  if (typeof normalized !== 'string') {
+    return null;
+  }
+  return normalized.split(',')[0].trim();
 }
 
-function appProfileUrl(code) {
-  return `${publicBaseUrl()}/#${friendProfilePath(code)}`;
+function publicProfileUrl(code, origin) {
+  return `${trimTrailingSlash(origin)}${friendProfilePath(code)}`;
 }
 
-function profileImageUrl(profile) {
+function appProfileUrl(code, origin) {
+  return `${trimTrailingSlash(origin)}/#${friendProfilePath(code)}`;
+}
+
+function profileImageUrl(profile, origin) {
   const value = typeof profile.profileImageUrl === 'string'
     ? profile.profileImageUrl.trim()
     : '';
   if (value.length > 0) {
     return value;
   }
-  return `${publicProfileUrl(profile.profileShareCode)}/image`;
+  return `${publicProfileUrl(profile.profileShareCode, origin)}/image`;
 }
 
 function friendProfilePath(code) {

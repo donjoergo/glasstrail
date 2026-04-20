@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Fetch full Git history in CI for SonarCloud analysis
+- derive friend profile preview links from the request host
 
 ### Fixed
 - Prevent SonarCloud from running C-family analysis without compile commands

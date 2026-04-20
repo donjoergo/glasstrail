@@ -8,8 +8,7 @@ type ProfileRow = {
 };
 
 const mediaBucket = 'user-media';
-const defaultPublicBaseUrl = 'https://glasstrail.vercel.app';
-const defaultIconPath = '/icons/Icon-512.png';
+const defaultIconUrl = 'https://glasstrail.vercel.app/icons/Icon-512.png';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -160,20 +159,13 @@ function profileImageUrl(request: Request): string {
 }
 
 function iconUrl(): string {
-  const iconPath = Deno.env.get('FRIEND_PROFILE_APP_ICON_PATH')?.trim() ??
-    defaultIconPath;
-  if (iconPath.startsWith('http://') || iconPath.startsWith('https://')) {
-    return iconPath;
+  const configured = Deno.env.get('FRIEND_PROFILE_APP_ICON_URL')?.trim() ??
+    Deno.env.get('FRIEND_PROFILE_APP_ICON_PATH')?.trim() ??
+    '';
+  if (configured.startsWith('http://') || configured.startsWith('https://')) {
+    return configured;
   }
-  return `${publicBaseUrl()}${iconPath.startsWith('/') ? '' : '/'}${iconPath}`;
-}
-
-function publicBaseUrl(): string {
-  const configured = Deno.env.get('FRIEND_PROFILE_PUBLIC_BASE_URL')?.trim() ??
-    defaultPublicBaseUrl;
-  return trimTrailingSlash(configured.length === 0
-    ? defaultPublicBaseUrl
-    : configured);
+  return defaultIconUrl;
 }
 
 function isSafeProfileImagePath(profile: ProfileRow, imagePath: string): boolean {
