@@ -344,6 +344,36 @@ abstract class AppLocalizations {
   /// **'Close'**
   String get close;
 
+  /// No description provided for @accept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get accept;
+
+  /// No description provided for @reject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get reject;
+
+  /// No description provided for @pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pending;
+
+  /// No description provided for @share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get share;
+
+  /// No description provided for @copyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get copyLink;
+
   /// No description provided for @whatsNew.
   ///
   /// In en, this message translates to:
@@ -716,6 +746,132 @@ abstract class AppLocalizations {
   /// **'Edit profile'**
   String get editProfile;
 
+  /// No description provided for @friends.
+  ///
+  /// In en, this message translates to:
+  /// **'Friends'**
+  String get friends;
+
+  /// No description provided for @friendsSectionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your profile link so others can send you a friend request.'**
+  String get friendsSectionBody;
+
+  /// No description provided for @friendsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No friends or pending requests yet.'**
+  String get friendsEmpty;
+
+  /// No description provided for @friendProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend profile'**
+  String get friendProfile;
+
+  /// No description provided for @friendProfileLinkAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Show my profile link'**
+  String get friendProfileLinkAction;
+
+  /// No description provided for @friendProfileLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your friend profile'**
+  String get friendProfileLinkTitle;
+
+  /// No description provided for @friendProfileLinkBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Friends can scan this code or open the link to send you a request.'**
+  String get friendProfileLinkBody;
+
+  /// No description provided for @friendProfileShareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add me on Glass Trail'**
+  String get friendProfileShareTitle;
+
+  /// No description provided for @friendProfileLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile link copied.'**
+  String get friendProfileLinkCopied;
+
+  /// No description provided for @friendIncomingRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Wants to be friends'**
+  String get friendIncomingRequest;
+
+  /// No description provided for @friendAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend'**
+  String get friendAccepted;
+
+  /// No description provided for @friendRequestPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for response'**
+  String get friendRequestPending;
+
+  /// No description provided for @friendAlreadyFriends.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already friends.'**
+  String get friendAlreadyFriends;
+
+  /// No description provided for @friendIncomingRequestFromProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'This user already sent you a request. Review it in your Friends section.'**
+  String get friendIncomingRequestFromProfile;
+
+  /// No description provided for @friendProfileSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'This is your own friend profile link.'**
+  String get friendProfileSelf;
+
+  /// No description provided for @friendProfileRequestPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wants to be friends with you.'**
+  String friendProfileRequestPrompt(String name);
+
+  /// No description provided for @friendProfilePublicPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wants to be your friend on Glass Trail.'**
+  String friendProfilePublicPrompt(String name);
+
+  /// No description provided for @addAsFriend.
+  ///
+  /// In en, this message translates to:
+  /// **'Add as friend'**
+  String get addAsFriend;
+
+  /// No description provided for @unfriend.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfriend'**
+  String get unfriend;
+
+  /// No description provided for @friendProfileLinkInvalidTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile link unavailable'**
+  String get friendProfileLinkInvalidTitle;
+
+  /// No description provided for @friendProfileLinkInvalidBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This friend profile link is invalid or no longer available.'**
+  String get friendProfileLinkInvalidBody;
+
   /// No description provided for @customDrinks.
   ///
   /// In en, this message translates to:
@@ -1046,6 +1202,30 @@ abstract class AppLocalizations {
   /// **'Entry deleted.'**
   String get entryDeleted;
 
+  /// No description provided for @friendRequestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend request sent.'**
+  String get friendRequestSent;
+
+  /// No description provided for @friendRequestAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend request accepted.'**
+  String get friendRequestAccepted;
+
+  /// No description provided for @friendRequestRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend request rejected.'**
+  String get friendRequestRejected;
+
+  /// No description provided for @friendRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend removed.'**
+  String get friendRemoved;
+
   /// No description provided for @somethingWentWrong.
   ///
   /// In en, this message translates to:
@@ -1081,6 +1261,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The drink entry could not be deleted.'**
   String get entryDeleteFailed;
+
+  /// No description provided for @friendProfileLinkInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The profile link is invalid.'**
+  String get friendProfileLinkInvalid;
+
+  /// No description provided for @friendSelfRequestBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot add yourself as a friend.'**
+  String get friendSelfRequestBlocked;
+
+  /// No description provided for @friendRequestAcceptFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The friend request could not be accepted.'**
+  String get friendRequestAcceptFailed;
+
+  /// No description provided for @friendRequestRejectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The friend request could not be rejected.'**
+  String get friendRequestRejectFailed;
+
+  /// No description provided for @friendRemoveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The friend could not be removed.'**
+  String get friendRemoveFailed;
 
   /// No description provided for @customDrinkDeleteFailed.
   ///

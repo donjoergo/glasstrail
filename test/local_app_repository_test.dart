@@ -152,6 +152,116 @@ void main() {
       ]);
     });
 
+    test('creates stable profile links and resolves friend profiles', () async {
+      final user = await repository.signUp(
+        email: 'profile-link@example.com',
+        password: 'secret',
+        displayName: 'Profile Link',
+      );
+
+      final first = await repository.getOwnFriendProfile(user.id);
+      final second = await repository.getOwnFriendProfile(user.id);
+      final resolved = await repository.resolveFriendProfileLink(
+        first.profileShareCode!,
+      );
+
+      expect(first.profileShareCode, isNotEmpty);
+      expect(second.profileShareCode, first.profileShareCode);
+      expect(resolved.id, user.id);
+      expect(resolved.email, 'profile-link@example.com');
+    });
+
+    test('resolves public friend profiles without exposing email', () async {
+      final user = await repository.signUp(
+        email: 'public-profile-link@example.com',
+        password: 'secret',
+        displayName: 'Public Profile Link',
+      );
+
+      final ownProfile = await repository.getOwnFriendProfile(user.id);
+      final publicProfile = await repository.resolvePublicFriendProfileLink(
+        ownProfile.profileShareCode!,
+      );
+
+      expect(publicProfile.id, user.id);
+      expect(publicProfile.displayName, 'Public Profile Link');
+      expect(publicProfile.toJson(), isNot(contains('email')));
+    });
+
+    test(
+      'moves friend requests through pending accepted and removed states',
+      () async {
+        final requester = await repository.signUp(
+          email: 'friend-requester@example.com',
+          password: 'secret',
+          displayName: 'Friend Requester',
+        );
+        await repository.signOut();
+        final addressee = await repository.signUp(
+          email: 'friend-addressee@example.com',
+          password: 'secret',
+          displayName: 'Friend Addressee',
+        );
+        final addresseeProfile = await repository.getOwnFriendProfile(
+          addressee.id,
+        );
+
+        final requesterConnections = await repository
+            .sendFriendRequestToProfile(
+              userId: requester.id,
+              shareCode: addresseeProfile.profileShareCode!,
+            );
+
+        expect(requesterConnections, hasLength(1));
+        expect(requesterConnections.single.profile.id, addressee.id);
+        expect(requesterConnections.single.status, FriendRequestStatus.pending);
+        expect(
+          requesterConnections.single.direction,
+          FriendRequestDirection.outgoing,
+        );
+
+        final addresseeConnections = await repository.loadFriendConnections(
+          addressee.id,
+        );
+        expect(addresseeConnections.single.profile.id, requester.id);
+        expect(
+          addresseeConnections.single.direction,
+          FriendRequestDirection.incoming,
+        );
+
+        final accepted = await repository.acceptFriendRequest(
+          userId: addressee.id,
+          relationshipId: addresseeConnections.single.id,
+        );
+        expect(accepted.single.status, FriendRequestStatus.accepted);
+        expect(accepted.single.direction, FriendRequestDirection.none);
+
+        final removed = await repository.removeFriend(
+          userId: requester.id,
+          friendUserId: addressee.id,
+        );
+        expect(removed, isEmpty);
+        expect(await repository.loadFriendConnections(addressee.id), isEmpty);
+      },
+    );
+
+    test('rejects self friend requests', () async {
+      final user = await repository.signUp(
+        email: 'self-friend@example.com',
+        password: 'secret',
+        displayName: 'Self Friend',
+      );
+      final profile = await repository.getOwnFriendProfile(user.id);
+
+      expect(
+        () => repository.sendFriendRequestToProfile(
+          userId: user.id,
+          shareCode: profile.profileShareCode!,
+        ),
+        throwsA(isA<AppException>()),
+      );
+    });
+
     test('updates only comment and image for an existing entry', () async {
       final user = await repository.signUp(
         email: 'update-entry@example.com',

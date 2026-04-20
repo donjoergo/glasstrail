@@ -19,6 +19,7 @@ import 'route_memory.dart';
 import 'screens/add_drink_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/edit_profile_screen.dart';
+import 'screens/friend_profile_screen.dart';
 import 'screens/home_shell.dart';
 
 const _appDisplayTitle = 'Glass Trail';
@@ -371,6 +372,12 @@ class _AppRouteScreen extends StatelessWidget {
 
     if (normalizedRoute == AppRoutes.root) {
       return const _RouteRedirectScreen(targetRoute: AppRoutes.feed);
+    }
+
+    if (AppRoutes.isFriendProfileRoute(normalizedRoute)) {
+      return FriendProfileScreen(
+        shareCode: AppRoutes.friendProfileShareCode(normalizedRoute)!,
+      );
     }
 
     if (!controller.isAuthenticated) {

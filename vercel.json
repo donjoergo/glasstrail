@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/friends/profile/:code/image",
+      "destination": "https://lzuxlcfjnekgjukqxoza.functions.supabase.co/friend-profile-preview/:code/image"
+    },
+    {
+      "source": "/friends/profile/:code",
+      "destination": "https://lzuxlcfjnekgjukqxoza.functions.supabase.co/friend-profile-preview/:code"
+    }
+  ]
+}

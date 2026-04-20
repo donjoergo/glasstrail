@@ -41,6 +41,11 @@
   "save": "Save",
   "cancel": "Cancel",
   "close": "Close",
+  "accept": "Accept",
+  "reject": "Reject",
+  "pending": "Pending",
+  "share": "Share",
+  "copyLink": "Copy link",
   "whatsNew": "What's new",
   "editEntry": "Edit entry",
   "deleteEntry": "Delete entry",
@@ -114,6 +119,41 @@
   "handedness": "Handedness",
   "logout": "Log out",
   "editProfile": "Edit profile",
+  "friends": "Friends",
+  "friendsSectionBody": "Share your profile link so others can send you a friend request.",
+  "friendsEmpty": "No friends or pending requests yet.",
+  "friendProfile": "Friend profile",
+  "friendProfileLinkAction": "Show my profile link",
+  "friendProfileLinkTitle": "Your friend profile",
+  "friendProfileLinkBody": "Friends can scan this code or open the link to send you a request.",
+  "friendProfileShareTitle": "Add me on Glass Trail",
+  "friendProfileLinkCopied": "Profile link copied.",
+  "friendIncomingRequest": "Wants to be friends",
+  "friendAccepted": "Friend",
+  "friendRequestPending": "Waiting for response",
+  "friendAlreadyFriends": "You are already friends.",
+  "friendIncomingRequestFromProfile": "This user already sent you a request. Review it in your Friends section.",
+  "friendProfileSelf": "This is your own friend profile link.",
+  "friendProfileRequestPrompt": "{name} wants to be friends with you.",
+  "@friendProfileRequestPrompt": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendProfilePublicPrompt": "{name} wants to be your friend on Glass Trail.",
+  "@friendProfilePublicPrompt": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addAsFriend": "Add as friend",
+  "unfriend": "Unfriend",
+  "friendProfileLinkInvalidTitle": "Profile link unavailable",
+  "friendProfileLinkInvalidBody": "This friend profile link is invalid or no longer available.",
   "customDrinks": "My custom drinks",
   "addCustomDrinkAction": "Add custom drink",
   "customDrinksEmptyTitle": "No custom drinks yet",
@@ -259,12 +299,21 @@
   },
   "entryUpdated": "Entry updated.",
   "entryDeleted": "Entry deleted.",
+  "friendRequestSent": "Friend request sent.",
+  "friendRequestAccepted": "Friend request accepted.",
+  "friendRequestRejected": "Friend request rejected.",
+  "friendRemoved": "Friend removed.",
   "somethingWentWrong": "Something went wrong. Please try again.",
   "accountAlreadyExists": "An account with that email already exists.",
   "invalidCredentials": "The email or password is incorrect.",
   "profileUpdateFailed": "The profile could not be updated.",
   "entryUpdateFailed": "The drink entry could not be updated.",
   "entryDeleteFailed": "The drink entry could not be deleted.",
+  "friendProfileLinkInvalid": "The profile link is invalid.",
+  "friendSelfRequestBlocked": "You cannot add yourself as a friend.",
+  "friendRequestAcceptFailed": "The friend request could not be accepted.",
+  "friendRequestRejectFailed": "The friend request could not be rejected.",
+  "friendRemoveFailed": "The friend could not be removed.",
   "customDrinkDeleteFailed": "The custom drink could not be deleted.",
   "customDrinkAlreadyExists": "You already have a custom drink with that name.",
   "signUpMissingUser": "Sign-up did not return a user.",
