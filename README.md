@@ -145,7 +145,6 @@ Override flutter environment variables if needed:
 | SUPABASE_URL        | Supabase URL                         |
 | SUPABASE_ANON_KEY   | Supabase anon key                    |
 | FORCE_UPDATE_NOTICE | Force update/changlog notice in feed |
-| FRIEND_PROFILE_BASE_URL | Base URL for public reusable friend profile links |
 
 Example:
 
