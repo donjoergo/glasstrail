@@ -158,7 +158,9 @@ flutter run \
 
 ### Public Friend Profile Previews
 
-Messenger link previews are served by the Supabase Edge Function in `supabase/functions/friend-profile-preview`. The production Vercel rewrite in `vercel.json` maps `https://glasstrail.vercel.app/friends/profile/<code>` to that function while keeping the Glass Trail URL visible.
+Messenger link previews are served by the Vercel Serverless Function in `api/friend-profile-preview.js`, because Supabase Edge Functions rewrite `text/html` responses to `text/plain` for `GET` requests. The production Vercel rewrite in `vercel.json` maps `https://glasstrail.vercel.app/friends/profile/<code>` to that Vercel Function while keeping the Glass Trail URL visible.
+
+The Supabase Edge Function in `supabase/functions/friend-profile-preview` serves public preview JSON and redirects profile image requests. The Flutter app and the Vercel Function both use that JSON endpoint.
 
 Configure these Supabase function secrets before deployment:
 
@@ -169,11 +171,18 @@ Configure these Supabase function secrets before deployment:
 | FRIEND_PROFILE_PUBLIC_BASE_URL | Public Glass Trail base URL, defaults to `https://glasstrail.vercel.app` |
 | FRIEND_PROFILE_APP_ICON_PATH | Optional fallback preview image path, defaults to `/icons/Icon-512.png` |
 
-Deploy the function with JWT verification disabled:
+The Supabase function is configured as public in `supabase/config.toml`:
 
 ```bash
-supabase functions deploy friend-profile-preview --no-verify-jwt
+npx supabase functions deploy friend-profile-preview
 ```
+
+Configure these Vercel environment variables if the defaults are not correct:
+
+| Variable | Purpose |
+| -------- | ------- |
+| FRIEND_PROFILE_DATA_BASE_URL | Supabase preview data endpoint, defaults to the production `friend-profile-preview` function URL |
+| FRIEND_PROFILE_PUBLIC_BASE_URL | Public Glass Trail base URL, defaults to `https://glasstrail.vercel.app` |
 
 ### Verification
 

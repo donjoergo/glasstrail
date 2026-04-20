@@ -6,7 +6,7 @@
     },
     {
       "source": "/friends/profile/:code",
-      "destination": "https://lzuxlcfjnekgjukqxoza.functions.supabase.co/friend-profile-preview/:code"
+      "destination": "/api/friend-profile-preview?code=:code"
     }
   ]
 }
