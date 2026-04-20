@@ -21,7 +21,7 @@ Deno.serve(async (request) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  if (request.method !== 'GET') {
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
     return jsonResponse({ error: 'method_not_allowed' }, 405);
   }
 

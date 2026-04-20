@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevent SonarCloud from running C-family analysis without compile commands
 - serve friend profile previews as HTML from Vercel
 - load friend profile images from the public Supabase image endpoint
+- build web preview images from the Supabase image endpoint
 
 ## [1.2.1] - 2026-04-13
 ### Fixed

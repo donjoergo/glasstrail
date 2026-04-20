@@ -74,7 +74,7 @@ function profileHtml(profile, request) {
   const origin = requestOrigin(request);
   const profileUrl = publicProfileUrl(profile.profileShareCode, origin);
   const appUrl = appProfileUrl(profile.profileShareCode, origin);
-  const imageUrl = profileImageUrl(profile, origin);
+  const imageUrl = profileImageUrl(profile);
 
   return `<!doctype html>
 <html lang="${language}">
@@ -264,14 +264,8 @@ function appProfileUrl(code, origin) {
   return `${trimTrailingSlash(origin)}/#${friendProfilePath(code)}`;
 }
 
-function profileImageUrl(profile, origin) {
-  const value = typeof profile.profileImageUrl === 'string'
-    ? profile.profileImageUrl.trim()
-    : '';
-  if (value.length > 0) {
-    return value;
-  }
-  return `${publicProfileUrl(profile.profileShareCode, origin)}/image`;
+function profileImageUrl(profile) {
+  return `${dataBaseUrl()}/${encodeURIComponent(profile.profileShareCode)}/image`;
 }
 
 function friendProfilePath(code) {
