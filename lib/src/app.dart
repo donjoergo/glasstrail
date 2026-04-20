@@ -77,12 +77,12 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
             locationService: widget.locationService,
             routeMemory: bootstrapData.routeMemory,
             localeMemory: bootstrapData.localeMemory,
-            initialRoute: widget.initialRoute,
+            initialRoute: widget.initialRoute ?? _routeFromLaunchUri(),
           );
         }
         return _BootstrapShell(
           hasError: snapshot.hasError,
-          initialRoute: widget.initialRoute,
+          initialRoute: widget.initialRoute ?? _routeFromLaunchUri(),
           localeCode: snapshot.data?.localeCode ?? 'en',
         );
       },
@@ -118,6 +118,17 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
       localeCode: bootstrapLocaleCode,
     );
   }
+}
+
+String? _routeFromLaunchUri() {
+  if (!kIsWeb) {
+    return null;
+  }
+  final route = Uri.base.queryParameters['route'];
+  if (route == null || route.trim().isEmpty) {
+    return null;
+  }
+  return AppRoutes.normalize(route);
 }
 
 class GlassTrailApp extends StatelessWidget {

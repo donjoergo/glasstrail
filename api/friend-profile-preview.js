@@ -273,7 +273,8 @@ function publicProfileUrl(code, origin) {
 }
 
 function appProfileUrl(code, origin) {
-  return `${trimTrailingSlash(origin)}/#${friendProfilePath(code)}`;
+  const path = friendProfilePath(code);
+  return `${trimTrailingSlash(origin)}/?route=${encodeURIComponent(path)}#${path}`;
 }
 
 function profileImageUrl(profile) {

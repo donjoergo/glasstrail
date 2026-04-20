@@ -9,7 +9,8 @@ String friendProfileLinkForCode(String shareCode) {
 }
 
 String friendProfileAppLinkForCode(String shareCode) {
-  return '${_friendProfileBaseUrl()}/#${AppRoutes.friendProfileRoute(shareCode)}';
+  final path = AppRoutes.friendProfileRoute(shareCode);
+  return '${_friendProfileBaseUrl()}/?route=${Uri.encodeQueryComponent(path)}#$path';
 }
 
 String _friendProfileBaseUrl() {

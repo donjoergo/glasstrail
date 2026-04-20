@@ -862,11 +862,14 @@ void main() {
       final controller = await AppController.bootstrapWithRepository(
         repository,
       );
+      final routeMemory = await RouteMemory.create();
+      await routeMemory.markLoggedOut();
 
       await tester.pumpWidget(
         GlassTrailApp(
           controller: controller,
           photoService: const TestPhotoService(),
+          routeMemory: routeMemory,
           initialRoute: AppRoutes.friendProfileRoute(
             ownerProfile.profileShareCode!,
           ),
