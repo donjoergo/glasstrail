@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - derive friend profile preview links from the request host
 - remove friend profile base URL environment override
 - hide account email addresses from profile screens
+- enlarge friend profile preview images and add favicon metadata
 
 ### Fixed
 - Prevent SonarCloud from running C-family analysis without compile commands

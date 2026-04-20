@@ -1,5 +1,6 @@
 const defaultDataBaseUrl =
   'https://lzuxlcfjnekgjukqxoza.functions.supabase.co/friend-profile-preview';
+const previewAvatarSize = 160;
 
 module.exports = async function handler(request, response) {
   if (request.method !== 'GET') {
@@ -75,6 +76,8 @@ function profileHtml(profile, request) {
   const profileUrl = publicProfileUrl(profile.profileShareCode, origin);
   const appUrl = appProfileUrl(profile.profileShareCode, origin);
   const imageUrl = profileImageUrl(profile);
+  const faviconUrl = publicAssetUrl('/favicon.png', origin);
+  const touchIconUrl = publicAssetUrl('/icons/Icon-192.png', origin);
 
   return `<!doctype html>
 <html lang="${language}">
@@ -85,17 +88,22 @@ function profileHtml(profile, request) {
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeAttribute(description)}">
   <link rel="canonical" href="${escapeAttribute(profileUrl)}">
+  <link rel="icon" type="image/png" href="${escapeAttribute(faviconUrl)}">
+  <link rel="apple-touch-icon" href="${escapeAttribute(touchIconUrl)}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Glass Trail">
   <meta property="og:title" content="${escapeAttribute(title)}">
   <meta property="og:description" content="${escapeAttribute(description)}">
   <meta property="og:url" content="${escapeAttribute(profileUrl)}">
   <meta property="og:image" content="${escapeAttribute(imageUrl)}">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
   <meta property="og:image:alt" content="${escapeAttribute(title)}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapeAttribute(title)}">
   <meta name="twitter:description" content="${escapeAttribute(description)}">
   <meta name="twitter:image" content="${escapeAttribute(imageUrl)}">
+  <meta name="twitter:image:alt" content="${escapeAttribute(title)}">
   <style>
     :root {
       color-scheme: light dark;
@@ -118,9 +126,9 @@ function profileHtml(profile, request) {
     img {
       border-radius: 50%;
       box-shadow: 0 18px 40px rgb(23 32 27 / 18%);
-      height: 112px;
+      height: ${previewAvatarSize}px;
       object-fit: cover;
-      width: 112px;
+      width: ${previewAvatarSize}px;
     }
     h1 {
       font-size: 30px;
@@ -157,7 +165,7 @@ function profileHtml(profile, request) {
 </head>
 <body>
   <main>
-    <img src="${escapeAttribute(imageUrl)}" alt="" width="112" height="112">
+    <img src="${escapeAttribute(imageUrl)}" alt="" width="${previewAvatarSize}" height="${previewAvatarSize}">
     <h1>${escapeHtml(title)}</h1>
     <p>${escapeHtml(description)}</p>
     <a href="${escapeAttribute(appUrl)}">${escapeHtml(cta)}</a>
@@ -167,6 +175,7 @@ function profileHtml(profile, request) {
 }
 
 function invalidHtml() {
+  const faviconUrl = publicAssetUrl('/favicon.png');
   return `<!doctype html>
 <html lang="de">
 <head>
@@ -174,6 +183,7 @@ function invalidHtml() {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>Profillink nicht verfügbar</title>
+  <link rel="icon" type="image/png" href="${escapeAttribute(faviconUrl)}">
 </head>
 <body>
   <main>
@@ -185,6 +195,7 @@ function invalidHtml() {
 }
 
 function serverErrorHtml() {
+  const faviconUrl = publicAssetUrl('/favicon.png');
   return `<!doctype html>
 <html lang="de">
 <head>
@@ -192,6 +203,7 @@ function serverErrorHtml() {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>Vorschau nicht verfügbar</title>
+  <link rel="icon" type="image/png" href="${escapeAttribute(faviconUrl)}">
 </head>
 <body>
   <main>
@@ -266,6 +278,10 @@ function appProfileUrl(code, origin) {
 
 function profileImageUrl(profile) {
   return `${dataBaseUrl()}/${encodeURIComponent(profile.profileShareCode)}/image`;
+}
+
+function publicAssetUrl(path, origin = 'https://glasstrail.vercel.app') {
+  return `${trimTrailingSlash(origin)}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
 function friendProfilePath(code) {
