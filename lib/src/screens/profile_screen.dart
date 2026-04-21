@@ -697,6 +697,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           AppAvatar(
+                            key: const Key('profile-avatar'),
                             imagePath: user.profileImagePath,
                             radius: 30,
                             backgroundColor: theme.colorScheme.primary

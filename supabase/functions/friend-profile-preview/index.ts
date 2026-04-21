@@ -86,10 +86,13 @@ function publicProfileJson(
   profile: ProfileRow,
   request: Request,
 ): Record<string, string | null> {
+  const imagePath = profile.profile_image_path?.trim() ?? '';
+  const hasProfileImage =
+    imagePath.length > 0 && isSafeProfileImagePath(profile, imagePath);
   return {
     id: profile.id,
     displayName: displayName(profile),
-    profileImageUrl: profileImageUrl(request),
+    profileImageUrl: hasProfileImage ? profileImageUrl(request) : null,
     profileShareCode: profile.profile_share_code,
   };
 }

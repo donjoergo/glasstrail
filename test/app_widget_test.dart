@@ -18,6 +18,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/test_harness.dart';
 
+const _transparentPngDataUrl =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRSEAAAAASUVORK5CYII=';
+
 Future<void> _tapPhotoAction(
   WidgetTester tester,
   Finder button, {
@@ -800,6 +803,67 @@ void main() {
       tester.element(find.byKey(const Key('edit-profile-display-name-field'))),
     );
     expect(route?.settings.name, AppRoutes.editProfile);
+  });
+
+  testWidgets('shows the profile image on the app profile page', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-image@example.com',
+      password: 'password123',
+      displayName: 'Profile Image',
+      profileImagePath: _transparentPngDataUrl,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final avatar = find.byKey(const Key('profile-avatar'));
+    expect(avatar, findsOneWidget);
+    expect(
+      find.descendant(of: avatar, matching: find.byType(Image)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: avatar, matching: find.text('PI')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('falls back to initials on the app profile page', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-initials@example.com',
+      password: 'password123',
+      displayName: 'Profile Initials',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final avatar = find.byKey(const Key('profile-avatar'));
+    expect(avatar, findsOneWidget);
+    expect(
+      find.descendant(of: avatar, matching: find.text('PI')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: avatar, matching: find.byType(Image)),
+      findsNothing,
+    );
   });
 
   testWidgets('shows reusable friend profile link from the profile screen', (
