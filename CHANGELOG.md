@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - withdraw pending friend requests
 - return to the feed from friend profile links
 - feed navigation from other users' profile links
+- Deep linking support for Android via App Links
 
 ### Changed
 - Fetch full Git history in CI for SonarCloud analysis
