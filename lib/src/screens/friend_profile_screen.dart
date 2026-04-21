@@ -328,51 +328,60 @@ class _FriendProfileCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          if (isAuthenticated && canCancel && existingConnection != null)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: const Key('friend-profile-cancel-button'),
-                onPressed: isBusy
-                    ? null
-                    : () => onCancelFriendRequest(existingConnection),
-                icon:
-                    isBusy &&
-                        controller.isBusyFor(AppBusyAction.cancelFriendRequest)
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.undo_rounded),
-                label: Text(l10n.withdrawFriendRequest),
-              ),
-            )
-          else if (isAuthenticated && canAdd)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                key: const Key('friend-profile-add-button'),
-                onPressed: isBusy ? null : onAddFriend,
-                icon:
-                    isBusy &&
-                        controller.isBusyFor(AppBusyAction.sendFriendRequest)
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.person_add_alt_1_rounded),
-                label: Text(l10n.addAsFriend),
-              ),
-            )
-          else if (isAuthenticated)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                key: const Key('friend-profile-feed-button'),
-                onPressed: isBusy ? null : onOpenFeed,
-                icon: const Icon(Icons.home_outlined),
-                label: Text(l10n.goToFeed),
-              ),
+          if (isAuthenticated)
+            Column(
+              children: <Widget>[
+                if (canCancel && existingConnection != null)
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      key: const Key('friend-profile-cancel-button'),
+                      onPressed: isBusy
+                          ? null
+                          : () => onCancelFriendRequest(existingConnection),
+                      icon:
+                          isBusy &&
+                              controller.isBusyFor(
+                                AppBusyAction.cancelFriendRequest,
+                              )
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.undo_rounded),
+                      label: Text(l10n.withdrawFriendRequest),
+                    ),
+                  )
+                else if (canAdd)
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      key: const Key('friend-profile-add-button'),
+                      onPressed: isBusy ? null : onAddFriend,
+                      icon:
+                          isBusy &&
+                              controller.isBusyFor(
+                                AppBusyAction.sendFriendRequest,
+                              )
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.person_add_alt_1_rounded),
+                      label: Text(l10n.addAsFriend),
+                    ),
+                  ),
+                if (canCancel || canAdd) const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonalIcon(
+                    key: const Key('friend-profile-feed-button'),
+                    onPressed: isBusy ? null : onOpenFeed,
+                    icon: const Icon(Icons.home_outlined),
+                    label: Text(l10n.goToFeed),
+                  ),
+                ),
+              ],
             )
           else
             SizedBox(

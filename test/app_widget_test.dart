@@ -984,6 +984,10 @@ void main() {
         find.byKey(const Key('friend-profile-add-button')),
         findsOneWidget,
       );
+      expect(
+        find.byKey(const Key('friend-profile-feed-button')),
+        findsOneWidget,
+      );
 
       await tester.tap(find.byKey(const Key('friend-profile-add-button')));
       await tester.pumpAndSettle();
@@ -994,6 +998,10 @@ void main() {
         find.byKey(const Key('friend-profile-cancel-button')),
         findsOneWidget,
       );
+      expect(
+        find.byKey(const Key('friend-profile-feed-button')),
+        findsOneWidget,
+      );
 
       await tester.tap(find.byKey(const Key('friend-profile-cancel-button')));
       await tester.pumpAndSettle();
@@ -1001,6 +1009,10 @@ void main() {
       expect(controller.outgoingFriendRequests, isEmpty);
       expect(
         find.byKey(const Key('friend-profile-add-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('friend-profile-feed-button')),
         findsOneWidget,
       );
     },

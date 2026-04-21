@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - public friend profile link previews
 - withdraw pending friend requests
 - return to the feed from friend profile links
+- feed navigation from other users' profile links
 
 ### Changed
 - Fetch full Git history in CI for SonarCloud analysis
