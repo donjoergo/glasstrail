@@ -64,7 +64,7 @@ async function loadPublicProfile(code) {
 
 function profileHtml(profile, request) {
   const language = preferredLanguage(request);
-  const name = displayName(profile);
+  const name = profile.displayName;
   const title = language === 'de'
     ? `${name} möchte dein Freund in Glass Trail sein`
     : `${name} wants to be your friend on Glass Trail`;
@@ -75,7 +75,7 @@ function profileHtml(profile, request) {
   const origin = requestOrigin(request);
   const profileUrl = publicProfileUrl(profile.profileShareCode, origin);
   const appUrl = appProfileUrl(profile.profileShareCode, origin);
-  const imageUrl = profileImageUrl(profile);
+  const imageUrl = profile.profileImageUrl ?? publicAssetUrl('/icons/Icon-512.png', origin);
   const faviconUrl = publicAssetUrl('/favicon.png', origin);
   const touchIconUrl = publicAssetUrl('/icons/Icon-192.png', origin);
 
@@ -236,13 +236,6 @@ function sendJson(response, body, status) {
   response.end(JSON.stringify(body));
 }
 
-function displayName(profile) {
-  const value = typeof profile.displayName === 'string'
-    ? profile.displayName.trim()
-    : '';
-  return value.length === 0 ? 'Glass Trail User' : value;
-}
-
 function preferredLanguage(request) {
   const header = String(request.headers['accept-language'] ?? '').toLowerCase();
   return header.startsWith('en') ? 'en' : 'de';
@@ -283,10 +276,6 @@ function publicProfileUrl(code, origin) {
 function appProfileUrl(code, origin) {
   const path = friendProfilePath(code);
   return `${trimTrailingSlash(origin)}/?route=${encodeURIComponent(path)}#${path}`;
-}
-
-function profileImageUrl(profile) {
-  return `${dataBaseUrl()}/${encodeURIComponent(profile.profileShareCode)}/image`;
 }
 
 function publicAssetUrl(path, origin = 'https://glasstrail.vercel.app') {
