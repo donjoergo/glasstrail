@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - match profile preview CTA colors to the app theme
 - keep normal logout sign-ins on the feed
 - friend request controls overflowing on narrow Android profile layouts
+- route query cleanup when returning to the feed from profile links
 
 ## [1.2.1] - 2026-04-13
 ### Fixed

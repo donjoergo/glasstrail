@@ -4,6 +4,7 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 import '../app_controller.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
+import '../launch_route_query.dart';
 import '../models.dart';
 import '../widgets/app_media.dart';
 
@@ -92,6 +93,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   }
 
   void _openFeed() {
+    clearLaunchRouteQuery();
     Navigator.of(context).pushReplacementNamed(AppRoutes.feed);
   }
 
