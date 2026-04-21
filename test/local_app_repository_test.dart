@@ -245,6 +245,36 @@ void main() {
       },
     );
 
+    test('withdraws outgoing pending friend requests', () async {
+      final requester = await repository.signUp(
+        email: 'withdraw-requester@example.com',
+        password: 'secret',
+        displayName: 'Withdraw Requester',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'withdraw-addressee@example.com',
+        password: 'secret',
+        displayName: 'Withdraw Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+
+      final requesterConnections = await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+
+      final withdrawn = await repository.cancelFriendRequest(
+        userId: requester.id,
+        relationshipId: requesterConnections.single.id,
+      );
+
+      expect(withdrawn, isEmpty);
+      expect(await repository.loadFriendConnections(addressee.id), isEmpty);
+    });
+
     test('rejects self friend requests', () async {
       final user = await repository.signUp(
         email: 'self-friend@example.com',

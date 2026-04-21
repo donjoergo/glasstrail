@@ -878,6 +878,14 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<List<FriendConnection>> removeFriend({
     required String userId,
     required String friendUserId,

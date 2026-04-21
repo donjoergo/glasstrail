@@ -43,6 +43,11 @@ abstract class AppRepository {
     required String relationshipId,
   });
 
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  });
+
   Future<List<FriendConnection>> removeFriend({
     required String userId,
     required String friendUserId,

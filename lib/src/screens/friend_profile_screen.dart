@@ -66,6 +66,24 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     }
   }
 
+  Future<void> _cancelFriendRequest(FriendConnection connection) async {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final success = await controller.cancelFriendRequest(connection);
+    if (!mounted) {
+      return;
+    }
+    final message = controller.takeFlashMessage(l10n);
+    if (message != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+    if (success) {
+      setState(() {});
+    }
+  }
+
   void _signIn() {
     Navigator.of(context).pushReplacementNamed(
       AppRoutes.auth,
@@ -149,6 +167,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                       profile: profile,
                       isAuthenticated: isAuthenticated,
                       onAddFriend: () => _sendFriendRequest(profile),
+                      onCancelFriendRequest: _cancelFriendRequest,
                       onSignIn: _signIn,
                     );
                   },
@@ -209,12 +228,14 @@ class _FriendProfileCard extends StatelessWidget {
     required this.profile,
     required this.isAuthenticated,
     required this.onAddFriend,
+    required this.onCancelFriendRequest,
     required this.onSignIn,
   });
 
   final _VisibleFriendProfile profile;
   final bool isAuthenticated;
   final VoidCallback onAddFriend;
+  final ValueChanged<FriendConnection> onCancelFriendRequest;
   final VoidCallback onSignIn;
 
   @override
@@ -238,6 +259,10 @@ class _FriendProfileCard extends StatelessWidget {
       connection: existingConnection,
     );
     final canAdd = isAuthenticated && !isSelf && existingConnection == null;
+    final canCancel =
+        isAuthenticated &&
+        existingConnection?.isPending == true &&
+        existingConnection?.isOutgoing == true;
 
     return Container(
       key: const Key('friend-profile-card'),
@@ -296,7 +321,26 @@ class _FriendProfileCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          if (isAuthenticated)
+          if (isAuthenticated && canCancel && existingConnection != null)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('friend-profile-cancel-button'),
+                onPressed: isBusy
+                    ? null
+                    : () => onCancelFriendRequest(existingConnection),
+                icon:
+                    isBusy &&
+                        controller.isBusyFor(AppBusyAction.cancelFriendRequest)
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.undo_rounded),
+                label: Text(l10n.withdrawFriendRequest),
+              ),
+            )
+          else if (isAuthenticated)
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(

@@ -990,8 +990,71 @@ void main() {
 
       expect(controller.outgoingFriendRequests, hasLength(1));
       expect(controller.outgoingFriendRequests.single.profile.id, owner.id);
+      expect(
+        find.byKey(const Key('friend-profile-cancel-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('friend-profile-cancel-button')));
+      await tester.pumpAndSettle();
+
+      expect(controller.outgoingFriendRequests, isEmpty);
+      expect(
+        find.byKey(const Key('friend-profile-add-button')),
+        findsOneWidget,
+      );
     },
   );
+
+  testWidgets('withdraws outgoing friend requests from the profile screen', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'outgoing-requester@example.com',
+      password: 'password123',
+      displayName: 'Outgoing Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'outgoing-addressee@example.com',
+      password: 'password123',
+      displayName: 'Outgoing Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.signOut();
+    await repository.signIn(
+      email: 'outgoing-requester@example.com',
+      password: 'password123',
+    );
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final request = controller.outgoingFriendRequests.single;
+    final cancelButton = find.byKey(Key('friend-request-cancel-${request.id}'));
+    expect(cancelButton, findsOneWidget);
+    expect(find.text('Waiting for response'), findsOneWidget);
+
+    await tester.tap(cancelButton);
+    await tester.pumpAndSettle();
+
+    expect(controller.outgoingFriendRequests, isEmpty);
+    expect(find.text('No friends or pending requests yet.'), findsOneWidget);
+  });
 
   testWidgets('navigates to feed after login when the user logged out', (
     tester,

@@ -151,6 +151,7 @@
     }
   },
   "addAsFriend": "Add as friend",
+  "withdrawFriendRequest": "Withdraw",
   "unfriend": "Unfriend",
   "friendProfileLinkInvalidTitle": "Profile link unavailable",
   "friendProfileLinkInvalidBody": "This friend profile link is invalid or no longer available.",
@@ -302,6 +303,7 @@
   "friendRequestSent": "Friend request sent.",
   "friendRequestAccepted": "Friend request accepted.",
   "friendRequestRejected": "Friend request rejected.",
+  "friendRequestCanceled": "Friend request withdrawn.",
   "friendRemoved": "Friend removed.",
   "somethingWentWrong": "Something went wrong. Please try again.",
   "accountAlreadyExists": "An account with that email already exists.",
@@ -313,6 +315,7 @@
   "friendSelfRequestBlocked": "You cannot add yourself as a friend.",
   "friendRequestAcceptFailed": "The friend request could not be accepted.",
   "friendRequestRejectFailed": "The friend request could not be rejected.",
+  "friendRequestCancelFailed": "The friend request could not be withdrawn.",
   "friendRemoveFailed": "The friend could not be removed.",
   "customDrinkDeleteFailed": "The custom drink could not be deleted.",
   "customDrinkAlreadyExists": "You already have a custom drink with that name.",

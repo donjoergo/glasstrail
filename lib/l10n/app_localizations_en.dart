@@ -412,6 +412,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addAsFriend => 'Add as friend';
 
   @override
+  String get withdrawFriendRequest => 'Withdraw';
+
+  @override
   String get unfriend => 'Unfriend';
 
   @override
@@ -633,6 +636,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get friendRequestRejected => 'Friend request rejected.';
 
   @override
+  String get friendRequestCanceled => 'Friend request withdrawn.';
+
+  @override
   String get friendRemoved => 'Friend removed.';
 
   @override
@@ -667,6 +673,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get friendRequestRejectFailed =>
       'The friend request could not be rejected.';
+
+  @override
+  String get friendRequestCancelFailed =>
+      'The friend request could not be withdrawn.';
 
   @override
   String get friendRemoveFailed => 'The friend could not be removed.';

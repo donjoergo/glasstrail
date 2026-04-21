@@ -312,6 +312,22 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    try {
+      await _client.rpc(
+        'cancel_friend_request',
+        params: <String, dynamic>{'target_relationship_id': relationshipId},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
   Future<List<FriendConnection>> removeFriend({
     required String userId,
     required String friendUserId,

@@ -528,6 +528,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _cancelFriendRequest(FriendConnection connection) async {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    await controller.cancelFriendRequest(connection);
+    if (!mounted) {
+      return;
+    }
+    final message = controller.takeFlashMessage(l10n);
+    if (message != null) {
+      _showMessage(message);
+    }
+  }
+
   Future<void> _removeFriend(FriendConnection connection) async {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
@@ -1218,7 +1231,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 connection: request,
                 statusLabel: l10n.friendRequestPending,
                 leadingColor: theme.colorScheme.secondaryContainer,
-                trailing: _PendingFriendRequestChip(label: l10n.pending),
+                trailing: OutlinedButton.icon(
+                  key: Key('friend-request-cancel-${request.id}'),
+                  onPressed: isBusy
+                      ? null
+                      : () => _cancelFriendRequest(request),
+                  icon:
+                      isBusy &&
+                          controller.isBusyFor(
+                            AppBusyAction.cancelFriendRequest,
+                          )
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.undo_rounded),
+                  label: Text(l10n.withdrawFriendRequest),
+                ),
               ),
           ],
         ],
@@ -1320,32 +1349,6 @@ class _FriendConnectionTile extends StatelessWidget {
           const SizedBox(width: 12),
           trailing,
         ],
-      ),
-    );
-  }
-}
-
-class _PendingFriendRequestChip extends StatelessWidget {
-  const _PendingFriendRequestChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      key: const Key('friend-request-pending-chip'),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.secondary,
-          fontWeight: FontWeight.w800,
-        ),
       ),
     );
   }

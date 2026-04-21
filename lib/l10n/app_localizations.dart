@@ -854,6 +854,12 @@ abstract class AppLocalizations {
   /// **'Add as friend'**
   String get addAsFriend;
 
+  /// No description provided for @withdrawFriendRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get withdrawFriendRequest;
+
   /// No description provided for @unfriend.
   ///
   /// In en, this message translates to:
@@ -1220,6 +1226,12 @@ abstract class AppLocalizations {
   /// **'Friend request rejected.'**
   String get friendRequestRejected;
 
+  /// No description provided for @friendRequestCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend request withdrawn.'**
+  String get friendRequestCanceled;
+
   /// No description provided for @friendRemoved.
   ///
   /// In en, this message translates to:
@@ -1285,6 +1297,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The friend request could not be rejected.'**
   String get friendRequestRejectFailed;
+
+  /// No description provided for @friendRequestCancelFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The friend request could not be withdrawn.'**
+  String get friendRequestCancelFailed;
 
   /// No description provided for @friendRemoveFailed.
   ///

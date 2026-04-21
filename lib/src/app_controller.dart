@@ -23,6 +23,7 @@ enum _FlashMessageKind {
   friendRequestSent,
   friendRequestAccepted,
   friendRequestRejected,
+  friendRequestCanceled,
   friendRemoved,
   genericError,
   raw,
@@ -44,6 +45,7 @@ enum AppBusyAction {
   sendFriendRequest,
   acceptFriendRequest,
   rejectFriendRequest,
+  cancelFriendRequest,
   removeFriend,
 }
 
@@ -403,6 +405,7 @@ class AppController extends ChangeNotifier {
       _FlashMessageKind.friendRequestSent => l10n.friendRequestSent,
       _FlashMessageKind.friendRequestAccepted => l10n.friendRequestAccepted,
       _FlashMessageKind.friendRequestRejected => l10n.friendRequestRejected,
+      _FlashMessageKind.friendRequestCanceled => l10n.friendRequestCanceled,
       _FlashMessageKind.friendRemoved => l10n.friendRemoved,
       _FlashMessageKind.genericError => l10n.somethingWentWrong,
       _FlashMessageKind.raw => _localizedRawMessage(message.rawMessage!, l10n),
@@ -921,6 +924,22 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<bool> cancelFriendRequest(FriendConnection connection) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.cancelFriendRequest, () async {
+      _friendConnections = await _repository.cancelFriendRequest(
+        userId: user.id,
+        relationshipId: connection.id,
+      );
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.friendRequestCanceled,
+      );
+    });
+  }
+
   Future<bool> removeFriend(FriendConnection connection) async {
     final user = _currentUser;
     if (user == null) {
@@ -1122,6 +1141,8 @@ class AppController extends ChangeNotifier {
         l10n.friendRequestAcceptFailed,
       'The friend request could not be rejected.' =>
         l10n.friendRequestRejectFailed,
+      'The friend request could not be withdrawn.' =>
+        l10n.friendRequestCancelFailed,
       'The friend could not be removed.' => l10n.friendRemoveFailed,
       'Something went wrong. Please try again.' => l10n.somethingWentWrong,
       _ => message,

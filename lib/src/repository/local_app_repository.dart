@@ -237,6 +237,25 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    final relationships = _loadFriendRelationships();
+    final initialLength = relationships.length;
+    relationships.removeWhere((relationship) {
+      return relationship['id'] == relationshipId &&
+          relationship['requesterId'] == userId &&
+          relationship['status'] == FriendRequestStatus.pending.storageValue;
+    });
+    if (relationships.length == initialLength) {
+      throw const AppException('The friend request could not be withdrawn.');
+    }
+    await _saveFriendRelationships(relationships);
+    return _friendConnectionsForUser(userId);
+  }
+
+  @override
   Future<List<FriendConnection>> removeFriend({
     required String userId,
     required String friendUserId,

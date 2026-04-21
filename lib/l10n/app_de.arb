@@ -151,6 +151,7 @@
     }
   },
   "addAsFriend": "Als Freund hinzufügen",
+  "withdrawFriendRequest": "Zurückziehen",
   "unfriend": "Entfreunden",
   "friendProfileLinkInvalidTitle": "Profillink nicht verfügbar",
   "friendProfileLinkInvalidBody": "Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.",
@@ -302,6 +303,7 @@
   "friendRequestSent": "Freundschaftsanfrage gesendet.",
   "friendRequestAccepted": "Freundschaftsanfrage angenommen.",
   "friendRequestRejected": "Freundschaftsanfrage abgelehnt.",
+  "friendRequestCanceled": "Freundschaftsanfrage zurückgezogen.",
   "friendRemoved": "Freund entfernt.",
   "somethingWentWrong": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
   "accountAlreadyExists": "Es gibt bereits ein Konto mit dieser E-Mail-Adresse.",
@@ -313,6 +315,7 @@
   "friendSelfRequestBlocked": "Du kannst dich nicht selbst als Freund hinzufügen.",
   "friendRequestAcceptFailed": "Die Freundschaftsanfrage konnte nicht angenommen werden.",
   "friendRequestRejectFailed": "Die Freundschaftsanfrage konnte nicht abgelehnt werden.",
+  "friendRequestCancelFailed": "Die Freundschaftsanfrage konnte nicht zurückgezogen werden.",
   "friendRemoveFailed": "Der Freund konnte nicht entfernt werden.",
   "customDrinkDeleteFailed": "Das eigene Getränk konnte nicht gelöscht werden.",
   "customDrinkAlreadyExists": "Du hast bereits ein eigenes Getränk mit diesem Namen.",
