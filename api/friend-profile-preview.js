@@ -143,14 +143,18 @@ function profileHtml(profile, request) {
     }
     a {
       align-items: center;
-      background: #1f7a8c;
-      border-radius: 8px;
-      color: white;
+      background: #2d6a4f;
+      border-radius: 20px;
+      color: #ffffff;
       display: inline-flex;
       font-weight: 700;
       min-height: 48px;
       padding: 0 22px;
       text-decoration: none;
+    }
+    a:focus-visible {
+      outline: 3px solid #e9c46a;
+      outline-offset: 3px;
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -159,6 +163,10 @@ function profileHtml(profile, request) {
       }
       p {
         color: #b9c7bd;
+      }
+      a {
+        background: #82cca5;
+        color: #0d1210;
       }
     }
   </style>
