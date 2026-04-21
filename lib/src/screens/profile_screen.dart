@@ -1190,6 +1190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 statusLabel: l10n.friendIncomingRequest,
                 leadingColor: theme.colorScheme.tertiaryContainer,
                 trailing: Wrap(
+                  alignment: WrapAlignment.end,
                   spacing: 8,
                   runSpacing: 8,
                   children: <Widget>[
@@ -1301,6 +1302,50 @@ class _FriendConnectionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final profile = connection.profile;
+    final details = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        AppAvatar(
+          imagePath: profile.profileImagePath,
+          radius: 23,
+          backgroundColor: leadingColor,
+          fallback: Text(
+            profile.initials,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                profile.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                statusLabel,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -1308,46 +1353,12 @@ class _FriendConnectionTile extends StatelessWidget {
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          AppAvatar(
-            imagePath: profile.profileImagePath,
-            radius: 23,
-            backgroundColor: leadingColor,
-            fallback: Text(
-              profile.initials,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  profile.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  statusLabel,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          trailing,
+          details,
+          const SizedBox(height: 12),
+          Align(alignment: AlignmentDirectional.centerEnd, child: trailing),
         ],
       ),
     );

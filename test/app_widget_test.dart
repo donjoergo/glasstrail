@@ -1049,11 +1049,87 @@ void main() {
     expect(cancelButton, findsOneWidget);
     expect(find.text('Waiting for response'), findsOneWidget);
 
+    await _scrollProfileTargetIntoView(tester, cancelButton);
     await tester.tap(cancelButton);
     await tester.pumpAndSettle();
 
     expect(controller.outgoingFriendRequests, isEmpty);
     expect(find.text('No friends or pending requests yet.'), findsOneWidget);
+  });
+
+  testWidgets('lays out incoming friend requests on narrow German screens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'incoming-requester@example.com',
+      password: 'password123',
+      displayName: 'Incoming Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'incoming-addressee@example.com',
+      password: 'password123',
+      displayName: 'Incoming Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.signOut();
+    await repository.signIn(
+      email: 'incoming-requester@example.com',
+      password: 'password123',
+    );
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'incoming-addressee@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final request = controller.incomingFriendRequests.single;
+    final tile = find.byKey(
+      ValueKey<String>('friend-request-incoming-${request.id}'),
+    );
+    await _scrollProfileTargetIntoView(tester, tile);
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.descendant(of: tile, matching: find.text('Möchte befreundet sein')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: tile, matching: find.text('Annehmen')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: tile, matching: find.text('Ablehnen')),
+      findsOneWidget,
+    );
+    final statusSize = tester.getSize(find.text('Möchte befreundet sein'));
+    expect(statusSize.width, greaterThan(120));
+    expect(statusSize.height, lessThan(48));
   });
 
   testWidgets('returns to feed from an already connected friend profile', (
