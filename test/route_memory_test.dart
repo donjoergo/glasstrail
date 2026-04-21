@@ -34,4 +34,17 @@ void main() {
     expect(routeMemory.resolveInitialRoute(AppRoutes.feed), AppRoutes.auth);
     expect(await routeMemory.consumePostAuthRoute(null), AppRoutes.feed);
   });
+
+  test('ignores normal protected redirects after logout', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final routeMemory = await RouteMemory.create();
+
+    await routeMemory.markLoggedOut();
+
+    expect(routeMemory.resolveInitialRoute(AppRoutes.profile), AppRoutes.auth);
+    expect(
+      await routeMemory.consumePostAuthRoute(AppRoutes.profile),
+      AppRoutes.feed,
+    );
+  });
 }

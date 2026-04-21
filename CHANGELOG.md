@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - open profile preview links on the linked friend profile
 - show profile initials only when no profile picture exists
 - match profile preview CTA colors to the app theme
+- keep normal logout sign-ins on the feed
 
 ## [1.2.1] - 2026-04-13
 ### Fixed
