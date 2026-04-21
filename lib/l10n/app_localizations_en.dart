@@ -412,6 +412,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addAsFriend => 'Add as friend';
 
   @override
+  String get goToFeed => 'Go to feed';
+
+  @override
   String get withdrawFriendRequest => 'Withdraw';
 
   @override

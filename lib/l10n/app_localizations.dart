@@ -854,6 +854,12 @@ abstract class AppLocalizations {
   /// **'Add as friend'**
   String get addAsFriend;
 
+  /// No description provided for @goToFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to feed'**
+  String get goToFeed;
+
   /// No description provided for @withdrawFriendRequest.
   ///
   /// In en, this message translates to:

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - reusable friend profile links and friend request management
 - public friend profile link previews
 - withdraw pending friend requests
+- return to the feed from friend profile links
 
 ### Changed
 - Fetch full Git history in CI for SonarCloud analysis

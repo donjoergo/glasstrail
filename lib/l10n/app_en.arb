@@ -151,6 +151,7 @@
     }
   },
   "addAsFriend": "Add as friend",
+  "goToFeed": "Go to feed",
   "withdrawFriendRequest": "Withdraw",
   "unfriend": "Unfriend",
   "friendProfileLinkInvalidTitle": "Profile link unavailable",

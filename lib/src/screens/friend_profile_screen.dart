@@ -91,6 +91,10 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     );
   }
 
+  void _openFeed() {
+    Navigator.of(context).pushReplacementNamed(AppRoutes.feed);
+  }
+
   void _showControllerMessage() {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
@@ -168,6 +172,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                       isAuthenticated: isAuthenticated,
                       onAddFriend: () => _sendFriendRequest(profile),
                       onCancelFriendRequest: _cancelFriendRequest,
+                      onOpenFeed: _openFeed,
                       onSignIn: _signIn,
                     );
                   },
@@ -229,6 +234,7 @@ class _FriendProfileCard extends StatelessWidget {
     required this.isAuthenticated,
     required this.onAddFriend,
     required this.onCancelFriendRequest,
+    required this.onOpenFeed,
     required this.onSignIn,
   });
 
@@ -236,6 +242,7 @@ class _FriendProfileCard extends StatelessWidget {
   final bool isAuthenticated;
   final VoidCallback onAddFriend;
   final ValueChanged<FriendConnection> onCancelFriendRequest;
+  final VoidCallback onOpenFeed;
   final VoidCallback onSignIn;
 
   @override
@@ -340,12 +347,12 @@ class _FriendProfileCard extends StatelessWidget {
                 label: Text(l10n.withdrawFriendRequest),
               ),
             )
-          else if (isAuthenticated)
+          else if (isAuthenticated && canAdd)
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
                 key: const Key('friend-profile-add-button'),
-                onPressed: canAdd && !isBusy ? onAddFriend : null,
+                onPressed: isBusy ? null : onAddFriend,
                 icon:
                     isBusy &&
                         controller.isBusyFor(AppBusyAction.sendFriendRequest)
@@ -355,6 +362,16 @@ class _FriendProfileCard extends StatelessWidget {
                       )
                     : const Icon(Icons.person_add_alt_1_rounded),
                 label: Text(l10n.addAsFriend),
+              ),
+            )
+          else if (isAuthenticated)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                key: const Key('friend-profile-feed-button'),
+                onPressed: isBusy ? null : onOpenFeed,
+                icon: const Icon(Icons.home_outlined),
+                label: Text(l10n.goToFeed),
               ),
             )
           else

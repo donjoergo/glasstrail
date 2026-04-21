@@ -1056,6 +1056,65 @@ void main() {
     expect(find.text('No friends or pending requests yet.'), findsOneWidget);
   });
 
+  testWidgets('returns to feed from an already connected friend profile', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'connected-requester@example.com',
+      password: 'password123',
+      displayName: 'Connected Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'connected-addressee@example.com',
+      password: 'password123',
+      displayName: 'Connected Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final addresseeConnections = await repository.loadFriendConnections(
+      addressee.id,
+    );
+    await repository.acceptFriendRequest(
+      userId: addressee.id,
+      relationshipId: addresseeConnections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'connected-requester@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.friendProfileRoute(
+          addresseeProfile.profileShareCode!,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('You are already friends.'), findsOneWidget);
+    expect(find.byKey(const Key('friend-profile-feed-button')), findsOneWidget);
+    expect(find.byKey(const Key('friend-profile-add-button')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('friend-profile-feed-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.feed);
+  });
+
   testWidgets('navigates to feed after login when the user logged out', (
     tester,
   ) async {

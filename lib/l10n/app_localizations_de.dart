@@ -415,6 +415,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addAsFriend => 'Als Freund hinzufügen';
 
   @override
+  String get goToFeed => 'Zum Feed';
+
+  @override
   String get withdrawFriendRequest => 'Zurückziehen';
 
   @override
