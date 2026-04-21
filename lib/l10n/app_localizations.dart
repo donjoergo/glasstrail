@@ -794,6 +794,12 @@ abstract class AppLocalizations {
   /// **'Add me on Glass Trail'**
   String get friendProfileShareTitle;
 
+  /// No description provided for @friendProfileShareText.
+  ///
+  /// In en, this message translates to:
+  /// **'Hey! {profileName} has invited you to Glass Trail, the app to track drinks, analyze statistics, and toast with friends. Give it a try!\n\n{link}'**
+  String friendProfileShareText(String profileName, String link);
+
   /// No description provided for @friendProfileLinkCopied.
   ///
   /// In en, this message translates to:

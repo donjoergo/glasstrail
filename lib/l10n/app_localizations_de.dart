@@ -380,6 +380,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get friendProfileShareTitle => 'Füge mich auf Glass Trail hinzu';
 
   @override
+  String friendProfileShareText(String profileName, String link) {
+    return 'Hey! $profileName hat dich zu Glass Trail eingeladen, der App um Getränke aufzuzeichnen, Statistiken auszuwerten und mit Freunden anzustoßen. Probier’s doch mal aus!\n\n$link';
+  }
+
+  @override
   String get friendProfileLinkCopied => 'Profillink kopiert.';
 
   @override

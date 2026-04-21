@@ -127,6 +127,17 @@
   "friendProfileLinkTitle": "Your friend profile",
   "friendProfileLinkBody": "Friends can scan this code or open the link to send you a request.",
   "friendProfileShareTitle": "Add me on Glass Trail",
+  "friendProfileShareText": "Hey! {profileName} has invited you to Glass Trail, the app to track drinks, analyze statistics, and toast with friends. Give it a try!\n\n{link}",
+  "@friendProfileShareText": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      },
+      "link": {
+        "type": "String"
+      }
+    }
+  },
   "friendProfileLinkCopied": "Profile link copied.",
   "friendIncomingRequest": "Wants to be friends",
   "friendAccepted": "Friend",

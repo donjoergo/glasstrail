@@ -480,7 +480,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 try {
                   await SharePlus.instance.share(
                     ShareParams(
-                      uri: Uri.parse(link),
+                      text: l10n.friendProfileShareText(
+                        controller.currentUser?.displayName ?? '',
+                        link,
+                      ),
                       title: l10n.friendProfileShareTitle,
                     ),
                   );
