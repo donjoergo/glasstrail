@@ -10,6 +10,7 @@ import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';
 import 'backend_config.dart';
+import 'deep_link_service.dart';
 import 'import_file_service.dart';
 import 'locale_memory.dart';
 import 'location_service.dart';
@@ -36,6 +37,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
     this.controllerFuture,
     this.routeMemoryFuture,
     this.localeMemoryFuture,
+    this.deepLinkService = const DisabledDeepLinkService(),
   });
 
   final PhotoService photoService;
@@ -46,6 +48,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
   final Future<AppController>? controllerFuture;
   final Future<RouteMemory>? routeMemoryFuture;
   final Future<LocaleMemory>? localeMemoryFuture;
+  final DeepLinkService deepLinkService;
 
   @override
   State<GlassTrailBootstrapApp> createState() => _GlassTrailBootstrapAppState();
@@ -77,7 +80,8 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
             locationService: widget.locationService,
             routeMemory: bootstrapData.routeMemory,
             localeMemory: bootstrapData.localeMemory,
-            initialRoute: widget.initialRoute ?? _routeFromLaunchUri(),
+            deepLinkService: widget.deepLinkService,
+            initialRoute: bootstrapData.initialRoute,
           );
         }
         return _BootstrapShell(
@@ -93,6 +97,10 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
     Future<AppController> controllerFuture,
   ) async {
     final controller = await controllerFuture;
+    final initialRoute =
+        widget.initialRoute ??
+        _routeFromLaunchUri() ??
+        await _routeFromInitialDeepLink(widget.deepLinkService);
     final Future<RouteMemory> routeMemoryFuture =
         widget.routeMemoryFuture ??
         (kIsWeb
@@ -116,6 +124,7 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
       routeMemory: routeMemory,
       localeMemory: localeMemory,
       localeCode: bootstrapLocaleCode,
+      initialRoute: initialRoute,
     );
   }
 }
@@ -131,7 +140,17 @@ String? _routeFromLaunchUri() {
   return AppRoutes.normalize(route);
 }
 
-class GlassTrailApp extends StatelessWidget {
+Future<String?> _routeFromInitialDeepLink(
+  DeepLinkService deepLinkService,
+) async {
+  try {
+    return routeFromDeepLink(await deepLinkService.getInitialUri());
+  } catch (_) {
+    return null;
+  }
+}
+
+class GlassTrailApp extends StatefulWidget {
   GlassTrailApp({
     super.key,
     required this.controller,
@@ -141,6 +160,7 @@ class GlassTrailApp extends StatelessWidget {
     RouteMemory? routeMemory,
     LocaleMemory? localeMemory,
     this.initialRoute,
+    this.deepLinkService = const DisabledDeepLinkService(),
   }) : routeMemory = routeMemory ?? RouteMemory.disabled(),
        localeMemory = localeMemory ?? LocaleMemory.disabled();
 
@@ -151,22 +171,80 @@ class GlassTrailApp extends StatelessWidget {
   final RouteMemory routeMemory;
   final LocaleMemory localeMemory;
   final String? initialRoute;
+  final DeepLinkService deepLinkService;
+
+  @override
+  State<GlassTrailApp> createState() => _GlassTrailAppState();
+}
+
+class _GlassTrailAppState extends State<GlassTrailApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  StreamSubscription<Uri>? _deepLinkSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeToDeepLinks();
+  }
+
+  @override
+  void didUpdateWidget(covariant GlassTrailApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.deepLinkService != widget.deepLinkService) {
+      unawaited(_deepLinkSubscription?.cancel());
+      _subscribeToDeepLinks();
+    }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_deepLinkSubscription?.cancel());
+    super.dispose();
+  }
+
+  void _subscribeToDeepLinks() {
+    _deepLinkSubscription = widget.deepLinkService.uriStream.listen(
+      _openDeepLink,
+      onError: (_) {},
+    );
+  }
+
+  void _openDeepLink(Uri uri) {
+    final route = routeFromDeepLink(uri);
+    if (route == null) {
+      return;
+    }
+
+    void openRoute() {
+      final navigator = _navigatorKey.currentState;
+      if (navigator == null) {
+        return;
+      }
+      navigator.pushNamedAndRemoveUntil(route, (_) => false);
+    }
+
+    if (_navigatorKey.currentState == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => openRoute());
+      return;
+    }
+    openRoute();
+  }
 
   @override
   Widget build(BuildContext context) {
     return AppScope(
-      controller: controller,
-      photoService: photoService,
-      importFileService: importFileService,
-      locationService: locationService,
-      routeMemory: routeMemory,
-      localeMemory: localeMemory,
+      controller: widget.controller,
+      photoService: widget.photoService,
+      importFileService: widget.importFileService,
+      locationService: widget.locationService,
+      routeMemory: widget.routeMemory,
+      localeMemory: widget.localeMemory,
       child: AnimatedBuilder(
-        animation: controller,
+        animation: widget.controller,
         builder: (context, _) {
           Route<dynamic> buildRoute(RouteSettings settings) {
             final routeName = AppRoutes.normalize(settings.name);
-            unawaited(routeMemory.rememberRoute(routeName));
+            unawaited(widget.routeMemory.rememberRoute(routeName));
             final routeSettings = RouteSettings(
               name: routeName,
               arguments: settings.arguments,
@@ -186,12 +264,13 @@ class GlassTrailApp extends StatelessWidget {
           }
 
           return MaterialApp(
+            navigatorKey: _navigatorKey,
             title: _appDisplayTitle,
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            themeMode: controller.settings.themePreference.themeMode,
-            locale: Locale(controller.settings.localeCode),
+            themeMode: widget.controller.settings.themePreference.themeMode,
+            locale: Locale(widget.controller.settings.localeCode),
             supportedLocales: AppLocalizations.supportedLocales,
             localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
               AppLocalizations.delegate,
@@ -200,8 +279,8 @@ class GlassTrailApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             onGenerateInitialRoutes: (initialRouteName) {
-              final routeName = routeMemory.resolveInitialRoute(
-                initialRoute ?? initialRouteName,
+              final routeName = widget.routeMemory.resolveInitialRoute(
+                widget.initialRoute ?? initialRouteName,
               );
               return <Route<dynamic>>[
                 buildRoute(RouteSettings(name: routeName)),
@@ -210,7 +289,7 @@ class GlassTrailApp extends StatelessWidget {
             onGenerateRoute: buildRoute,
             onUnknownRoute: (_) => buildRoute(
               RouteSettings(
-                name: controller.isAuthenticated
+                name: widget.controller.isAuthenticated
                     ? AppRoutes.feed
                     : AppRoutes.auth,
               ),
@@ -363,12 +442,14 @@ class _BootstrapData {
     required this.routeMemory,
     required this.localeMemory,
     required this.localeCode,
+    required this.initialRoute,
   });
 
   final AppController controller;
   final RouteMemory routeMemory;
   final LocaleMemory localeMemory;
   final String localeCode;
+  final String? initialRoute;
 }
 
 class _AppRouteScreen extends StatelessWidget {

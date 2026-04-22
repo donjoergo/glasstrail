@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_scope.dart';
+import 'package:glasstrail/src/deep_link_service.dart';
 import 'package:glasstrail/src/locale_memory.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/friend_profile_links.dart';
@@ -82,6 +83,25 @@ Future<void> _scrollProfileTargetIntoView(
   await tester.pump();
 }
 
+class _FakeDeepLinkService extends DeepLinkService {
+  _FakeDeepLinkService({this.initialUri});
+
+  final Uri? initialUri;
+  final StreamController<Uri> _controller = StreamController<Uri>.broadcast();
+
+  @override
+  Future<Uri?> getInitialUri() async => initialUri;
+
+  @override
+  Stream<Uri> get uriStream => _controller.stream;
+
+  void emit(Uri uri) {
+    _controller.add(uri);
+  }
+
+  Future<void> dispose() => _controller.close();
+}
+
 void main() {
   testWidgets('shows a bootstrap screen until the controller is ready', (
     tester,
@@ -142,6 +162,82 @@ void main() {
       expect(find.byKey(const Key('stats-overview-panel')), findsOneWidget);
     },
   );
+
+  testWidgets('opens native friend profile links on launch', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final owner = await repository.signUp(
+      email: 'native-link-owner@example.com',
+      password: 'password123',
+      displayName: 'Native Link Owner',
+    );
+    final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+    await repository.signOut();
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final deepLinkService = _FakeDeepLinkService(
+      initialUri: Uri.parse(
+        friendProfileLinkForCode(ownerProfile.profileShareCode!),
+      ),
+    );
+    addTearDown(deepLinkService.dispose);
+
+    await tester.pumpWidget(
+      GlassTrailBootstrapApp(
+        controllerFuture: Future<AppController>.value(controller),
+        photoService: const TestPhotoService(),
+        routeMemoryFuture: Future<RouteMemory>.value(RouteMemory.disabled()),
+        deepLinkService: deepLinkService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('friend-profile-link-screen')), findsOneWidget);
+    expect(find.text('Native Link Owner'), findsOneWidget);
+  });
+
+  testWidgets('opens native friend profile links while running', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final owner = await repository.signUp(
+      email: 'runtime-link-owner@example.com',
+      password: 'password123',
+      displayName: 'Runtime Link Owner',
+    );
+    final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+    await repository.signOut();
+    await repository.signUp(
+      email: 'runtime-link-viewer@example.com',
+      password: 'password123',
+      displayName: 'Runtime Link Viewer',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final deepLinkService = _FakeDeepLinkService();
+    addTearDown(deepLinkService.dispose);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.feed,
+        deepLinkService: deepLinkService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+
+    deepLinkService.emit(
+      Uri.parse(friendProfileLinkForCode(ownerProfile.profileShareCode!)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('friend-profile-link-screen')), findsOneWidget);
+    expect(find.text('Runtime Link Owner'), findsOneWidget);
+  });
 
   testWidgets('restores the last visited bar subroute after a web reload', (
     tester,
