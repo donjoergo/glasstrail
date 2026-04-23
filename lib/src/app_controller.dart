@@ -20,6 +20,11 @@ enum _FlashMessageKind {
   drinkLogged,
   drinkEntryUpdated,
   drinkEntryDeleted,
+  friendRequestSent,
+  friendRequestAccepted,
+  friendRequestRejected,
+  friendRequestCanceled,
+  friendRemoved,
   genericError,
   raw,
 }
@@ -36,6 +41,12 @@ enum AppBusyAction {
   updateSettings,
   updateDrinkEntry,
   deleteDrinkEntry,
+  loadFriendProfile,
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  cancelFriendRequest,
+  removeFriend,
 }
 
 class _FlashMessage {
@@ -102,6 +113,7 @@ class AppController extends ChangeNotifier {
   List<DrinkDefinition> _defaultCatalog = const <DrinkDefinition>[];
   List<DrinkDefinition> _customDrinks = const <DrinkDefinition>[];
   List<DrinkEntry> _entries = const <DrinkEntry>[];
+  List<FriendConnection> _friendConnections = const <FriendConnection>[];
   bool _isBusy = false;
   AppBusyAction? _busyAction;
   BeerWithMeImportProgress? _beerWithMeImportProgress;
@@ -134,6 +146,21 @@ class AppController extends ChangeNotifier {
     ..._customDrinks,
   ]);
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
+  List<FriendConnection> get friendConnections =>
+      List.unmodifiable(_friendConnections);
+  List<FriendConnection> get friends => List.unmodifiable(
+    _friendConnections.where((connection) => connection.isAccepted),
+  );
+  List<FriendConnection> get incomingFriendRequests => List.unmodifiable(
+    _friendConnections.where(
+      (connection) => connection.isPending && connection.isIncoming,
+    ),
+  );
+  List<FriendConnection> get outgoingFriendRequests => List.unmodifiable(
+    _friendConnections.where(
+      (connection) => connection.isPending && connection.isOutgoing,
+    ),
+  );
   bool get isBusy => _isBusy;
   AppBusyAction? get busyAction => _busyAction;
   BeerWithMeImportProgress? get beerWithMeImportProgress =>
@@ -375,6 +402,11 @@ class AppController extends ChangeNotifier {
       ),
       _FlashMessageKind.drinkEntryUpdated => l10n.entryUpdated,
       _FlashMessageKind.drinkEntryDeleted => l10n.entryDeleted,
+      _FlashMessageKind.friendRequestSent => l10n.friendRequestSent,
+      _FlashMessageKind.friendRequestAccepted => l10n.friendRequestAccepted,
+      _FlashMessageKind.friendRequestRejected => l10n.friendRequestRejected,
+      _FlashMessageKind.friendRequestCanceled => l10n.friendRequestCanceled,
+      _FlashMessageKind.friendRemoved => l10n.friendRemoved,
       _FlashMessageKind.genericError => l10n.somethingWentWrong,
       _FlashMessageKind.raw => _localizedRawMessage(message.rawMessage!, l10n),
     };
@@ -437,6 +469,7 @@ class AppController extends ChangeNotifier {
       _currentUser = null;
       _customDrinks = const <DrinkDefinition>[];
       _entries = const <DrinkEntry>[];
+      _friendConnections = const <FriendConnection>[];
     });
   }
 
@@ -804,6 +837,125 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<FriendProfile?> loadOwnFriendProfile() async {
+    final user = _currentUser;
+    if (user == null) {
+      return null;
+    }
+    return _loadFriendProfileFor(
+      AppBusyAction.loadFriendProfile,
+      () => _repository.getOwnFriendProfile(user.id),
+    );
+  }
+
+  Future<FriendProfile?> resolveFriendProfileLink(String shareCode) async {
+    final normalizedCode = shareCode.trim();
+    if (normalizedCode.isEmpty) {
+      _flashMessage = const _FlashMessage.raw('The profile link is invalid.');
+      notifyListeners();
+      return null;
+    }
+    return _loadFriendProfileFor(
+      AppBusyAction.loadFriendProfile,
+      () => _repository.resolveFriendProfileLink(normalizedCode),
+    );
+  }
+
+  Future<PublicFriendProfile?> resolvePublicFriendProfileLink(
+    String shareCode,
+  ) async {
+    final normalizedCode = shareCode.trim();
+    if (normalizedCode.isEmpty) {
+      _flashMessage = const _FlashMessage.raw('The profile link is invalid.');
+      notifyListeners();
+      return null;
+    }
+    return _loadFriendProfileFor(
+      AppBusyAction.loadFriendProfile,
+      () => _repository.resolvePublicFriendProfileLink(normalizedCode),
+    );
+  }
+
+  Future<bool> sendFriendRequestToProfile(String shareCode) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.sendFriendRequest, () async {
+      _friendConnections = await _repository.sendFriendRequestToProfile(
+        userId: user.id,
+        shareCode: shareCode,
+      );
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.friendRequestSent,
+      );
+    });
+  }
+
+  Future<bool> acceptFriendRequest(FriendConnection connection) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.acceptFriendRequest, () async {
+      _friendConnections = await _repository.acceptFriendRequest(
+        userId: user.id,
+        relationshipId: connection.id,
+      );
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.friendRequestAccepted,
+      );
+    });
+  }
+
+  Future<bool> rejectFriendRequest(FriendConnection connection) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.rejectFriendRequest, () async {
+      _friendConnections = await _repository.rejectFriendRequest(
+        userId: user.id,
+        relationshipId: connection.id,
+      );
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.friendRequestRejected,
+      );
+    });
+  }
+
+  Future<bool> cancelFriendRequest(FriendConnection connection) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.cancelFriendRequest, () async {
+      _friendConnections = await _repository.cancelFriendRequest(
+        userId: user.id,
+        relationshipId: connection.id,
+      );
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.friendRequestCanceled,
+      );
+    });
+  }
+
+  Future<bool> removeFriend(FriendConnection connection) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.removeFriend, () async {
+      _friendConnections = await _repository.removeFriend(
+        userId: user.id,
+        friendUserId: connection.profile.id,
+      );
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.friendRemoved,
+      );
+    });
+  }
+
   Future<bool> refreshData() async {
     return _guard(() async {
       await _reloadAppData();
@@ -833,6 +985,9 @@ class AppController extends ChangeNotifier {
     final settingsFuture = user == null
         ? null
         : _repository.loadSettings(user.id);
+    final friendsFuture = user == null
+        ? null
+        : _repository.loadFriendConnections(user.id);
 
     _defaultCatalog = await defaultCatalogFuture;
     if (user == null) {
@@ -842,6 +997,7 @@ class AppController extends ChangeNotifier {
     _customDrinks = await customDrinksFuture!;
     _entries = await entriesFuture!;
     _settings = await settingsFuture!;
+    _friendConnections = await friendsFuture!;
   }
 
   Future<void> _reloadUserScope() async {
@@ -852,10 +1008,12 @@ class AppController extends ChangeNotifier {
     final customDrinksFuture = _repository.loadCustomDrinks(user.id);
     final entriesFuture = _repository.loadEntries(user.id);
     final settingsFuture = _repository.loadSettings(user.id);
+    final friendsFuture = _repository.loadFriendConnections(user.id);
 
     _customDrinks = await customDrinksFuture;
     _entries = await entriesFuture;
     _settings = await settingsFuture;
+    _friendConnections = await friendsFuture;
   }
 
   Set<String> _hiddenGlobalDrinkIdSet() =>
@@ -938,6 +1096,30 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<T?> _loadFriendProfileFor<T>(
+    AppBusyAction action,
+    Future<T> Function() load,
+  ) async {
+    _isBusy = true;
+    _busyAction = action;
+    notifyListeners();
+    try {
+      return await load();
+    } on AppException catch (error) {
+      _flashMessage = _FlashMessage.raw(error.message);
+      return null;
+    } catch (_) {
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.genericError,
+      );
+      return null;
+    } finally {
+      _isBusy = false;
+      _busyAction = null;
+      notifyListeners();
+    }
+  }
+
   String _localizedRawMessage(String message, AppLocalizations l10n) {
     return switch (message) {
       'An account with that email already exists.' => l10n.accountAlreadyExists,
@@ -953,6 +1135,15 @@ class AppController extends ChangeNotifier {
         l10n.beerWithMeImportAlreadyImported,
       'The drink entry could not be updated.' => l10n.entryUpdateFailed,
       'The drink entry could not be deleted.' => l10n.entryDeleteFailed,
+      'The profile link is invalid.' => l10n.friendProfileLinkInvalid,
+      'You cannot add yourself as a friend.' => l10n.friendSelfRequestBlocked,
+      'The friend request could not be accepted.' =>
+        l10n.friendRequestAcceptFailed,
+      'The friend request could not be rejected.' =>
+        l10n.friendRequestRejectFailed,
+      'The friend request could not be withdrawn.' =>
+        l10n.friendRequestCancelFailed,
+      'The friend could not be removed.' => l10n.friendRemoveFailed,
       'Something went wrong. Please try again.' => l10n.somethingWentWrong,
       _ => message,
     };

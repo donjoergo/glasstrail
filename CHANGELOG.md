@@ -5,11 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Changed
-- Fetch full Git history in CI for SonarCloud analysis
-
-### Fixed
-- Prevent SonarCloud from running C-family analysis without compile commands
+### Added
+- Social & Friends
+  - Public profile page which can be shared with friends
+  - Public profile link has a nice messenger preview
+  - Accept/decline/withdraw friend requests
+  - Deep linking: profile links open the Glass Trail app when installed, otherwise they show the web version
+- Added SonarQube analysis
 
 ## [1.2.1] - 2026-04-13
 ### Fixed

@@ -188,6 +188,162 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
+  Future<List<FriendConnection>> loadFriendConnections(String userId) async {
+    try {
+      final rows = await _client.rpc('load_friend_connections');
+      return (rows as List<dynamic>)
+          .map(
+            (row) =>
+                _friendConnectionFromRow(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList();
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<FriendProfile> getOwnFriendProfile(String userId) async {
+    try {
+      final row = await _client
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .single();
+      return _profileRowToFriendProfile(Map<String, dynamic>.from(row));
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<PublicFriendProfile> resolvePublicFriendProfileLink(
+    String shareCode,
+  ) async {
+    final normalizedCode = shareCode.trim();
+    if (normalizedCode.isEmpty) {
+      throw const AppException('The profile link is invalid.');
+    }
+
+    try {
+      final response = await _client.functions.invoke(
+        'friend-profile-preview/${Uri.encodeComponent(normalizedCode)}',
+        method: HttpMethod.get,
+        queryParameters: const <String, String>{'format': 'json'},
+      );
+      final data = response.data;
+      if (data is! Map) {
+        throw const AppException('The profile link is invalid.');
+      }
+      return PublicFriendProfile.fromJson(Map<String, dynamic>.from(data));
+    } on FunctionException catch (error) {
+      if (error.status == 404) {
+        throw const AppException('The profile link is invalid.');
+      }
+      throw AppException(error.reasonPhrase ?? 'The profile link is invalid.');
+    }
+  }
+
+  @override
+  Future<FriendProfile> resolveFriendProfileLink(String shareCode) async {
+    try {
+      final rows = await _client.rpc(
+        'resolve_friend_profile_link',
+        params: <String, dynamic>{'target_share_code': shareCode.trim()},
+      );
+      final list = List<dynamic>.from(rows as List);
+      if (list.isEmpty) {
+        throw const AppException('The profile link is invalid.');
+      }
+      return _profileRowToFriendProfile(
+        Map<String, dynamic>.from(list.single as Map),
+      );
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> sendFriendRequestToProfile({
+    required String userId,
+    required String shareCode,
+  }) async {
+    try {
+      await _client.rpc(
+        'send_friend_request_to_profile',
+        params: <String, dynamic>{'target_share_code': shareCode.trim()},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> acceptFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    try {
+      await _client.rpc(
+        'accept_friend_request',
+        params: <String, dynamic>{'target_relationship_id': relationshipId},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> rejectFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    try {
+      await _client.rpc(
+        'reject_friend_request',
+        params: <String, dynamic>{'target_relationship_id': relationshipId},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    try {
+      await _client.rpc(
+        'cancel_friend_request',
+        params: <String, dynamic>{'target_relationship_id': relationshipId},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> removeFriend({
+    required String userId,
+    required String friendUserId,
+  }) async {
+    try {
+      await _client.rpc(
+        'remove_friend',
+        params: <String, dynamic>{'target_friend_user_id': friendUserId},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
   Future<List<DrinkDefinition>> loadDefaultCatalog() async {
     try {
       final rows = await _client
@@ -609,6 +765,30 @@ class SupabaseAppRepository implements AppRepository {
       birthday: normalizeBirthdayOrNull(
         birthdayRaw == null ? null : DateTime.parse(birthdayRaw as String),
       ),
+      profileShareCode: row['profile_share_code'] as String?,
+    );
+  }
+
+  FriendConnection _friendConnectionFromRow(Map<String, dynamic> row) {
+    return FriendConnection(
+      id: row['relationship_id'] as String,
+      profile: _profileRowToFriendProfile(row),
+      status: FriendRequestStatusX.fromStorage(row['status'] as String),
+      direction: FriendRequestDirectionX.fromStorage(
+        row['direction'] as String?,
+      ),
+    );
+  }
+
+  FriendProfile _profileRowToFriendProfile(Map<String, dynamic> row) {
+    return FriendProfile(
+      id: (row['profile_id'] as String?) ?? (row['id'] as String),
+      email: row['email'] as String,
+      displayName:
+          (row['display_name'] as String?) ??
+          _fallbackDisplayName(row['email'] as String?),
+      profileImagePath: row['profile_image_path'] as String?,
+      profileShareCode: row['profile_share_code'] as String?,
     );
   }
 

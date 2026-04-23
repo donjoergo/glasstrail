@@ -136,6 +136,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get close => 'Close';
 
   @override
+  String get accept => 'Accept';
+
+  @override
+  String get reject => 'Reject';
+
+  @override
+  String get pending => 'Pending';
+
+  @override
+  String get share => 'Share';
+
+  @override
+  String get copyLink => 'Copy link';
+
+  @override
   String get whatsNew => 'What\'s new';
 
   @override
@@ -334,6 +349,88 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editProfile => 'Edit profile';
+
+  @override
+  String get friends => 'Friends';
+
+  @override
+  String get friendsSectionBody =>
+      'Share your profile link so others can send you a friend request.';
+
+  @override
+  String get friendsEmpty => 'No friends or pending requests yet.';
+
+  @override
+  String get friendProfile => 'Friend profile';
+
+  @override
+  String get friendProfileLinkAction => 'Show my profile link';
+
+  @override
+  String get friendProfileLinkTitle => 'Your friend profile';
+
+  @override
+  String get friendProfileLinkBody =>
+      'Friends can scan this code or open the link to send you a request.';
+
+  @override
+  String get friendProfileShareTitle => 'Add me on Glass Trail';
+
+  @override
+  String friendProfileShareText(String profileName, String link) {
+    return 'Hey! $profileName has invited you to Glass Trail, the app to track drinks, analyze statistics, and toast with friends. Give it a try!\n\n$link';
+  }
+
+  @override
+  String get friendProfileLinkCopied => 'Profile link copied.';
+
+  @override
+  String get friendIncomingRequest => 'Wants to be friends';
+
+  @override
+  String get friendAccepted => 'Friend';
+
+  @override
+  String get friendRequestPending => 'Waiting for response';
+
+  @override
+  String get friendAlreadyFriends => 'You are already friends.';
+
+  @override
+  String get friendIncomingRequestFromProfile =>
+      'This user already sent you a request. Review it in your Friends section.';
+
+  @override
+  String get friendProfileSelf => 'This is your own friend profile link.';
+
+  @override
+  String friendProfileRequestPrompt(String name) {
+    return '$name wants to be friends with you.';
+  }
+
+  @override
+  String friendProfilePublicPrompt(String name) {
+    return '$name wants to be your friend on Glass Trail.';
+  }
+
+  @override
+  String get addAsFriend => 'Add as friend';
+
+  @override
+  String get goToFeed => 'Go to feed';
+
+  @override
+  String get withdrawFriendRequest => 'Withdraw';
+
+  @override
+  String get unfriend => 'Unfriend';
+
+  @override
+  String get friendProfileLinkInvalidTitle => 'Profile link unavailable';
+
+  @override
+  String get friendProfileLinkInvalidBody =>
+      'This friend profile link is invalid or no longer available.';
 
   @override
   String get customDrinks => 'My custom drinks';
@@ -538,6 +635,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get entryDeleted => 'Entry deleted.';
 
   @override
+  String get friendRequestSent => 'Friend request sent.';
+
+  @override
+  String get friendRequestAccepted => 'Friend request accepted.';
+
+  @override
+  String get friendRequestRejected => 'Friend request rejected.';
+
+  @override
+  String get friendRequestCanceled => 'Friend request withdrawn.';
+
+  @override
+  String get friendRemoved => 'Friend removed.';
+
+  @override
   String get somethingWentWrong => 'Something went wrong. Please try again.';
 
   @override
@@ -555,6 +667,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get entryDeleteFailed => 'The drink entry could not be deleted.';
+
+  @override
+  String get friendProfileLinkInvalid => 'The profile link is invalid.';
+
+  @override
+  String get friendSelfRequestBlocked => 'You cannot add yourself as a friend.';
+
+  @override
+  String get friendRequestAcceptFailed =>
+      'The friend request could not be accepted.';
+
+  @override
+  String get friendRequestRejectFailed =>
+      'The friend request could not be rejected.';
+
+  @override
+  String get friendRequestCancelFailed =>
+      'The friend request could not be withdrawn.';
+
+  @override
+  String get friendRemoveFailed => 'The friend could not be removed.';
 
   @override
   String get customDrinkDeleteFailed =>

@@ -24,23 +24,27 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
 
 ## App Pages
 
-The app exposes one route per visible page. On Flutter Web, routing currently uses hash URLs, so bookmarks look like `/#/feed`.
+The app exposes one route per visible page. On Flutter Web, in-app routing currently uses hash URLs, so bookmarks look like `/#/feed`. Public friend profile shares use non-hash URLs so messengers can render link previews.
 
-| Page         | Route           | Purpose                                             |
-| ------------ | --------------- | --------------------------------------------------- |
-| Auth         | `/auth`         | Sign in and sign up                                 |
-| Feed         | `/feed`         | Main history/feed view                              |
-| Statistics   | `/statistics`   | Trends, streaks, and category breakdown             |
-| Bar          | `/bar`          | Organize the drink catalog and manage custom drinks |
-| Profile      | `/profile`      | Profile summary and app settings                    |
-| Edit Profile | `/profile/edit` | Dedicated profile editing page                      |
-| Add Drink    | `/add-drink`    | Log a drink from recent, global, or custom options  |
+| Page           | Route                     | Purpose                                             |
+| -------------- | ------------------------- | --------------------------------------------------- |
+| Auth           | `/auth`                   | Sign in and sign up                                 |
+| Feed           | `/feed`                   | Main history/feed view                              |
+| Statistics     | `/statistics`             | Trends, streaks, and category breakdown             |
+| Bar            | `/bar`                    | Organize the drink catalog and manage custom drinks |
+| Profile        | `/profile`                | Profile summary and app settings                    |
+| Edit Profile   | `/profile/edit`           | Dedicated profile editing page                      |
+| Friend Profile | `/friends/profile/<code>` | In-app friend profile route for sending requests    |
+| Add Drink      | `/add-drink`              | Log a drink from recent, global, or custom options  |
 
 Additional routing behavior:
 
 - `/` redirects to `/feed`
 - Protected routes show the auth flow when the user is signed out
 - After successful authentication, the app returns to the originally requested protected route
+- Public friend profile links use `https://glasstrail.vercel.app/friends/profile/<code>` for previews
+- In-app friend profile links use `https://glasstrail.vercel.app/#/friends/profile/<code>` for Flutter routing
+- Friend profile links are reusable; signed-out viewers see a public invitation with a sign-in CTA
 - On Flutter Web, a full browser reload restores the last visited page
 - After an explicit logout, the next login lands on `/feed`
 
@@ -150,6 +154,32 @@ flutter run \
   --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY \
   --dart-define=FORCE_UPDATE_NOTICE=true
 ```
+
+### Public Friend Profile Previews
+
+Messenger link previews are served by the Vercel Serverless Function in `api/friend-profile-preview.js`, because Supabase Edge Functions rewrite `text/html` responses to `text/plain` for `GET` requests. The production Vercel rewrite in `vercel.json` maps `https://glasstrail.vercel.app/friends/profile/<code>` to that Vercel Function while keeping the Glass Trail URL visible.
+
+The Supabase Edge Function in `supabase/functions/friend-profile-preview` serves public preview JSON and redirects profile image requests. The Flutter app and the Vercel Function both use that JSON endpoint.
+
+Configure these Supabase function secrets before deployment:
+
+| Secret                      | Purpose                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| SUPABASE_URL                | Supabase project URL                                                                                         |
+| SUPABASE_SERVICE_ROLE_KEY   | Server-only key for reading limited profile preview data and signing profile images                          |
+| FRIEND_PROFILE_APP_ICON_URL | Optional absolute fallback preview image URL, defaults to `https://glasstrail.vercel.app/icons/Icon-512.png` |
+
+The Supabase function is configured as public in `supabase/config.toml`:
+
+```bash
+npx supabase functions deploy friend-profile-preview
+```
+
+Configure these Vercel environment variables if the defaults are not correct:
+
+| Variable                     | Purpose                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| FRIEND_PROFILE_DATA_BASE_URL | Supabase preview data endpoint, defaults to the production `friend-profile-preview` function URL |
 
 ### Verification
 

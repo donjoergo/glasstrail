@@ -20,6 +20,39 @@ abstract class AppRepository {
 
   Future<AppUser> updateProfile(AppUser user);
 
+  Future<List<FriendConnection>> loadFriendConnections(String userId);
+
+  Future<FriendProfile> getOwnFriendProfile(String userId);
+
+  Future<PublicFriendProfile> resolvePublicFriendProfileLink(String shareCode);
+
+  Future<FriendProfile> resolveFriendProfileLink(String shareCode);
+
+  Future<List<FriendConnection>> sendFriendRequestToProfile({
+    required String userId,
+    required String shareCode,
+  });
+
+  Future<List<FriendConnection>> acceptFriendRequest({
+    required String userId,
+    required String relationshipId,
+  });
+
+  Future<List<FriendConnection>> rejectFriendRequest({
+    required String userId,
+    required String relationshipId,
+  });
+
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  });
+
+  Future<List<FriendConnection>> removeFriend({
+    required String userId,
+    required String friendUserId,
+  });
+
   Future<List<DrinkDefinition>> loadDefaultCatalog();
 
   Future<List<DrinkDefinition>> loadCustomDrinks(String userId);

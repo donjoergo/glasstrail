@@ -41,6 +41,11 @@
   "save": "Speichern",
   "cancel": "Abbrechen",
   "close": "Schließen",
+  "accept": "Annehmen",
+  "reject": "Ablehnen",
+  "pending": "Ausstehend",
+  "share": "Teilen",
+  "copyLink": "Link kopieren",
   "whatsNew": "Was gibt's Neues",
   "editEntry": "Eintrag bearbeiten",
   "deleteEntry": "Eintrag löschen",
@@ -114,6 +119,54 @@
   "handedness": "Bedienseite",
   "logout": "Abmelden",
   "editProfile": "Profil bearbeiten",
+  "friends": "Freunde",
+  "friendsSectionBody": "Teile deinen Profillink, damit andere dir eine Freundschaftsanfrage senden können.",
+  "friendsEmpty": "Noch keine Freunde oder ausstehenden Anfragen.",
+  "friendProfile": "Freundesprofil",
+  "friendProfileLinkAction": "Mein Profil zeigen",
+  "friendProfileLinkTitle": "Dein Freundesprofil",
+  "friendProfileLinkBody": "Freunde können diesen Code scannen oder den Link öffnen, um dir eine Anfrage zu senden.",
+  "friendProfileShareTitle": "Füge mich auf Glass Trail hinzu",
+  "friendProfileShareText": "Hey! {profileName} hat dich zu Glass Trail eingeladen, der App um Getränke aufzuzeichnen, Statistiken auszuwerten und mit Freunden anzustoßen. Probier’s doch mal aus!\n\n{link}",
+  "@friendProfileShareText": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      },
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "friendProfileLinkCopied": "Profillink kopiert.",
+  "friendIncomingRequest": "Möchte befreundet sein",
+  "friendAccepted": "Freund",
+  "friendRequestPending": "Wartet auf Antwort",
+  "friendAlreadyFriends": "Ihr seid bereits befreundet.",
+  "friendIncomingRequestFromProfile": "Diese Person hat dir bereits eine Anfrage gesendet. Prüfe sie im Freunde-Bereich.",
+  "friendProfileSelf": "Das ist dein eigener Freundes-Profillink.",
+  "friendProfileRequestPrompt": "{name} möchte mit dir befreundet sein.",
+  "@friendProfileRequestPrompt": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendProfilePublicPrompt": "{name} möchte dein Freund in Glass Trail sein.",
+  "@friendProfilePublicPrompt": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addAsFriend": "Als Freund hinzufügen",
+  "goToFeed": "Zum Feed",
+  "withdrawFriendRequest": "Zurückziehen",
+  "unfriend": "Entfreunden",
+  "friendProfileLinkInvalidTitle": "Profillink nicht verfügbar",
+  "friendProfileLinkInvalidBody": "Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.",
   "customDrinks": "Meine eigenen Getränke",
   "addCustomDrinkAction": "Eigenes Getränk hinzufügen",
   "customDrinksEmptyTitle": "Noch keine eigenen Getränke",
@@ -259,12 +312,23 @@
   },
   "entryUpdated": "Eintrag aktualisiert.",
   "entryDeleted": "Eintrag gelöscht.",
+  "friendRequestSent": "Freundschaftsanfrage gesendet.",
+  "friendRequestAccepted": "Freundschaftsanfrage angenommen.",
+  "friendRequestRejected": "Freundschaftsanfrage abgelehnt.",
+  "friendRequestCanceled": "Freundschaftsanfrage zurückgezogen.",
+  "friendRemoved": "Freund entfernt.",
   "somethingWentWrong": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
   "accountAlreadyExists": "Es gibt bereits ein Konto mit dieser E-Mail-Adresse.",
   "invalidCredentials": "Die E-Mail oder das Passwort ist falsch.",
   "profileUpdateFailed": "Das Profil konnte nicht aktualisiert werden.",
   "entryUpdateFailed": "Der Getränkeeintrag konnte nicht aktualisiert werden.",
   "entryDeleteFailed": "Der Getränkeeintrag konnte nicht gelöscht werden.",
+  "friendProfileLinkInvalid": "Der Profillink ist ungültig.",
+  "friendSelfRequestBlocked": "Du kannst dich nicht selbst als Freund hinzufügen.",
+  "friendRequestAcceptFailed": "Die Freundschaftsanfrage konnte nicht angenommen werden.",
+  "friendRequestRejectFailed": "Die Freundschaftsanfrage konnte nicht abgelehnt werden.",
+  "friendRequestCancelFailed": "Die Freundschaftsanfrage konnte nicht zurückgezogen werden.",
+  "friendRemoveFailed": "Der Freund konnte nicht entfernt werden.",
   "customDrinkDeleteFailed": "Das eigene Getränk konnte nicht gelöscht werden.",
   "customDrinkAlreadyExists": "Du hast bereits ein eigenes Getränk mit diesem Namen.",
   "signUpMissingUser": "Die Registrierung hat keinen Benutzer zurückgegeben.",

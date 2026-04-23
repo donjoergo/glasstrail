@@ -15,6 +15,7 @@ class LocalAppRepository implements AppRepository {
   static const _customDrinksKey = 'glasstrail.custom_drinks';
   static const _entriesKey = 'glasstrail.entries';
   static const _settingsKey = 'glasstrail.settings';
+  static const _friendRelationshipsKey = 'glasstrail.friend_relationships';
 
   final SharedPreferences _preferences;
   final Uuid _uuid;
@@ -65,6 +66,7 @@ class LocalAppRepository implements AppRepository {
       displayName: displayName.trim(),
       birthday: birthday,
       profileImagePath: profileImagePath,
+      profileShareCode: _generateProfileShareCode(users),
     );
 
     users.add(user);
@@ -104,6 +106,172 @@ class LocalAppRepository implements AppRepository {
     users[index] = user;
     await _saveUsers(users);
     return user;
+  }
+
+  @override
+  Future<List<FriendConnection>> loadFriendConnections(String userId) async {
+    return _friendConnectionsForUser(userId);
+  }
+
+  @override
+  Future<FriendProfile> getOwnFriendProfile(String userId) async {
+    final user = await _ensureProfileShareCode(userId);
+    return FriendProfile.fromUser(user);
+  }
+
+  @override
+  Future<PublicFriendProfile> resolvePublicFriendProfileLink(
+    String shareCode,
+  ) async {
+    final normalizedCode = shareCode.trim();
+    final user = _loadUsers().where(
+      (candidate) => candidate.profileShareCode == normalizedCode,
+    );
+    if (user.isEmpty) {
+      throw const AppException('The profile link is invalid.');
+    }
+    return PublicFriendProfile.fromUser(user.single);
+  }
+
+  @override
+  Future<FriendProfile> resolveFriendProfileLink(String shareCode) async {
+    final normalizedCode = shareCode.trim();
+    final user = _loadUsers().where(
+      (candidate) => candidate.profileShareCode == normalizedCode,
+    );
+    if (user.isEmpty) {
+      throw const AppException('The profile link is invalid.');
+    }
+    return FriendProfile.fromUser(user.single);
+  }
+
+  @override
+  Future<List<FriendConnection>> sendFriendRequestToProfile({
+    required String userId,
+    required String shareCode,
+  }) async {
+    final requester = await _ensureProfileShareCode(userId);
+    final target = await resolveFriendProfileLink(shareCode);
+    if (target.id == requester.id) {
+      throw const AppException('You cannot add yourself as a friend.');
+    }
+
+    final relationships = _loadFriendRelationships();
+    final existingIndex = relationships.indexWhere(
+      (relationship) =>
+          _isRelationshipBetween(relationship, requester.id, target.id),
+    );
+
+    if (existingIndex == -1) {
+      relationships.add(<String, dynamic>{
+        'id': _uuid.v4(),
+        'requesterId': requester.id,
+        'addresseeId': target.id,
+        'status': FriendRequestStatus.pending.storageValue,
+      });
+    } else {
+      final existing = relationships[existingIndex];
+      final status = FriendRequestStatusX.fromStorage(
+        existing['status'] as String,
+      );
+      if (status == FriendRequestStatus.rejected) {
+        relationships[existingIndex] = <String, dynamic>{
+          ...existing,
+          'requesterId': requester.id,
+          'addresseeId': target.id,
+          'status': FriendRequestStatus.pending.storageValue,
+        };
+      }
+    }
+
+    await _saveFriendRelationships(relationships);
+    return _friendConnectionsForUser(userId);
+  }
+
+  @override
+  Future<List<FriendConnection>> acceptFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    final relationships = _loadFriendRelationships();
+    final index = relationships.indexWhere(
+      (relationship) =>
+          relationship['id'] == relationshipId &&
+          relationship['addresseeId'] == userId &&
+          relationship['status'] == FriendRequestStatus.pending.storageValue,
+    );
+    if (index == -1) {
+      throw const AppException('The friend request could not be accepted.');
+    }
+
+    relationships[index] = <String, dynamic>{
+      ...relationships[index],
+      'status': FriendRequestStatus.accepted.storageValue,
+    };
+    await _saveFriendRelationships(relationships);
+    return _friendConnectionsForUser(userId);
+  }
+
+  @override
+  Future<List<FriendConnection>> rejectFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    final relationships = _loadFriendRelationships();
+    final index = relationships.indexWhere(
+      (relationship) =>
+          relationship['id'] == relationshipId &&
+          relationship['addresseeId'] == userId &&
+          relationship['status'] == FriendRequestStatus.pending.storageValue,
+    );
+    if (index == -1) {
+      throw const AppException('The friend request could not be rejected.');
+    }
+
+    relationships[index] = <String, dynamic>{
+      ...relationships[index],
+      'status': FriendRequestStatus.rejected.storageValue,
+    };
+    await _saveFriendRelationships(relationships);
+    return _friendConnectionsForUser(userId);
+  }
+
+  @override
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    final relationships = _loadFriendRelationships();
+    final initialLength = relationships.length;
+    relationships.removeWhere((relationship) {
+      return relationship['id'] == relationshipId &&
+          relationship['requesterId'] == userId &&
+          relationship['status'] == FriendRequestStatus.pending.storageValue;
+    });
+    if (relationships.length == initialLength) {
+      throw const AppException('The friend request could not be withdrawn.');
+    }
+    await _saveFriendRelationships(relationships);
+    return _friendConnectionsForUser(userId);
+  }
+
+  @override
+  Future<List<FriendConnection>> removeFriend({
+    required String userId,
+    required String friendUserId,
+  }) async {
+    final relationships = _loadFriendRelationships();
+    final initialLength = relationships.length;
+    relationships.removeWhere((relationship) {
+      return relationship['status'] ==
+              FriendRequestStatus.accepted.storageValue &&
+          _isRelationshipBetween(relationship, userId, friendUserId);
+    });
+    if (relationships.length == initialLength) {
+      throw const AppException('The friend could not be removed.');
+    }
+    await _saveFriendRelationships(relationships);
+    return _friendConnectionsForUser(userId);
   }
 
   @override
@@ -328,6 +496,131 @@ class LocalAppRepository implements AppRepository {
       _usersKey,
       jsonEncode(users.map((user) => user.toJson()).toList()),
     );
+  }
+
+  Future<AppUser> _ensureProfileShareCode(String userId) async {
+    final users = _loadUsers();
+    final index = users.indexWhere((candidate) => candidate.id == userId);
+    if (index == -1) {
+      throw const AppException('The profile link is invalid.');
+    }
+    final user = users[index];
+    final existingCode = user.profileShareCode?.trim();
+    if (existingCode != null && existingCode.isNotEmpty) {
+      return user;
+    }
+
+    final updated = user.copyWith(
+      profileShareCode: _generateProfileShareCode(users),
+    );
+    users[index] = updated;
+    await _saveUsers(users);
+    return updated;
+  }
+
+  String _generateProfileShareCode(List<AppUser> users) {
+    final existingCodes = users
+        .map((user) => user.profileShareCode)
+        .whereType<String>()
+        .toSet();
+    while (true) {
+      final code = _uuid.v4().replaceAll('-', '');
+      if (!existingCodes.contains(code)) {
+        return code;
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> _loadFriendRelationships() {
+    final raw = _preferences.getString(_friendRelationshipsKey);
+    if (raw == null || raw.isEmpty) {
+      return <Map<String, dynamic>>[];
+    }
+    return List<dynamic>.from(
+      jsonDecode(raw) as List,
+    ).map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  Future<void> _saveFriendRelationships(
+    List<Map<String, dynamic>> relationships,
+  ) async {
+    await _preferences.setString(
+      _friendRelationshipsKey,
+      jsonEncode(relationships),
+    );
+  }
+
+  List<FriendConnection> _friendConnectionsForUser(String userId) {
+    final usersById = <String, AppUser>{
+      for (final user in _loadUsers()) user.id: user,
+    };
+    final connections = <FriendConnection>[];
+    for (final relationship in _loadFriendRelationships()) {
+      final requesterId = relationship['requesterId'] as String;
+      final addresseeId = relationship['addresseeId'] as String;
+      if (requesterId != userId && addresseeId != userId) {
+        continue;
+      }
+
+      final status = FriendRequestStatusX.fromStorage(
+        relationship['status'] as String,
+      );
+      if (status == FriendRequestStatus.rejected) {
+        continue;
+      }
+
+      final otherUserId = requesterId == userId ? addresseeId : requesterId;
+      final otherUser = usersById[otherUserId];
+      if (otherUser == null) {
+        continue;
+      }
+
+      connections.add(
+        FriendConnection(
+          id: relationship['id'] as String,
+          profile: FriendProfile.fromUser(otherUser),
+          status: status,
+          direction: status == FriendRequestStatus.accepted
+              ? FriendRequestDirection.none
+              : addresseeId == userId
+              ? FriendRequestDirection.incoming
+              : FriendRequestDirection.outgoing,
+        ),
+      );
+    }
+    connections.sort(_compareFriendConnections);
+    return connections;
+  }
+
+  int _compareFriendConnections(FriendConnection left, FriendConnection right) {
+    final statusComparison = _friendConnectionSortRank(
+      left,
+    ).compareTo(_friendConnectionSortRank(right));
+    if (statusComparison != 0) {
+      return statusComparison;
+    }
+    return left.profile.displayName.compareTo(right.profile.displayName);
+  }
+
+  int _friendConnectionSortRank(FriendConnection connection) {
+    if (connection.isAccepted) {
+      return 0;
+    }
+    if (connection.isIncoming) {
+      return 1;
+    }
+    return 2;
+  }
+
+  bool _isRelationshipBetween(
+    Map<String, dynamic> relationship,
+    String leftUserId,
+    String rightUserId,
+  ) {
+    final requesterId = relationship['requesterId'] as String;
+    final addresseeId = relationship['addresseeId'] as String;
+    return (requesterId == leftUserId && addresseeId == rightUserId) ||
+        (requesterId == rightUserId && addresseeId == leftUserId);
   }
 
   Map<String, dynamic> _readJsonMap(String key) {

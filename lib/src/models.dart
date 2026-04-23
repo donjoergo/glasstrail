@@ -146,6 +146,7 @@ class AppUser {
     required this.displayName,
     this.profileImagePath,
     this.birthday,
+    this.profileShareCode,
   });
 
   final String id;
@@ -154,6 +155,7 @@ class AppUser {
   final String displayName;
   final String? profileImagePath;
   final DateTime? birthday;
+  final String? profileShareCode;
 
   String get initials {
     final trimmed = displayName.trim();
@@ -174,6 +176,7 @@ class AppUser {
     bool clearProfileImage = false,
     DateTime? birthday,
     bool clearBirthday = false,
+    String? profileShareCode,
   }) {
     return AppUser(
       id: id,
@@ -186,6 +189,7 @@ class AppUser {
       birthday: clearBirthday
           ? null
           : normalizeBirthdayOrNull(birthday ?? this.birthday),
+      profileShareCode: profileShareCode ?? this.profileShareCode,
     );
   }
 
@@ -197,6 +201,7 @@ class AppUser {
       'displayName': displayName,
       'profileImagePath': profileImagePath,
       'birthday': normalizeBirthdayOrNull(birthday)?.toIso8601String(),
+      'profileShareCode': profileShareCode,
     };
   }
 
@@ -212,6 +217,9 @@ class AppUser {
             ? null
             : DateTime.parse(json['birthday'] as String),
       ),
+      profileShareCode:
+          (json['profileShareCode'] as String?) ??
+          (json['profile_share_code'] as String?),
     );
   }
 }
@@ -231,6 +239,196 @@ String _displayNameFromJson(Map<String, dynamic> json) {
   final email = (json['email'] as String?)?.trim() ?? '';
   final localPart = email.split('@').first.trim();
   return localPart.isEmpty ? 'Glass Trail User' : localPart;
+}
+
+enum FriendRequestStatus { pending, accepted, rejected }
+
+extension FriendRequestStatusX on FriendRequestStatus {
+  String get storageValue => name;
+
+  static FriendRequestStatus fromStorage(String value) {
+    return FriendRequestStatus.values.firstWhere(
+      (candidate) => candidate.name == value,
+      orElse: () => FriendRequestStatus.pending,
+    );
+  }
+}
+
+enum FriendRequestDirection { incoming, outgoing, none }
+
+extension FriendRequestDirectionX on FriendRequestDirection {
+  String get storageValue => name;
+
+  static FriendRequestDirection fromStorage(String? value) {
+    return FriendRequestDirection.values.firstWhere(
+      (candidate) => candidate.name == value,
+      orElse: () => FriendRequestDirection.none,
+    );
+  }
+}
+
+class FriendProfile {
+  const FriendProfile({
+    required this.id,
+    required this.email,
+    required this.displayName,
+    this.profileImagePath,
+    this.profileShareCode,
+  });
+
+  factory FriendProfile.fromUser(AppUser user) {
+    return FriendProfile(
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      profileImagePath: user.profileImagePath,
+      profileShareCode: user.profileShareCode,
+    );
+  }
+
+  final String id;
+  final String email;
+  final String displayName;
+  final String? profileImagePath;
+  final String? profileShareCode;
+
+  String get initials {
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) {
+      return 'GT';
+    }
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final first = parts.first.characters.first.toUpperCase();
+    final second = parts.length > 1
+        ? parts[1].characters.first.toUpperCase()
+        : '';
+    return '$first$second';
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'email': email,
+      'displayName': displayName,
+      'profileImagePath': profileImagePath,
+      'profileShareCode': profileShareCode,
+    };
+  }
+
+  factory FriendProfile.fromJson(Map<String, dynamic> json) {
+    return FriendProfile(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      displayName: _displayNameFromJson(json),
+      profileImagePath:
+          (json['profileImagePath'] as String?) ??
+          (json['profile_image_path'] as String?),
+      profileShareCode:
+          (json['profileShareCode'] as String?) ??
+          (json['profile_share_code'] as String?),
+    );
+  }
+}
+
+class PublicFriendProfile {
+  const PublicFriendProfile({
+    required this.id,
+    required this.displayName,
+    this.profileImagePath,
+    this.profileShareCode,
+  });
+
+  factory PublicFriendProfile.fromUser(AppUser user) {
+    return PublicFriendProfile(
+      id: user.id,
+      displayName: user.displayName,
+      profileImagePath: user.profileImagePath,
+      profileShareCode: user.profileShareCode,
+    );
+  }
+
+  final String id;
+  final String displayName;
+  final String? profileImagePath;
+  final String? profileShareCode;
+
+  String get initials {
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) {
+      return 'GT';
+    }
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final first = parts.first.characters.first.toUpperCase();
+    final second = parts.length > 1
+        ? parts[1].characters.first.toUpperCase()
+        : '';
+    return '$first$second';
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'displayName': displayName,
+      'profileImagePath': profileImagePath,
+      'profileShareCode': profileShareCode,
+    };
+  }
+
+  factory PublicFriendProfile.fromJson(Map<String, dynamic> json) {
+    return PublicFriendProfile(
+      id: (json['id'] as String?) ?? (json['profile_id'] as String),
+      displayName: _displayNameFromJson(json),
+      profileImagePath:
+          (json['profileImageUrl'] as String?) ??
+          (json['profile_image_url'] as String?) ??
+          (json['profileImagePath'] as String?) ??
+          (json['profile_image_path'] as String?),
+      profileShareCode:
+          (json['profileShareCode'] as String?) ??
+          (json['profile_share_code'] as String?),
+    );
+  }
+}
+
+class FriendConnection {
+  const FriendConnection({
+    required this.id,
+    required this.profile,
+    required this.status,
+    required this.direction,
+  });
+
+  final String id;
+  final FriendProfile profile;
+  final FriendRequestStatus status;
+  final FriendRequestDirection direction;
+
+  bool get isPending => status == FriendRequestStatus.pending;
+  bool get isAccepted => status == FriendRequestStatus.accepted;
+  bool get isIncoming => direction == FriendRequestDirection.incoming;
+  bool get isOutgoing => direction == FriendRequestDirection.outgoing;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'profile': profile.toJson(),
+      'status': status.storageValue,
+      'direction': direction.storageValue,
+    };
+  }
+
+  factory FriendConnection.fromJson(Map<String, dynamic> json) {
+    return FriendConnection(
+      id: json['id'] as String,
+      profile: FriendProfile.fromJson(
+        Map<String, dynamic>.from(json['profile'] as Map),
+      ),
+      status: FriendRequestStatusX.fromStorage(json['status'] as String),
+      direction: FriendRequestDirectionX.fromStorage(
+        json['direction'] as String?,
+      ),
+    );
+  }
 }
 
 class DrinkDefinition {

@@ -1,0 +1,2 @@
+[functions.friend-profile-preview]
+verify_jwt = false

@@ -4,17 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/app_scope.dart';
+import 'package:glasstrail/src/deep_link_service.dart';
 import 'package:glasstrail/src/locale_memory.dart';
 import 'package:glasstrail/src/app_routes.dart';
+import 'package:glasstrail/src/friend_profile_links.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/route_memory.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
+import 'package:glasstrail/src/widgets/app_media.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/test_harness.dart';
+
+const _transparentPngDataUrl =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRSEAAAAASUVORK5CYII=';
 
 Future<void> _tapPhotoAction(
   WidgetTester tester,
@@ -77,6 +83,25 @@ Future<void> _scrollProfileTargetIntoView(
   await tester.pump();
 }
 
+class _FakeDeepLinkService extends DeepLinkService {
+  _FakeDeepLinkService({this.initialUri});
+
+  final Uri? initialUri;
+  final StreamController<Uri> _controller = StreamController<Uri>.broadcast();
+
+  @override
+  Future<Uri?> getInitialUri() async => initialUri;
+
+  @override
+  Stream<Uri> get uriStream => _controller.stream;
+
+  void emit(Uri uri) {
+    _controller.add(uri);
+  }
+
+  Future<void> dispose() => _controller.close();
+}
+
 void main() {
   testWidgets('shows a bootstrap screen until the controller is ready', (
     tester,
@@ -137,6 +162,82 @@ void main() {
       expect(find.byKey(const Key('stats-overview-panel')), findsOneWidget);
     },
   );
+
+  testWidgets('opens native friend profile links on launch', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final owner = await repository.signUp(
+      email: 'native-link-owner@example.com',
+      password: 'password123',
+      displayName: 'Native Link Owner',
+    );
+    final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+    await repository.signOut();
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final deepLinkService = _FakeDeepLinkService(
+      initialUri: Uri.parse(
+        friendProfileLinkForCode(ownerProfile.profileShareCode!),
+      ),
+    );
+    addTearDown(deepLinkService.dispose);
+
+    await tester.pumpWidget(
+      GlassTrailBootstrapApp(
+        controllerFuture: Future<AppController>.value(controller),
+        photoService: const TestPhotoService(),
+        routeMemoryFuture: Future<RouteMemory>.value(RouteMemory.disabled()),
+        deepLinkService: deepLinkService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('friend-profile-link-screen')), findsOneWidget);
+    expect(find.text('Native Link Owner'), findsOneWidget);
+  });
+
+  testWidgets('opens native friend profile links while running', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final owner = await repository.signUp(
+      email: 'runtime-link-owner@example.com',
+      password: 'password123',
+      displayName: 'Runtime Link Owner',
+    );
+    final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+    await repository.signOut();
+    await repository.signUp(
+      email: 'runtime-link-viewer@example.com',
+      password: 'password123',
+      displayName: 'Runtime Link Viewer',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final deepLinkService = _FakeDeepLinkService();
+    addTearDown(deepLinkService.dispose);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.feed,
+        deepLinkService: deepLinkService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+
+    deepLinkService.emit(
+      Uri.parse(friendProfileLinkForCode(ownerProfile.profileShareCode!)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('friend-profile-link-screen')), findsOneWidget);
+    expect(find.text('Runtime Link Owner'), findsOneWidget);
+  });
 
   testWidgets('restores the last visited bar subroute after a web reload', (
     tester,
@@ -798,6 +899,404 @@ void main() {
       tester.element(find.byKey(const Key('edit-profile-display-name-field'))),
     );
     expect(route?.settings.name, AppRoutes.editProfile);
+  });
+
+  testWidgets('shows the profile image on the app profile page', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-image@example.com',
+      password: 'password123',
+      displayName: 'Profile Image',
+      profileImagePath: _transparentPngDataUrl,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final avatar = find.byKey(const Key('profile-avatar'));
+    expect(avatar, findsOneWidget);
+    expect(
+      find.descendant(of: avatar, matching: find.byType(Image)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: avatar, matching: find.text('PI')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('falls back to initials on the app profile page', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-initials@example.com',
+      password: 'password123',
+      displayName: 'Profile Initials',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final avatar = find.byKey(const Key('profile-avatar'));
+    expect(avatar, findsOneWidget);
+    expect(
+      find.descendant(of: avatar, matching: find.text('PI')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: avatar, matching: find.byType(Image)),
+      findsNothing,
+    );
+  });
+
+  testWidgets('shows reusable friend profile link from the profile screen', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'friend-link-owner@example.com',
+      password: 'password123',
+      displayName: 'Friend Link Owner',
+    );
+    final profile = await controller.loadOwnFriendProfile();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('profile-friends-section')), findsOneWidget);
+    expect(find.byKey(const Key('profile-friends-empty')), findsOneWidget);
+
+    await tester.ensureVisible(
+      find.byKey(const Key('profile-friend-link-button')),
+    );
+    await tester.tap(find.byKey(const Key('profile-friend-link-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('friend-profile-link-dialog')), findsOneWidget);
+    expect(find.byKey(const Key('friend-profile-qr-code')), findsOneWidget);
+    expect(find.byKey(const Key('friend-profile-link-text')), findsOneWidget);
+    expect(
+      find.text(friendProfileLinkForCode(profile!.profileShareCode!)),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'shows public friend profile before sign-in and returns after auth',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final preferences = await SharedPreferences.getInstance();
+      final repository = LocalAppRepository(preferences);
+      final owner = await repository.signUp(
+        email: 'friend-owner@example.com',
+        password: 'password123',
+        displayName: 'Friend Owner',
+      );
+      final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+      await repository.signOut();
+      await repository.signUp(
+        email: 'friend-viewer@example.com',
+        password: 'password123',
+        displayName: 'Friend Viewer',
+      );
+      await repository.signOut();
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+      final routeMemory = await RouteMemory.create();
+      await routeMemory.markLoggedOut();
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          routeMemory: routeMemory,
+          initialRoute: AppRoutes.friendProfileRoute(
+            ownerProfile.profileShareCode!,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('friend-profile-link-screen')),
+        findsOneWidget,
+      );
+      expect(find.text('Friend Owner'), findsOneWidget);
+      expect(
+        find.text('Friend Owner wants to be your friend on Glass Trail.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('friend-profile-email')), findsNothing);
+      expect(
+        find.byKey(const Key('friend-profile-sign-in-button')),
+        findsOneWidget,
+      );
+      final avatar = tester.widget<AppAvatar>(
+        find.byKey(const Key('friend-profile-avatar')),
+      );
+      expect(avatar.radius, 72);
+
+      await tester.tap(find.byKey(const Key('friend-profile-sign-in-button')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('signin-email-field')),
+        'friend-viewer@example.com',
+      );
+      await tester.enterText(
+        find.byKey(const Key('signin-password-field')),
+        'password123',
+      );
+      await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
+      await tester.tap(find.byKey(const Key('auth-submit-button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('friend-profile-link-screen')),
+        findsOneWidget,
+      );
+      expect(find.text('Friend Owner'), findsOneWidget);
+      expect(
+        find.byKey(const Key('friend-profile-add-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('friend-profile-feed-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('friend-profile-add-button')));
+      await tester.pumpAndSettle();
+
+      expect(controller.outgoingFriendRequests, hasLength(1));
+      expect(controller.outgoingFriendRequests.single.profile.id, owner.id);
+      expect(
+        find.byKey(const Key('friend-profile-cancel-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('friend-profile-feed-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('friend-profile-cancel-button')));
+      await tester.pumpAndSettle();
+
+      expect(controller.outgoingFriendRequests, isEmpty);
+      expect(
+        find.byKey(const Key('friend-profile-add-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('friend-profile-feed-button')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('withdraws outgoing friend requests from the profile screen', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'outgoing-requester@example.com',
+      password: 'password123',
+      displayName: 'Outgoing Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'outgoing-addressee@example.com',
+      password: 'password123',
+      displayName: 'Outgoing Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.signOut();
+    await repository.signIn(
+      email: 'outgoing-requester@example.com',
+      password: 'password123',
+    );
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final request = controller.outgoingFriendRequests.single;
+    final cancelButton = find.byKey(Key('friend-request-cancel-${request.id}'));
+    expect(cancelButton, findsOneWidget);
+    expect(find.text('Waiting for response'), findsOneWidget);
+
+    await _scrollProfileTargetIntoView(tester, cancelButton);
+    await tester.tap(cancelButton);
+    await tester.pumpAndSettle();
+
+    expect(controller.outgoingFriendRequests, isEmpty);
+    expect(find.text('No friends or pending requests yet.'), findsOneWidget);
+  });
+
+  testWidgets('lays out incoming friend requests on narrow German screens', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'incoming-requester@example.com',
+      password: 'password123',
+      displayName: 'Incoming Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'incoming-addressee@example.com',
+      password: 'password123',
+      displayName: 'Incoming Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.signOut();
+    await repository.signIn(
+      email: 'incoming-requester@example.com',
+      password: 'password123',
+    );
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'incoming-addressee@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final request = controller.incomingFriendRequests.single;
+    final tile = find.byKey(
+      ValueKey<String>('friend-request-incoming-${request.id}'),
+    );
+    await _scrollProfileTargetIntoView(tester, tile);
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.descendant(of: tile, matching: find.text('Möchte befreundet sein')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: tile, matching: find.text('Annehmen')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: tile, matching: find.text('Ablehnen')),
+      findsOneWidget,
+    );
+    final statusSize = tester.getSize(find.text('Möchte befreundet sein'));
+    expect(statusSize.width, greaterThan(120));
+    expect(statusSize.height, lessThan(48));
+  });
+
+  testWidgets('returns to feed from an already connected friend profile', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'connected-requester@example.com',
+      password: 'password123',
+      displayName: 'Connected Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'connected-addressee@example.com',
+      password: 'password123',
+      displayName: 'Connected Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final addresseeConnections = await repository.loadFriendConnections(
+      addressee.id,
+    );
+    await repository.acceptFriendRequest(
+      userId: addressee.id,
+      relationshipId: addresseeConnections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'connected-requester@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.friendProfileRoute(
+          addresseeProfile.profileShareCode!,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('You are already friends.'), findsOneWidget);
+    expect(find.byKey(const Key('friend-profile-feed-button')), findsOneWidget);
+    expect(find.byKey(const Key('friend-profile-add-button')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('friend-profile-feed-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.feed);
   });
 
   testWidgets('navigates to feed after login when the user logged out', (

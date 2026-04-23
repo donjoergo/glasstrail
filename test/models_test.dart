@@ -60,6 +60,20 @@ void main() {
     });
   });
 
+  group('PublicFriendProfile', () {
+    test('reads profile image urls from public preview json', () {
+      final profile = PublicFriendProfile.fromJson(<String, dynamic>{
+        'id': 'profile-1',
+        'displayName': 'Preview User',
+        'profileImageUrl': 'https://example.com/profile.jpg',
+        'profileShareCode': 'share-code',
+      });
+
+      expect(profile.profileImagePath, 'https://example.com/profile.jpg');
+      expect(profile.profileShareCode, 'share-code');
+    });
+  });
+
   group('buildDefaultDrinkCatalog', () {
     test('includes extended global drinks with stable ids and categories', () {
       final catalog = buildDefaultDrinkCatalog();

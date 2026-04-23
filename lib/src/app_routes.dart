@@ -11,10 +11,17 @@ class AppRoutes {
   static const barSorting = '/bar/sorting';
   static const barCustom = '/bar/custom';
   static const profile = '/profile';
+  static const friendProfilePrefix = '/friends/profile/';
   static const addDrink = '/add-drink';
   static const editProfile = '/profile/edit';
 
   static String normalize(String? routeName) {
+    final candidate = routeName == null || routeName.isEmpty
+        ? root
+        : routeName.split('?').first;
+    if (isFriendProfileRoute(candidate)) {
+      return candidate;
+    }
     return switch (routeName) {
       null || '' => root,
       root ||
@@ -33,6 +40,26 @@ class AppRoutes {
       editProfile => routeName,
       _ => root,
     };
+  }
+
+  static String friendProfileRoute(String shareCode) {
+    return '$friendProfilePrefix${Uri.encodeComponent(shareCode)}';
+  }
+
+  static bool isFriendProfileRoute(String? routeName) {
+    final normalized = routeName?.split('?').first ?? '';
+    return normalized.startsWith(friendProfilePrefix) &&
+        normalized.length > friendProfilePrefix.length;
+  }
+
+  static String? friendProfileShareCode(String? routeName) {
+    final normalized = normalize(routeName);
+    if (!isFriendProfileRoute(normalized)) {
+      return null;
+    }
+    return Uri.decodeComponent(
+      normalized.substring(friendProfilePrefix.length),
+    );
   }
 
   static bool isStatisticsRoute(String? routeName) {
@@ -78,6 +105,9 @@ class AppRoutes {
 
   static String postAuthRoute(String? routeName) {
     final normalized = normalize(routeName);
+    if (isFriendProfileRoute(normalized)) {
+      return normalized;
+    }
     return switch (normalized) {
       feed ||
       statistics ||
@@ -97,6 +127,9 @@ class AppRoutes {
 
   static bool isRestorable(String? routeName) {
     final normalized = normalize(routeName);
+    if (isFriendProfileRoute(normalized)) {
+      return true;
+    }
     return switch (normalized) {
       feed ||
       statistics ||

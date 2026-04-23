@@ -27,6 +27,7 @@ void main() {
     expect(repository.loadCustomDrinksCalls, 0);
     expect(repository.loadEntriesCalls, 0);
     expect(repository.loadSettingsCalls, 0);
+    expect(repository.loadFriendConnectionsCalls, 0);
 
     repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
     repository.restoreSessionCompleter.complete(
@@ -42,10 +43,12 @@ void main() {
     expect(repository.loadCustomDrinksCalls, 1);
     expect(repository.loadEntriesCalls, 1);
     expect(repository.loadSettingsCalls, 1);
+    expect(repository.loadFriendConnectionsCalls, 1);
 
     repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
     repository.entriesCompleter.complete(const <DrinkEntry>[]);
     repository.settingsCompleter.complete(UserSettings.defaults());
+    repository.friendConnectionsCompleter.complete(const <FriendConnection>[]);
 
     final controller = await bootstrapFuture;
     expect(controller.isAuthenticated, isTrue);
@@ -65,6 +68,7 @@ void main() {
     repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
     repository.entriesCompleter.complete(const <DrinkEntry>[]);
     repository.settingsCompleter.complete(UserSettings.defaults());
+    repository.friendConnectionsCompleter.complete(const <FriendConnection>[]);
 
     final controller = await AppController.bootstrapWithRepository(repository);
 
@@ -75,6 +79,7 @@ void main() {
     expect(repository.loadCustomDrinksCalls, 2);
     expect(repository.loadEntriesCalls, 2);
     expect(repository.loadSettingsCalls, 2);
+    expect(repository.loadFriendConnectionsCalls, 2);
   });
 
   test('tracks sign-up as the active busy action while pending', () async {
@@ -767,12 +772,14 @@ class _BootstrapProbeRepository implements AppRepository {
   final customDrinksCompleter = Completer<List<DrinkDefinition>>();
   final entriesCompleter = Completer<List<DrinkEntry>>();
   final settingsCompleter = Completer<UserSettings>();
+  final friendConnectionsCompleter = Completer<List<FriendConnection>>();
 
   int loadDefaultCatalogCalls = 0;
   int restoreSessionCalls = 0;
   int loadCustomDrinksCalls = 0;
   int loadEntriesCalls = 0;
   int loadSettingsCalls = 0;
+  int loadFriendConnectionsCalls = 0;
 
   @override
   String get backendLabel => 'probe';
@@ -811,6 +818,12 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
+  Future<List<FriendConnection>> loadFriendConnections(String userId) {
+    loadFriendConnectionsCalls++;
+    return friendConnectionsCompleter.future;
+  }
+
+  @override
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,
@@ -839,6 +852,61 @@ class _BootstrapProbeRepository implements AppRepository {
   Future<void> deleteCustomDrink({
     required String userId,
     required DrinkDefinition drink,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendConnection>> acceptFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<FriendProfile> getOwnFriendProfile(String userId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendConnection>> rejectFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendConnection>> removeFriend({
+    required String userId,
+    required String friendUserId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<FriendProfile> resolveFriendProfileLink(String shareCode) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PublicFriendProfile> resolvePublicFriendProfileLink(String shareCode) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendConnection>> sendFriendRequestToProfile({
+    required String userId,
+    required String shareCode,
   }) {
     throw UnimplementedError();
   }
