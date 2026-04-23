@@ -429,6 +429,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get unfriend => 'Entfreunden';
 
   @override
+  String unfriendConfirmTitle(String name) {
+    return '$name entfreunden?';
+  }
+
+  @override
+  String unfriendConfirmBody(String name) {
+    return 'Du und $name seht dann die geteilten Aktivitäten des jeweils anderen nicht mehr. Du kannst später erneut eine Freundschaftsanfrage senden.';
+  }
+
+  @override
   String get friendProfileLinkInvalidTitle => 'Profillink nicht verfügbar';
 
   @override

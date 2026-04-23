@@ -165,6 +165,22 @@
   "goToFeed": "Go to feed",
   "withdrawFriendRequest": "Withdraw",
   "unfriend": "Unfriend",
+  "unfriendConfirmTitle": "Unfriend {name}?",
+  "@unfriendConfirmTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unfriendConfirmBody": "You and {name} will stop seeing each other's shared activity. You can send another friend request later.",
+  "@unfriendConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "friendProfileLinkInvalidTitle": "Profile link unavailable",
   "friendProfileLinkInvalidBody": "This friend profile link is invalid or no longer available.",
   "customDrinks": "My custom drinks",

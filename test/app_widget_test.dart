@@ -1209,6 +1209,79 @@ void main() {
     expect(find.text('No friends or pending requests yet.'), findsOneWidget);
   });
 
+  testWidgets('confirms before removing friends from the profile screen', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'remove-friend-requester@example.com',
+      password: 'password123',
+      displayName: 'Remove Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'remove-friend-addressee@example.com',
+      password: 'password123',
+      displayName: 'Remove Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final addresseeConnections = await repository.loadFriendConnections(
+      addressee.id,
+    );
+    await repository.acceptFriendRequest(
+      userId: addressee.id,
+      relationshipId: addresseeConnections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'remove-friend-requester@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final friend = controller.friends.single;
+    final removeButton = find.byKey(Key('friend-remove-${friend.id}'));
+    await _scrollProfileTargetIntoView(tester, removeButton);
+    await tester.tap(removeButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('friend-remove-confirm-dialog')),
+      findsOneWidget,
+    );
+    expect(find.text('Unfriend Remove Addressee?'), findsOneWidget);
+    expect(controller.friends, hasLength(1));
+
+    await tester.tap(find.byKey(const Key('friend-remove-cancel-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('friend-remove-confirm-dialog')), findsNothing);
+    expect(controller.friends, hasLength(1));
+
+    await tester.tap(removeButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('friend-remove-confirm-button')));
+    await tester.pumpAndSettle();
+
+    expect(controller.friends, isEmpty);
+    expect(find.text('No friends or pending requests yet.'), findsOneWidget);
+  });
+
   testWidgets('lays out incoming friend requests on narrow German screens', (
     tester,
   ) async {

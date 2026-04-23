@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../app_controller.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
+import '../app_theme.dart';
 import '../beer_with_me_import.dart';
 import '../birthday.dart';
 import '../friend_profile_links.dart';
@@ -545,6 +546,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _removeFriend(FriendConnection connection) async {
+    final shouldRemove = await _confirmRemoveFriend(connection);
+    if (!mounted || shouldRemove != true) {
+      return;
+    }
+
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
     await controller.removeFriend(connection);
@@ -555,6 +561,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (message != null) {
       _showMessage(message);
     }
+  }
+
+  Future<bool?> _confirmRemoveFriend(FriendConnection connection) {
+    final l10n = AppLocalizations.of(context);
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+
+        return AlertDialog(
+          key: const Key('friend-remove-confirm-dialog'),
+          title: Text(
+            l10n.unfriendConfirmTitle(connection.profile.displayName),
+          ),
+          content: Text(
+            l10n.unfriendConfirmBody(connection.profile.displayName),
+          ),
+          actions: <Widget>[
+            TextButton(
+              key: const Key('friend-remove-cancel-button'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              key: const Key('friend-remove-confirm-button'),
+              style: AppTheme.destructiveFilledButtonStyle(theme.colorScheme),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.unfriend),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   LaunchMode get _changelogLaunchMode {
