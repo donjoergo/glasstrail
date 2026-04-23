@@ -878,6 +878,18 @@ abstract class AppLocalizations {
   /// **'Unfriend'**
   String get unfriend;
 
+  /// No description provided for @unfriendConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfriend {name}?'**
+  String unfriendConfirmTitle(String name);
+
+  /// No description provided for @unfriendConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You and {name} will stop seeing each other\'s shared activity. You can send another friend request later.'**
+  String unfriendConfirmBody(String name);
+
   /// No description provided for @friendProfileLinkInvalidTitle.
   ///
   /// In en, this message translates to:

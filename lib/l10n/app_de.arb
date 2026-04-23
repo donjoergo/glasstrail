@@ -165,6 +165,22 @@
   "goToFeed": "Zum Feed",
   "withdrawFriendRequest": "Zurückziehen",
   "unfriend": "Entfreunden",
+  "unfriendConfirmTitle": "{name} entfreunden?",
+  "@unfriendConfirmTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unfriendConfirmBody": "Du und {name} seht dann die geteilten Aktivitäten des jeweils anderen nicht mehr. Du kannst später erneut eine Freundschaftsanfrage senden.",
+  "@unfriendConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "friendProfileLinkInvalidTitle": "Profillink nicht verfügbar",
   "friendProfileLinkInvalidBody": "Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.",
   "customDrinks": "Meine eigenen Getränke",
