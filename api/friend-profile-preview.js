@@ -75,7 +75,8 @@ function profileHtml(profile, request) {
   const origin = requestOrigin(request);
   const profileUrl = publicProfileUrl(profile.profileShareCode, origin);
   const appUrl = appProfileUrl(profile.profileShareCode, origin);
-  const imageUrl = profile.profileImageUrl ?? publicAssetUrl('/icons/Icon-512.png', origin);
+  const imageUrl = normalizePublicProfileImageUrl(profile.profileImageUrl) ??
+    publicAssetUrl('/icons/Icon-512.png', origin);
   const faviconUrl = publicAssetUrl('/favicon.png', origin);
   const touchIconUrl = publicAssetUrl('/icons/Icon-192.png', origin);
 
@@ -246,6 +247,46 @@ function dataBaseUrl() {
   return trimTrailingSlash(configured.length === 0
     ? defaultDataBaseUrl
     : configured);
+}
+
+function normalizePublicProfileImageUrl(value) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return null;
+  }
+  const trimmed = value.trim();
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === 'http:' && isSupabaseHost(url.hostname)) {
+      url.protocol = 'https:';
+    }
+    url.pathname = normalizeSupabaseFunctionImagePath(url);
+    return url.toString();
+  } catch (_) {
+    return trimmed;
+  }
+  return trimmed;
+}
+
+function isSupabaseHost(hostname) {
+  return hostname === 'supabase.co' || hostname.endsWith('.supabase.co');
+}
+
+function normalizeSupabaseFunctionImagePath(url) {
+  if (isSupabaseFunctionsHost(url.hostname)) {
+    return url.pathname;
+  }
+  if (
+    url.pathname === '/friend-profile-preview' ||
+    url.pathname.startsWith('/friend-profile-preview/')
+  ) {
+    return `/functions/v1${url.pathname}`;
+  }
+  return url.pathname;
+}
+
+function isSupabaseFunctionsHost(hostname) {
+  return hostname === 'functions.supabase.co' ||
+    hostname.endsWith('.functions.supabase.co');
 }
 
 function requestOrigin(request) {

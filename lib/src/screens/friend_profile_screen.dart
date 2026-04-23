@@ -29,14 +29,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     _profileFuture ??= Future<_VisibleFriendProfile?>.delayed(
       Duration.zero,
       () async {
-        if (controller.isAuthenticated) {
-          final profile = await controller.resolveFriendProfileLink(
-            widget.shareCode,
-          );
-          return profile == null
-              ? null
-              : _VisibleFriendProfile.fromFriendProfile(profile);
-        }
         final profile = await controller.resolvePublicFriendProfileLink(
           widget.shareCode,
         );
@@ -193,21 +185,9 @@ class _VisibleFriendProfile {
     required this.id,
     required this.displayName,
     required this.initials,
-    required this.isPublic,
     this.profileImagePath,
     this.profileShareCode,
   });
-
-  factory _VisibleFriendProfile.fromFriendProfile(FriendProfile profile) {
-    return _VisibleFriendProfile(
-      id: profile.id,
-      displayName: profile.displayName,
-      initials: profile.initials,
-      profileImagePath: profile.profileImagePath,
-      profileShareCode: profile.profileShareCode,
-      isPublic: false,
-    );
-  }
 
   factory _VisibleFriendProfile.fromPublicFriendProfile(
     PublicFriendProfile profile,
@@ -218,7 +198,6 @@ class _VisibleFriendProfile {
       initials: profile.initials,
       profileImagePath: profile.profileImagePath,
       profileShareCode: profile.profileShareCode,
-      isPublic: true,
     );
   }
 
@@ -227,7 +206,6 @@ class _VisibleFriendProfile {
   final String initials;
   final String? profileImagePath;
   final String? profileShareCode;
-  final bool isPublic;
 }
 
 class _FriendProfileCard extends StatelessWidget {

@@ -72,6 +72,34 @@ void main() {
       expect(profile.profileImagePath, 'https://example.com/profile.jpg');
       expect(profile.profileShareCode, 'share-code');
     });
+
+    test('upgrades Supabase preview image urls to https', () {
+      final profile = PublicFriendProfile.fromJson(<String, dynamic>{
+        'id': 'profile-1',
+        'displayName': 'Preview User',
+        'profileImageUrl':
+            'http://project-ref.functions.supabase.co/friend-profile-preview/share-code/image',
+      });
+
+      expect(
+        profile.profileImagePath,
+        'https://project-ref.functions.supabase.co/friend-profile-preview/share-code/image',
+      );
+    });
+
+    test('adds the functions path to Supabase REST preview image urls', () {
+      final profile = PublicFriendProfile.fromJson(<String, dynamic>{
+        'id': 'profile-1',
+        'displayName': 'Preview User',
+        'profileImageUrl':
+            'https://project-ref.supabase.co/friend-profile-preview/share-code/image',
+      });
+
+      expect(
+        profile.profileImagePath,
+        'https://project-ref.supabase.co/functions/v1/friend-profile-preview/share-code/image',
+      );
+    });
   });
 
   group('buildDefaultDrinkCatalog', () {
