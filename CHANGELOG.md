@@ -6,33 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- reusable friend profile links and friend request management
-- public friend profile link previews
-- withdraw pending friend requests
-- return to the feed from friend profile links
-- feed navigation from other users' profile links
-- Deep linking support for Android via App Links
-
-### Changed
-- Fetch full Git history in CI for SonarCloud analysis
-- derive friend profile preview links from the request host
-- remove friend profile base URL environment override
-- hide account email addresses from profile screens
-- enlarge friend profile preview images and add favicon metadata
-- update friend profile sharing text to include display name and a welcome message
-
-### Fixed
-- Prevent SonarCloud from running C-family analysis without compile commands
-- serve friend profile previews as HTML from Vercel
-- load friend profile images from the public Supabase image endpoint
-- build web preview images from the Supabase image endpoint
-- open profile preview links on the linked friend profile
-- show profile initials only when no profile picture exists
-- match profile preview CTA colors to the app theme
-- keep normal logout sign-ins on the feed
-- friend request controls overflowing on narrow Android profile layouts
-- route query cleanup when returning to the feed from profile links
-- native profile links opening the app without routing to the profile
+- Social & Friends
+  - Public profile page which can be shared with friends
+  - Public profile link has a nice messenger preview
+  - Accept/decline/withdraw friend requests
+  - Deep linking: profile links open the Glass Trail app when installed, otherwise they show the web version
+- Added SonarQube analysis
 
 ## [1.2.1] - 2026-04-13
 ### Fixed
