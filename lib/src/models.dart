@@ -397,14 +397,35 @@ String? _normalizePublicProfileImageUrl(String? value) {
     return trimmed;
   }
   final uri = Uri.tryParse(trimmed);
-  if (uri == null || uri.scheme != 'http' || !_isSupabaseHost(uri.host)) {
+  if (uri == null || !_isSupabaseHost(uri.host)) {
     return trimmed;
   }
-  return uri.replace(scheme: 'https').toString();
+  return uri
+      .replace(
+        scheme: uri.scheme == 'http' ? 'https' : uri.scheme,
+        path: _normalizeSupabaseFunctionImagePath(uri),
+      )
+      .toString();
 }
 
 bool _isSupabaseHost(String host) {
   return host == 'supabase.co' || host.endsWith('.supabase.co');
+}
+
+String _normalizeSupabaseFunctionImagePath(Uri uri) {
+  if (_isSupabaseFunctionsHost(uri.host)) {
+    return uri.path;
+  }
+  if (uri.path == '/friend-profile-preview' ||
+      uri.path.startsWith('/friend-profile-preview/')) {
+    return '/functions/v1${uri.path}';
+  }
+  return uri.path;
+}
+
+bool _isSupabaseFunctionsHost(String host) {
+  return host == 'functions.supabase.co' ||
+      host.endsWith('.functions.supabase.co');
 }
 
 class FriendConnection {

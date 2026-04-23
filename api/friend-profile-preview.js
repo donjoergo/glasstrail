@@ -258,8 +258,9 @@ function normalizePublicProfileImageUrl(value) {
     const url = new URL(trimmed);
     if (url.protocol === 'http:' && isSupabaseHost(url.hostname)) {
       url.protocol = 'https:';
-      return url.toString();
     }
+    url.pathname = normalizeSupabaseFunctionImagePath(url);
+    return url.toString();
   } catch (_) {
     return trimmed;
   }
@@ -268,6 +269,24 @@ function normalizePublicProfileImageUrl(value) {
 
 function isSupabaseHost(hostname) {
   return hostname === 'supabase.co' || hostname.endsWith('.supabase.co');
+}
+
+function normalizeSupabaseFunctionImagePath(url) {
+  if (isSupabaseFunctionsHost(url.hostname)) {
+    return url.pathname;
+  }
+  if (
+    url.pathname === '/friend-profile-preview' ||
+    url.pathname.startsWith('/friend-profile-preview/')
+  ) {
+    return `/functions/v1${url.pathname}`;
+  }
+  return url.pathname;
+}
+
+function isSupabaseFunctionsHost(hostname) {
+  return hostname === 'functions.supabase.co' ||
+    hostname.endsWith('.functions.supabase.co');
 }
 
 function requestOrigin(request) {

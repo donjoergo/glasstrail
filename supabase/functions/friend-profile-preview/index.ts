@@ -160,6 +160,12 @@ function profileImageUrl(request: Request): string {
   if (url.protocol === 'http:' && !isLocalHost(url.hostname)) {
     url.protocol = 'https:';
   }
+  if (
+    isSupabaseRestHost(url.hostname) &&
+    !url.pathname.startsWith('/functions/v1/')
+  ) {
+    url.pathname = `/functions/v1${url.pathname}`;
+  }
   url.pathname = `${trimTrailingSlash(url.pathname)}/image`;
   return url.toString();
 }
@@ -185,6 +191,12 @@ function isLocalHost(hostname: string): boolean {
     hostname === '127.0.0.1' ||
     hostname === '::1' ||
     hostname.endsWith('.localhost');
+}
+
+function isSupabaseRestHost(hostname: string): boolean {
+  return (hostname === 'supabase.co' || hostname.endsWith('.supabase.co')) &&
+    hostname !== 'functions.supabase.co' &&
+    !hostname.endsWith('.functions.supabase.co');
 }
 
 function safeDecode(value: string): string {
