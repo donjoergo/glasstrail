@@ -375,19 +375,36 @@ class PublicFriendProfile {
   }
 
   factory PublicFriendProfile.fromJson(Map<String, dynamic> json) {
+    final profileImagePath =
+        (json['profileImageUrl'] as String?) ??
+        (json['profile_image_url'] as String?) ??
+        (json['profileImagePath'] as String?) ??
+        (json['profile_image_path'] as String?);
     return PublicFriendProfile(
       id: (json['id'] as String?) ?? (json['profile_id'] as String),
       displayName: _displayNameFromJson(json),
-      profileImagePath:
-          (json['profileImageUrl'] as String?) ??
-          (json['profile_image_url'] as String?) ??
-          (json['profileImagePath'] as String?) ??
-          (json['profile_image_path'] as String?),
+      profileImagePath: _normalizePublicProfileImageUrl(profileImagePath),
       profileShareCode:
           (json['profileShareCode'] as String?) ??
           (json['profile_share_code'] as String?),
     );
   }
+}
+
+String? _normalizePublicProfileImageUrl(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return trimmed;
+  }
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || uri.scheme != 'http' || !_isSupabaseHost(uri.host)) {
+    return trimmed;
+  }
+  return uri.replace(scheme: 'https').toString();
+}
+
+bool _isSupabaseHost(String host) {
+  return host == 'supabase.co' || host.endsWith('.supabase.co');
 }
 
 class FriendConnection {

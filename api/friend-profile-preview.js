@@ -75,7 +75,8 @@ function profileHtml(profile, request) {
   const origin = requestOrigin(request);
   const profileUrl = publicProfileUrl(profile.profileShareCode, origin);
   const appUrl = appProfileUrl(profile.profileShareCode, origin);
-  const imageUrl = profile.profileImageUrl ?? publicAssetUrl('/icons/Icon-512.png', origin);
+  const imageUrl = normalizePublicProfileImageUrl(profile.profileImageUrl) ??
+    publicAssetUrl('/icons/Icon-512.png', origin);
   const faviconUrl = publicAssetUrl('/favicon.png', origin);
   const touchIconUrl = publicAssetUrl('/icons/Icon-192.png', origin);
 
@@ -246,6 +247,27 @@ function dataBaseUrl() {
   return trimTrailingSlash(configured.length === 0
     ? defaultDataBaseUrl
     : configured);
+}
+
+function normalizePublicProfileImageUrl(value) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return null;
+  }
+  const trimmed = value.trim();
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === 'http:' && isSupabaseHost(url.hostname)) {
+      url.protocol = 'https:';
+      return url.toString();
+    }
+  } catch (_) {
+    return trimmed;
+  }
+  return trimmed;
+}
+
+function isSupabaseHost(hostname) {
+  return hostname === 'supabase.co' || hostname.endsWith('.supabase.co');
 }
 
 function requestOrigin(request) {
