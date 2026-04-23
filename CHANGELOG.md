@@ -13,12 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Deep linking: profile links open the Glass Trail app when installed, otherwise they show the web version
 - Added SonarQube analysis
 
-### Fixed
-- Friend profile links now use the public preview image for avatars while signed in.
-- Friend profile preview image URLs now stay HTTPS for web avatars.
-- Friend profile app avatars now normalize Supabase function image paths.
-- Prompt before unfriending a friend.
-
 ## [1.2.1] - 2026-04-13
 ### Fixed
 - Fix failing tests in CI pipeline
