@@ -8,6 +8,7 @@ import 'package:glasstrail/src/deep_link_service.dart';
 import 'package:glasstrail/src/locale_memory.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/friend_profile_links.dart';
+import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/route_memory.dart';
@@ -1114,6 +1115,49 @@ void main() {
     },
   );
 
+  testWidgets('uses public profile image on authenticated friend links', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = _PublicAvatarLocalAppRepository(
+      preferences,
+      publicImagePath: _transparentPngDataUrl,
+    );
+    final owner = await repository.signUp(
+      email: 'friend-link-avatar-owner@example.com',
+      password: 'password123',
+      displayName: 'Avatar Owner',
+    );
+    await repository.updateProfile(
+      owner.copyWith(profileImagePath: '${owner.id}/profiles/avatar.png'),
+    );
+    final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+    await repository.signOut();
+    await repository.signUp(
+      email: 'friend-link-avatar-viewer@example.com',
+      password: 'password123',
+      displayName: 'Avatar Viewer',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.friendProfileRoute(
+          ownerProfile.profileShareCode!,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final avatar = tester.widget<AppAvatar>(
+      find.byKey(const Key('friend-profile-avatar')),
+    );
+    expect(avatar.imagePath, _transparentPngDataUrl);
+  });
+
   testWidgets('withdraws outgoing friend requests from the profile screen', (
     tester,
   ) async {
@@ -1397,4 +1441,26 @@ void main() {
     );
     expect(route?.settings.name, AppRoutes.bar);
   });
+}
+
+class _PublicAvatarLocalAppRepository extends LocalAppRepository {
+  _PublicAvatarLocalAppRepository(
+    super.preferences, {
+    required this.publicImagePath,
+  });
+
+  final String publicImagePath;
+
+  @override
+  Future<PublicFriendProfile> resolvePublicFriendProfileLink(
+    String shareCode,
+  ) async {
+    final profile = await super.resolvePublicFriendProfileLink(shareCode);
+    return PublicFriendProfile(
+      id: profile.id,
+      displayName: profile.displayName,
+      profileImagePath: publicImagePath,
+      profileShareCode: profile.profileShareCode,
+    );
+  }
 }
