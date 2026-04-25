@@ -1,5 +1,17 @@
 # Repository Guidelines
 
+## Agent Quick Reference
+Work on implementation tasks in a separate Git worktree under
+`codex/<item-name>` from the repository root. Keep the item name short and
+descriptive, for example `codex/profile-photo-fix`.
+
+Before changing code, check the current worktree status and preserve unrelated
+user changes. Keep changelog updates short and only add or adjust entries when
+they add useful release context.
+
+Use Conventional Commit messages when asked to commit. Keep the subject short,
+around seven words or fewer, such as `fix(profile): save avatar`.
+
 ## Project Structure & Module Organization
 `lib/main.dart` bootstraps `GlassTrailBootstrapApp` with the platform photo and location services. Core app wiring lives in `lib/src/app.dart`, `lib/src/app_controller.dart`, `lib/src/app_scope.dart`, and `lib/src/app_routes.dart`. Visible pages live in `lib/src/screens/`; the main shell currently exposes feed/history, statistics, bar, and profile tabs, plus dedicated auth, add-drink, and edit-profile routes. Repository implementations live in `lib/src/repository/`; `createRepository()` selects `SupabaseAppRepository` when `BackendConfig` is configured and falls back to `LocalAppRepository` otherwise. Shared models and helpers live alongside them in files such as `lib/src/models.dart`, `lib/src/stats_calculator.dart`, `lib/src/photo_service.dart`, `lib/src/location_service.dart`, and `lib/src/route_memory.dart`.
 
@@ -9,6 +21,9 @@ Localization sources live in `lib/l10n/*.arb`. Treat `lib/l10n/app_localizations
 Run `flutter pub get` after changing dependencies. Use `flutter run` for local development. Override backend values with `--dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...`; `BackendConfig.fromEnvironment()` otherwise uses the checked-in production defaults from `lib/src/backend_config.dart`. If you change ARB files, regenerate localization output with `flutter gen-l10n` before finishing the task.
 
 Prefer Dart MCP tools for Flutter work: call `mcp__dart__add_roots` first, then use `mcp__dart__analyze_files` instead of `flutter analyze`, `mcp__dart__run_tests` instead of `flutter test`, and `mcp__dart__dart_format` instead of `dart format`. When shell commands are needed, match the repository’s real verification flow: CI checks `dart format --output=none --set-exit-if-changed .`, `flutter analyze`, and `flutter test`. Use `flutter test integration_test` for end-to-end flows. For database work, use `supabase db reset` to reapply migrations and seed data locally.
+
+For documentation-only changes, a diff review is usually enough unless the
+edited document has generated output or formatting requirements.
 
 ## Coding Style & Naming Conventions
 This repository follows `flutter_lints` from `analysis_options.yaml`. Keep Dart code formatted with `dart format .`; use 2-space indentation, trailing commas where Flutter formatting benefits, `PascalCase` for types, and `lower_snake_case.dart` for files. Prefer small widgets and keep non-trivial behavior in `AppController`, repository classes, service classes, or focused helpers rather than page `build` methods.
@@ -21,7 +36,7 @@ Add or update tests for every behavior change. Follow the existing naming patter
 Cover controller logic, repository behavior, and user-visible UI changes directly. When a change affects route restoration, localization, location/photo flows, or repository selection, add targeted tests for those edges because they are easy to regress silently.
 
 ## Commit & Pull Request Guidelines
-Use Conventional Commits such as `feat(statistics): ...`, `fix(profile): ...`, or `chore(deps): ...`. Keep each commit scoped to one logical change. For every change, also add a changelog entry with a `cider` command such as `cider log added ...`, `cider log changed ...`, or `cider log fixed ...`; do not maintain `CHANGELOG.md` manually. PRs should summarize user-visible impact, mention any schema or seed changes, link the relevant issue when available, and include screenshots for UI work. Call out new `supabase/migrations/*.sql` files explicitly so reviewers can verify backend and RLS impact.
+Use Conventional Commits such as `feat(statistics): ...`, `fix(profile): ...`, or `chore(deps): ...`. Keep each commit scoped to one logical change. Keep changelog entries concise and release-focused. Before adding a new entry, check whether the requested change is already covered by an existing unreleased entry; if it is, leave the changelog alone or refine the existing entry instead of adding another bullet. Use `cider log added ...`, `cider log changed ...`, or `cider log fixed ...` when a new entry is warranted. Prefer editing or consolidating existing unreleased entries when that keeps the changelog clearer, and do not maintain `CHANGELOG.md` manually unless the user explicitly asks for a manual edit or an existing entry needs consolidation that `cider` cannot express cleanly. PRs should summarize user-visible impact, mention any schema or seed changes, link the relevant issue when available, and include screenshots for UI work. Call out new `supabase/migrations/*.sql` files explicitly so reviewers can verify backend and RLS impact.
 
 This repository also has release automation: tags matching `v*` trigger the Android release workflow, and CI runs on pushes and pull requests targeting `main`. Keep `pubspec.yaml` version updates and release-related changes consistent with that flow.
 
@@ -31,10 +46,19 @@ Do not commit live secrets, ad hoc environment files, Android keystores, or `and
 Review row-level-security implications whenever you add or modify Supabase migrations. Storage, auth, and database changes in `SupabaseAppRepository` should be reviewed together because the app syncs profile, drink catalog, entries, and media across devices.
 
 ## Agent-Specific Instructions
-For Dart and Flutter work in this repository, prefer Dart MCP tools over shell commands whenever possible.
+For Dart and Flutter work in this repository, prefer Dart MCP tools over shell
+commands whenever possible.
+
+Start implementation work by creating or switching to a separate worktree under
+`codex/<item-name>`. Do not make feature or fix edits directly in the primary
+checkout unless the user explicitly asks for that.
 
 Call `mcp__dart__add_roots` for this repository before other Dart MCP calls when needed. Prefer `mcp__dart__analyze_files` over `flutter analyze`, `mcp__dart__run_tests` over `flutter test`, and `mcp__dart__dart_format` over `dart format`. Use shell `dart` or `flutter` commands only when the Dart MCP cannot perform the task or when the user explicitly asks for shell commands.
 
-For every repository change, add a changelog entry via a `cider` command and do not edit `CHANGELOG.md` by hand unless the user explicitly asks for a manual edit.
+For changelog updates, keep entries short and avoid one-entry-per-request churn.
+First check whether the change is already covered by an existing unreleased
+entry. Add a new `cider` entry only when the change has distinct release value
+for users or reviewers. It is acceptable to refine or consolidate existing
+unreleased entries when that makes the changelog clearer.
 
 Do not hand-edit generated localization files under `lib/l10n/`. When changing strings, edit the ARB sources and regenerate. Prefer existing test helpers in `test/support/test_harness.dart`. Preserve the repository bootstrap split between Supabase-backed and `SharedPreferences`-backed execution, and do not remove the local fallback unless the user explicitly asks for that architectural change.
