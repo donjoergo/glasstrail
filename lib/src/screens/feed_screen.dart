@@ -561,9 +561,15 @@ class _DrinkEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final controller = AppScope.controllerOf(context);
+    final l10n = AppLocalizations.of(context);
     final timeLabel = DateFormat.yMMMd(
       locale,
     ).add_Hm().format(entry.consumedAt);
+    final metadataLabel = <String>[
+      categoryLabel,
+      if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
+      timeLabel,
+    ].join(' • ');
     final locationAddress = _normalizedLocationAddress(entry.locationAddress);
     return Container(
       padding: const EdgeInsets.all(18),
@@ -595,7 +601,7 @@ class _DrinkEntryCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '$categoryLabel • $timeLabel',
+                      metadataLabel,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -796,7 +802,12 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${widget.categoryLabel} • $timeLabel',
+                      <String>[
+                        widget.categoryLabel,
+                        if (widget.entry.shouldShowAlcoholFreeMarker)
+                          AppLocalizations.of(context).alcoholFree,
+                        timeLabel,
+                      ].join(' • '),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

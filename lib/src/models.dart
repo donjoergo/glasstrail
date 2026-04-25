@@ -476,6 +476,7 @@ class DrinkDefinition {
     required this.category,
     this.localizedNameDe,
     this.volumeMl,
+    this.isAlcoholFree = false,
     this.imagePath,
     this.ownerUserId,
   });
@@ -485,10 +486,15 @@ class DrinkDefinition {
   final DrinkCategory category;
   final String? localizedNameDe;
   final double? volumeMl;
+  final bool isAlcoholFree;
   final String? imagePath;
   final String? ownerUserId;
 
   bool get isCustom => ownerUserId != null;
+  bool get isEffectivelyAlcoholFree =>
+      category == DrinkCategory.nonAlcoholic || isAlcoholFree;
+  bool get shouldShowAlcoholFreeMarker =>
+      category != DrinkCategory.nonAlcoholic && isEffectivelyAlcoholFree;
 
   String displayName(String localeCode) {
     if (localeCode == 'de') {
@@ -507,6 +513,7 @@ class DrinkDefinition {
       'category': category.storageValue,
       'localizedNameDe': localizedNameDe,
       'volumeMl': volumeMl,
+      'isAlcoholFree': isAlcoholFree,
       'imagePath': imagePath,
       'ownerUserId': ownerUserId,
     };
@@ -521,6 +528,7 @@ class DrinkDefinition {
           (json['localizedNameDe'] as String?) ??
           (json['localized_name_de'] as String?),
       volumeMl: (json['volumeMl'] as num?)?.toDouble(),
+      isAlcoholFree: _readBool(json, 'isAlcoholFree', 'is_alcohol_free'),
       imagePath: json['imagePath'] as String?,
       ownerUserId: json['ownerUserId'] as String?,
     );
@@ -536,6 +544,7 @@ class DrinkEntry {
     required this.category,
     required this.consumedAt,
     this.volumeMl,
+    this.isAlcoholFree = false,
     this.comment,
     this.imagePath,
     this.locationLatitude,
@@ -552,6 +561,7 @@ class DrinkEntry {
   final DrinkCategory category;
   final DateTime consumedAt;
   final double? volumeMl;
+  final bool isAlcoholFree;
   final String? comment;
   final String? imagePath;
   final double? locationLatitude;
@@ -566,6 +576,7 @@ class DrinkEntry {
     DrinkCategory? category,
     DateTime? consumedAt,
     double? volumeMl,
+    bool? isAlcoholFree,
     String? comment,
     bool clearComment = false,
     String? imagePath,
@@ -585,6 +596,7 @@ class DrinkEntry {
       category: category ?? this.category,
       consumedAt: consumedAt ?? this.consumedAt,
       volumeMl: volumeMl ?? this.volumeMl,
+      isAlcoholFree: isAlcoholFree ?? this.isAlcoholFree,
       comment: clearComment ? null : comment ?? this.comment,
       imagePath: clearImagePath ? null : imagePath ?? this.imagePath,
       locationLatitude: clearLocation
@@ -610,6 +622,7 @@ class DrinkEntry {
       'category': category.storageValue,
       'consumedAt': consumedAt.toIso8601String(),
       'volumeMl': volumeMl,
+      'isAlcoholFree': isAlcoholFree,
       'comment': comment,
       'imagePath': imagePath,
       'locationLatitude': locationLatitude,
@@ -629,6 +642,7 @@ class DrinkEntry {
       category: DrinkCategoryX.fromStorage(json['category'] as String),
       consumedAt: DateTime.parse(json['consumedAt'] as String),
       volumeMl: _readDouble(json, 'volumeMl', 'volume_ml'),
+      isAlcoholFree: _readBool(json, 'isAlcoholFree', 'is_alcohol_free'),
       comment: json['comment'] as String?,
       imagePath: json['imagePath'] as String?,
       locationLatitude: _readDouble(
@@ -646,6 +660,11 @@ class DrinkEntry {
       importSourceId: _readString(json, 'importSourceId', 'import_source_id'),
     );
   }
+
+  bool get isEffectivelyAlcoholFree =>
+      category == DrinkCategory.nonAlcoholic || isAlcoholFree;
+  bool get shouldShowAlcoholFreeMarker =>
+      category != DrinkCategory.nonAlcoholic && isEffectivelyAlcoholFree;
 }
 
 class UserSettings {
@@ -791,6 +810,11 @@ double? _readDouble(
   }
   final fallbackValue = json[fallback] as num?;
   return fallbackValue?.toDouble();
+}
+
+bool _readBool(Map<String, dynamic> json, String primary, [String? fallback]) {
+  final value = json[primary] ?? (fallback == null ? null : json[fallback]);
+  return value == true;
 }
 
 List<String> _readStringList(
@@ -1074,6 +1098,9 @@ List<DrinkDefinition> buildDefaultDrinkCatalog() {
           name: item.$3,
           localizedNameDe: item.$4,
           volumeMl: item.$5,
+          isAlcoholFree:
+              item.$2 == DrinkCategory.nonAlcoholic ||
+              item.$1 == 'beer-non-alcoholic',
         ),
       )
       .toList(growable: false);

@@ -299,6 +299,7 @@ class LocalAppRepository implements AppRepository {
     required String name,
     required DrinkCategory category,
     double? volumeMl,
+    bool isAlcoholFree = false,
     String? imagePath,
   }) async {
     final map = _readJsonMap(_customDrinksKey);
@@ -322,6 +323,7 @@ class LocalAppRepository implements AppRepository {
       name: normalizedName,
       category: category,
       volumeMl: volumeMl,
+      isAlcoholFree: _customDrinkAlcoholFreeValue(category, isAlcoholFree),
       imagePath: imagePath,
       ownerUserId: userId,
     );
@@ -395,6 +397,7 @@ class LocalAppRepository implements AppRepository {
       category: drink.category,
       consumedAt: consumedAt ?? DateTime.now(),
       volumeMl: volumeMl,
+      isAlcoholFree: drink.isEffectivelyAlcoholFree,
       comment: trimmedComment == null || trimmedComment.isEmpty
           ? null
           : trimmedComment,
@@ -478,6 +481,17 @@ class LocalAppRepository implements AppRepository {
     map[userId] = settings.toJson();
     await _writeJsonMap(_settingsKey, map);
     return settings;
+  }
+
+  bool _customDrinkAlcoholFreeValue(
+    DrinkCategory category,
+    bool isAlcoholFree,
+  ) {
+    return switch (category) {
+      DrinkCategory.nonAlcoholic => true,
+      DrinkCategory.beer => isAlcoholFree,
+      _ => false,
+    };
   }
 
   List<AppUser> _loadUsers() {

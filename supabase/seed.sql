@@ -83,3 +83,8 @@ set
   name_en = excluded.name_en,
   name_de = excluded.name_de,
   default_volume_ml = excluded.default_volume_ml;
+
+update public.global_drinks
+set is_alcohol_free = true
+where category_slug = 'nonAlcoholic'
+   or id = 'beer-non-alcoholic';

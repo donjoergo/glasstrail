@@ -440,6 +440,18 @@ abstract class AppLocalizations {
   /// **'Volume'**
   String get volume;
 
+  /// No description provided for @alcoholFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Alcohol-free'**
+  String get alcoholFree;
+
+  /// No description provided for @customDrinkAlcoholFreeSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Alcohol-free'**
+  String get customDrinkAlcoholFreeSwitch;
+
   /// No description provided for @appUpdatedTitle.
   ///
   /// In en, this message translates to:
@@ -583,6 +595,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Category breakdown'**
   String get categoryBreakdown;
+
+  /// No description provided for @beerBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Beer breakdown'**
+  String get beerBreakdown;
+
+  /// No description provided for @regularBeer.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal beer'**
+  String get regularBeer;
+
+  /// No description provided for @alcoholFreeBeer.
+  ///
+  /// In en, this message translates to:
+  /// **'Alcohol-free beer'**
+  String get alcoholFreeBeer;
 
   /// No description provided for @history.
   ///

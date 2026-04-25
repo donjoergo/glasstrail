@@ -220,6 +220,7 @@ class BlockingLocalAppRepository extends LocalAppRepository {
     required String name,
     required DrinkCategory category,
     double? volumeMl,
+    bool isAlcoholFree = false,
     String? imagePath,
   }) {
     return _runBlocked(
@@ -230,6 +231,7 @@ class BlockingLocalAppRepository extends LocalAppRepository {
         name: name,
         category: category,
         volumeMl: volumeMl,
+        isAlcoholFree: isAlcoholFree,
         imagePath: imagePath,
       ),
     );

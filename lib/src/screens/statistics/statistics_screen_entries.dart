@@ -113,8 +113,13 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.controllerOf(context);
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final locationAddress = _normalizedLocationAddress(entry.locationAddress);
+    final metadataLabel = <String>[
+      DateFormat.yMMMd(controller.settings.localeCode).format(entry.consumedAt),
+      if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
+    ].join(' • ');
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -137,9 +142,7 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  DateFormat.yMMMd(
-                    controller.settings.localeCode,
-                  ).format(entry.consumedAt),
+                  metadataLabel,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -205,6 +208,7 @@ class _StatisticsGalleryPage extends StatelessWidget {
             ),
             metadata: <String>[
               l10n.categoryLabel(entry.category),
+              if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
               DateFormat.yMMMd(localeCode).add_Hm().format(entry.consumedAt),
               if (entry.volumeMl != null) unit.formatVolume(entry.volumeMl),
               if (_normalizedLocationAddress(entry.locationAddress) != null)

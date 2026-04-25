@@ -24,6 +24,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _volumeController;
   DrinkCategory _category = DrinkCategory.beer;
+  bool _isAlcoholFree = false;
   String? _imagePath;
   bool _didHydrateInitialVolume = false;
   bool _volumeEditedManually = false;
@@ -35,6 +36,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
     _nameController = TextEditingController(text: initial?.name ?? '');
     _volumeController = TextEditingController();
     _category = initial?.category ?? DrinkCategory.beer;
+    _isAlcoholFree = initial?.isAlcoholFree ?? false;
     _imagePath = initial?.imagePath;
   }
 
@@ -91,6 +93,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                 ? null
                 : controller.settings.unit.convertToMl(volume))
           : widget.initialDrink?.volumeMl,
+      isAlcoholFree: _category == DrinkCategory.beer && _isAlcoholFree,
       imagePath: _imagePath,
     );
     if (!mounted) {
@@ -187,9 +190,28 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                           }
                           setState(() {
                             _category = value;
+                            if (value != DrinkCategory.beer) {
+                              _isAlcoholFree = false;
+                            }
                           });
                         },
                 ),
+                if (_category == DrinkCategory.beer) ...<Widget>[
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    key: const Key('custom-drink-alcohol-free-switch'),
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l10n.customDrinkAlcoholFreeSwitch),
+                    value: _isAlcoholFree,
+                    onChanged: isBusy
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _isAlcoholFree = value;
+                            });
+                          },
+                  ),
+                ],
                 const SizedBox(height: 12),
                 TextFormField(
                   enabled: !isBusy,
