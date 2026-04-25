@@ -245,6 +245,173 @@ void main() {
       },
     );
 
+    test('creates notifications for friendship actions', () async {
+      final requester = await repository.signUp(
+        email: 'notify-requester@example.com',
+        password: 'secret',
+        displayName: 'Notify Requester',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'notify-addressee@example.com',
+        password: 'secret',
+        displayName: 'Notify Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+
+      final requesterConnections = await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+
+      final addresseeNotifications = await repository.loadNotifications(
+        addressee.id,
+      );
+      expect(addresseeNotifications, hasLength(1));
+      expect(
+        addresseeNotifications.single.type,
+        AppNotificationType.friendRequestSent,
+      );
+      expect(addresseeNotifications.single.actorUserId, requester.id);
+      expect(
+        addresseeNotifications.single.actorDisplayName,
+        'Notify Requester',
+      );
+
+      await repository.acceptFriendRequest(
+        userId: addressee.id,
+        relationshipId: requesterConnections.single.id,
+      );
+      final requesterNotifications = await repository.loadNotifications(
+        requester.id,
+      );
+      expect(
+        requesterNotifications.single.type,
+        AppNotificationType.friendRequestAccepted,
+      );
+      expect(requesterNotifications.single.actorUserId, addressee.id);
+
+      await repository.removeFriend(
+        userId: requester.id,
+        friendUserId: addressee.id,
+      );
+      final addresseeAfterRemoval = await repository.loadNotifications(
+        addressee.id,
+      );
+      expect(
+        addresseeAfterRemoval.first.type,
+        AppNotificationType.friendRemoved,
+      );
+      expect(addresseeAfterRemoval.first.actorUserId, requester.id);
+    });
+
+    test('creates rejected friend request notifications', () async {
+      final requester = await repository.signUp(
+        email: 'notify-reject-requester@example.com',
+        password: 'secret',
+        displayName: 'Reject Requester',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'notify-reject-addressee@example.com',
+        password: 'secret',
+        displayName: 'Reject Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+
+      await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      final addresseeConnections = await repository.loadFriendConnections(
+        addressee.id,
+      );
+
+      await repository.rejectFriendRequest(
+        userId: addressee.id,
+        relationshipId: addresseeConnections.single.id,
+      );
+
+      final requesterNotifications = await repository.loadNotifications(
+        requester.id,
+      );
+      expect(
+        requesterNotifications.single.type,
+        AppNotificationType.friendRequestRejected,
+      );
+      expect(requesterNotifications.single.actorUserId, addressee.id);
+    });
+
+    test(
+      'does not duplicate notifications for existing pending requests',
+      () async {
+        final requester = await repository.signUp(
+          email: 'notify-duplicate-requester@example.com',
+          password: 'secret',
+          displayName: 'Duplicate Requester',
+        );
+        await repository.signOut();
+        final addressee = await repository.signUp(
+          email: 'notify-duplicate-addressee@example.com',
+          password: 'secret',
+          displayName: 'Duplicate Addressee',
+        );
+        final addresseeProfile = await repository.getOwnFriendProfile(
+          addressee.id,
+        );
+
+        await repository.sendFriendRequestToProfile(
+          userId: requester.id,
+          shareCode: addresseeProfile.profileShareCode!,
+        );
+        await repository.sendFriendRequestToProfile(
+          userId: requester.id,
+          shareCode: addresseeProfile.profileShareCode!,
+        );
+
+        expect(await repository.loadNotifications(addressee.id), hasLength(1));
+      },
+    );
+
+    test('marks notifications as read', () async {
+      final requester = await repository.signUp(
+        email: 'notify-read-requester@example.com',
+        password: 'secret',
+        displayName: 'Read Requester',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'notify-read-addressee@example.com',
+        password: 'secret',
+        displayName: 'Read Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+
+      await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      final notification = (await repository.loadNotifications(
+        addressee.id,
+      )).single;
+
+      expect(notification.isUnread, isTrue);
+
+      final updated = await repository.markNotificationsRead(
+        userId: addressee.id,
+        notificationIds: <String>[notification.id],
+      );
+
+      expect(updated.single.isRead, isTrue);
+      expect(updated.single.readAt, isNotNull);
+    });
+
     test('withdraws outgoing pending friend requests', () async {
       final requester = await repository.signUp(
         email: 'withdraw-requester@example.com',

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
@@ -338,6 +339,131 @@ class SupabaseAppRepository implements AppRepository {
         params: <String, dynamic>{'target_friend_user_id': friendUserId},
       );
       return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<AppNotification>> loadNotifications(String userId) async {
+    try {
+      final rows = await _client.rpc('load_notifications');
+      return (rows as List<dynamic>)
+          .map(
+            (row) =>
+                AppNotification.fromJson(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList();
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<AppNotification>> markNotificationsRead({
+    required String userId,
+    required List<String> notificationIds,
+  }) async {
+    if (notificationIds.isEmpty) {
+      return loadNotifications(userId);
+    }
+
+    try {
+      final rows = await _client.rpc(
+        'mark_notifications_read',
+        params: <String, dynamic>{'notification_ids': notificationIds},
+      );
+      return (rows as List<dynamic>)
+          .map(
+            (row) =>
+                AppNotification.fromJson(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList();
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Stream<List<AppNotification>> watchNotifications(String userId) {
+    late final StreamController<List<AppNotification>> controller;
+    RealtimeChannel? channel;
+    var isClosed = false;
+
+    Future<void> publishSnapshot() async {
+      if (isClosed) {
+        return;
+      }
+      try {
+        final notifications = await loadNotifications(userId);
+        if (!isClosed) {
+          controller.add(notifications);
+        }
+      } on Object catch (error, stackTrace) {
+        if (!isClosed) {
+          controller.addError(error, stackTrace);
+        }
+      }
+    }
+
+    controller = StreamController<List<AppNotification>>.broadcast(
+      onListen: () {
+        unawaited(publishSnapshot());
+        channel = _client
+            .channel('notifications:$userId')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'notifications',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'recipient_user_id',
+                value: userId,
+              ),
+              callback: (_) => unawaited(publishSnapshot()),
+            )
+            .subscribe();
+      },
+      onCancel: () async {
+        isClosed = true;
+        final activeChannel = channel;
+        if (activeChannel != null) {
+          await _client.removeChannel(activeChannel);
+        }
+      },
+    );
+    return controller.stream;
+  }
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) async {
+    try {
+      await _client.rpc(
+        'register_notification_device_token',
+        params: <String, dynamic>{
+          'device_token': token.trim(),
+          'device_platform': platform.trim(),
+        },
+      );
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) async {
+    try {
+      await _client.rpc(
+        'unregister_notification_device_token',
+        params: <String, dynamic>{'device_token': token.trim()},
+      );
     } on PostgrestException catch (error) {
       throw AppException(error.message);
     }

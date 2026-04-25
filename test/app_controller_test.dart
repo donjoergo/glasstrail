@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/beer_with_me_import.dart';
 import 'package:glasstrail/src/models.dart';
+import 'package:glasstrail/src/push_notification_service.dart';
 import 'package:glasstrail/src/repository/app_repository.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/stats_calculator.dart';
@@ -28,6 +29,7 @@ void main() {
     expect(repository.loadEntriesCalls, 0);
     expect(repository.loadSettingsCalls, 0);
     expect(repository.loadFriendConnectionsCalls, 0);
+    expect(repository.loadNotificationsCalls, 0);
 
     repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
     repository.restoreSessionCompleter.complete(
@@ -44,15 +46,18 @@ void main() {
     expect(repository.loadEntriesCalls, 1);
     expect(repository.loadSettingsCalls, 1);
     expect(repository.loadFriendConnectionsCalls, 1);
+    expect(repository.loadNotificationsCalls, 1);
 
     repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
     repository.entriesCompleter.complete(const <DrinkEntry>[]);
     repository.settingsCompleter.complete(UserSettings.defaults());
     repository.friendConnectionsCompleter.complete(const <FriendConnection>[]);
+    repository.notificationsCompleter.complete(const <AppNotification>[]);
 
     final controller = await bootstrapFuture;
     expect(controller.isAuthenticated, isTrue);
     expect(controller.availableDrinks, isNotEmpty);
+    expect(controller.notifications, isEmpty);
   });
 
   test('refreshes app data through the repository again', () async {
@@ -69,6 +74,7 @@ void main() {
     repository.entriesCompleter.complete(const <DrinkEntry>[]);
     repository.settingsCompleter.complete(UserSettings.defaults());
     repository.friendConnectionsCompleter.complete(const <FriendConnection>[]);
+    repository.notificationsCompleter.complete(const <AppNotification>[]);
 
     final controller = await AppController.bootstrapWithRepository(repository);
 
@@ -80,6 +86,7 @@ void main() {
     expect(repository.loadEntriesCalls, 2);
     expect(repository.loadSettingsCalls, 2);
     expect(repository.loadFriendConnectionsCalls, 2);
+    expect(repository.loadNotificationsCalls, 2);
   });
 
   test('tracks sign-up as the active busy action while pending', () async {
@@ -133,6 +140,66 @@ void main() {
     expect(controller.isBusy, isFalse);
     expect(controller.busyAction, isNull);
   });
+
+  test('counts unread notifications and marks them read', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final requester = await repository.signUp(
+      email: 'controller-notify-requester@example.com',
+      password: 'password123',
+      displayName: 'Controller Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'controller-notify-addressee@example.com',
+      password: 'password123',
+      displayName: 'Controller Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    expect(controller.notifications, hasLength(1));
+    expect(controller.unreadNotificationCount, 1);
+
+    final success = await controller.markAllNotificationsRead();
+
+    expect(success, isTrue);
+    expect(controller.unreadNotificationCount, 0);
+    expect(controller.notifications.single.isRead, isTrue);
+  });
+
+  test(
+    'keeps authentication successful when token registration fails',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = _FailingTokenLocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+        pushNotificationService: const _StaticPushNotificationService(
+          PushDeviceToken(token: 'fcm-token', platform: 'android'),
+        ),
+      );
+
+      final success = await controller.signUp(
+        email: 'push-best-effort@example.com',
+        password: 'password123',
+        displayName: 'Push Best Effort',
+      );
+
+      expect(success, isTrue);
+      expect(controller.isAuthenticated, isTrue);
+      expect(repository.registerCalls, 1);
+    },
+  );
 
   test('localizes success flash messages and drink names', () async {
     final controller = await buildTestController();
@@ -766,6 +833,41 @@ void main() {
   });
 }
 
+class _StaticPushNotificationService extends PushNotificationService {
+  const _StaticPushNotificationService(this.token);
+
+  final PushDeviceToken token;
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() async => token;
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes =>
+      const Stream<PushDeviceToken>.empty();
+
+  @override
+  Future<String?> consumeInitialRoute() async => null;
+
+  @override
+  Stream<String> get openedRoutes => const Stream<String>.empty();
+}
+
+class _FailingTokenLocalAppRepository extends LocalAppRepository {
+  _FailingTokenLocalAppRepository(super.preferences);
+
+  int registerCalls = 0;
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) async {
+    registerCalls++;
+    throw const AppException('Token registration failed.');
+  }
+}
+
 class _BootstrapProbeRepository implements AppRepository {
   final defaultCatalogCompleter = Completer<List<DrinkDefinition>>();
   final restoreSessionCompleter = Completer<AppUser?>();
@@ -773,6 +875,7 @@ class _BootstrapProbeRepository implements AppRepository {
   final entriesCompleter = Completer<List<DrinkEntry>>();
   final settingsCompleter = Completer<UserSettings>();
   final friendConnectionsCompleter = Completer<List<FriendConnection>>();
+  final notificationsCompleter = Completer<List<AppNotification>>();
 
   int loadDefaultCatalogCalls = 0;
   int restoreSessionCalls = 0;
@@ -780,6 +883,7 @@ class _BootstrapProbeRepository implements AppRepository {
   int loadEntriesCalls = 0;
   int loadSettingsCalls = 0;
   int loadFriendConnectionsCalls = 0;
+  int loadNotificationsCalls = 0;
 
   @override
   String get backendLabel => 'probe';
@@ -821,6 +925,42 @@ class _BootstrapProbeRepository implements AppRepository {
   Future<List<FriendConnection>> loadFriendConnections(String userId) {
     loadFriendConnectionsCalls++;
     return friendConnectionsCompleter.future;
+  }
+
+  @override
+  Future<List<AppNotification>> loadNotifications(String userId) {
+    loadNotificationsCalls++;
+    return notificationsCompleter.future;
+  }
+
+  @override
+  Future<List<AppNotification>> markNotificationsRead({
+    required String userId,
+    required List<String> notificationIds,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<List<AppNotification>> watchNotifications(String userId) {
+    return const Stream<List<AppNotification>>.empty();
+  }
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) {
+    throw UnimplementedError();
   }
 
   @override

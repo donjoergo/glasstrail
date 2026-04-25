@@ -11,6 +11,7 @@ class AppRoutes {
   static const barSorting = '/bar/sorting';
   static const barCustom = '/bar/custom';
   static const profile = '/profile';
+  static const notifications = '/notifications';
   static const friendProfilePrefix = '/friends/profile/';
   static const addDrink = '/add-drink';
   static const editProfile = '/profile/edit';
@@ -36,6 +37,7 @@ class AppRoutes {
       barSorting ||
       barCustom ||
       profile ||
+      notifications ||
       addDrink ||
       editProfile => routeName,
       _ => root,
@@ -119,6 +121,7 @@ class AppRoutes {
       barSorting ||
       barCustom ||
       profile ||
+      notifications ||
       addDrink ||
       editProfile => normalized,
       _ => feed,
@@ -141,6 +144,7 @@ class AppRoutes {
       barSorting ||
       barCustom ||
       profile ||
+      notifications ||
       addDrink ||
       editProfile => true,
       _ => false,

@@ -446,6 +446,55 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.';
 
   @override
+  String get notifications => 'Mitteilungen';
+
+  @override
+  String get notificationsTooltip => 'Mitteilungen';
+
+  @override
+  String get notificationsEmptyTitle => 'Noch keine Mitteilungen';
+
+  @override
+  String get notificationsEmptyBody =>
+      'Freundschaftsanfragen und Aktualisierungen erscheinen hier.';
+
+  @override
+  String notificationFriendRequestSentTitle(String name) {
+    return '$name hat dir eine Freundschaftsanfrage gesendet';
+  }
+
+  @override
+  String get notificationFriendRequestSentBody =>
+      'Prüfe sie in deinem Freunde-Bereich.';
+
+  @override
+  String notificationFriendRequestAcceptedTitle(String name) {
+    return '$name hat deine Freundschaftsanfrage angenommen';
+  }
+
+  @override
+  String get notificationFriendRequestAcceptedBody =>
+      'Ihr könnt jetzt gegenseitig geteilte Aktivitäten sehen.';
+
+  @override
+  String notificationFriendRequestRejectedTitle(String name) {
+    return '$name hat deine Freundschaftsanfrage abgelehnt';
+  }
+
+  @override
+  String get notificationFriendRequestRejectedBody =>
+      'Du kannst später eine neue Anfrage senden.';
+
+  @override
+  String notificationFriendRemovedTitle(String name) {
+    return '$name hat dich als Freund entfernt';
+  }
+
+  @override
+  String get notificationFriendRemovedBody =>
+      'Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.';
+
+  @override
   String get customDrinks => 'Meine eigenen Getränke';
 
   @override

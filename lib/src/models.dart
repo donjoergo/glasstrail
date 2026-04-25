@@ -469,6 +469,165 @@ class FriendConnection {
   }
 }
 
+enum AppNotificationType {
+  friendRequestSent,
+  friendRequestAccepted,
+  friendRequestRejected,
+  friendRemoved,
+}
+
+extension AppNotificationTypeX on AppNotificationType {
+  String get storageValue => switch (this) {
+    AppNotificationType.friendRequestSent => 'friend_request_sent',
+    AppNotificationType.friendRequestAccepted => 'friend_request_accepted',
+    AppNotificationType.friendRequestRejected => 'friend_request_rejected',
+    AppNotificationType.friendRemoved => 'friend_removed',
+  };
+
+  static AppNotificationType fromStorage(String value) {
+    return switch (value) {
+      'friend_request_sent' ||
+      'friendRequestSent' => AppNotificationType.friendRequestSent,
+      'friend_request_accepted' ||
+      'friendRequestAccepted' => AppNotificationType.friendRequestAccepted,
+      'friend_request_rejected' ||
+      'friendRequestRejected' => AppNotificationType.friendRequestRejected,
+      'friend_removed' || 'friendRemoved' => AppNotificationType.friendRemoved,
+      _ => AppNotificationType.friendRequestSent,
+    };
+  }
+}
+
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.recipientUserId,
+    required this.actorUserId,
+    required this.actorDisplayName,
+    this.actorProfileImagePath,
+    required this.type,
+    required this.createdAt,
+    this.readAt,
+    this.metadata = const <String, dynamic>{},
+  });
+
+  final String id;
+  final String recipientUserId;
+  final String? actorUserId;
+  final String actorDisplayName;
+  final String? actorProfileImagePath;
+  final AppNotificationType type;
+  final DateTime createdAt;
+  final DateTime? readAt;
+  final Map<String, dynamic> metadata;
+
+  bool get isRead => readAt != null;
+  bool get isUnread => !isRead;
+
+  String get actorInitials {
+    final trimmed = actorDisplayName.trim();
+    if (trimmed.isEmpty) {
+      return 'GT';
+    }
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final first = parts.first.characters.first.toUpperCase();
+    final second = parts.length > 1
+        ? parts[1].characters.first.toUpperCase()
+        : '';
+    return '$first$second';
+  }
+
+  AppNotification copyWith({
+    String? actorDisplayName,
+    String? actorProfileImagePath,
+    DateTime? readAt,
+    bool clearReadAt = false,
+    Map<String, dynamic>? metadata,
+  }) {
+    return AppNotification(
+      id: id,
+      recipientUserId: recipientUserId,
+      actorUserId: actorUserId,
+      actorDisplayName: actorDisplayName ?? this.actorDisplayName,
+      actorProfileImagePath:
+          actorProfileImagePath ?? this.actorProfileImagePath,
+      type: type,
+      createdAt: createdAt,
+      readAt: clearReadAt ? null : readAt ?? this.readAt,
+      metadata: metadata ?? this.metadata,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'recipientUserId': recipientUserId,
+      'actorUserId': actorUserId,
+      'actorDisplayName': actorDisplayName,
+      'actorProfileImagePath': actorProfileImagePath,
+      'type': type.storageValue,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+      'readAt': readAt?.toUtc().toIso8601String(),
+      'metadata': metadata,
+    };
+  }
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    final typeValue =
+        (json['type'] as String?) ?? (json['notification_type'] as String?);
+    return AppNotification(
+      id:
+          (json['id'] as String?) ??
+          (json['notificationId'] as String?) ??
+          (json['notification_id'] as String),
+      recipientUserId:
+          (json['recipientUserId'] as String?) ??
+          (json['recipient_user_id'] as String),
+      actorUserId:
+          (json['actorUserId'] as String?) ??
+          (json['actor_user_id'] as String?),
+      actorDisplayName:
+          (json['actorDisplayName'] as String?) ??
+          (json['actor_display_name'] as String?) ??
+          'Glass Trail User',
+      actorProfileImagePath:
+          (json['actorProfileImagePath'] as String?) ??
+          (json['actor_profile_image_path'] as String?),
+      type: AppNotificationTypeX.fromStorage(typeValue ?? ''),
+      createdAt: _dateTimeFromJson(
+        json['createdAt'] ?? json['created_at'],
+        fallback: DateTime.now(),
+      ),
+      readAt: _nullableDateTimeFromJson(json['readAt'] ?? json['read_at']),
+      metadata: _metadataFromJson(json['metadata']),
+    );
+  }
+}
+
+DateTime _dateTimeFromJson(Object? value, {required DateTime fallback}) {
+  if (value is DateTime) {
+    return value.toLocal();
+  }
+  if (value is String && value.trim().isNotEmpty) {
+    return DateTime.parse(value).toLocal();
+  }
+  return fallback;
+}
+
+DateTime? _nullableDateTimeFromJson(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  return _dateTimeFromJson(value, fallback: DateTime.now());
+}
+
+Map<String, dynamic> _metadataFromJson(Object? value) {
+  if (value is Map) {
+    return Map<String, dynamic>.from(value);
+  }
+  return const <String, dynamic>{};
+}
+
 class DrinkDefinition {
   const DrinkDefinition({
     required this.id,

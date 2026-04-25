@@ -183,6 +183,46 @@
   },
   "friendProfileLinkInvalidTitle": "Profillink nicht verfügbar",
   "friendProfileLinkInvalidBody": "Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.",
+  "notifications": "Mitteilungen",
+  "notificationsTooltip": "Mitteilungen",
+  "notificationsEmptyTitle": "Noch keine Mitteilungen",
+  "notificationsEmptyBody": "Freundschaftsanfragen und Aktualisierungen erscheinen hier.",
+  "notificationFriendRequestSentTitle": "{name} hat dir eine Freundschaftsanfrage gesendet",
+  "@notificationFriendRequestSentTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRequestSentBody": "Prüfe sie in deinem Freunde-Bereich.",
+  "notificationFriendRequestAcceptedTitle": "{name} hat deine Freundschaftsanfrage angenommen",
+  "@notificationFriendRequestAcceptedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRequestAcceptedBody": "Ihr könnt jetzt gegenseitig geteilte Aktivitäten sehen.",
+  "notificationFriendRequestRejectedTitle": "{name} hat deine Freundschaftsanfrage abgelehnt",
+  "@notificationFriendRequestRejectedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRequestRejectedBody": "Du kannst später eine neue Anfrage senden.",
+  "notificationFriendRemovedTitle": "{name} hat dich als Freund entfernt",
+  "@notificationFriendRemovedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRemovedBody": "Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.",
   "customDrinks": "Meine eigenen Getränke",
   "addCustomDrinkAction": "Eigenes Getränk hinzufügen",
   "customDrinksEmptyTitle": "Noch keine eigenen Getränke",

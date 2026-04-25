@@ -282,6 +282,59 @@ void main() {
     expect(find.byKey(const Key('edit-profile-save-button')), findsOneWidget);
   });
 
+  testWidgets('shows notification badge and clears it when opened', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final requester = await repository.signUp(
+      email: 'widget-notify-requester@example.com',
+      password: 'password123',
+      displayName: 'Widget Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'widget-notify-addressee@example.com',
+      password: 'password123',
+      displayName: 'Widget Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.unreadNotificationCount, 1);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('home-notifications-badge')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('notifications-list')), findsOneWidget);
+    expect(
+      find.text('Widget Requester sent you a friend request'),
+      findsOneWidget,
+    );
+    expect(controller.unreadNotificationCount, 0);
+  });
+
   testWidgets('shows a spinner while saving the profile', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.updateProfile);
     final controller = harness.controller;

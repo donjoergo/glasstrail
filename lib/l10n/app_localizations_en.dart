@@ -443,6 +443,55 @@ class AppLocalizationsEn extends AppLocalizations {
       'This friend profile link is invalid or no longer available.';
 
   @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get notificationsTooltip => 'Notifications';
+
+  @override
+  String get notificationsEmptyTitle => 'No notifications yet';
+
+  @override
+  String get notificationsEmptyBody =>
+      'Friend requests and updates will appear here.';
+
+  @override
+  String notificationFriendRequestSentTitle(String name) {
+    return '$name sent you a friend request';
+  }
+
+  @override
+  String get notificationFriendRequestSentBody =>
+      'Review it in your Friends section.';
+
+  @override
+  String notificationFriendRequestAcceptedTitle(String name) {
+    return '$name accepted your friend request';
+  }
+
+  @override
+  String get notificationFriendRequestAcceptedBody =>
+      'You can now see each other\'s shared activity.';
+
+  @override
+  String notificationFriendRequestRejectedTitle(String name) {
+    return '$name declined your friend request';
+  }
+
+  @override
+  String get notificationFriendRequestRejectedBody =>
+      'You can send another request later.';
+
+  @override
+  String notificationFriendRemovedTitle(String name) {
+    return '$name removed you as a friend';
+  }
+
+  @override
+  String get notificationFriendRemovedBody =>
+      'Open your Friends section to review your connections.';
+
+  @override
   String get customDrinks => 'My custom drinks';
 
   @override
