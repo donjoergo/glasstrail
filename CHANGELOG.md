@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Accept/decline/withdraw friend requests
   - Deep linking: profile links open the Glass Trail app when installed, otherwise they show the web version
 - Added SonarQube analysis
-- Friend action notifications with in-app badge and optional Android push.
+- Friend action notifications with localized text, images, in-app badge, and optional Android push.
 
 ### Fixed
 - Android push notification taps open the app.

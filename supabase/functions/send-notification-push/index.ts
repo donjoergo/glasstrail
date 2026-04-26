@@ -3,10 +3,18 @@ import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 type NotificationRow = {
   id: string;
   recipient_user_id: string;
-  actor_user_id: string | null;
-  actor_display_name: string;
+  sender_user_id: string | null;
+  sender_display_name: string;
+  image_path: string | null;
   type: string;
+  title_i18n: Record<string, unknown>;
+  text_i18n: Record<string, unknown> | null;
   metadata: Record<string, unknown> | null;
+};
+
+type UserSettingsRow = {
+  user_id: string;
+  locale_code: string;
 };
 
 type DeviceTokenRow = {
@@ -39,6 +47,12 @@ type FunctionDatabase = {
         Update: never;
         Relationships: [];
       };
+      user_settings: {
+        Row: UserSettingsRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -47,6 +61,7 @@ type FunctionDatabase = {
 
 type AppSupabaseClient = SupabaseClient<FunctionDatabase>;
 
+const mediaBucket = "user-media";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -101,6 +116,14 @@ Deno.serve(async (request) => {
   }
 
   try {
+    const recipientLocale = await loadRecipientLocale(
+      client,
+      notification.recipient_user_id,
+    );
+    const imageUrl = await signedNotificationImageUrl(
+      client,
+      notification.image_path,
+    );
     const accessToken = await fcmAccessToken(fcmConfig);
     let sent = 0;
     let failed = 0;
@@ -109,6 +132,8 @@ Deno.serve(async (request) => {
       const result = await sendFcmMessage(fcmConfig, accessToken, {
         notification,
         token: token.token,
+        recipientLocale,
+        imageUrl,
       });
       if (result.ok) {
         sent++;
@@ -168,7 +193,7 @@ async function loadNotification(
   const { data, error } = await client
     .from("notifications")
     .select(
-      "id, recipient_user_id, actor_user_id, actor_display_name, type, metadata",
+      "id, recipient_user_id, sender_user_id, sender_display_name, image_path, type, title_i18n, text_i18n, metadata",
     )
     .eq("id", notificationId)
     .maybeSingle();
@@ -177,6 +202,23 @@ async function loadNotification(
     throw error;
   }
   return data as NotificationRow | null;
+}
+
+async function loadRecipientLocale(
+  client: AppSupabaseClient,
+  userId: string,
+): Promise<string> {
+  const { data, error } = await client
+    .from("user_settings")
+    .select("locale_code")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error != null) {
+    console.error("Failed to load recipient locale", error);
+    return "en";
+  }
+  return normalizeLocale(data?.locale_code);
 }
 
 async function loadAndroidTokens(
@@ -198,8 +240,29 @@ async function loadAndroidTokens(
 async function sendFcmMessage(
   config: FcmConfig,
   accessToken: string,
-  input: { notification: NotificationRow; token: string },
+  input: {
+    notification: NotificationRow;
+    token: string;
+    recipientLocale: string;
+    imageUrl: string | null;
+  },
 ): Promise<{ ok: boolean; responseText: string }> {
+  const notificationPayload: Record<string, string> = {
+    title: pushTitle(input.notification, input.recipientLocale),
+  };
+  const text = pushText(input.notification, input.recipientLocale);
+  if (text != null) {
+    notificationPayload.body = text;
+  }
+
+  const androidNotification: Record<string, unknown> = {
+    default_sound: true,
+    click_action: "FLUTTER_NOTIFICATION_CLICK",
+  };
+  if (input.imageUrl != null) {
+    androidNotification.image = input.imageUrl;
+  }
+
   const response = await fetch(
     `https://fcm.googleapis.com/v1/projects/${config.projectId}/messages:send`,
     {
@@ -211,22 +274,16 @@ async function sendFcmMessage(
       body: JSON.stringify({
         message: {
           token: input.token,
-          notification: {
-            title: "Glass Trail",
-            body: pushBody(input.notification),
-          },
+          notification: notificationPayload,
           data: {
             notification_id: input.notification.id,
             notification_type: input.notification.type,
-            actor_user_id: input.notification.actor_user_id ?? "",
+            sender_user_id: input.notification.sender_user_id ?? "",
             route: routeForNotification(input.notification),
           },
           android: {
             priority: "high",
-            notification: {
-              default_sound: true,
-              click_action: "FLUTTER_NOTIFICATION_CLICK",
-            },
+            notification: androidNotification,
           },
         },
       }),
@@ -259,6 +316,26 @@ async function deleteInvalidToken(
   if (error != null) {
     console.error("Failed to delete invalid FCM token", error);
   }
+}
+
+async function signedNotificationImageUrl(
+  client: AppSupabaseClient,
+  imagePath: string | null,
+): Promise<string | null> {
+  const normalized = imagePath?.trim() ?? "";
+  if (normalized.length === 0) {
+    return null;
+  }
+
+  const { data, error } = await client.storage
+    .from(mediaBucket)
+    .createSignedUrl(normalized, 60 * 60);
+
+  if (error != null || data?.signedUrl == null) {
+    console.error("Failed to sign notification image", error);
+    return null;
+  }
+  return data.signedUrl;
 }
 
 async function fcmAccessToken(config: FcmConfig): Promise<string> {
@@ -360,20 +437,52 @@ function normalizeFcmConfig(input: {
   return { projectId, clientEmail, privateKey };
 }
 
-function pushBody(notification: NotificationRow): string {
-  const name = notification.actor_display_name.trim() || "Someone";
-  switch (notification.type) {
-    case "friend_request_sent":
-      return `${name} sent you a friend request.`;
-    case "friend_request_accepted":
-      return `${name} accepted your friend request.`;
-    case "friend_request_rejected":
-      return `${name} declined your friend request.`;
-    case "friend_removed":
-      return `${name} removed you as a friend.`;
-    default:
-      return "You have a new notification.";
+function pushTitle(notification: NotificationRow, locale: string): string {
+  return localizedText(notification.title_i18n, locale) ?? "Glass Trail";
+}
+
+function pushText(
+  notification: NotificationRow,
+  locale: string,
+): string | null {
+  return localizedText(notification.text_i18n, locale);
+}
+
+function localizedText(
+  values: Record<string, unknown> | null,
+  locale: string,
+): string | null {
+  if (values == null) {
+    return null;
   }
+
+  const exact = stringValue(values[locale]);
+  if (exact.length > 0) {
+    return exact;
+  }
+
+  const language = stringValue(values[locale.split(/[-_]/)[0]]);
+  if (language.length > 0) {
+    return language;
+  }
+
+  const fallback = stringValue(values.en);
+  if (fallback.length > 0) {
+    return fallback;
+  }
+
+  for (const value of Object.values(values)) {
+    const candidate = stringValue(value);
+    if (candidate.length > 0) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function normalizeLocale(value: unknown): string {
+  const locale = stringValue(value);
+  return locale.length > 0 ? locale : "en";
 }
 
 function routeForNotification(notification: NotificationRow): string {

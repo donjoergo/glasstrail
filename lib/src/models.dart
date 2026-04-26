@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'birthday.dart';
 
@@ -469,43 +470,90 @@ class FriendConnection {
   }
 }
 
-enum AppNotificationType {
-  friendRequestSent,
-  friendRequestAccepted,
-  friendRequestRejected,
-  friendRemoved,
+class AppNotificationTypes {
+  const AppNotificationTypes._();
+
+  static const friendRequestSent = 'friend_request_sent';
+  static const friendRequestAccepted = 'friend_request_accepted';
+  static const friendRequestRejected = 'friend_request_rejected';
+  static const friendRemoved = 'friend_removed';
 }
 
-extension AppNotificationTypeX on AppNotificationType {
-  String get storageValue => switch (this) {
-    AppNotificationType.friendRequestSent => 'friend_request_sent',
-    AppNotificationType.friendRequestAccepted => 'friend_request_accepted',
-    AppNotificationType.friendRequestRejected => 'friend_request_rejected',
-    AppNotificationType.friendRemoved => 'friend_removed',
+Map<String, String> appNotificationTitleByLocale({
+  required String type,
+  required String senderDisplayName,
+}) {
+  return <String, String>{
+    for (final locale in AppLocalizations.supportedLocales)
+      locale.languageCode: appNotificationTitleForLocale(
+        type: type,
+        senderDisplayName: senderDisplayName,
+        localeCode: locale.languageCode,
+      ),
   };
+}
 
-  static AppNotificationType fromStorage(String value) {
-    return switch (value) {
-      'friend_request_sent' ||
-      'friendRequestSent' => AppNotificationType.friendRequestSent,
-      'friend_request_accepted' ||
-      'friendRequestAccepted' => AppNotificationType.friendRequestAccepted,
-      'friend_request_rejected' ||
-      'friendRequestRejected' => AppNotificationType.friendRequestRejected,
-      'friend_removed' || 'friendRemoved' => AppNotificationType.friendRemoved,
-      _ => AppNotificationType.friendRequestSent,
-    };
+Map<String, String>? appNotificationTextByLocale(String type) {
+  final values = <String, String>{};
+  for (final locale in AppLocalizations.supportedLocales) {
+    final text = appNotificationTextForLocale(
+      type: type,
+      localeCode: locale.languageCode,
+    );
+    if (text != null) {
+      values[locale.languageCode] = text;
+    }
   }
+  return values.isEmpty ? null : values;
+}
+
+String appNotificationTitleForLocale({
+  required String type,
+  required String senderDisplayName,
+  required String localeCode,
+}) {
+  final l10n = lookupAppLocalizations(Locale(localeCode));
+  return switch (type) {
+    AppNotificationTypes.friendRequestSent =>
+      l10n.notificationFriendRequestSentTitle(senderDisplayName),
+    AppNotificationTypes.friendRequestAccepted =>
+      l10n.notificationFriendRequestAcceptedTitle(senderDisplayName),
+    AppNotificationTypes.friendRequestRejected =>
+      l10n.notificationFriendRequestRejectedTitle(senderDisplayName),
+    AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedTitle(
+      senderDisplayName,
+    ),
+    _ => 'Glass Trail',
+  };
+}
+
+String? appNotificationTextForLocale({
+  required String type,
+  required String localeCode,
+}) {
+  final l10n = lookupAppLocalizations(Locale(localeCode));
+  return switch (type) {
+    AppNotificationTypes.friendRequestSent =>
+      l10n.notificationFriendRequestSentBody,
+    AppNotificationTypes.friendRequestAccepted =>
+      l10n.notificationFriendRequestAcceptedBody,
+    AppNotificationTypes.friendRequestRejected =>
+      l10n.notificationFriendRequestRejectedBody,
+    AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedBody,
+    _ => null,
+  };
 }
 
 class AppNotification {
   const AppNotification({
     required this.id,
     required this.recipientUserId,
-    required this.actorUserId,
-    required this.actorDisplayName,
-    this.actorProfileImagePath,
+    required this.senderUserId,
+    required this.senderDisplayName,
+    this.imagePath,
     required this.type,
+    required this.titleByLocale,
+    this.textByLocale,
     required this.createdAt,
     this.readAt,
     this.metadata = const <String, dynamic>{},
@@ -513,10 +561,12 @@ class AppNotification {
 
   final String id;
   final String recipientUserId;
-  final String? actorUserId;
-  final String actorDisplayName;
-  final String? actorProfileImagePath;
-  final AppNotificationType type;
+  final String? senderUserId;
+  final String senderDisplayName;
+  final String? imagePath;
+  final String type;
+  final Map<String, String> titleByLocale;
+  final Map<String, String>? textByLocale;
   final DateTime createdAt;
   final DateTime? readAt;
   final Map<String, dynamic> metadata;
@@ -524,8 +574,8 @@ class AppNotification {
   bool get isRead => readAt != null;
   bool get isUnread => !isRead;
 
-  String get actorInitials {
-    final trimmed = actorDisplayName.trim();
+  String get senderInitials {
+    final trimmed = senderDisplayName.trim();
     if (trimmed.isEmpty) {
       return 'GT';
     }
@@ -537,9 +587,26 @@ class AppNotification {
     return '$first$second';
   }
 
+  String title(String localeCode) {
+    return _localizedNotificationText(titleByLocale, localeCode) ??
+        _localizedNotificationText(titleByLocale, 'en') ??
+        _firstLocalizedNotificationText(titleByLocale) ??
+        'Glass Trail';
+  }
+
+  String? text(String localeCode) {
+    return _localizedNotificationText(textByLocale, localeCode) ??
+        _localizedNotificationText(textByLocale, 'en') ??
+        _firstLocalizedNotificationText(textByLocale);
+  }
+
   AppNotification copyWith({
-    String? actorDisplayName,
-    String? actorProfileImagePath,
+    String? senderDisplayName,
+    String? imagePath,
+    String? type,
+    Map<String, String>? titleByLocale,
+    Map<String, String>? textByLocale,
+    bool clearTextByLocale = false,
     DateTime? readAt,
     bool clearReadAt = false,
     Map<String, dynamic>? metadata,
@@ -547,11 +614,14 @@ class AppNotification {
     return AppNotification(
       id: id,
       recipientUserId: recipientUserId,
-      actorUserId: actorUserId,
-      actorDisplayName: actorDisplayName ?? this.actorDisplayName,
-      actorProfileImagePath:
-          actorProfileImagePath ?? this.actorProfileImagePath,
-      type: type,
+      senderUserId: senderUserId,
+      senderDisplayName: senderDisplayName ?? this.senderDisplayName,
+      imagePath: imagePath ?? this.imagePath,
+      type: type ?? this.type,
+      titleByLocale: titleByLocale ?? this.titleByLocale,
+      textByLocale: clearTextByLocale
+          ? null
+          : textByLocale ?? this.textByLocale,
       createdAt: createdAt,
       readAt: clearReadAt ? null : readAt ?? this.readAt,
       metadata: metadata ?? this.metadata,
@@ -562,10 +632,12 @@ class AppNotification {
     return <String, dynamic>{
       'id': id,
       'recipientUserId': recipientUserId,
-      'actorUserId': actorUserId,
-      'actorDisplayName': actorDisplayName,
-      'actorProfileImagePath': actorProfileImagePath,
-      'type': type.storageValue,
+      'senderUserId': senderUserId,
+      'senderDisplayName': senderDisplayName,
+      'imagePath': imagePath,
+      'type': type,
+      'titleByLocale': titleByLocale,
+      'textByLocale': textByLocale,
       'createdAt': createdAt.toUtc().toIso8601String(),
       'readAt': readAt?.toUtc().toIso8601String(),
       'metadata': metadata,
@@ -573,8 +645,21 @@ class AppNotification {
   }
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
-    final typeValue =
-        (json['type'] as String?) ?? (json['notification_type'] as String?);
+    final typeValue = _normalizeNotificationType(
+      (json['type'] as String?) ?? (json['notification_type'] as String?),
+    );
+    final senderDisplayName =
+        (json['senderDisplayName'] as String?) ??
+        (json['sender_display_name'] as String?) ??
+        (json['actorDisplayName'] as String?) ??
+        (json['actor_display_name'] as String?) ??
+        'Glass Trail User';
+    final titleByLocale =
+        _localizedMapFromJson(json['titleByLocale'] ?? json['title_i18n']) ??
+        appNotificationTitleByLocale(
+          type: typeValue,
+          senderDisplayName: senderDisplayName,
+        );
     return AppNotification(
       id:
           (json['id'] as String?) ??
@@ -583,17 +668,22 @@ class AppNotification {
       recipientUserId:
           (json['recipientUserId'] as String?) ??
           (json['recipient_user_id'] as String),
-      actorUserId:
+      senderUserId:
+          (json['senderUserId'] as String?) ??
+          (json['sender_user_id'] as String?) ??
           (json['actorUserId'] as String?) ??
           (json['actor_user_id'] as String?),
-      actorDisplayName:
-          (json['actorDisplayName'] as String?) ??
-          (json['actor_display_name'] as String?) ??
-          'Glass Trail User',
-      actorProfileImagePath:
+      senderDisplayName: senderDisplayName,
+      imagePath:
+          (json['imagePath'] as String?) ??
+          (json['image_path'] as String?) ??
           (json['actorProfileImagePath'] as String?) ??
           (json['actor_profile_image_path'] as String?),
-      type: AppNotificationTypeX.fromStorage(typeValue ?? ''),
+      type: typeValue,
+      titleByLocale: titleByLocale,
+      textByLocale:
+          _localizedMapFromJson(json['textByLocale'] ?? json['text_i18n']) ??
+          appNotificationTextByLocale(typeValue),
       createdAt: _dateTimeFromJson(
         json['createdAt'] ?? json['created_at'],
         fallback: DateTime.now(),
@@ -602,6 +692,64 @@ class AppNotification {
       metadata: _metadataFromJson(json['metadata']),
     );
   }
+}
+
+String _normalizeNotificationType(String? value) {
+  return switch (value) {
+    'friendRequestSent' => AppNotificationTypes.friendRequestSent,
+    'friendRequestAccepted' => AppNotificationTypes.friendRequestAccepted,
+    'friendRequestRejected' => AppNotificationTypes.friendRequestRejected,
+    'friendRemoved' => AppNotificationTypes.friendRemoved,
+    final text? when text.trim().isNotEmpty => text.trim(),
+    _ => 'notification',
+  };
+}
+
+Map<String, String>? _localizedMapFromJson(Object? value) {
+  if (value is! Map) {
+    return null;
+  }
+  final entries = <String, String>{};
+  for (final entry in value.entries) {
+    final key = entry.key?.toString().trim();
+    final text = entry.value?.toString().trim();
+    if (key != null && key.isNotEmpty && text != null && text.isNotEmpty) {
+      entries[key] = text;
+    }
+  }
+  return entries.isEmpty ? null : entries;
+}
+
+String? _localizedNotificationText(
+  Map<String, String>? values,
+  String localeCode,
+) {
+  if (values == null || values.isEmpty) {
+    return null;
+  }
+  final exact = values[localeCode]?.trim();
+  if (exact != null && exact.isNotEmpty) {
+    return exact;
+  }
+  final languageCode = localeCode.split(RegExp(r'[-_]')).first;
+  final language = values[languageCode]?.trim();
+  if (language != null && language.isNotEmpty) {
+    return language;
+  }
+  return null;
+}
+
+String? _firstLocalizedNotificationText(Map<String, String>? values) {
+  if (values == null || values.isEmpty) {
+    return null;
+  }
+  for (final value in values.values) {
+    final normalized = value.trim();
+    if (normalized.isNotEmpty) {
+      return normalized;
+    }
+  }
+  return null;
 }
 
 DateTime _dateTimeFromJson(Object? value, {required DateTime fallback}) {

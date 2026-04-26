@@ -1,6 +1,8 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 
@@ -250,6 +252,7 @@ void main() {
         email: 'notify-requester@example.com',
         password: 'secret',
         displayName: 'Notify Requester',
+        profileImagePath: '/tmp/notify-requester.png',
       );
       await repository.signOut();
       final addressee = await repository.signUp(
@@ -272,12 +275,34 @@ void main() {
       expect(addresseeNotifications, hasLength(1));
       expect(
         addresseeNotifications.single.type,
-        AppNotificationType.friendRequestSent,
+        AppNotificationTypes.friendRequestSent,
       );
-      expect(addresseeNotifications.single.actorUserId, requester.id);
+      expect(addresseeNotifications.single.senderUserId, requester.id);
       expect(
-        addresseeNotifications.single.actorDisplayName,
+        addresseeNotifications.single.senderDisplayName,
         'Notify Requester',
+      );
+      expect(
+        addresseeNotifications.single.imagePath,
+        '/tmp/notify-requester.png',
+      );
+      expect(
+        addresseeNotifications.single.title('en'),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentTitle('Notify Requester'),
+      );
+      expect(
+        addresseeNotifications.single.title('de'),
+        lookupAppLocalizations(
+          const Locale('de'),
+        ).notificationFriendRequestSentTitle('Notify Requester'),
+      );
+      expect(
+        addresseeNotifications.single.text('en'),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentBody,
       );
 
       await repository.acceptFriendRequest(
@@ -289,9 +314,9 @@ void main() {
       );
       expect(
         requesterNotifications.single.type,
-        AppNotificationType.friendRequestAccepted,
+        AppNotificationTypes.friendRequestAccepted,
       );
-      expect(requesterNotifications.single.actorUserId, addressee.id);
+      expect(requesterNotifications.single.senderUserId, addressee.id);
 
       await repository.removeFriend(
         userId: requester.id,
@@ -302,9 +327,9 @@ void main() {
       );
       expect(
         addresseeAfterRemoval.first.type,
-        AppNotificationType.friendRemoved,
+        AppNotificationTypes.friendRemoved,
       );
-      expect(addresseeAfterRemoval.first.actorUserId, requester.id);
+      expect(addresseeAfterRemoval.first.senderUserId, requester.id);
     });
 
     test('creates rejected friend request notifications', () async {
@@ -341,9 +366,9 @@ void main() {
       );
       expect(
         requesterNotifications.single.type,
-        AppNotificationType.friendRequestRejected,
+        AppNotificationTypes.friendRequestRejected,
       );
-      expect(requesterNotifications.single.actorUserId, addressee.id);
+      expect(requesterNotifications.single.senderUserId, addressee.id);
     });
 
     test(

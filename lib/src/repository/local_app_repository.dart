@@ -178,7 +178,7 @@ class LocalAppRepository implements AppRepository {
       await _addNotification(
         recipientUserId: target.id,
         actor: requester,
-        type: AppNotificationType.friendRequestSent,
+        type: AppNotificationTypes.friendRequestSent,
         metadata: <String, dynamic>{'relationshipId': relationshipId},
       );
     } else {
@@ -196,7 +196,7 @@ class LocalAppRepository implements AppRepository {
         await _addNotification(
           recipientUserId: target.id,
           actor: requester,
-          type: AppNotificationType.friendRequestSent,
+          type: AppNotificationTypes.friendRequestSent,
           metadata: <String, dynamic>{
             'relationshipId': existing['id'] as String,
           },
@@ -233,7 +233,7 @@ class LocalAppRepository implements AppRepository {
       await _addNotification(
         recipientUserId: relationships[index]['requesterId'] as String,
         actor: actor,
-        type: AppNotificationType.friendRequestAccepted,
+        type: AppNotificationTypes.friendRequestAccepted,
         metadata: <String, dynamic>{'relationshipId': relationshipId},
       );
     }
@@ -266,7 +266,7 @@ class LocalAppRepository implements AppRepository {
       await _addNotification(
         recipientUserId: relationships[index]['requesterId'] as String,
         actor: actor,
-        type: AppNotificationType.friendRequestRejected,
+        type: AppNotificationTypes.friendRequestRejected,
         metadata: <String, dynamic>{'relationshipId': relationshipId},
       );
     }
@@ -313,7 +313,7 @@ class LocalAppRepository implements AppRepository {
       await _addNotification(
         recipientUserId: friendUserId,
         actor: actor,
-        type: AppNotificationType.friendRemoved,
+        type: AppNotificationTypes.friendRemoved,
         metadata: <String, dynamic>{
           'relationshipId': relationship['id'] as String,
         },
@@ -689,7 +689,7 @@ class LocalAppRepository implements AppRepository {
   Future<void> _addNotification({
     required String recipientUserId,
     required AppUser actor,
-    required AppNotificationType type,
+    required String type,
     Map<String, dynamic> metadata = const <String, dynamic>{},
   }) async {
     final notifications = _loadNotifications();
@@ -697,10 +697,15 @@ class LocalAppRepository implements AppRepository {
       AppNotification(
         id: _uuid.v4(),
         recipientUserId: recipientUserId,
-        actorUserId: actor.id,
-        actorDisplayName: actor.displayName,
-        actorProfileImagePath: actor.profileImagePath,
+        senderUserId: actor.id,
+        senderDisplayName: actor.displayName,
+        imagePath: actor.profileImagePath,
         type: type,
+        titleByLocale: appNotificationTitleByLocale(
+          type: type,
+          senderDisplayName: actor.displayName,
+        ),
+        textByLocale: appNotificationTextByLocale(type),
         createdAt: DateTime.now(),
         metadata: metadata,
       ).toJson(),

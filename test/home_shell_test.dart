@@ -329,7 +329,9 @@ void main() {
 
     expect(find.byKey(const Key('notifications-list')), findsOneWidget);
     expect(
-      find.text('Widget Requester sent you a friend request'),
+      find.text(
+        _l10n('en').notificationFriendRequestSentTitle('Widget Requester'),
+      ),
       findsOneWidget,
     );
     expect(controller.unreadNotificationCount, 0);

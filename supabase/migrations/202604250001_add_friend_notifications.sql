@@ -1,17 +1,12 @@
 create table if not exists public.notifications (
   id uuid primary key default extensions.gen_random_uuid(),
   recipient_user_id uuid not null references public.profiles(id) on delete cascade,
-  actor_user_id uuid references public.profiles(id) on delete set null,
-  actor_display_name text not null default 'Glass Trail User',
-  actor_profile_image_path text,
-  type text not null check (
-    type in (
-      'friend_request_sent',
-      'friend_request_accepted',
-      'friend_request_rejected',
-      'friend_removed'
-    )
-  ),
+  sender_user_id uuid references public.profiles(id) on delete set null,
+  sender_display_name text not null default 'Glass Trail User',
+  image_path text,
+  type text not null,
+  title_i18n jsonb not null check (jsonb_typeof(title_i18n) = 'object'),
+  text_i18n jsonb check (text_i18n is null or jsonb_typeof(text_i18n) = 'object'),
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   read_at timestamptz
@@ -60,10 +55,12 @@ create or replace function public.load_notifications()
 returns table (
   notification_id uuid,
   recipient_user_id uuid,
-  actor_user_id uuid,
-  actor_display_name text,
-  actor_profile_image_path text,
+  sender_user_id uuid,
+  sender_display_name text,
+  image_path text,
   notification_type text,
+  title_i18n jsonb,
+  text_i18n jsonb,
   created_at timestamptz,
   read_at timestamptz,
   metadata jsonb
@@ -75,10 +72,12 @@ as $$
   select
     notifications.id as notification_id,
     notifications.recipient_user_id,
-    notifications.actor_user_id,
-    notifications.actor_display_name,
-    notifications.actor_profile_image_path,
+    notifications.sender_user_id,
+    notifications.sender_display_name,
+    notifications.image_path,
     notifications.type as notification_type,
+    notifications.title_i18n,
+    notifications.text_i18n,
     notifications.created_at,
     notifications.read_at,
     notifications.metadata
@@ -91,10 +90,12 @@ create or replace function public.mark_notifications_read(notification_ids uuid[
 returns table (
   notification_id uuid,
   recipient_user_id uuid,
-  actor_user_id uuid,
-  actor_display_name text,
-  actor_profile_image_path text,
+  sender_user_id uuid,
+  sender_display_name text,
+  image_path text,
   notification_type text,
+  title_i18n jsonb,
+  text_i18n jsonb,
   created_at timestamptz,
   read_at timestamptz,
   metadata jsonb
@@ -121,10 +122,12 @@ begin
   select
     notifications.id as notification_id,
     notifications.recipient_user_id,
-    notifications.actor_user_id,
-    notifications.actor_display_name,
-    notifications.actor_profile_image_path,
+    notifications.sender_user_id,
+    notifications.sender_display_name,
+    notifications.image_path,
     notifications.type as notification_type,
+    notifications.title_i18n,
+    notifications.text_i18n,
     notifications.created_at,
     notifications.read_at,
     notifications.metadata
@@ -196,9 +199,75 @@ begin
 end;
 $$;
 
+create or replace function public.create_notification(
+  target_recipient_user_id uuid,
+  target_sender_user_id uuid,
+  notification_type text,
+  notification_title_i18n jsonb,
+  notification_text_i18n jsonb default null,
+  notification_image_path text default null,
+  notification_metadata jsonb default '{}'::jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  sender_display_name text := 'Glass Trail User';
+  created_notification_id uuid;
+begin
+  if target_recipient_user_id is null
+      or btrim(coalesce(notification_type, '')) = ''
+      or notification_title_i18n is null
+      or jsonb_typeof(notification_title_i18n) <> 'object'
+      or (
+        notification_text_i18n is not null
+        and jsonb_typeof(notification_text_i18n) <> 'object'
+      ) then
+    return null;
+  end if;
+
+  if target_sender_user_id is not null then
+    select coalesce(nullif(btrim(profiles.display_name), ''), 'Glass Trail User')
+    into sender_display_name
+    from public.profiles
+    where profiles.id = target_sender_user_id;
+
+    if not found then
+      return null;
+    end if;
+  end if;
+
+  insert into public.notifications (
+    recipient_user_id,
+    sender_user_id,
+    sender_display_name,
+    image_path,
+    type,
+    title_i18n,
+    text_i18n,
+    metadata
+  )
+  values (
+    target_recipient_user_id,
+    target_sender_user_id,
+    sender_display_name,
+    nullif(btrim(notification_image_path), ''),
+    btrim(notification_type),
+    notification_title_i18n,
+    notification_text_i18n,
+    coalesce(notification_metadata, '{}'::jsonb)
+  )
+  returning id into created_notification_id;
+
+  return created_notification_id;
+end;
+$$;
+
 create or replace function public.create_friend_notification(
   target_recipient_user_id uuid,
-  target_actor_user_id uuid,
+  target_sender_user_id uuid,
   notification_type text,
   notification_metadata jsonb default '{}'::jsonb
 )
@@ -208,46 +277,87 @@ security definer
 set search_path = public
 as $$
 declare
-  actor_display_name text;
-  actor_profile_image_path text;
-  created_notification_id uuid;
+  sender_display_name text;
+  sender_profile_image_path text;
 begin
   if target_recipient_user_id is null
-      or target_actor_user_id is null
-      or target_recipient_user_id = target_actor_user_id then
+      or target_sender_user_id is null
+      or target_recipient_user_id = target_sender_user_id then
     return null;
   end if;
 
   select
-    profiles.display_name,
+    coalesce(nullif(btrim(profiles.display_name), ''), 'Glass Trail User'),
     profiles.profile_image_path
-  into actor_display_name, actor_profile_image_path
+  into sender_display_name, sender_profile_image_path
   from public.profiles
-  where profiles.id = target_actor_user_id;
+  where profiles.id = target_sender_user_id;
 
   if not found then
     return null;
   end if;
 
-  insert into public.notifications (
-    recipient_user_id,
-    actor_user_id,
-    actor_display_name,
-    actor_profile_image_path,
-    type,
-    metadata
-  )
-  values (
+  return public.create_notification(
     target_recipient_user_id,
-    target_actor_user_id,
-    coalesce(nullif(btrim(actor_display_name), ''), 'Glass Trail User'),
-    actor_profile_image_path,
+    target_sender_user_id,
     notification_type,
-    coalesce(notification_metadata, '{}'::jsonb)
-  )
-  returning id into created_notification_id;
-
-  return created_notification_id;
+    case notification_type
+      when 'friend_request_sent' then
+        jsonb_build_object(
+          'en', format('%s sent you a friend request', sender_display_name),
+          'de', format('%s hat dir eine Freundschaftsanfrage gesendet', sender_display_name)
+        )
+      when 'friend_request_accepted' then
+        jsonb_build_object(
+          'en', format('%s accepted your friend request', sender_display_name),
+          'de', format('%s hat deine Freundschaftsanfrage angenommen', sender_display_name)
+        )
+      when 'friend_request_rejected' then
+        jsonb_build_object(
+          'en', format('%s declined your friend request', sender_display_name),
+          'de', format('%s hat deine Freundschaftsanfrage abgelehnt', sender_display_name)
+        )
+      when 'friend_removed' then
+        jsonb_build_object(
+          'en', format('%s removed you as a friend', sender_display_name),
+          'de', format('%s hat dich als Freund entfernt', sender_display_name)
+        )
+      else
+        jsonb_build_object(
+          'en', 'Glass Trail',
+          'de', 'Glass Trail'
+        )
+    end,
+    case notification_type
+      when 'friend_request_sent' then
+        jsonb_build_object(
+          'en', 'Review it in your Friends section.',
+          'de', 'Prüfe sie in deinem Freunde-Bereich.'
+        )
+      when 'friend_request_accepted' then
+        jsonb_build_object(
+          'en', 'You can now see each other''s shared activity.',
+          'de', 'Ihr könnt jetzt gegenseitig geteilte Aktivitäten sehen.'
+        )
+      when 'friend_request_rejected' then
+        jsonb_build_object(
+          'en', 'You can send another request later.',
+          'de', 'Du kannst später eine neue Anfrage senden.'
+        )
+      when 'friend_removed' then
+        jsonb_build_object(
+          'en', 'Open your Friends section to review your connections.',
+          'de', 'Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.'
+        )
+      else
+        jsonb_build_object(
+          'en', 'You have a new notification.',
+          'de', 'Du hast eine neue Mitteilung.'
+        )
+    end,
+    sender_profile_image_path,
+    notification_metadata
+  );
 end;
 $$;
 
@@ -440,6 +550,7 @@ revoke all on function public.load_notifications() from public;
 revoke all on function public.mark_notifications_read(uuid[]) from public;
 revoke all on function public.register_notification_device_token(text, text) from public;
 revoke all on function public.unregister_notification_device_token(text) from public;
+revoke all on function public.create_notification(uuid, uuid, text, jsonb, jsonb, text, jsonb) from public;
 revoke all on function public.create_friend_notification(uuid, uuid, text, jsonb) from public;
 
 grant execute on function public.load_notifications() to authenticated;

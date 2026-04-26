@@ -145,10 +145,10 @@ class _NotificationTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               AppAvatar(
-                imagePath: notification.actorProfileImagePath,
+                imagePath: notification.imagePath,
                 radius: 22,
                 fallback: Text(
-                  notification.actorInitials,
+                  notification.senderInitials,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.w800,
@@ -161,20 +161,23 @@ class _NotificationTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      _title(l10n),
+                      notification.title(l10n.localeName),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _body(l10n),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.25,
+                    if (notification.text(l10n.localeName) case final text?)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          text,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.25,
+                          ),
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 8),
                     Text(
                       dateLabel,
@@ -202,32 +205,5 @@ class _NotificationTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _title(AppLocalizations l10n) {
-    final name = notification.actorDisplayName;
-    return switch (notification.type) {
-      AppNotificationType.friendRequestSent =>
-        l10n.notificationFriendRequestSentTitle(name),
-      AppNotificationType.friendRequestAccepted =>
-        l10n.notificationFriendRequestAcceptedTitle(name),
-      AppNotificationType.friendRequestRejected =>
-        l10n.notificationFriendRequestRejectedTitle(name),
-      AppNotificationType.friendRemoved => l10n.notificationFriendRemovedTitle(
-        name,
-      ),
-    };
-  }
-
-  String _body(AppLocalizations l10n) {
-    return switch (notification.type) {
-      AppNotificationType.friendRequestSent =>
-        l10n.notificationFriendRequestSentBody,
-      AppNotificationType.friendRequestAccepted =>
-        l10n.notificationFriendRequestAcceptedBody,
-      AppNotificationType.friendRequestRejected =>
-        l10n.notificationFriendRequestRejectedBody,
-      AppNotificationType.friendRemoved => l10n.notificationFriendRemovedBody,
-    };
   }
 }

@@ -1,5 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
 
 void main() {
@@ -57,6 +59,82 @@ void main() {
 
       expect(user.birthday, DateTime(2000, 7, 16));
       expect(user.toJson()['birthday'], '2000-07-16T00:00:00.000');
+    });
+  });
+
+  group('AppNotification', () {
+    test('reads generalized snake_case notification rows', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'notification_id': 'notification-1',
+        'recipient_user_id': 'recipient-1',
+        'sender_user_id': 'sender-1',
+        'sender_display_name': 'Sender User',
+        'image_path': 'sender/profile.png',
+        'notification_type': 'friend_request_sent',
+        'title_i18n': <String, String>{
+          'en': lookupAppLocalizations(
+            const Locale('en'),
+          ).notificationFriendRequestSentTitle('Sender User'),
+          'de': lookupAppLocalizations(
+            const Locale('de'),
+          ).notificationFriendRequestSentTitle('Sender User'),
+        },
+        'text_i18n': <String, String>{
+          'en': lookupAppLocalizations(
+            const Locale('en'),
+          ).notificationFriendRequestSentBody,
+          'de': lookupAppLocalizations(
+            const Locale('de'),
+          ).notificationFriendRequestSentBody,
+        },
+        'created_at': '2026-04-26T10:00:00Z',
+        'metadata': <String, dynamic>{'route': '/profile'},
+      });
+
+      expect(notification.senderUserId, 'sender-1');
+      expect(notification.senderDisplayName, 'Sender User');
+      expect(notification.imagePath, 'sender/profile.png');
+      expect(notification.type, AppNotificationTypes.friendRequestSent);
+      expect(
+        notification.title('de'),
+        lookupAppLocalizations(
+          const Locale('de'),
+        ).notificationFriendRequestSentTitle('Sender User'),
+      );
+      expect(
+        notification.text('en'),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentBody,
+      );
+      expect(notification.metadata['route'], '/profile');
+    });
+
+    test('falls back from requested locale to English then first text', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Sender User',
+        'type': 'custom',
+        'titleByLocale': <String, String>{'de': 'Titel', 'en': 'Title'},
+        'textByLocale': <String, String>{'de': 'Text'},
+      });
+
+      expect(notification.title('fr'), 'Title');
+      expect(notification.text('fr'), 'Text');
+    });
+
+    test('supports notifications without text', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Sender User',
+        'type': 'custom',
+        'titleByLocale': <String, String>{'en': 'Title'},
+      });
+
+      expect(notification.title('en'), 'Title');
+      expect(notification.text('en'), isNull);
     });
   });
 
