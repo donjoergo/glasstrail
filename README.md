@@ -228,6 +228,10 @@ Create a Supabase Database Webhook that calls the Edge Function when a notificat
 8. In HTTP headers, add the auth header with the service role key, not the anon key, and keep `Content-Type: application/json`.
 9. Create the webhook.
 
+#### Notification Images
+
+Notification rows store display art in `notifications.image_path`. User-uploaded media keeps using `user-media` storage paths, which the push Edge Function signs before sending to FCM. Static notification art that should not be bundled into the Flutter app lives under `web/notification-assets/` and is referenced with absolute HTTPS URLs such as `https://glasstrail.vercel.app/notification-assets/cheers.png`. Absolute HTTPS URLs are passed through for push notifications and rendered directly by the app.
+
 ### Public Friend Profile Previews
 
 Messenger link previews are served by the Vercel Serverless Function in `api/friend-profile-preview.js`, because Supabase Edge Functions rewrite `text/html` responses to `text/plain` for `GET` requests. The production Vercel rewrite in `vercel.json` maps `https://glasstrail.vercel.app/friends/profile/<code>` to that Vercel Function while keeping the Glass Trail URL visible.

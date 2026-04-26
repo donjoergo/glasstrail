@@ -131,6 +131,37 @@ void main() {
         isNull,
       );
     });
+
+    test('maps friend notification types to static image urls', () {
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRequestAccepted,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.cheers,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRequestRejected,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.sad,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRemoved,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.sad,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRequestSent,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        'sender/profile.png',
+      );
+    });
   });
 
   group('PublicFriendProfile', () {

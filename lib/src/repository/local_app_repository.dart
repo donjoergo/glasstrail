@@ -699,7 +699,10 @@ class LocalAppRepository implements AppRepository {
         recipientUserId: recipientUserId,
         senderUserId: sender.id,
         senderDisplayName: sender.displayName,
-        imagePath: sender.profileImagePath,
+        imagePath: AppNotificationImageUrls.imagePathForType(
+          type: type,
+          fallbackImagePath: sender.profileImagePath,
+        ),
         type: type,
         templateArgs: <String, dynamic>{
           'senderDisplayName': sender.displayName,

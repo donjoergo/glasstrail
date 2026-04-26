@@ -479,6 +479,32 @@ class AppNotificationTypes {
   static const friendRemoved = 'friend_removed';
 }
 
+class AppNotificationImageUrls {
+  const AppNotificationImageUrls._();
+
+  static const baseUrl = 'https://glasstrail.vercel.app/notification-assets';
+  static const cheers = '$baseUrl/cheers.png';
+  static const sad = '$baseUrl/sad.jpg';
+
+  static String? imagePathForType({
+    required String type,
+    String? fallbackImagePath,
+  }) {
+    final normalizedType = type.trim();
+    return switch (normalizedType) {
+      AppNotificationTypes.friendRequestAccepted => cheers,
+      AppNotificationTypes.friendRequestRejected => sad,
+      AppNotificationTypes.friendRemoved => sad,
+      _ => _normalizedFallback(fallbackImagePath),
+    };
+  }
+
+  static String? _normalizedFallback(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
+}
+
 String appNotificationTitle({
   required AppLocalizations l10n,
   required String type,

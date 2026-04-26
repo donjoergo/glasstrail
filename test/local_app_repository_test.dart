@@ -327,6 +327,10 @@ void main() {
         AppNotificationTypes.friendRequestAccepted,
       );
       expect(requesterNotifications.single.senderUserId, addressee.id);
+      expect(
+        requesterNotifications.single.imagePath,
+        AppNotificationImageUrls.cheers,
+      );
 
       await repository.removeFriend(
         userId: requester.id,
@@ -340,6 +344,10 @@ void main() {
         AppNotificationTypes.friendRemoved,
       );
       expect(addresseeAfterRemoval.first.senderUserId, requester.id);
+      expect(
+        addresseeAfterRemoval.first.imagePath,
+        AppNotificationImageUrls.sad,
+      );
     });
 
     test('creates rejected friend request notifications', () async {
@@ -379,6 +387,10 @@ void main() {
         AppNotificationTypes.friendRequestRejected,
       );
       expect(requesterNotifications.single.senderUserId, addressee.id);
+      expect(
+        requesterNotifications.single.imagePath,
+        AppNotificationImageUrls.sad,
+      );
     });
 
     test(

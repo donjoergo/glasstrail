@@ -124,7 +124,7 @@ Deno.serve(async (request) => {
       client,
       notification.recipient_user_id,
     );
-    const imageUrl = await signedNotificationImageUrl(
+    const imageUrl = await notificationImageUrl(
       client,
       notification.image_path,
     );
@@ -325,13 +325,17 @@ async function deleteInvalidToken(
   }
 }
 
-async function signedNotificationImageUrl(
+async function notificationImageUrl(
   client: AppSupabaseClient,
   imagePath: string | null,
 ): Promise<string | null> {
   const normalized = imagePath?.trim() ?? "";
   if (normalized.length === 0) {
     return null;
+  }
+  const remoteUrl = remoteNotificationImageUrl(normalized);
+  if (remoteUrl != null) {
+    return remoteUrl;
   }
 
   const { data, error } = await client.storage
@@ -343,6 +347,15 @@ async function signedNotificationImageUrl(
     return null;
   }
   return data.signedUrl;
+}
+
+function remoteNotificationImageUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 async function fcmAccessToken(config: FcmConfig): Promise<string> {
