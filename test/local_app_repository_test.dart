@@ -388,6 +388,58 @@ void main() {
     });
 
     test(
+      'persists alcohol-free custom beer and snapshots logged entries',
+      () async {
+        final user = await repository.signUp(
+          email: 'free-beer@example.com',
+          password: 'secret',
+          displayName: 'Free Beer User',
+        );
+
+        final customBeer = await repository.saveCustomDrink(
+          userId: user.id,
+          name: 'Free Pils',
+          category: DrinkCategory.beer,
+          volumeMl: 500,
+          isAlcoholFree: true,
+        );
+        await repository.addDrinkEntry(
+          user: user,
+          drink: customBeer,
+          volumeMl: customBeer.volumeMl,
+        );
+
+        final restoredDrinks = await repository.loadCustomDrinks(user.id);
+        final restoredEntries = await repository.loadEntries(user.id);
+
+        expect(restoredDrinks.single.isAlcoholFree, isTrue);
+        expect(restoredEntries.single.isAlcoholFree, isTrue);
+        expect(restoredEntries.single.shouldShowAlcoholFreeMarker, isTrue);
+      },
+    );
+
+    test(
+      'marks custom non-alcoholic drinks as alcohol-free automatically',
+      () async {
+        final user = await repository.signUp(
+          email: 'free-water@example.com',
+          password: 'secret',
+          displayName: 'Free Water User',
+        );
+
+        final customDrink = await repository.saveCustomDrink(
+          userId: user.id,
+          name: 'House Water',
+          category: DrinkCategory.nonAlcoholic,
+          isAlcoholFree: false,
+        );
+
+        expect(customDrink.isAlcoholFree, isTrue);
+        expect(customDrink.shouldShowAlcoholFreeMarker, isFalse);
+      },
+    );
+
+    test(
       'normalizes empty entry comments to null and removes images',
       () async {
         final user = await repository.signUp(

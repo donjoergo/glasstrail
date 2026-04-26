@@ -457,7 +457,10 @@ class _StatisticsMapEntrySheet extends StatelessWidget {
       entry,
       localeCode: localeCode,
     );
-    final categoryLabel = l10n.categoryLabel(entry.category);
+    final categoryLabel = <String>[
+      l10n.categoryLabel(entry.category),
+      if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
+    ].join(' • ');
     final timeLabel = DateFormat.yMMMd(
       localeCode,
     ).add_Hm().format(entry.consumedAt);

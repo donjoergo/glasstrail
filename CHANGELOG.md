@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Accept/decline/withdraw friend requests
   - Deep linking: profile links open the Glass Trail app when installed, otherwise they show the web version
 - Added SonarQube analysis
+- Track alcohol-free beer separately in drink metadata and statistics.
 
 ## [1.2.1] - 2026-04-13
 ### Fixed

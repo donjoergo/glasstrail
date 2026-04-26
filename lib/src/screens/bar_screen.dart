@@ -336,9 +336,7 @@ class _BarCustomDrinksTab extends StatelessWidget {
                       ),
                     ),
                     title: Text(drink.name),
-                    subtitle: Text(
-                      '${l10n.categoryLabel(drink.category)} • ${unit.formatVolume(drink.volumeMl)}',
-                    ),
+                    subtitle: Text(l10n.drinkDefinitionMetadata(drink, unit)),
                     trailing: IconButton(
                       key: Key('bar-edit-custom-drink-${drink.id}'),
                       onPressed: isBusy
@@ -480,9 +478,7 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
                     color: theme.colorScheme.primary,
                   ),
                   title: Text(drink.displayName(l10n.locale.languageCode)),
-                  subtitle: drink.volumeMl == null
-                      ? null
-                      : Text(unit.formatVolume(drink.volumeMl)),
+                  subtitle: Text(l10n.drinkDefinitionMetadata(drink, unit)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
@@ -541,9 +537,9 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
                         title: Text(
                           drink.displayName(l10n.locale.languageCode),
                         ),
-                        subtitle: drink.volumeMl == null
-                            ? null
-                            : Text(unit.formatVolume(drink.volumeMl)),
+                        subtitle: Text(
+                          l10n.drinkDefinitionMetadata(drink, unit),
+                        ),
                         trailing: TextButton.icon(
                           key: Key('bar-unhide-global-drink-${drink.id}'),
                           onPressed: enabled && !categoryHidden

@@ -31,6 +31,9 @@ class AppStatistics {
     required this.weekProgress,
     required this.categoryCounts,
     required this.totalEntries,
+    required this.beerTotalCount,
+    required this.regularBeerCount,
+    required this.alcoholFreeBeerCount,
   });
 
   final int weeklyTotal;
@@ -46,6 +49,9 @@ class AppStatistics {
   final List<WeekProgressDay> weekProgress;
   final int totalEntries;
   final Map<DrinkCategory, int> categoryCounts;
+  final int beerTotalCount;
+  final int regularBeerCount;
+  final int alcoholFreeBeerCount;
 }
 
 class StatsCalculator {
@@ -63,6 +69,8 @@ class StatsCalculator {
     var weeklyTotal = 0;
     var monthlyTotal = 0;
     var yearlyTotal = 0;
+    var beerTotalCount = 0;
+    var alcoholFreeBeerCount = 0;
 
     for (final entry in entries) {
       final entryDay = DateTime(
@@ -72,6 +80,12 @@ class StatsCalculator {
       );
       categoryCounts[entry.category] =
           (categoryCounts[entry.category] ?? 0) + 1;
+      if (entry.category == DrinkCategory.beer) {
+        beerTotalCount++;
+        if (entry.isAlcoholFree) {
+          alcoholFreeBeerCount++;
+        }
+      }
       if (!entryDay.isBefore(weekStart)) {
         weeklyTotal++;
       }
@@ -159,6 +173,9 @@ class StatsCalculator {
       weekProgress: weekProgress,
       categoryCounts: categoryCounts,
       totalEntries: entries.length,
+      beerTotalCount: beerTotalCount,
+      regularBeerCount: beerTotalCount - alcoholFreeBeerCount,
+      alcoholFreeBeerCount: alcoholFreeBeerCount,
     );
   }
 

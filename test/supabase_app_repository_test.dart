@@ -88,6 +88,62 @@ void main() {
         expect(server.deletedPrefixes, isEmpty);
       },
     );
+
+    test('writes alcohol-free flags for custom drinks', () async {
+      const userId = 'user-123';
+
+      final updated = await repository.saveCustomDrink(
+        userId: userId,
+        drinkId: 'drink-123',
+        name: 'Free Pils',
+        category: DrinkCategory.beer,
+        volumeMl: 500,
+        isAlcoholFree: true,
+      );
+
+      expect(updated.isAlcoholFree, isTrue);
+      expect(server.lastUpsertBody?['is_alcohol_free'], isTrue);
+    });
+
+    test('loads global catalog alcohol-free flags', () async {
+      server.globalDrinks.addAll(<Map<String, dynamic>>[
+        <String, dynamic>{
+          'id': 'beer-non-alcoholic',
+          'category_slug': DrinkCategory.beer.storageValue,
+          'name_en': 'Non-alcoholic Beer',
+          'name_de': 'Alkoholfreies Bier',
+          'default_volume_ml': 500,
+          'is_alcohol_free': true,
+        },
+      ]);
+
+      final catalog = await repository.loadDefaultCatalog();
+
+      expect(catalog.single.id, 'beer-non-alcoholic');
+      expect(catalog.single.isAlcoholFree, isTrue);
+    });
+
+    test('snapshots alcohol-free flag when creating an entry', () async {
+      const user = AppUser(
+        id: 'user-123',
+        email: 'user@example.com',
+        password: 'secret',
+        displayName: 'Test User',
+      );
+
+      final entry = await repository.addDrinkEntry(
+        user: user,
+        drink: const DrinkDefinition(
+          id: 'beer-non-alcoholic',
+          name: 'Non-alcoholic Beer',
+          category: DrinkCategory.beer,
+          isAlcoholFree: true,
+        ),
+      );
+
+      expect(entry.isAlcoholFree, isTrue);
+      expect(server.lastEntryInsertBody?['is_alcohol_free'], isTrue);
+    });
   });
 }
 
@@ -110,8 +166,10 @@ class _MockSupabaseServer {
   final HttpServer _server;
   final Map<String, Map<String, dynamic>> userDrinksById =
       <String, Map<String, dynamic>>{};
+  final List<Map<String, dynamic>> globalDrinks = <Map<String, dynamic>>[];
   final List<String> deletedPrefixes = <String>[];
   Map<String, dynamic>? lastUpsertBody;
+  Map<String, dynamic>? lastEntryInsertBody;
 
   String get baseUrl => 'http://${_server.address.address}:${_server.port}';
 
@@ -138,10 +196,22 @@ class _MockSupabaseServer {
       return;
     }
 
+    if (request.method == 'GET' && path == '/rest/v1/global_drinks') {
+      await _writeJson(request.response, globalDrinks);
+      return;
+    }
+
     if (request.method == 'POST' && path == '/rest/v1/user_drinks') {
       final body = await _readJsonMap(request);
       lastUpsertBody = body;
       userDrinksById[body['id'] as String] = Map<String, dynamic>.from(body);
+      await _writeJson(request.response, body);
+      return;
+    }
+
+    if (request.method == 'POST' && path == '/rest/v1/drink_entries') {
+      final body = await _readJsonMap(request);
+      lastEntryInsertBody = body;
       await _writeJson(request.response, body);
       return;
     }
