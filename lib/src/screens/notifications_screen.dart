@@ -18,6 +18,25 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  bool _markedVisibleNotificationsRead = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_markedVisibleNotificationsRead) {
+      return;
+    }
+    _markedVisibleNotificationsRead = true;
+    final controller = AppScope.controllerOf(context);
+    if (controller.unreadNotificationCount > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(controller.markAllNotificationsRead());
+        }
+      });
+    }
+  }
+
   Future<void> _openNotification(AppNotification notification) async {
     final controller = AppScope.controllerOf(context);
     if (notification.isUnread) {
