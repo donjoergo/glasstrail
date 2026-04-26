@@ -177,7 +177,7 @@ class LocalAppRepository implements AppRepository {
       });
       await _addNotification(
         recipientUserId: target.id,
-        actor: requester,
+        sender: requester,
         type: AppNotificationTypes.friendRequestSent,
         metadata: <String, dynamic>{'relationshipId': relationshipId},
       );
@@ -195,7 +195,7 @@ class LocalAppRepository implements AppRepository {
         };
         await _addNotification(
           recipientUserId: target.id,
-          actor: requester,
+          sender: requester,
           type: AppNotificationTypes.friendRequestSent,
           metadata: <String, dynamic>{
             'relationshipId': existing['id'] as String,
@@ -228,11 +228,11 @@ class LocalAppRepository implements AppRepository {
       ...relationships[index],
       'status': FriendRequestStatus.accepted.storageValue,
     };
-    final actor = _userById(userId);
-    if (actor != null) {
+    final sender = _userById(userId);
+    if (sender != null) {
       await _addNotification(
         recipientUserId: relationships[index]['requesterId'] as String,
-        actor: actor,
+        sender: sender,
         type: AppNotificationTypes.friendRequestAccepted,
         metadata: <String, dynamic>{'relationshipId': relationshipId},
       );
@@ -261,11 +261,11 @@ class LocalAppRepository implements AppRepository {
       ...relationships[index],
       'status': FriendRequestStatus.rejected.storageValue,
     };
-    final actor = _userById(userId);
-    if (actor != null) {
+    final sender = _userById(userId);
+    if (sender != null) {
       await _addNotification(
         recipientUserId: relationships[index]['requesterId'] as String,
-        actor: actor,
+        sender: sender,
         type: AppNotificationTypes.friendRequestRejected,
         metadata: <String, dynamic>{'relationshipId': relationshipId},
       );
@@ -308,11 +308,11 @@ class LocalAppRepository implements AppRepository {
       throw const AppException('The friend could not be removed.');
     }
     final relationship = relationships.removeAt(index);
-    final actor = _userById(userId);
-    if (actor != null) {
+    final sender = _userById(userId);
+    if (sender != null) {
       await _addNotification(
         recipientUserId: friendUserId,
-        actor: actor,
+        sender: sender,
         type: AppNotificationTypes.friendRemoved,
         metadata: <String, dynamic>{
           'relationshipId': relationship['id'] as String,
@@ -688,7 +688,7 @@ class LocalAppRepository implements AppRepository {
 
   Future<void> _addNotification({
     required String recipientUserId,
-    required AppUser actor,
+    required AppUser sender,
     required String type,
     Map<String, dynamic> metadata = const <String, dynamic>{},
   }) async {
@@ -697,15 +697,13 @@ class LocalAppRepository implements AppRepository {
       AppNotification(
         id: _uuid.v4(),
         recipientUserId: recipientUserId,
-        senderUserId: actor.id,
-        senderDisplayName: actor.displayName,
-        imagePath: actor.profileImagePath,
+        senderUserId: sender.id,
+        senderDisplayName: sender.displayName,
+        imagePath: sender.profileImagePath,
         type: type,
-        titleByLocale: appNotificationTitleByLocale(
-          type: type,
-          senderDisplayName: actor.displayName,
-        ),
-        textByLocale: appNotificationTextByLocale(type),
+        templateArgs: <String, dynamic>{
+          'senderDisplayName': sender.displayName,
+        },
         createdAt: DateTime.now(),
         metadata: metadata,
       ).toJson(),

@@ -161,13 +161,13 @@ class _NotificationTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      notification.title(l10n.localeName),
+                      notification.title(l10n),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: colorScheme.onSurface,
                       ),
                     ),
-                    if (notification.text(l10n.localeName) case final text?)
+                    if (notification.text(l10n) case final text?)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(

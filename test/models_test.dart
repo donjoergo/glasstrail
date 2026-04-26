@@ -71,22 +71,7 @@ void main() {
         'sender_display_name': 'Sender User',
         'image_path': 'sender/profile.png',
         'notification_type': 'friend_request_sent',
-        'title_i18n': <String, String>{
-          'en': lookupAppLocalizations(
-            const Locale('en'),
-          ).notificationFriendRequestSentTitle('Sender User'),
-          'de': lookupAppLocalizations(
-            const Locale('de'),
-          ).notificationFriendRequestSentTitle('Sender User'),
-        },
-        'text_i18n': <String, String>{
-          'en': lookupAppLocalizations(
-            const Locale('en'),
-          ).notificationFriendRequestSentBody,
-          'de': lookupAppLocalizations(
-            const Locale('de'),
-          ).notificationFriendRequestSentBody,
-        },
+        'template_args': <String, String>{'senderDisplayName': 'Sender User'},
         'created_at': '2026-04-26T10:00:00Z',
         'metadata': <String, dynamic>{'route': '/profile'},
       });
@@ -95,14 +80,15 @@ void main() {
       expect(notification.senderDisplayName, 'Sender User');
       expect(notification.imagePath, 'sender/profile.png');
       expect(notification.type, AppNotificationTypes.friendRequestSent);
+      expect(notification.templateArgs['senderDisplayName'], 'Sender User');
       expect(
-        notification.title('de'),
+        notification.title(lookupAppLocalizations(const Locale('de'))),
         lookupAppLocalizations(
           const Locale('de'),
         ).notificationFriendRequestSentTitle('Sender User'),
       );
       expect(
-        notification.text('en'),
+        notification.text(lookupAppLocalizations(const Locale('en'))),
         lookupAppLocalizations(
           const Locale('en'),
         ).notificationFriendRequestSentBody,
@@ -110,18 +96,22 @@ void main() {
       expect(notification.metadata['route'], '/profile');
     });
 
-    test('falls back from requested locale to English then first text', () {
+    test('uses sender display name when template args omit sender', () {
       final notification = AppNotification.fromJson(<String, dynamic>{
         'id': 'notification-1',
         'recipientUserId': 'recipient-1',
         'senderDisplayName': 'Sender User',
-        'type': 'custom',
-        'titleByLocale': <String, String>{'de': 'Titel', 'en': 'Title'},
-        'textByLocale': <String, String>{'de': 'Text'},
+        'type': AppNotificationTypes.friendRequestSent,
+        'templateArgs': const <String, dynamic>{},
       });
 
-      expect(notification.title('fr'), 'Title');
-      expect(notification.text('fr'), 'Text');
+      expect(notification.templateSenderDisplayName, 'Sender User');
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentTitle('Sender User'),
+      );
     });
 
     test('supports notifications without text', () {
@@ -130,11 +120,16 @@ void main() {
         'recipientUserId': 'recipient-1',
         'senderDisplayName': 'Sender User',
         'type': 'custom',
-        'titleByLocale': <String, String>{'en': 'Title'},
       });
 
-      expect(notification.title('en'), 'Title');
-      expect(notification.text('en'), isNull);
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        'Glass Trail',
+      );
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        isNull,
+      );
     });
   });
 

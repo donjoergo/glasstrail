@@ -479,40 +479,11 @@ class AppNotificationTypes {
   static const friendRemoved = 'friend_removed';
 }
 
-Map<String, String> appNotificationTitleByLocale({
+String appNotificationTitle({
+  required AppLocalizations l10n,
   required String type,
   required String senderDisplayName,
 }) {
-  return <String, String>{
-    for (final locale in AppLocalizations.supportedLocales)
-      locale.languageCode: appNotificationTitleForLocale(
-        type: type,
-        senderDisplayName: senderDisplayName,
-        localeCode: locale.languageCode,
-      ),
-  };
-}
-
-Map<String, String>? appNotificationTextByLocale(String type) {
-  final values = <String, String>{};
-  for (final locale in AppLocalizations.supportedLocales) {
-    final text = appNotificationTextForLocale(
-      type: type,
-      localeCode: locale.languageCode,
-    );
-    if (text != null) {
-      values[locale.languageCode] = text;
-    }
-  }
-  return values.isEmpty ? null : values;
-}
-
-String appNotificationTitleForLocale({
-  required String type,
-  required String senderDisplayName,
-  required String localeCode,
-}) {
-  final l10n = lookupAppLocalizations(Locale(localeCode));
   return switch (type) {
     AppNotificationTypes.friendRequestSent =>
       l10n.notificationFriendRequestSentTitle(senderDisplayName),
@@ -527,11 +498,10 @@ String appNotificationTitleForLocale({
   };
 }
 
-String? appNotificationTextForLocale({
+String? appNotificationText({
+  required AppLocalizations l10n,
   required String type,
-  required String localeCode,
 }) {
-  final l10n = lookupAppLocalizations(Locale(localeCode));
   return switch (type) {
     AppNotificationTypes.friendRequestSent =>
       l10n.notificationFriendRequestSentBody,
@@ -552,8 +522,7 @@ class AppNotification {
     required this.senderDisplayName,
     this.imagePath,
     required this.type,
-    required this.titleByLocale,
-    this.textByLocale,
+    this.templateArgs = const <String, dynamic>{},
     required this.createdAt,
     this.readAt,
     this.metadata = const <String, dynamic>{},
@@ -565,8 +534,7 @@ class AppNotification {
   final String senderDisplayName;
   final String? imagePath;
   final String type;
-  final Map<String, String> titleByLocale;
-  final Map<String, String>? textByLocale;
+  final Map<String, dynamic> templateArgs;
   final DateTime createdAt;
   final DateTime? readAt;
   final Map<String, dynamic> metadata;
@@ -587,26 +555,28 @@ class AppNotification {
     return '$first$second';
   }
 
-  String title(String localeCode) {
-    return _localizedNotificationText(titleByLocale, localeCode) ??
-        _localizedNotificationText(titleByLocale, 'en') ??
-        _firstLocalizedNotificationText(titleByLocale) ??
-        'Glass Trail';
+  String get templateSenderDisplayName {
+    return _templateArgString('senderDisplayName', 'sender_display_name') ??
+        senderDisplayName;
   }
 
-  String? text(String localeCode) {
-    return _localizedNotificationText(textByLocale, localeCode) ??
-        _localizedNotificationText(textByLocale, 'en') ??
-        _firstLocalizedNotificationText(textByLocale);
+  String title(AppLocalizations l10n) {
+    return appNotificationTitle(
+      l10n: l10n,
+      type: type,
+      senderDisplayName: templateSenderDisplayName,
+    );
+  }
+
+  String? text(AppLocalizations l10n) {
+    return appNotificationText(l10n: l10n, type: type);
   }
 
   AppNotification copyWith({
     String? senderDisplayName,
     String? imagePath,
     String? type,
-    Map<String, String>? titleByLocale,
-    Map<String, String>? textByLocale,
-    bool clearTextByLocale = false,
+    Map<String, dynamic>? templateArgs,
     DateTime? readAt,
     bool clearReadAt = false,
     Map<String, dynamic>? metadata,
@@ -618,10 +588,7 @@ class AppNotification {
       senderDisplayName: senderDisplayName ?? this.senderDisplayName,
       imagePath: imagePath ?? this.imagePath,
       type: type ?? this.type,
-      titleByLocale: titleByLocale ?? this.titleByLocale,
-      textByLocale: clearTextByLocale
-          ? null
-          : textByLocale ?? this.textByLocale,
+      templateArgs: templateArgs ?? this.templateArgs,
       createdAt: createdAt,
       readAt: clearReadAt ? null : readAt ?? this.readAt,
       metadata: metadata ?? this.metadata,
@@ -636,12 +603,22 @@ class AppNotification {
       'senderDisplayName': senderDisplayName,
       'imagePath': imagePath,
       'type': type,
-      'titleByLocale': titleByLocale,
-      'textByLocale': textByLocale,
+      'templateArgs': templateArgs,
       'createdAt': createdAt.toUtc().toIso8601String(),
       'readAt': readAt?.toUtc().toIso8601String(),
       'metadata': metadata,
     };
+  }
+
+  String? _templateArgString(String primary, [String? fallback]) {
+    final value =
+        templateArgs[primary] ??
+        (fallback == null ? null : templateArgs[fallback]);
+    if (value is! String) {
+      return null;
+    }
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
   }
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
@@ -654,12 +631,10 @@ class AppNotification {
         (json['actorDisplayName'] as String?) ??
         (json['actor_display_name'] as String?) ??
         'Glass Trail User';
-    final titleByLocale =
-        _localizedMapFromJson(json['titleByLocale'] ?? json['title_i18n']) ??
-        appNotificationTitleByLocale(
-          type: typeValue,
-          senderDisplayName: senderDisplayName,
-        );
+    final templateArgs = _templateArgsFromJson(
+      json['templateArgs'] ?? json['template_args'],
+      senderDisplayName: senderDisplayName,
+    );
     return AppNotification(
       id:
           (json['id'] as String?) ??
@@ -680,10 +655,7 @@ class AppNotification {
           (json['actorProfileImagePath'] as String?) ??
           (json['actor_profile_image_path'] as String?),
       type: typeValue,
-      titleByLocale: titleByLocale,
-      textByLocale:
-          _localizedMapFromJson(json['textByLocale'] ?? json['text_i18n']) ??
-          appNotificationTextByLocale(typeValue),
+      templateArgs: templateArgs,
       createdAt: _dateTimeFromJson(
         json['createdAt'] ?? json['created_at'],
         fallback: DateTime.now(),
@@ -705,51 +677,18 @@ String _normalizeNotificationType(String? value) {
   };
 }
 
-Map<String, String>? _localizedMapFromJson(Object? value) {
-  if (value is! Map) {
-    return null;
+Map<String, dynamic> _templateArgsFromJson(
+  Object? value, {
+  required String senderDisplayName,
+}) {
+  final args = value is Map
+      ? Map<String, dynamic>.from(value)
+      : <String, dynamic>{};
+  if (!args.containsKey('senderDisplayName') &&
+      !args.containsKey('sender_display_name')) {
+    args['senderDisplayName'] = senderDisplayName;
   }
-  final entries = <String, String>{};
-  for (final entry in value.entries) {
-    final key = entry.key?.toString().trim();
-    final text = entry.value?.toString().trim();
-    if (key != null && key.isNotEmpty && text != null && text.isNotEmpty) {
-      entries[key] = text;
-    }
-  }
-  return entries.isEmpty ? null : entries;
-}
-
-String? _localizedNotificationText(
-  Map<String, String>? values,
-  String localeCode,
-) {
-  if (values == null || values.isEmpty) {
-    return null;
-  }
-  final exact = values[localeCode]?.trim();
-  if (exact != null && exact.isNotEmpty) {
-    return exact;
-  }
-  final languageCode = localeCode.split(RegExp(r'[-_]')).first;
-  final language = values[languageCode]?.trim();
-  if (language != null && language.isNotEmpty) {
-    return language;
-  }
-  return null;
-}
-
-String? _firstLocalizedNotificationText(Map<String, String>? values) {
-  if (values == null || values.isEmpty) {
-    return null;
-  }
-  for (final value in values.values) {
-    final normalized = value.trim();
-    if (normalized.isNotEmpty) {
-      return normalized;
-    }
-  }
-  return null;
+  return args;
 }
 
 DateTime _dateTimeFromJson(Object? value, {required DateTime fallback}) {

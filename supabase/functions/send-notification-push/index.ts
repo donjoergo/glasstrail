@@ -1,4 +1,9 @@
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  notificationPushBody,
+  type NotificationPushInput,
+  notificationPushTitle,
+} from "../_shared/notification_l10n.ts";
 
 type NotificationRow = {
   id: string;
@@ -7,8 +12,7 @@ type NotificationRow = {
   sender_display_name: string;
   image_path: string | null;
   type: string;
-  title_i18n: Record<string, unknown>;
-  text_i18n: Record<string, unknown> | null;
+  template_args: Record<string, unknown> | null;
   metadata: Record<string, unknown> | null;
 };
 
@@ -193,7 +197,7 @@ async function loadNotification(
   const { data, error } = await client
     .from("notifications")
     .select(
-      "id, recipient_user_id, sender_user_id, sender_display_name, image_path, type, title_i18n, text_i18n, metadata",
+      "id, recipient_user_id, sender_user_id, sender_display_name, image_path, type, template_args, metadata",
     )
     .eq("id", notificationId)
     .maybeSingle();
@@ -253,6 +257,9 @@ async function sendFcmMessage(
   const text = pushText(input.notification, input.recipientLocale);
   if (text != null) {
     notificationPayload.body = text;
+  }
+  if (input.imageUrl != null) {
+    notificationPayload.image = input.imageUrl;
   }
 
   const androidNotification: Record<string, unknown> = {
@@ -438,46 +445,26 @@ function normalizeFcmConfig(input: {
 }
 
 function pushTitle(notification: NotificationRow, locale: string): string {
-  return localizedText(notification.title_i18n, locale) ?? "Glass Trail";
+  return notificationPushTitle(notificationPushInput(notification, locale));
 }
 
 function pushText(
   notification: NotificationRow,
   locale: string,
 ): string | null {
-  return localizedText(notification.text_i18n, locale);
+  return notificationPushBody(notificationPushInput(notification, locale));
 }
 
-function localizedText(
-  values: Record<string, unknown> | null,
+function notificationPushInput(
+  notification: NotificationRow,
   locale: string,
-): string | null {
-  if (values == null) {
-    return null;
-  }
-
-  const exact = stringValue(values[locale]);
-  if (exact.length > 0) {
-    return exact;
-  }
-
-  const language = stringValue(values[locale.split(/[-_]/)[0]]);
-  if (language.length > 0) {
-    return language;
-  }
-
-  const fallback = stringValue(values.en);
-  if (fallback.length > 0) {
-    return fallback;
-  }
-
-  for (const value of Object.values(values)) {
-    const candidate = stringValue(value);
-    if (candidate.length > 0) {
-      return candidate;
-    }
-  }
-  return null;
+): NotificationPushInput {
+  return {
+    type: notification.type,
+    locale,
+    templateArgs: notification.template_args,
+    senderDisplayName: notification.sender_display_name,
+  };
 }
 
 function normalizeLocale(value: unknown): string {

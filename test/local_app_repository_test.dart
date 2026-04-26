@@ -287,19 +287,29 @@ void main() {
         '/tmp/notify-requester.png',
       );
       expect(
-        addresseeNotifications.single.title('en'),
+        addresseeNotifications.single.templateArgs['senderDisplayName'],
+        'Notify Requester',
+      );
+      expect(
+        addresseeNotifications.single.title(
+          lookupAppLocalizations(const Locale('en')),
+        ),
         lookupAppLocalizations(
           const Locale('en'),
         ).notificationFriendRequestSentTitle('Notify Requester'),
       );
       expect(
-        addresseeNotifications.single.title('de'),
+        addresseeNotifications.single.title(
+          lookupAppLocalizations(const Locale('de')),
+        ),
         lookupAppLocalizations(
           const Locale('de'),
         ).notificationFriendRequestSentTitle('Notify Requester'),
       );
       expect(
-        addresseeNotifications.single.text('en'),
+        addresseeNotifications.single.text(
+          lookupAppLocalizations(const Locale('en')),
+        ),
         lookupAppLocalizations(
           const Locale('en'),
         ).notificationFriendRequestSentBody,
