@@ -33,6 +33,7 @@ The app exposes one route per visible page. On Flutter Web, in-app routing curre
 | Statistics     | `/statistics`             | Trends, streaks, and category breakdown             |
 | Bar            | `/bar`                    | Organize the drink catalog and manage custom drinks |
 | Profile        | `/profile`                | Profile summary and app settings                    |
+| Notifications  | `/notifications`          | In-app friendship notification history              |
 | Edit Profile   | `/profile/edit`           | Dedicated profile editing page                      |
 | Friend Profile | `/friends/profile/<code>` | In-app friend profile route for sending requests    |
 | Add Drink      | `/add-drink`              | Log a drink from recent, global, or custom options  |
@@ -65,6 +66,12 @@ flowchart TD
     Profile --> AddDrink
 
     Profile --> EditProfile["/profile/edit"]
+
+    Feed --> Notifications["/notifications"]
+    Statistics --> Notifications
+    Bar --> Notifications
+    Profile --> Notifications
+    Notifications --> Profile
 
     Auth["/auth"] --> Requested["requested protected route"]
     Auth --> Feed
