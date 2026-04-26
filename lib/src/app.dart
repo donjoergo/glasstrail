@@ -229,7 +229,7 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
 
   void _subscribeToNotificationRoutes() {
     _notificationRouteSubscription = widget.pushNotificationService.openedRoutes
-        .listen(_openRouteName, onError: (_) {});
+        .listen(_openNotificationRouteName, onError: (_) {});
   }
 
   void _openDeepLink(Uri uri) {
@@ -255,6 +255,11 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
       return;
     }
     openRoute();
+  }
+
+  void _openNotificationRouteName(String routeName) {
+    _openRouteName(routeName);
+    unawaited(widget.controller.refreshFriendConnections());
   }
 
   @override

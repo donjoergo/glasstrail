@@ -731,6 +731,56 @@ void main() {
     expect(route?.settings.name, AppRoutes.profile);
   });
 
+  testWidgets('opens push notification routes and refreshes friends', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final requester = await repository.signUp(
+      email: 'opened-push-requester@example.com',
+      password: 'password123',
+      displayName: 'Opened Push Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'opened-push-addressee@example.com',
+      password: 'password123',
+      displayName: 'Opened Push Addressee',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final pushNotificationService = _FakePushNotificationService();
+    addTearDown(pushNotificationService.dispose);
+
+    expect(controller.incomingFriendRequests, isEmpty);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        pushNotificationService: pushNotificationService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+
+    pushNotificationService.emit(AppRoutes.profile);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.profile);
+    expect(controller.incomingFriendRequests, hasLength(1));
+    expect(find.text('Opened Push Requester'), findsOneWidget);
+  });
+
   testWidgets('opens bookmarked statistics route for authenticated users', (
     tester,
   ) async {

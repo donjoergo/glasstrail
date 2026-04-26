@@ -1054,6 +1054,27 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<bool> refreshFriendConnections() async {
+    final user = _currentUser;
+    if (user == null) {
+      return true;
+    }
+
+    try {
+      final friendConnections = await _repository.loadFriendConnections(
+        user.id,
+      );
+      if (_currentUser?.id != user.id) {
+        return true;
+      }
+      _friendConnections = friendConnections;
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _initialize() async {
     final defaultCatalogFuture = _repository.loadDefaultCatalog();
     final currentUserFuture = _repository.restoreSession();
