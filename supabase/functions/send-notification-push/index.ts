@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 type NotificationRow = {
   id: string;
@@ -47,41 +47,37 @@ type FunctionDatabase = {
 type AppSupabaseClient = SupabaseClient<FunctionDatabase>;
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-glasstrail-push-secret',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') {
+  if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  if (request.method !== 'POST') {
-    return jsonResponse({ error: 'method_not_allowed' }, 405);
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "method_not_allowed" }, 405);
   }
 
-  const expectedSecret = Deno.env.get('PUSH_FUNCTION_SECRET')?.trim() ?? '';
-  if (expectedSecret.length === 0) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ??
+    "";
+  if (supabaseUrl.length === 0 || serviceRoleKey.length === 0) {
     return jsonResponse({ ok: true, pushEnabled: false }, 202);
   }
-  if (request.headers.get('x-glasstrail-push-secret') !== expectedSecret) {
-    return jsonResponse({ error: 'unauthorized' }, 401);
+
+  if (!isServiceRoleRequest(request, serviceRoleKey)) {
+    return jsonResponse({ error: "unauthorized" }, 401);
   }
 
   const notificationId = await notificationIdFromRequest(request);
   if (notificationId == null) {
-    return jsonResponse({ error: 'invalid_notification_id' }, 400);
-  }
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ??
-    '';
-  if (supabaseUrl.length === 0 || serviceRoleKey.length === 0) {
-    return jsonResponse({ ok: true, pushEnabled: false }, 202);
+    return jsonResponse({ error: "invalid_notification_id" }, 400);
   }
 
   const fcmConfig = fcmConfigFromEnvironment();
@@ -133,13 +129,35 @@ async function notificationIdFromRequest(
 ): Promise<string | null> {
   try {
     const body = await request.json();
-    const value = typeof body?.notificationId === 'string'
-      ? body.notificationId.trim()
-      : '';
-    return isUuid(value) ? value : null;
+    const notificationId = stringValue(body?.notificationId);
+    if (isUuid(notificationId)) {
+      return notificationId;
+    }
+
+    const webhookTable = stringValue(body?.table);
+    const recordId = stringValue(body?.record?.id);
+    if (
+      isUuid(recordId) &&
+      (webhookTable.length === 0 || webhookTable === "notifications")
+    ) {
+      return recordId;
+    }
+    return null;
   } catch (_) {
     return null;
   }
+}
+
+function isServiceRoleRequest(
+  request: Request,
+  serviceRoleKey: string,
+): boolean {
+  const authorization = request.headers.get("authorization")?.trim() ?? "";
+  return authorization === `Bearer ${serviceRoleKey}`;
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 async function loadNotification(
@@ -147,9 +165,9 @@ async function loadNotification(
   notificationId: string,
 ): Promise<NotificationRow | null> {
   const { data, error } = await client
-    .from('notifications')
-    .select('id, recipient_user_id, actor_user_id, actor_display_name, type')
-    .eq('id', notificationId)
+    .from("notifications")
+    .select("id, recipient_user_id, actor_user_id, actor_display_name, type")
+    .eq("id", notificationId)
     .maybeSingle();
 
   if (error != null) {
@@ -163,10 +181,10 @@ async function loadAndroidTokens(
   userId: string,
 ): Promise<DeviceTokenRow[]> {
   const { data, error } = await client
-    .from('notification_device_tokens')
-    .select('token, platform')
-    .eq('user_id', userId)
-    .eq('platform', 'android');
+    .from("notification_device_tokens")
+    .select("token, platform")
+    .eq("user_id", userId)
+    .eq("platform", "android");
 
   if (error != null) {
     throw error;
@@ -182,29 +200,29 @@ async function sendFcmMessage(
   const response = await fetch(
     `https://fcm.googleapis.com/v1/projects/${config.projectId}/messages:send`,
     {
-      method: 'POST',
+      method: "POST",
       headers: {
         authorization: `Bearer ${accessToken}`,
-        'content-type': 'application/json; charset=utf-8',
+        "content-type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
         message: {
           token: input.token,
           notification: {
-            title: 'Glass Trail',
+            title: "Glass Trail",
             body: pushBody(input.notification),
           },
           data: {
             notification_id: input.notification.id,
             notification_type: input.notification.type,
-            actor_user_id: input.notification.actor_user_id ?? '',
-            route: '/profile',
+            actor_user_id: input.notification.actor_user_id ?? "",
+            route: "/profile",
           },
           android: {
-            priority: 'high',
+            priority: "high",
             notification: {
               default_sound: true,
-              click_action: 'FLUTTER_NOTIFICATION_CLICK',
+              click_action: "FLUTTER_NOTIFICATION_CLICK",
             },
           },
         },
@@ -214,7 +232,7 @@ async function sendFcmMessage(
 
   const responseText = await response.text();
   if (!response.ok) {
-    console.error('FCM send failed', response.status, responseText);
+    console.error("FCM send failed", response.status, responseText);
   }
   return { ok: response.ok, responseText };
 }
@@ -225,18 +243,18 @@ async function deleteInvalidToken(
   responseText: string,
 ): Promise<void> {
   if (
-    !responseText.includes('UNREGISTERED') &&
-    !responseText.includes('registration-token-not-registered')
+    !responseText.includes("UNREGISTERED") &&
+    !responseText.includes("registration-token-not-registered")
   ) {
     return;
   }
 
   const { error } = await client
-    .from('notification_device_tokens')
+    .from("notification_device_tokens")
     .delete()
-    .eq('token', token);
+    .eq("token", token);
   if (error != null) {
-    console.error('Failed to delete invalid FCM token', error);
+    console.error("Failed to delete invalid FCM token", error);
   }
 }
 
@@ -247,18 +265,18 @@ async function fcmAccessToken(config: FcmConfig): Promise<string> {
   }
 
   const assertion = await serviceAccountJwt(config, now);
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion,
     }),
   });
 
   const body = await response.json();
-  if (!response.ok || typeof body.access_token !== 'string') {
-    throw new Error('Unable to fetch FCM access token.');
+  if (!response.ok || typeof body.access_token !== "string") {
+    throw new Error("Unable to fetch FCM access token.");
   }
 
   cachedAccessToken = {
@@ -272,24 +290,24 @@ async function serviceAccountJwt(
   config: FcmConfig,
   issuedAt: number,
 ): Promise<string> {
-  const header = base64UrlEncodeJson({ alg: 'RS256', typ: 'JWT' });
+  const header = base64UrlEncodeJson({ alg: "RS256", typ: "JWT" });
   const payload = base64UrlEncodeJson({
     iss: config.clientEmail,
-    scope: 'https://www.googleapis.com/auth/firebase.messaging',
-    aud: 'https://oauth2.googleapis.com/token',
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
     iat: issuedAt,
     exp: issuedAt + 3600,
   });
   const signingInput = `${header}.${payload}`;
   const key = await crypto.subtle.importKey(
-    'pkcs8',
+    "pkcs8",
     pemToArrayBuffer(config.privateKey),
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
-    ['sign'],
+    ["sign"],
   );
   const signature = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
+    "RSASSA-PKCS1-v1_5",
     key,
     new TextEncoder().encode(signingInput),
   );
@@ -297,21 +315,22 @@ async function serviceAccountJwt(
 }
 
 function fcmConfigFromEnvironment(): FcmConfig | null {
-  const rawJson = Deno.env.get('FCM_SERVICE_ACCOUNT_JSON')?.trim() ?? '';
-  if (rawJson.length > 0) {
-    const parsed = JSON.parse(rawJson);
+  const rawJson = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON")?.trim() ?? "";
+  if (rawJson.length === 0) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawJson) as Record<string, unknown>;
     return normalizeFcmConfig({
       projectId: parsed.project_id,
       clientEmail: parsed.client_email,
       privateKey: parsed.private_key,
     });
+  } catch (error) {
+    console.error("Invalid FCM_SERVICE_ACCOUNT_JSON", error);
+    return null;
   }
-
-  return normalizeFcmConfig({
-    projectId: Deno.env.get('FCM_PROJECT_ID'),
-    clientEmail: Deno.env.get('FCM_CLIENT_EMAIL'),
-    privateKey: Deno.env.get('FCM_PRIVATE_KEY'),
-  });
 }
 
 function normalizeFcmConfig(input: {
@@ -319,15 +338,15 @@ function normalizeFcmConfig(input: {
   clientEmail: unknown;
   privateKey: unknown;
 }): FcmConfig | null {
-  const projectId = typeof input.projectId === 'string'
+  const projectId = typeof input.projectId === "string"
     ? input.projectId.trim()
-    : '';
-  const clientEmail = typeof input.clientEmail === 'string'
+    : "";
+  const clientEmail = typeof input.clientEmail === "string"
     ? input.clientEmail.trim()
-    : '';
-  const privateKey = typeof input.privateKey === 'string'
-    ? input.privateKey.replaceAll('\\n', '\n').trim()
-    : '';
+    : "";
+  const privateKey = typeof input.privateKey === "string"
+    ? input.privateKey.replaceAll("\\n", "\n").trim()
+    : "";
 
   if (
     projectId.length === 0 || clientEmail.length === 0 ||
@@ -339,26 +358,26 @@ function normalizeFcmConfig(input: {
 }
 
 function pushBody(notification: NotificationRow): string {
-  const name = notification.actor_display_name.trim() || 'Someone';
+  const name = notification.actor_display_name.trim() || "Someone";
   switch (notification.type) {
-    case 'friend_request_sent':
+    case "friend_request_sent":
       return `${name} sent you a friend request.`;
-    case 'friend_request_accepted':
+    case "friend_request_accepted":
       return `${name} accepted your friend request.`;
-    case 'friend_request_rejected':
+    case "friend_request_rejected":
       return `${name} declined your friend request.`;
-    case 'friend_removed':
+    case "friend_removed":
       return `${name} removed you as a friend.`;
     default:
-      return 'You have a new notification.';
+      return "You have a new notification.";
   }
 }
 
 function pemToArrayBuffer(pem: string): ArrayBuffer {
   const base64 = pem
-    .replace('-----BEGIN PRIVATE KEY-----', '')
-    .replace('-----END PRIVATE KEY-----', '')
-    .replace(/\s/g, '');
+    .replace("-----BEGIN PRIVATE KEY-----", "")
+    .replace("-----END PRIVATE KEY-----", "")
+    .replace(/\s/g, "");
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index++) {
@@ -372,14 +391,14 @@ function base64UrlEncodeJson(value: unknown): string {
 }
 
 function base64UrlEncodeBytes(bytes: Uint8Array): string {
-  let binary = '';
+  let binary = "";
   for (const byte of bytes) {
     binary += String.fromCharCode(byte);
   }
   return btoa(binary)
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replaceAll('=', '');
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
 }
 
 function isUuid(value: string): boolean {
@@ -392,8 +411,8 @@ function jsonResponse(body: unknown, status: number): Response {
     status,
     headers: {
       ...corsHeaders,
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'no-store',
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
     },
   });
 }

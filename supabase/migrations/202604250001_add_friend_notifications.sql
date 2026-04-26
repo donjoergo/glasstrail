@@ -418,50 +418,6 @@ begin
 end;
 $$;
 
-create or replace function public.enqueue_notification_push()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  push_url text := nullif(
-    btrim(coalesce(current_setting('app.settings.notification_push_url', true), '')),
-    ''
-  );
-  push_secret text := nullif(
-    btrim(coalesce(current_setting('app.settings.notification_push_secret', true), '')),
-    ''
-  );
-  request_headers jsonb := jsonb_build_object('Content-Type', 'application/json');
-begin
-  if push_url is null then
-    return new;
-  end if;
-
-  if push_secret is not null then
-    request_headers := request_headers ||
-      jsonb_build_object('x-glasstrail-push-secret', push_secret);
-  end if;
-
-  begin
-    execute
-      'select net.http_post(url := $1, headers := $2, body := $3, timeout_milliseconds := 1000)'
-      using push_url, request_headers, jsonb_build_object('notificationId', new.id);
-  exception
-    when others then
-      raise log 'Notification push enqueue failed for %: %', new.id, sqlerrm;
-  end;
-
-  return new;
-end;
-$$;
-
-drop trigger if exists notifications_enqueue_push on public.notifications;
-create trigger notifications_enqueue_push
-after insert on public.notifications
-for each row execute procedure public.enqueue_notification_push();
-
 do $$
 begin
   if exists (
@@ -485,7 +441,6 @@ revoke all on function public.mark_notifications_read(uuid[]) from public;
 revoke all on function public.register_notification_device_token(text, text) from public;
 revoke all on function public.unregister_notification_device_token(text) from public;
 revoke all on function public.create_friend_notification(uuid, uuid, text, jsonb) from public;
-revoke all on function public.enqueue_notification_push() from public;
 
 grant execute on function public.load_notifications() to authenticated;
 grant execute on function public.mark_notifications_read(uuid[]) to authenticated;
