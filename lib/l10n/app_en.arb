@@ -223,6 +223,7 @@
     }
   },
   "notificationFriendRemovedBody": "Open your Friends section to review your connections.",
+  "notificationsMarkAllRead": "Mark all as read",
   "customDrinks": "My custom drinks",
   "addCustomDrinkAction": "Add custom drink",
   "customDrinksEmptyTitle": "No custom drinks yet",

@@ -495,6 +495,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.';
 
   @override
+  String get notificationsMarkAllRead => 'Alle als gelesen markieren';
+
+  @override
   String get customDrinks => 'Meine eigenen Getränke';
 
   @override

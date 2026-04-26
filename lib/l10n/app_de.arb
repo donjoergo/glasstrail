@@ -223,6 +223,7 @@
     }
   },
   "notificationFriendRemovedBody": "Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.",
+  "notificationsMarkAllRead": "Alle als gelesen markieren",
   "customDrinks": "Meine eigenen Getränke",
   "addCustomDrinkAction": "Eigenes Getränk hinzufügen",
   "customDrinksEmptyTitle": "Noch keine eigenen Getränke",

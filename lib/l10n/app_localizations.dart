@@ -974,6 +974,12 @@ abstract class AppLocalizations {
   /// **'Open your Friends section to review your connections.'**
   String get notificationFriendRemovedBody;
 
+  /// No description provided for @notificationsMarkAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as read'**
+  String get notificationsMarkAllRead;
+
   /// No description provided for @customDrinks.
   ///
   /// In en, this message translates to:

@@ -18,43 +18,21 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final Set<String> _scheduledReadIds = <String>{};
-
-  void _scheduleReadForVisibleNotifications(
-    List<AppNotification> notifications,
-  ) {
-    final unreadIds = notifications
-        .where((notification) => notification.isUnread)
-        .map((notification) => notification.id)
-        .where((id) => !_scheduledReadIds.contains(id))
-        .toList(growable: false);
-    if (unreadIds.isEmpty) {
-      return;
-    }
-
-    _scheduledReadIds.addAll(unreadIds);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      final controller = AppScope.controllerOf(context);
-      unawaited(
-        controller.markNotificationsRead(unreadIds).whenComplete(() {
-          _scheduledReadIds.removeAll(unreadIds);
-        }),
-      );
-    });
-  }
-
   Future<void> _openNotification(AppNotification notification) async {
     final controller = AppScope.controllerOf(context);
     if (notification.isUnread) {
       await controller.markNotificationsRead(<String>[notification.id]);
     }
+    await controller.refreshData();
     if (!mounted) {
       return;
     }
     Navigator.of(context).pushReplacementNamed(AppRoutes.profile);
+  }
+
+  Future<void> _markAllAsRead() async {
+    final controller = AppScope.controllerOf(context);
+    await controller.markAllNotificationsRead();
   }
 
   @override
@@ -63,11 +41,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final notifications = controller.notifications;
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-
-    _scheduleReadForVisibleNotifications(notifications);
+    final hasUnread = notifications.any((n) => n.isUnread);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.notifications)),
+      appBar: AppBar(
+        title: Text(l10n.notifications),
+        actions: [
+          if (hasUnread)
+            IconButton(
+              icon: const Icon(Icons.done_all),
+              tooltip: l10n.notificationsMarkAllRead,
+              onPressed: _markAllAsRead,
+            ),
+        ],
+      ),
       body: SafeArea(
         child: notifications.isEmpty
             ? Center(

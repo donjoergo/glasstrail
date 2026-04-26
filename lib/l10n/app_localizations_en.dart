@@ -492,6 +492,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open your Friends section to review your connections.';
 
   @override
+  String get notificationsMarkAllRead => 'Mark all as read';
+
+  @override
   String get customDrinks => 'My custom drinks';
 
   @override
