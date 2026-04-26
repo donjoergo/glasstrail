@@ -136,7 +136,7 @@ Run the app:
 flutter run
 ```
 
-### Environment Variables
+### Flutter Environment Variables
 
 Override flutter environment variables if needed:
 
@@ -154,6 +154,72 @@ flutter run \
   --dart-define=SUPABASE_ANON_KEY=YOUR_PUBLISHABLE_KEY \
   --dart-define=FORCE_UPDATE_NOTICE=true
 ```
+
+### Push Notifications
+
+GlassTrail sends notifications for certain events. An in app notification page exists. Additionally Firebase Cloud Messaging (FCM) is used to send push notifications to Android devices when the app is in the background.
+
+#### Notification Flow
+
+```mermaid
+flowchart TD
+    A[New row inserted into public.notifications]
+
+    A --> B[Supabase Realtime publishes Postgres change]
+    B --> C[Recipient app receives event if it is open]
+    C --> D[App calls load_notifications]
+    D --> E[Badge and notification list update]
+
+    A --> F[Database Webhook fires on INSERT]
+    F --> G{Webhook enabled?}
+    G -- No --> H[Stop: in-app notification only]
+    G -- Yes --> I[POST webhook payload to Edge Function]
+
+    I --> J{Service-key auth valid?}
+    J -- No --> K[Reject request]
+    J -- Yes --> L{FCM config present?}
+    L -- No --> M[Return 202: push disabled]
+    L -- Yes --> N[Function loads notification and Android tokens]
+    N --> O[Function sends FCM HTTP v1 message]
+    O --> P[Android shows system notification]
+```
+
+#### Configure FCM
+
+To configure FCM, proceed as follows:
+
+##### Create Firebase Project
+
+1. Create or open a Firebase project.
+2. Add an Android app in Firebase with package name `dev.glasstrail.glasstrail`.
+3. Set up Firebase CLI and flutterfire according to [this guide](https://firebase.google.com/docs/flutter/setup?hl=de&platform=android).
+4. Generate the FlutterFire options for Android:
+
+```bash
+flutterfire configure
+```
+
+##### Configure Supabase Secrets
+
+Create the Firebase service account JSON in `Firebase Project settings > Service accounts > Generate new private key`. A JSON file gets downloaded. Store it outside the repository and never commit it. Configure the FCM function secret with the downloaded Firebase service account JSON:
+
+```bash
+supabase secrets set FCM_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+```
+
+##### Create Supabase Webhook
+
+Create a Supabase Database Webhook that calls the Edge Function when a notification row is inserted:
+
+1. Open Supabase Dashboard > Database > Webhooks.
+2. Create a new hook.
+3. Set the table to `public.notifications`.
+4. Enable only the `Insert` event.
+5. Use webhook type `Supabase Edge Functions`.
+6. Select the `send-notification-push` Edge Function.
+7. Keep method `POST` and timeout `1000`.
+8. In HTTP headers, add the auth header with the service role key, not the anon key, and keep `Content-Type: application/json`.
+9. Create the webhook.
 
 ### Public Friend Profile Previews
 
@@ -280,5 +346,3 @@ Add these repository secrets in GitHub:
 - `ANDROID_KEYSTORE_PASSWORD`
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
-
-No extra Supabase secrets are required for the current production build because the app already has production defaults in `lib/src/backend_config.dart`.
