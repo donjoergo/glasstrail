@@ -63,8 +63,8 @@ function parseRoute(url: URL): { code: string; isImage: boolean } {
 
 async function loadProfile(code: string): Promise<ProfileRow | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-  const serviceRoleKey =
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ??
+    '';
   if (supabaseUrl.length === 0 || serviceRoleKey.length === 0) {
     throw new Error('Missing Supabase Edge Function configuration.');
   }
@@ -87,8 +87,8 @@ function publicProfileJson(
   request: Request,
 ): Record<string, string | null> {
   const imagePath = profile.profile_image_path?.trim() ?? '';
-  const hasProfileImage =
-    imagePath.length > 0 && isSafeProfileImagePath(profile, imagePath);
+  const hasProfileImage = imagePath.length > 0 &&
+    isSafeProfileImagePath(profile, imagePath);
   return {
     id: profile.id,
     displayName: displayName(profile),
@@ -105,8 +105,8 @@ async function imageResponse(profile: ProfileRow): Promise<Response> {
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-  const serviceRoleKey =
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ??
+    '';
   const client = createClient(supabaseUrl, serviceRoleKey);
   const { data, error } = await client.storage
     .from(mediaBucket)
@@ -180,7 +180,10 @@ function iconUrl(): string {
   return defaultIconUrl;
 }
 
-function isSafeProfileImagePath(profile: ProfileRow, imagePath: string): boolean {
+function isSafeProfileImagePath(
+  profile: ProfileRow,
+  imagePath: string,
+): boolean {
   return imagePath.startsWith(`${profile.id}/profiles/`) &&
     !imagePath.includes('..') &&
     !imagePath.startsWith('/');

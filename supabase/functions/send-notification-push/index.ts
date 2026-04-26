@@ -1,4 +1,4 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
 type NotificationRow = {
   id: string;
@@ -13,11 +13,38 @@ type DeviceTokenRow = {
   platform: string;
 };
 
+type DeviceTokenTableRow = DeviceTokenRow & {
+  user_id: string;
+};
+
 type FcmConfig = {
   projectId: string;
   clientEmail: string;
   privateKey: string;
 };
+
+type FunctionDatabase = {
+  public: {
+    Tables: {
+      notifications: {
+        Row: NotificationRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      notification_device_tokens: {
+        Row: DeviceTokenTableRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+  };
+};
+
+type AppSupabaseClient = SupabaseClient<FunctionDatabase>;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,8 +78,8 @@ Deno.serve(async (request) => {
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-  const serviceRoleKey =
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ??
+    '';
   if (supabaseUrl.length === 0 || serviceRoleKey.length === 0) {
     return jsonResponse({ ok: true, pushEnabled: false }, 202);
   }
@@ -62,13 +89,16 @@ Deno.serve(async (request) => {
     return jsonResponse({ ok: true, pushEnabled: false }, 202);
   }
 
-  const client = createClient(supabaseUrl, serviceRoleKey);
+  const client = createClient<FunctionDatabase>(supabaseUrl, serviceRoleKey);
   const notification = await loadNotification(client, notificationId);
   if (notification == null) {
     return jsonResponse({ ok: true, sent: 0 }, 202);
   }
 
-  const tokens = await loadAndroidTokens(client, notification.recipient_user_id);
+  const tokens = await loadAndroidTokens(
+    client,
+    notification.recipient_user_id,
+  );
   if (tokens.length === 0) {
     return jsonResponse({ ok: true, sent: 0 }, 202);
   }
@@ -113,7 +143,7 @@ async function notificationIdFromRequest(
 }
 
 async function loadNotification(
-  client: ReturnType<typeof createClient>,
+  client: AppSupabaseClient,
   notificationId: string,
 ): Promise<NotificationRow | null> {
   const { data, error } = await client
@@ -129,7 +159,7 @@ async function loadNotification(
 }
 
 async function loadAndroidTokens(
-  client: ReturnType<typeof createClient>,
+  client: AppSupabaseClient,
   userId: string,
 ): Promise<DeviceTokenRow[]> {
   const { data, error } = await client
@@ -190,7 +220,7 @@ async function sendFcmMessage(
 }
 
 async function deleteInvalidToken(
-  client: ReturnType<typeof createClient>,
+  client: AppSupabaseClient,
   token: string,
   responseText: string,
 ): Promise<void> {
@@ -299,8 +329,10 @@ function normalizeFcmConfig(input: {
     ? input.privateKey.replaceAll('\\n', '\n').trim()
     : '';
 
-  if (projectId.length === 0 || clientEmail.length === 0 ||
-      privateKey.length === 0) {
+  if (
+    projectId.length === 0 || clientEmail.length === 0 ||
+    privateKey.length === 0
+  ) {
     return null;
   }
   return { projectId, clientEmail, privateKey };
