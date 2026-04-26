@@ -6,6 +6,7 @@ type NotificationRow = {
   actor_user_id: string | null;
   actor_display_name: string;
   type: string;
+  metadata: Record<string, unknown> | null;
 };
 
 type DeviceTokenRow = {
@@ -166,7 +167,9 @@ async function loadNotification(
 ): Promise<NotificationRow | null> {
   const { data, error } = await client
     .from("notifications")
-    .select("id, recipient_user_id, actor_user_id, actor_display_name, type")
+    .select(
+      "id, recipient_user_id, actor_user_id, actor_display_name, type, metadata",
+    )
     .eq("id", notificationId)
     .maybeSingle();
 
@@ -216,7 +219,7 @@ async function sendFcmMessage(
             notification_id: input.notification.id,
             notification_type: input.notification.type,
             actor_user_id: input.notification.actor_user_id ?? "",
-            route: "/profile",
+            route: routeForNotification(input.notification),
           },
           android: {
             priority: "high",
@@ -370,6 +373,23 @@ function pushBody(notification: NotificationRow): string {
       return `${name} removed you as a friend.`;
     default:
       return "You have a new notification.";
+  }
+}
+
+function routeForNotification(notification: NotificationRow): string {
+  const metadataRoute = notification.metadata?.route;
+  if (typeof metadataRoute === "string" && metadataRoute.startsWith("/")) {
+    return metadataRoute;
+  }
+
+  switch (notification.type) {
+    case "friend_request_sent":
+    case "friend_request_accepted":
+    case "friend_request_rejected":
+    case "friend_removed":
+      return "/profile";
+    default:
+      return "/feed";
   }
 }
 

@@ -10,6 +10,7 @@ import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/friend_profile_links.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
+import 'package:glasstrail/src/push_notification_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/route_memory.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
@@ -98,6 +99,33 @@ class _FakeDeepLinkService extends DeepLinkService {
 
   void emit(Uri uri) {
     _controller.add(uri);
+  }
+
+  Future<void> dispose() => _controller.close();
+}
+
+class _FakePushNotificationService extends PushNotificationService {
+  _FakePushNotificationService({this.initialRoute});
+
+  final String? initialRoute;
+  final StreamController<String> _controller =
+      StreamController<String>.broadcast();
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() async => null;
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes =>
+      const Stream<PushDeviceToken>.empty();
+
+  @override
+  Future<String?> consumeInitialRoute() async => initialRoute;
+
+  @override
+  Stream<String> get openedRoutes => _controller.stream;
+
+  void emit(String route) {
+    _controller.add(route);
   }
 
   Future<void> dispose() => _controller.close();
@@ -675,6 +703,32 @@ void main() {
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(route?.settings.name, AppRoutes.feed);
+  });
+
+  testWidgets('opens the initial push notification route', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'initial-push-route@example.com',
+      password: 'password123',
+      displayName: 'Initial Push Route',
+    );
+    final pushNotificationService = _FakePushNotificationService(
+      initialRoute: AppRoutes.profile,
+    );
+    addTearDown(pushNotificationService.dispose);
+
+    await tester.pumpWidget(
+      GlassTrailBootstrapApp(
+        controllerFuture: Future<AppController>.value(controller),
+        photoService: const TestPhotoService(),
+        pushNotificationService: pushNotificationService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.profile);
   });
 
   testWidgets('opens bookmarked statistics route for authenticated users', (

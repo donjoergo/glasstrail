@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added SonarQube analysis
 - Friend action notifications with in-app badge and optional Android push.
 
+### Fixed
+- Android push notification taps open the app.
+
 ## [1.2.1] - 2026-04-13
 ### Fixed
 - Fix failing tests in CI pipeline
