@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:glasstrail/firebase_options.dart';
 
 import 'app_routes.dart';
 
@@ -47,14 +48,11 @@ Future<PushNotificationService> createPlatformPushNotificationService() async {
     return const DisabledPushNotificationService();
   }
 
-  final options = _FirebaseAndroidOptions.fromEnvironment();
-  if (options == null) {
-    return const DisabledPushNotificationService();
-  }
-
   try {
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(options: options);
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
     }
     return FirebasePushNotificationService(FirebaseMessaging.instance);
   } catch (_) {
@@ -115,30 +113,5 @@ class FirebasePushNotificationService extends PushNotificationService {
       return null;
     }
     return AppRoutes.normalize(route);
-  }
-}
-
-class _FirebaseAndroidOptions {
-  static FirebaseOptions? fromEnvironment() {
-    const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
-    const appId = String.fromEnvironment('FIREBASE_ANDROID_APP_ID');
-    const messagingSenderId = String.fromEnvironment(
-      'FIREBASE_MESSAGING_SENDER_ID',
-    );
-    const projectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
-
-    if (apiKey.isEmpty ||
-        appId.isEmpty ||
-        messagingSenderId.isEmpty ||
-        projectId.isEmpty) {
-      return null;
-    }
-
-    return const FirebaseOptions(
-      apiKey: apiKey,
-      appId: appId,
-      messagingSenderId: messagingSenderId,
-      projectId: projectId,
-    );
   }
 }
