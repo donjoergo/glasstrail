@@ -21,6 +21,10 @@ class _StatisticsOverviewPage extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
         children: <Widget>[
           _StatisticsOverviewPanel(stats: stats, localeCode: localeCode),
+          if (stats.beerTotalCount > 0) ...<Widget>[
+            const SizedBox(height: 16),
+            _BeerBreakdownPanel(stats: stats),
+          ],
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(20),
@@ -93,6 +97,95 @@ class _StatisticsOverviewPage extends StatelessWidget {
         ),
       );
     }).toList();
+  }
+}
+
+class _BeerBreakdownPanel extends StatelessWidget {
+  const _BeerBreakdownPanel({required this.stats});
+
+  final AppStatistics stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return Container(
+      key: const Key('stats-beer-breakdown-panel'),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            l10n.beerBreakdown,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _BeerBreakdownValue(
+                  label: l10n.regularBeer,
+                  value: stats.regularBeerCount,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _BeerBreakdownValue(
+                  label: l10n.alcoholFreeBeer,
+                  value: stats.alcoholFreeBeerCount,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BeerBreakdownValue extends StatelessWidget {
+  const _BeerBreakdownValue({required this.label, required this.value});
+
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$value',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

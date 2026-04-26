@@ -521,6 +521,7 @@ class SupabaseAppRepository implements AppRepository {
     required String name,
     required DrinkCategory category,
     double? volumeMl,
+    bool isAlcoholFree = false,
     String? imagePath,
   }) async {
     try {
@@ -543,6 +544,10 @@ class SupabaseAppRepository implements AppRepository {
             'name': name.trim(),
             'category_slug': category.storageValue,
             'volume_ml': volumeMl,
+            'is_alcohol_free': _customDrinkAlcoholFreeValue(
+              category,
+              isAlcoholFree,
+            ),
             'image_path': finalImagePath,
           }, onConflict: 'id')
           .select()
@@ -635,6 +640,7 @@ class SupabaseAppRepository implements AppRepository {
             'drink_name': drink.name,
             'category_slug': drink.category.storageValue,
             'volume_ml': volumeMl,
+            'is_alcohol_free': drink.isEffectivelyAlcoholFree,
             'comment': comment?.trim().isEmpty ?? true ? null : comment?.trim(),
             'image_path': finalImagePath,
             'location_latitude': locationLatitude,
@@ -925,6 +931,7 @@ class SupabaseAppRepository implements AppRepository {
       localizedNameDe: row['name_de'] as String?,
       category: DrinkCategoryX.fromStorage(row['category_slug'] as String),
       volumeMl: (row['default_volume_ml'] as num?)?.toDouble(),
+      isAlcoholFree: row['is_alcohol_free'] == true,
     );
   }
 
@@ -934,6 +941,7 @@ class SupabaseAppRepository implements AppRepository {
       name: row['name'] as String,
       category: DrinkCategoryX.fromStorage(row['category_slug'] as String),
       volumeMl: (row['volume_ml'] as num?)?.toDouble(),
+      isAlcoholFree: row['is_alcohol_free'] == true,
       imagePath: row['image_path'] as String?,
       ownerUserId: row['user_id'] as String?,
     );
@@ -948,6 +956,7 @@ class SupabaseAppRepository implements AppRepository {
       category: DrinkCategoryX.fromStorage(row['category_slug'] as String),
       consumedAt: DateTime.parse(row['consumed_at'] as String).toLocal(),
       volumeMl: (row['volume_ml'] as num?)?.toDouble(),
+      isAlcoholFree: row['is_alcohol_free'] == true,
       comment: row['comment'] as String?,
       imagePath: row['image_path'] as String?,
       locationLatitude: (row['location_latitude'] as num?)?.toDouble(),
@@ -956,6 +965,17 @@ class SupabaseAppRepository implements AppRepository {
       importSource: row['import_source'] as String?,
       importSourceId: row['import_source_id'] as String?,
     );
+  }
+
+  bool _customDrinkAlcoholFreeValue(
+    DrinkCategory category,
+    bool isAlcoholFree,
+  ) {
+    return switch (category) {
+      DrinkCategory.nonAlcoholic => true,
+      DrinkCategory.beer => isAlcoholFree,
+      _ => false,
+    };
   }
 
   bool _isDuplicateImportConflict(

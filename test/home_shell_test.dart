@@ -1799,6 +1799,92 @@ void main() {
     expect(controller.customDrinks.single.category, DrinkCategory.beer);
   });
 
+  testWidgets('creates alcohol-free custom beer from the beer-only switch', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'custom-alcohol-free-beer@example.com',
+      password: 'password123',
+      displayName: 'Custom Alcohol Free Beer',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+    final addCustomDrinkButton = find.byKey(
+      const Key('bar-add-custom-drink-button'),
+    );
+    await _scrollBarTargetIntoView(tester, addCustomDrinkButton);
+    await tester.tap(addCustomDrinkButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('custom-drink-alcohol-free-switch')),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextFormField).first, 'Free Lager');
+    await tester.tap(find.byKey(const Key('custom-drink-alcohol-free-switch')));
+    await tester.tap(find.byKey(const Key('custom-drink-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(controller.customDrinks.single.category, DrinkCategory.beer);
+    expect(controller.customDrinks.single.isAlcoholFree, isTrue);
+    expect(find.textContaining('Alcohol-free'), findsWidgets);
+  });
+
+  testWidgets('hides the alcohol-free switch for non-alcoholic custom drinks', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'custom-non-alcoholic@example.com',
+      password: 'password123',
+      displayName: 'Custom Non Alcoholic',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+    final addCustomDrinkButton = find.byKey(
+      const Key('bar-add-custom-drink-button'),
+    );
+    await _scrollBarTargetIntoView(tester, addCustomDrinkButton);
+    await tester.tap(addCustomDrinkButton);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).first, 'House Water');
+    await tester.tap(find.byType(DropdownButtonFormField<DrinkCategory>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Non-alcoholic').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('custom-drink-alcohol-free-switch')),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const Key('custom-drink-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(controller.customDrinks.single.category, DrinkCategory.nonAlcoholic);
+    expect(controller.customDrinks.single.isAlcoholFree, isTrue);
+    expect(find.textContaining('Alcohol-free'), findsNothing);
+  });
+
   testWidgets('shows a spinner while saving a custom drink', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.saveCustomDrink);
     final controller = harness.controller;

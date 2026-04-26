@@ -550,6 +550,7 @@ class AppController extends ChangeNotifier {
     required String name,
     required DrinkCategory category,
     double? volumeMl,
+    bool isAlcoholFree = false,
     String? imagePath,
   }) async {
     final user = _currentUser;
@@ -563,6 +564,11 @@ class AppController extends ChangeNotifier {
         name: name,
         category: category,
         volumeMl: volumeMl,
+        isAlcoholFree: switch (category) {
+          DrinkCategory.nonAlcoholic => true,
+          DrinkCategory.beer => isAlcoholFree,
+          _ => false,
+        },
         imagePath: imagePath,
       );
 

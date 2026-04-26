@@ -308,7 +308,11 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
                               key: Key('recent-drink-icon-${drink.id}'),
                               size: 18,
                             ),
-                            label: Text(drink.displayName(localeCode)),
+                            label: Text(
+                              drink.shouldShowAlcoholFreeMarker
+                                  ? '${drink.displayName(localeCode)} • ${l10n.alcoholFree}'
+                                  : drink.displayName(localeCode),
+                            ),
                             onSelected: isBusy
                                 ? null
                                 : (_) => _selectDrink(drink),
@@ -391,7 +395,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(l10n.categoryLabel(_selectedDrink!.category)),
+                        Text(
+                          l10n.drinkDefinitionMetadata(_selectedDrink!, unit),
+                        ),
                       ],
                     ),
                   ),
@@ -640,6 +646,7 @@ class _DrinkCategorySection extends StatelessWidget {
     if (drinks.isEmpty) {
       return const SizedBox.shrink();
     }
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
@@ -649,22 +656,22 @@ class _DrinkCategorySection extends StatelessWidget {
         onExpansionChanged: enabled ? onExpansionChanged : null,
         tilePadding: EdgeInsets.zero,
         title: Text(label, key: Key('drink-category-title-${category.name}')),
-        children: drinks
-            .map(
-              (drink) => ListTile(
-                dense: true,
-                leading: Icon(drink.category.icon),
-                title: Text(drink.displayName(localeCode)),
-                subtitle: drink.volumeMl == null
-                    ? null
-                    : Text(unit.formatVolume(drink.volumeMl)),
-                trailing: selectedDrink?.id == drink.id
-                    ? const Icon(Icons.check_circle_rounded)
-                    : null,
-                onTap: enabled ? () => onSelect(drink) : null,
-              ),
-            )
-            .toList(),
+        children: drinks.map((drink) {
+          final metadata = <String>[
+            if (drink.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
+            if (drink.volumeMl != null) unit.formatVolume(drink.volumeMl),
+          ].join(' • ');
+          return ListTile(
+            dense: true,
+            leading: Icon(drink.category.icon),
+            title: Text(drink.displayName(localeCode)),
+            subtitle: metadata.isEmpty ? null : Text(metadata),
+            trailing: selectedDrink?.id == drink.id
+                ? const Icon(Icons.check_circle_rounded)
+                : null,
+            onTap: enabled ? () => onSelect(drink) : null,
+          );
+        }).toList(),
       ),
     );
   }

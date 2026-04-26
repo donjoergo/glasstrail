@@ -186,6 +186,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get volume => 'Volume';
 
   @override
+  String get alcoholFree => 'Alcohol-free';
+
+  @override
+  String get customDrinkAlcoholFreeSwitch => 'Alcohol-free';
+
+  @override
   String get appUpdatedTitle => 'App updated';
 
   @override
@@ -262,6 +268,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categoryBreakdown => 'Category breakdown';
+
+  @override
+  String get beerBreakdown => 'Beer breakdown';
+
+  @override
+  String get regularBeer => 'Normal beer';
+
+  @override
+  String get alcoholFreeBeer => 'Alcohol-free beer';
 
   @override
   String get history => 'History';

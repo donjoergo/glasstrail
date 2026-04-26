@@ -57,6 +57,8 @@
   "drinkName": "Drink name",
   "category": "Category",
   "volume": "Volume",
+  "alcoholFree": "Alcohol-free",
+  "customDrinkAlcoholFreeSwitch": "Alcohol-free",
   "appUpdatedTitle": "App updated",
   "appUpdatedBody": "{appName} was just updated to {version}. Would you like to read the changelog?",
   "@appUpdatedBody": {
@@ -92,6 +94,9 @@
   "weekdaySaturdayShort": "S",
   "weekdaySundayShort": "S",
   "categoryBreakdown": "Category breakdown",
+  "beerBreakdown": "Beer breakdown",
+  "regularBeer": "Normal beer",
+  "alcoholFreeBeer": "Alcohol-free beer",
   "history": "History",
   "statisticsMapEmptyTitle": "No drinks with location yet",
   "statisticsMapEmptyBody": "Enable location while logging drinks so they can appear here on the map.",

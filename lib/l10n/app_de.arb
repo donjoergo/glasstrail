@@ -57,6 +57,8 @@
   "drinkName": "Getränkename",
   "category": "Kategorie",
   "volume": "Volumen",
+  "alcoholFree": "Alkoholfrei",
+  "customDrinkAlcoholFreeSwitch": "Alkoholfrei",
   "appUpdatedTitle": "App aktualisiert",
   "appUpdatedBody": "{appName} wurde gerade auf {version} aktualisiert. Möchtest du dir die Änderungsnotizen ansehen?",
   "@appUpdatedBody": {
@@ -92,6 +94,9 @@
   "weekdaySaturdayShort": "Sa",
   "weekdaySundayShort": "So",
   "categoryBreakdown": "Kategorien",
+  "beerBreakdown": "Bier-Aufteilung",
+  "regularBeer": "Normales Bier",
+  "alcoholFreeBeer": "Alkoholfreies Bier",
   "history": "Historie",
   "statisticsMapEmptyTitle": "Noch keine Drinks mit Standort",
   "statisticsMapEmptyBody": "Aktiviere beim Loggen den Standort, damit Drinks hier auf der Karte erscheinen.",

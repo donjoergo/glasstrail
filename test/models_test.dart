@@ -248,6 +248,8 @@ void main() {
       expect(nonAlcoholicBeer.name, 'Non-alcoholic Beer');
       expect(nonAlcoholicBeer.localizedNameDe, 'Alkoholfreies Bier');
       expect(nonAlcoholicBeer.volumeMl, 500);
+      expect(nonAlcoholicBeer.isAlcoholFree, isTrue);
+      expect(nonAlcoholicBeer.shouldShowAlcoholFreeMarker, isTrue);
 
       final genericShot = catalog.firstWhere(
         (drink) => drink.id == 'shots-shot',
@@ -272,6 +274,8 @@ void main() {
       expect(mateTea.name, 'Mate Tea');
       expect(mateTea.localizedNameDe, 'Mate Tee');
       expect(mateTea.volumeMl, 300);
+      expect(mateTea.isEffectivelyAlcoholFree, isTrue);
+      expect(mateTea.shouldShowAlcoholFreeMarker, isFalse);
 
       final clubMate = catalog.firstWhere(
         (drink) => drink.id == 'nonAlcoholic-club-mate',
@@ -280,6 +284,28 @@ void main() {
       expect(clubMate.name, 'Club-Mate');
       expect(clubMate.localizedNameDe, 'Club-Mate');
       expect(clubMate.volumeMl, 500);
+      expect(clubMate.isAlcoholFree, isTrue);
+    });
+  });
+
+  group('DrinkDefinition', () {
+    test('reads camelCase and snake_case alcohol-free JSON keys', () {
+      final camel = DrinkDefinition.fromJson(<String, dynamic>{
+        'id': 'custom-beer',
+        'name': 'Custom Beer',
+        'category': 'beer',
+        'isAlcoholFree': true,
+      });
+      final snake = DrinkDefinition.fromJson(<String, dynamic>{
+        'id': 'custom-beer-2',
+        'name': 'Custom Beer 2',
+        'category': 'beer',
+        'is_alcohol_free': true,
+      });
+
+      expect(camel.isAlcoholFree, isTrue);
+      expect(snake.isAlcoholFree, isTrue);
+      expect(camel.toJson()['isAlcoholFree'], isTrue);
     });
   });
 
@@ -337,6 +363,7 @@ void main() {
         'category': 'nonAlcoholic',
         'consumedAt': '2026-03-19T12:00:00.000Z',
         'volume_ml': 250,
+        'is_alcohol_free': true,
         'location_latitude': 52.52,
         'location_longitude': 13.405,
         'location_address': 'Alexanderplatz 1, 10178 Berlin',
@@ -345,11 +372,29 @@ void main() {
       });
 
       expect(entry.volumeMl, 250);
+      expect(entry.isAlcoholFree, isTrue);
+      expect(entry.isEffectivelyAlcoholFree, isTrue);
       expect(entry.locationLatitude, 52.52);
       expect(entry.locationLongitude, 13.405);
       expect(entry.locationAddress, 'Alexanderplatz 1, 10178 Berlin');
       expect(entry.importSource, 'beer_with_me');
       expect(entry.importSourceId, '456');
+    });
+
+    test('serializes alcohol-free entry snapshots', () {
+      final entry = DrinkEntry(
+        id: 'entry-1',
+        userId: 'user-1',
+        drinkId: 'beer-non-alcoholic',
+        drinkName: 'Non-alcoholic Beer',
+        category: DrinkCategory.beer,
+        consumedAt: DateTime(2026, 3, 19, 12),
+        isAlcoholFree: true,
+      );
+
+      expect(entry.shouldShowAlcoholFreeMarker, isTrue);
+      expect(entry.toJson()['isAlcoholFree'], isTrue);
+      expect(DrinkEntry.fromJson(entry.toJson()).isAlcoholFree, isTrue);
     });
   });
 }

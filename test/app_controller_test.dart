@@ -1058,6 +1058,7 @@ class _BootstrapProbeRepository implements AppRepository {
     required String name,
     required DrinkCategory category,
     double? volumeMl,
+    bool isAlcoholFree = false,
     String? imagePath,
   }) {
     throw UnimplementedError();
