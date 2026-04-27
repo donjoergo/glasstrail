@@ -282,9 +282,7 @@ void main() {
     expect(find.byKey(const Key('edit-profile-save-button')), findsOneWidget);
   });
 
-  testWidgets('shows notification badge and clears it when opened', (
-    tester,
-  ) async {
+  testWidgets('keeps notification unread until it is tapped', (tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final repository = LocalAppRepository(
       await SharedPreferences.getInstance(),
@@ -334,6 +332,19 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(controller.unreadNotificationCount, 1);
+    expect(
+      find.byKey(
+        Key('notification-unread-${controller.notifications.single.id}'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(Key('notification-${controller.notifications.single.id}')),
+    );
+    await tester.pumpAndSettle();
+
     expect(controller.unreadNotificationCount, 0);
   });
 

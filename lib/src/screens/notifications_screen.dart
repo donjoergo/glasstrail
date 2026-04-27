@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -18,25 +16,6 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  bool _markedVisibleNotificationsRead = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_markedVisibleNotificationsRead) {
-      return;
-    }
-    _markedVisibleNotificationsRead = true;
-    final controller = AppScope.controllerOf(context);
-    if (controller.unreadNotificationCount > 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          unawaited(controller.markAllNotificationsRead());
-        }
-      });
-    }
-  }
-
   Future<void> _openNotification(AppNotification notification) async {
     final controller = AppScope.controllerOf(context);
     if (notification.isUnread) {
@@ -49,31 +28,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     Navigator.of(context).pushReplacementNamed(AppRoutes.profile);
   }
 
-  Future<void> _markAllAsRead() async {
-    final controller = AppScope.controllerOf(context);
-    await controller.markAllNotificationsRead();
-  }
-
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.controllerOf(context);
     final notifications = controller.notifications;
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final hasUnread = notifications.any((n) => n.isUnread);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.notifications),
-        actions: [
-          if (hasUnread)
-            IconButton(
-              icon: const Icon(Icons.done_all),
-              tooltip: l10n.notificationsMarkAllRead,
-              onPressed: _markAllAsRead,
-            ),
-        ],
-      ),
+      appBar: AppBar(title: Text(l10n.notifications)),
       body: SafeArea(
         child: notifications.isEmpty
             ? Center(
