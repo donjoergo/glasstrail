@@ -14,6 +14,13 @@ class PushDeviceToken {
   final String platform;
 }
 
+class PushNotificationOpen {
+  const PushNotificationOpen({required this.routeName, this.notificationId});
+
+  final String routeName;
+  final String? notificationId;
+}
+
 abstract class PushNotificationService {
   const PushNotificationService();
 
@@ -21,9 +28,9 @@ abstract class PushNotificationService {
 
   Stream<PushDeviceToken> get tokenRefreshes;
 
-  Future<String?> consumeInitialRoute();
+  Future<PushNotificationOpen?> consumeInitialOpen();
 
-  Stream<String> get openedRoutes;
+  Stream<PushNotificationOpen> get openedNotifications;
 }
 
 class DisabledPushNotificationService extends PushNotificationService {
@@ -37,10 +44,11 @@ class DisabledPushNotificationService extends PushNotificationService {
       const Stream<PushDeviceToken>.empty();
 
   @override
-  Future<String?> consumeInitialRoute() async => null;
+  Future<PushNotificationOpen?> consumeInitialOpen() async => null;
 
   @override
-  Stream<String> get openedRoutes => const Stream<String>.empty();
+  Stream<PushNotificationOpen> get openedNotifications =>
+      const Stream<PushNotificationOpen>.empty();
 }
 
 Future<PushNotificationService> createPlatformPushNotificationService() async {
@@ -91,27 +99,42 @@ class FirebasePushNotificationService extends PushNotificationService {
   }
 
   @override
-  Future<String?> consumeInitialRoute() async {
+  Future<PushNotificationOpen?> consumeInitialOpen() async {
     final message = await _messaging.getInitialMessage();
     if (message == null) {
       return null;
     }
-    return _routeFromMessage(message);
+    return _openFromMessage(message);
   }
 
   @override
-  Stream<String> get openedRoutes {
+  Stream<PushNotificationOpen> get openedNotifications {
     return FirebaseMessaging.onMessageOpenedApp
-        .map(_routeFromMessage)
-        .where((route) => route != null)
-        .map((route) => route!);
+        .map(_openFromMessage)
+        .where((open) => open != null)
+        .map((open) => open!);
   }
 
-  String? _routeFromMessage(RemoteMessage message) {
-    final route = message.data['route']?.trim();
-    if (route == null || route.isEmpty) {
+  PushNotificationOpen? _openFromMessage(RemoteMessage message) {
+    final route = _stringData(message, 'route');
+    if (route == null) {
       return null;
     }
-    return AppRoutes.normalize(route);
+    final notificationId =
+        _stringData(message, 'notification_id') ??
+        _stringData(message, 'notificationId');
+    return PushNotificationOpen(
+      routeName: AppRoutes.normalize(route),
+      notificationId: notificationId,
+    );
+  }
+
+  String? _stringData(RemoteMessage message, String key) {
+    final value = message.data[key];
+    if (value is! String) {
+      return null;
+    }
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
   }
 }

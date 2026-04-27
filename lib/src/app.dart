@@ -105,10 +105,14 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
     Future<AppController> controllerFuture,
   ) async {
     final controller = await controllerFuture;
+    final launchRoute = widget.initialRoute ?? _routeFromLaunchUri();
+    final initialPushOpen = launchRoute == null
+        ? await widget.pushNotificationService.consumeInitialOpen()
+        : null;
+    await _markNotificationOpenRead(controller, initialPushOpen);
     final initialRoute =
-        widget.initialRoute ??
-        _routeFromLaunchUri() ??
-        await widget.pushNotificationService.consumeInitialRoute() ??
+        launchRoute ??
+        initialPushOpen?.routeName ??
         await _routeFromInitialDeepLink(widget.deepLinkService);
     final Future<RouteMemory> routeMemoryFuture =
         widget.routeMemoryFuture ??
@@ -191,7 +195,7 @@ class GlassTrailApp extends StatefulWidget {
 class _GlassTrailAppState extends State<GlassTrailApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<Uri>? _deepLinkSubscription;
-  StreamSubscription<String>? _notificationRouteSubscription;
+  StreamSubscription<PushNotificationOpen>? _notificationOpenSubscription;
 
   @override
   void initState() {
@@ -208,7 +212,7 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
       _subscribeToDeepLinks();
     }
     if (oldWidget.pushNotificationService != widget.pushNotificationService) {
-      unawaited(_notificationRouteSubscription?.cancel());
+      unawaited(_notificationOpenSubscription?.cancel());
       _subscribeToNotificationRoutes();
     }
   }
@@ -216,7 +220,7 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
   @override
   void dispose() {
     unawaited(_deepLinkSubscription?.cancel());
-    unawaited(_notificationRouteSubscription?.cancel());
+    unawaited(_notificationOpenSubscription?.cancel());
     super.dispose();
   }
 
@@ -228,8 +232,10 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
   }
 
   void _subscribeToNotificationRoutes() {
-    _notificationRouteSubscription = widget.pushNotificationService.openedRoutes
-        .listen(_openNotificationRouteName, onError: (_) {});
+    _notificationOpenSubscription = widget
+        .pushNotificationService
+        .openedNotifications
+        .listen((open) => unawaited(_openNotification(open)), onError: (_) {});
   }
 
   void _openDeepLink(Uri uri) {
@@ -257,8 +263,9 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
     openRoute();
   }
 
-  void _openNotificationRouteName(String routeName) {
-    _openRouteName(routeName);
+  Future<void> _openNotification(PushNotificationOpen open) async {
+    await _markNotificationOpenRead(widget.controller, open);
+    _openRouteName(open.routeName);
     unawaited(widget.controller.refreshFriendConnections());
   }
 
@@ -331,6 +338,17 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
       ),
     );
   }
+}
+
+Future<void> _markNotificationOpenRead(
+  AppController controller,
+  PushNotificationOpen? open,
+) async {
+  final notificationId = open?.notificationId;
+  if (notificationId == null || notificationId.isEmpty) {
+    return;
+  }
+  await controller.markNotificationsRead(<String>[notificationId]);
 }
 
 class _BootstrapShell extends StatelessWidget {

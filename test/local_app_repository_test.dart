@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -479,6 +481,7 @@ void main() {
         userId: requester.id,
         shareCode: addresseeProfile.profileShareCode!,
       );
+      expect(await repository.loadNotifications(addressee.id), hasLength(1));
 
       final withdrawn = await repository.cancelFriendRequest(
         userId: requester.id,
@@ -487,6 +490,72 @@ void main() {
 
       expect(withdrawn, isEmpty);
       expect(await repository.loadFriendConnections(addressee.id), isEmpty);
+      expect(await repository.loadNotifications(addressee.id), isEmpty);
+    });
+
+    test('prunes old read and unread notifications', () async {
+      final preferences = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      const userId = 'retention-user';
+      final notifications = <AppNotification>[
+        AppNotification(
+          id: 'old-read',
+          recipientUserId: userId,
+          senderUserId: 'sender',
+          senderDisplayName: 'Sender',
+          type: AppNotificationTypes.friendRequestAccepted,
+          createdAt: now.subtract(const Duration(days: 60)),
+          readAt: now.subtract(const Duration(days: 31)),
+        ),
+        AppNotification(
+          id: 'recent-read',
+          recipientUserId: userId,
+          senderUserId: 'sender',
+          senderDisplayName: 'Sender',
+          type: AppNotificationTypes.friendRequestAccepted,
+          createdAt: now.subtract(const Duration(days: 60)),
+          readAt: now.subtract(const Duration(days: 29)),
+        ),
+        AppNotification(
+          id: 'old-unread',
+          recipientUserId: userId,
+          senderUserId: 'sender',
+          senderDisplayName: 'Sender',
+          type: AppNotificationTypes.friendRequestSent,
+          createdAt: now.subtract(const Duration(days: 91)),
+        ),
+        AppNotification(
+          id: 'recent-unread',
+          recipientUserId: userId,
+          senderUserId: 'sender',
+          senderDisplayName: 'Sender',
+          type: AppNotificationTypes.friendRequestSent,
+          createdAt: now.subtract(const Duration(days: 89)),
+        ),
+      ];
+      await preferences.setString(
+        'glasstrail.notifications',
+        jsonEncode(
+          notifications
+              .map((notification) => notification.toJson())
+              .toList(growable: false),
+        ),
+      );
+
+      final visible = await repository.loadNotifications(userId);
+      final stored = List<Map<String, dynamic>>.from(
+        (jsonDecode(preferences.getString('glasstrail.notifications')!) as List)
+            .map((item) => Map<String, dynamic>.from(item as Map)),
+      );
+
+      expect(
+        visible.map((notification) => notification.id),
+        unorderedEquals(<String>['recent-read', 'recent-unread']),
+      );
+      expect(
+        stored.map((notification) => notification['id']),
+        unorderedEquals(<String>['recent-read', 'recent-unread']),
+      );
     });
 
     test('rejects self friend requests', () async {

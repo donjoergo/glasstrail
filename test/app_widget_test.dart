@@ -105,11 +105,18 @@ class _FakeDeepLinkService extends DeepLinkService {
 }
 
 class _FakePushNotificationService extends PushNotificationService {
-  _FakePushNotificationService({this.initialRoute});
+  _FakePushNotificationService({
+    String? initialRoute,
+    PushNotificationOpen? initialOpen,
+  }) : initialOpen =
+           initialOpen ??
+           (initialRoute == null
+               ? null
+               : PushNotificationOpen(routeName: initialRoute));
 
-  final String? initialRoute;
-  final StreamController<String> _controller =
-      StreamController<String>.broadcast();
+  final PushNotificationOpen? initialOpen;
+  final StreamController<PushNotificationOpen> _controller =
+      StreamController<PushNotificationOpen>.broadcast();
 
   @override
   Future<PushDeviceToken?> getDeviceToken() async => null;
@@ -119,13 +126,15 @@ class _FakePushNotificationService extends PushNotificationService {
       const Stream<PushDeviceToken>.empty();
 
   @override
-  Future<String?> consumeInitialRoute() async => initialRoute;
+  Future<PushNotificationOpen?> consumeInitialOpen() async => initialOpen;
 
   @override
-  Stream<String> get openedRoutes => _controller.stream;
+  Stream<PushNotificationOpen> get openedNotifications => _controller.stream;
 
-  void emit(String route) {
-    _controller.add(route);
+  void emit(String route, {String? notificationId}) {
+    _controller.add(
+      PushNotificationOpen(routeName: route, notificationId: notificationId),
+    );
   }
 
   Future<void> dispose() => _controller.close();
@@ -706,14 +715,37 @@ void main() {
   });
 
   testWidgets('opens the initial push notification route', (tester) async {
-    final controller = await buildTestController();
-    await controller.signUp(
-      email: 'initial-push-route@example.com',
-      password: 'password123',
-      displayName: 'Initial Push Route',
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
     );
+    final requester = await repository.signUp(
+      email: 'initial-push-requester@example.com',
+      password: 'password123',
+      displayName: 'Initial Push Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'initial-push-addressee@example.com',
+      password: 'password123',
+      displayName: 'Initial Push Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final notification = (await repository.loadNotifications(
+      addressee.id,
+    )).single;
+    final controller = await AppController.bootstrapWithRepository(repository);
+    expect(controller.unreadNotificationCount, 1);
+
     final pushNotificationService = _FakePushNotificationService(
-      initialRoute: AppRoutes.profile,
+      initialOpen: PushNotificationOpen(
+        routeName: AppRoutes.profile,
+        notificationId: notification.id,
+      ),
     );
     addTearDown(pushNotificationService.dispose);
 
@@ -729,6 +761,8 @@ void main() {
     expect(find.byType(ProfileScreen), findsOneWidget);
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(route?.settings.name, AppRoutes.profile);
+    expect(controller.unreadNotificationCount, 0);
+    expect(controller.notifications.single.isRead, isTrue);
   });
 
   testWidgets('opens push notification routes and refreshes friends', (
@@ -755,6 +789,9 @@ void main() {
       userId: requester.id,
       shareCode: addresseeProfile.profileShareCode!,
     );
+    final notification = (await repository.loadNotifications(
+      addressee.id,
+    )).single;
     final pushNotificationService = _FakePushNotificationService();
     addTearDown(pushNotificationService.dispose);
 
@@ -771,12 +808,16 @@ void main() {
 
     expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
 
-    pushNotificationService.emit(AppRoutes.profile);
+    pushNotificationService.emit(
+      AppRoutes.profile,
+      notificationId: notification.id,
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(ProfileScreen), findsOneWidget);
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(route?.settings.name, AppRoutes.profile);
+    expect(controller.notifications.single.isRead, isTrue);
     expect(controller.incomingFriendRequests, hasLength(1));
     expect(find.text('Opened Push Requester'), findsOneWidget);
   });

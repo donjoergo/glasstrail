@@ -18,6 +18,8 @@ class LocalAppRepository implements AppRepository {
   static const _settingsKey = 'glasstrail.settings';
   static const _friendRelationshipsKey = 'glasstrail.friend_relationships';
   static const _notificationsKey = 'glasstrail.notifications';
+  static const _readNotificationRetention = Duration(days: 30);
+  static const _unreadNotificationRetention = Duration(days: 90);
 
   final SharedPreferences _preferences;
   final Uuid _uuid;
@@ -280,16 +282,21 @@ class LocalAppRepository implements AppRepository {
     required String relationshipId,
   }) async {
     final relationships = _loadFriendRelationships();
-    final initialLength = relationships.length;
-    relationships.removeWhere((relationship) {
+    final index = relationships.indexWhere((relationship) {
       return relationship['id'] == relationshipId &&
           relationship['requesterId'] == userId &&
           relationship['status'] == FriendRequestStatus.pending.storageValue;
     });
-    if (relationships.length == initialLength) {
+    if (index == -1) {
       throw const AppException('The friend request could not be withdrawn.');
     }
+    final relationship = relationships.removeAt(index);
     await _saveFriendRelationships(relationships);
+    await _deleteFriendRequestSentNotification(
+      relationshipId: relationshipId,
+      requesterUserId: userId,
+      addresseeUserId: relationship['addresseeId'] as String,
+    );
     return _friendConnectionsForUser(userId);
   }
 
@@ -325,6 +332,7 @@ class LocalAppRepository implements AppRepository {
 
   @override
   Future<List<AppNotification>> loadNotifications(String userId) async {
+    await _pruneExpiredNotifications();
     return _notificationsForUser(userId);
   }
 
@@ -333,6 +341,7 @@ class LocalAppRepository implements AppRepository {
     required String userId,
     required List<String> notificationIds,
   }) async {
+    await _pruneExpiredNotifications();
     final ids = notificationIds.toSet();
     if (ids.isEmpty) {
       return _notificationsForUser(userId);
@@ -706,6 +715,7 @@ class LocalAppRepository implements AppRepository {
     required String type,
     Map<String, dynamic> metadata = const <String, dynamic>{},
   }) async {
+    await _pruneExpiredNotifications();
     final notifications = _loadNotifications();
     notifications.add(
       AppNotification(
@@ -729,10 +739,75 @@ class LocalAppRepository implements AppRepository {
     _publishNotifications(recipientUserId);
   }
 
+  Future<void> _deleteFriendRequestSentNotification({
+    required String relationshipId,
+    required String requesterUserId,
+    required String addresseeUserId,
+  }) async {
+    final notifications = _loadNotifications();
+    var changed = false;
+    notifications.removeWhere((item) {
+      final notification = AppNotification.fromJson(item);
+      final matches =
+          notification.type == AppNotificationTypes.friendRequestSent &&
+          notification.recipientUserId == addresseeUserId &&
+          notification.senderUserId == requesterUserId &&
+          notification.metadata['relationshipId'] == relationshipId;
+      if (matches) {
+        changed = true;
+      }
+      return matches;
+    });
+    if (!changed) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    _publishNotifications(addresseeUserId);
+  }
+
+  Future<void> _pruneExpiredNotifications() async {
+    final notifications = _loadNotifications();
+    if (notifications.isEmpty) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final removedUserIds = <String>{};
+    final retainedNotifications = <Map<String, dynamic>>[];
+    for (final item in notifications) {
+      final notification = AppNotification.fromJson(item);
+      if (_isExpiredNotification(notification, now)) {
+        removedUserIds.add(notification.recipientUserId);
+      } else {
+        retainedNotifications.add(item);
+      }
+    }
+
+    if (removedUserIds.isEmpty) {
+      return;
+    }
+    await _saveNotifications(retainedNotifications);
+    for (final userId in removedUserIds) {
+      _publishNotifications(userId);
+    }
+  }
+
+  bool _isExpiredNotification(AppNotification notification, DateTime now) {
+    final readAt = notification.readAt;
+    if (readAt != null) {
+      return readAt.isBefore(now.subtract(_readNotificationRetention));
+    }
+    return notification.createdAt.isBefore(
+      now.subtract(_unreadNotificationRetention),
+    );
+  }
+
   List<AppNotification> _notificationsForUser(String userId) {
+    final now = DateTime.now();
     final notifications = _loadNotifications()
         .map(AppNotification.fromJson)
         .where((notification) => notification.recipientUserId == userId)
+        .where((notification) => !_isExpiredNotification(notification, now))
         .toList(growable: false);
     return notifications.toList(growable: false)
       ..sort((left, right) => right.createdAt.compareTo(left.createdAt));

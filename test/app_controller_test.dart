@@ -175,6 +175,115 @@ void main() {
     expect(controller.notifications.single.isRead, isTrue);
   });
 
+  test('keeps local notification reads over stale stream snapshots', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _ManualNotificationStreamLocalRepository(
+      await SharedPreferences.getInstance(),
+    );
+    addTearDown(repository.dispose);
+    final requester = await repository.signUp(
+      email: 'stale-notify-requester@example.com',
+      password: 'password123',
+      displayName: 'Stale Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'stale-notify-addressee@example.com',
+      password: 'password123',
+      displayName: 'Stale Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final staleNotification = (await repository.loadNotifications(
+      addressee.id,
+    )).single;
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    expect(controller.unreadNotificationCount, 1);
+
+    final success = await controller.markNotificationsRead(<String>[
+      staleNotification.id,
+    ]);
+    repository.emitNotifications(<AppNotification>[staleNotification]);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(success, isTrue);
+    expect(controller.unreadNotificationCount, 0);
+    expect(controller.notifications.single.isRead, isTrue);
+  });
+
+  test('rolls back only the failed optimistic notification read', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _ManualNotificationStreamLocalRepository(
+      await SharedPreferences.getInstance(),
+    );
+    addTearDown(repository.dispose);
+    final addressee = await repository.signUp(
+      email: 'partial-read-addressee@example.com',
+      password: 'password123',
+      displayName: 'Partial Read Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.signOut();
+    final requesterOne = await repository.signUp(
+      email: 'partial-read-requester-one@example.com',
+      password: 'password123',
+      displayName: 'Partial Read One',
+    );
+    await repository.sendFriendRequestToProfile(
+      userId: requesterOne.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    await repository.signOut();
+    final requesterTwo = await repository.signUp(
+      email: 'partial-read-requester-two@example.com',
+      password: 'password123',
+      displayName: 'Partial Read Two',
+    );
+    await repository.sendFriendRequestToProfile(
+      userId: requesterTwo.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'partial-read-addressee@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final firstNotification = controller.notifications.first;
+    final secondNotification = controller.notifications.last;
+
+    expect(
+      await controller.markNotificationsRead(<String>[firstNotification.id]),
+      isTrue,
+    );
+
+    repository.failNextMark = true;
+    final success = await controller.markNotificationsRead(<String>[
+      secondNotification.id,
+    ]);
+
+    expect(success, isFalse);
+    expect(
+      controller.notifications
+          .firstWhere((notification) => notification.id == firstNotification.id)
+          .isRead,
+      isTrue,
+    );
+    expect(
+      controller.notifications
+          .firstWhere(
+            (notification) => notification.id == secondNotification.id,
+          )
+          .isUnread,
+      isTrue,
+    );
+    expect(controller.unreadNotificationCount, 1);
+  });
+
   test(
     'keeps authentication successful when token registration fails',
     () async {
@@ -833,6 +942,40 @@ void main() {
   });
 }
 
+class _ManualNotificationStreamLocalRepository extends LocalAppRepository {
+  _ManualNotificationStreamLocalRepository(super.preferences);
+
+  final StreamController<List<AppNotification>> _notificationsController =
+      StreamController<List<AppNotification>>.broadcast();
+  bool failNextMark = false;
+
+  @override
+  Stream<List<AppNotification>> watchNotifications(String userId) {
+    return _notificationsController.stream;
+  }
+
+  @override
+  Future<List<AppNotification>> markNotificationsRead({
+    required String userId,
+    required List<String> notificationIds,
+  }) {
+    if (failNextMark) {
+      failNextMark = false;
+      throw const AppException('Notification read failed.');
+    }
+    return super.markNotificationsRead(
+      userId: userId,
+      notificationIds: notificationIds,
+    );
+  }
+
+  void emitNotifications(List<AppNotification> notifications) {
+    _notificationsController.add(notifications);
+  }
+
+  Future<void> dispose() => _notificationsController.close();
+}
+
 class _StaticPushNotificationService extends PushNotificationService {
   const _StaticPushNotificationService(this.token);
 
@@ -846,10 +989,11 @@ class _StaticPushNotificationService extends PushNotificationService {
       const Stream<PushDeviceToken>.empty();
 
   @override
-  Future<String?> consumeInitialRoute() async => null;
+  Future<PushNotificationOpen?> consumeInitialOpen() async => null;
 
   @override
-  Stream<String> get openedRoutes => const Stream<String>.empty();
+  Stream<PushNotificationOpen> get openedNotifications =>
+      const Stream<PushNotificationOpen>.empty();
 }
 
 class _FailingTokenLocalAppRepository extends LocalAppRepository {

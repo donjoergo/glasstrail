@@ -123,6 +123,7 @@ class AppController extends ChangeNotifier {
   List<DrinkEntry> _entries = const <DrinkEntry>[];
   List<FriendConnection> _friendConnections = const <FriendConnection>[];
   List<AppNotification> _notifications = const <AppNotification>[];
+  final Map<String, DateTime> _notificationReadOverrides = <String, DateTime>{};
   bool _isBusy = false;
   AppBusyAction? _busyAction;
   BeerWithMeImportProgress? _beerWithMeImportProgress;
@@ -484,6 +485,7 @@ class AppController extends ChangeNotifier {
         birthday: normalizeBirthdayOrNull(birthday),
         profileImagePath: profileImagePath,
       );
+      _notificationReadOverrides.clear();
       await _reloadUserScope();
       _subscribeToNotifications();
       await _registerPushTokenBestEffort();
@@ -497,6 +499,7 @@ class AppController extends ChangeNotifier {
     return _guardFor(AppBusyAction.signIn, () async {
       await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signIn(email: email, password: password);
+      _notificationReadOverrides.clear();
       await _reloadUserScope();
       _subscribeToNotifications();
       await _registerPushTokenBestEffort();
@@ -515,6 +518,7 @@ class AppController extends ChangeNotifier {
       _entries = const <DrinkEntry>[];
       _friendConnections = const <FriendConnection>[];
       _notifications = const <AppNotification>[];
+      _notificationReadOverrides.clear();
     });
   }
 
@@ -1014,8 +1018,8 @@ class AppController extends ChangeNotifier {
       return false;
     }
 
-    final previousNotifications = _notifications;
     final readAt = DateTime.now();
+    final optimisticReadAtById = <String, DateTime>{};
     var changed = false;
     _notifications = _notifications
         .map((notification) {
@@ -1023,6 +1027,8 @@ class AppController extends ChangeNotifier {
             return notification;
           }
           changed = true;
+          optimisticReadAtById[notification.id] = readAt;
+          _notificationReadOverrides[notification.id] = readAt;
           return notification.copyWith(readAt: readAt);
         })
         .toList(growable: false);
@@ -1031,15 +1037,31 @@ class AppController extends ChangeNotifier {
     }
 
     try {
-      _notifications = await _repository.markNotificationsRead(
-        userId: user.id,
-        notificationIds: ids.toList(growable: false),
+      _notifications = _mergeNotificationReadOverrides(
+        await _repository.markNotificationsRead(
+          userId: user.id,
+          notificationIds: ids.toList(growable: false),
+        ),
       );
       notifyListeners();
       return true;
     } catch (_) {
-      _notifications = previousNotifications;
-      notifyListeners();
+      if (optimisticReadAtById.isNotEmpty) {
+        for (final id in optimisticReadAtById.keys) {
+          _notificationReadOverrides.remove(id);
+        }
+        _notifications = _notifications
+            .map((notification) {
+              final optimisticReadAt = optimisticReadAtById[notification.id];
+              if (optimisticReadAt == null ||
+                  notification.readAt != optimisticReadAt) {
+                return notification;
+              }
+              return notification.copyWith(clearReadAt: true);
+            })
+            .toList(growable: false);
+        notifyListeners();
+      }
       return false;
     }
   }
@@ -1116,6 +1138,7 @@ class AppController extends ChangeNotifier {
     _defaultCatalog = await defaultCatalogFuture;
     if (user == null) {
       _notifications = const <AppNotification>[];
+      _notificationReadOverrides.clear();
       return;
     }
 
@@ -1123,7 +1146,9 @@ class AppController extends ChangeNotifier {
     _entries = await entriesFuture!;
     _settings = await settingsFuture!;
     _friendConnections = await friendsFuture!;
-    _notifications = await notificationsFuture!;
+    _notifications = _mergeNotificationReadOverrides(
+      await notificationsFuture!,
+    );
   }
 
   Future<void> _reloadUserScope() async {
@@ -1141,7 +1166,7 @@ class AppController extends ChangeNotifier {
     _entries = await entriesFuture;
     _settings = await settingsFuture;
     _friendConnections = await friendsFuture;
-    _notifications = await notificationsFuture;
+    _notifications = _mergeNotificationReadOverrides(await notificationsFuture);
   }
 
   void _subscribeToNotifications() {
@@ -1157,9 +1182,23 @@ class AppController extends ChangeNotifier {
       if (_currentUser?.id != user.id) {
         return;
       }
-      _notifications = notifications;
+      _notifications = _mergeNotificationReadOverrides(notifications);
       notifyListeners();
     }, onError: (_) {});
+  }
+
+  List<AppNotification> _mergeNotificationReadOverrides(
+    List<AppNotification> notifications,
+  ) {
+    return notifications
+        .map((notification) {
+          final overrideReadAt = _notificationReadOverrides[notification.id];
+          if (overrideReadAt == null || notification.isRead) {
+            return notification;
+          }
+          return notification.copyWith(readAt: overrideReadAt);
+        })
+        .toList(growable: false);
   }
 
   Future<void> _registerPushTokenBestEffort() async {
