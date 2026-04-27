@@ -305,10 +305,7 @@ as $$
 declare
   requesting_user_id uuid := (select auth.uid());
   target_user_id uuid;
-  existing_relationship_id uuid;
-  existing_status text;
   relationship_id uuid;
-  should_notify boolean := false;
 begin
   if requesting_user_id is null then
     raise exception 'The profile link is invalid.';
@@ -327,37 +324,21 @@ begin
     raise exception 'You cannot add yourself as a friend.';
   end if;
 
-  select id, status
-  into existing_relationship_id, existing_status
-  from public.friend_relationships
-  where (
-    requester_id = requesting_user_id
-    and addressee_id = target_user_id
-  ) or (
-    requester_id = target_user_id
-    and addressee_id = requesting_user_id
+  -- Let the unique pair index serialize concurrent requests for the same pair.
+  insert into public.friend_relationships (requester_id, addressee_id, status)
+  values (requesting_user_id, target_user_id, 'pending')
+  on conflict (
+    (least(requester_id, addressee_id)),
+    (greatest(requester_id, addressee_id))
   )
-  for update;
+  do update set
+    requester_id = excluded.requester_id,
+    addressee_id = excluded.addressee_id,
+    status = 'pending'
+  where public.friend_relationships.status = 'rejected'
+  returning id into relationship_id;
 
-  if existing_relationship_id is null then
-    insert into public.friend_relationships (requester_id, addressee_id, status)
-    values (requesting_user_id, target_user_id, 'pending')
-    returning id into relationship_id;
-    should_notify := true;
-  elsif existing_status = 'rejected' then
-    update public.friend_relationships
-    set
-      requester_id = requesting_user_id,
-      addressee_id = target_user_id,
-      status = 'pending'
-    where id = existing_relationship_id
-    returning id into relationship_id;
-    should_notify := true;
-  else
-    relationship_id := existing_relationship_id;
-  end if;
-
-  if should_notify then
+  if relationship_id is not null then
     perform public.create_friend_notification(
       target_user_id,
       requesting_user_id,
