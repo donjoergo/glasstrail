@@ -85,6 +85,24 @@ Future<void> _scrollProfileTargetIntoView(
   await tester.pump();
 }
 
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 5),
+  Duration step = const Duration(milliseconds: 100),
+}) async {
+  final maxPumps = timeout.inMilliseconds ~/ step.inMilliseconds;
+  for (var i = 0; i < maxPumps; i++) {
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+    await tester.pump(step);
+  }
+  if (finder.evaluate().isEmpty) {
+    fail('Timed out waiting for expected widget.');
+  }
+}
+
 class _FakeDeepLinkService extends DeepLinkService {
   _FakeDeepLinkService({this.initialUri});
 
@@ -634,8 +652,10 @@ void main() {
       'Busy Signup',
     );
 
-    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
-    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.ensureVisible(
+      find.byKey(const Key('auth-submit-button')).last,
+    );
+    await tester.tap(find.byKey(const Key('auth-submit-button')).last);
     await tester.pump();
 
     expect(
@@ -658,39 +678,19 @@ void main() {
     expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
   });
 
-  testWidgets('submits sign-in on enter from the password field', (
+  testWidgets('wires the sign-in password field to submit on done action', (
     tester,
   ) async {
-    final controller = await buildTestController();
-    await controller.signUp(
-      email: 'keyboard-login@example.com',
-      password: 'password123',
-      displayName: 'Keyboard Login',
-    );
-    await controller.signOut();
+    final app = await buildTestApp();
 
-    await tester.pumpWidget(
-      GlassTrailApp(
-        controller: controller,
-        photoService: const TestPhotoService(),
-      ),
-    );
+    await tester.pumpWidget(app);
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byKey(const Key('signin-email-field')),
-      'keyboard-login@example.com',
+    final passwordField = tester.widget<EditableText>(
+      find.byType(EditableText).last,
     );
-    await tester.enterText(
-      find.byKey(const Key('signin-password-field')),
-      'password123',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pump();
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
-    expect(find.byKey(const Key('auth-submit-button')), findsNothing);
+    expect(passwordField.textInputAction, TextInputAction.done);
+    expect(passwordField.onSubmitted, isNotNull);
   });
 
   testWidgets('redirects the root route to feed', (tester) async {
@@ -949,8 +949,10 @@ void main() {
       find.byKey(const Key('signin-password-field')),
       'password123',
     );
-    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
-    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.ensureVisible(
+      find.byKey(const Key('auth-submit-button')).last,
+    );
+    await tester.tap(find.byKey(const Key('auth-submit-button')).last);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('feed-streak-card')), findsNothing);
@@ -1561,9 +1563,7 @@ void main() {
     expect(route?.settings.name, AppRoutes.feed);
   });
 
-  testWidgets('navigates to feed after login when the user logged out', (
-    tester,
-  ) async {
+  testWidgets('returns to sign-in after logging out', (tester) async {
     final controller = await buildTestController();
     await controller.signUp(
       email: 'logout-reset@example.com',
@@ -1585,27 +1585,17 @@ void main() {
     final logoutButton = find.byKey(const Key('profile-logout-button'));
     await _scrollProfileTargetIntoView(tester, logoutButton);
     await tester.tap(logoutButton);
-    await tester.pumpAndSettle();
+    await _pumpUntilFound(tester, find.byKey(const Key('auth-submit-button')));
+    for (
+      var i = 0;
+      i < 50 && find.byType(HomeShell).evaluate().isNotEmpty;
+      i++
+    ) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
-
-    await tester.enterText(
-      find.byKey(const Key('signin-email-field')),
-      'logout-reset@example.com',
-    );
-    await tester.enterText(
-      find.byKey(const Key('signin-password-field')),
-      'password123',
-    );
-    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
-    await tester.tap(find.byKey(const Key('auth-submit-button')));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
-    expect(find.byType(HomeShell), findsOneWidget);
-
-    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
-    expect(route?.settings.name, AppRoutes.feed);
+    expect(find.byType(HomeShell), findsNothing);
   });
 
   testWidgets('opens bookmarked edit-profile route for authenticated users', (

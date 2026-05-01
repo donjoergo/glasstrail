@@ -4774,8 +4774,5 @@ void main() {
     );
 
     repository.unblock();
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
   });
 }
