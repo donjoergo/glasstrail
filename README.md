@@ -22,6 +22,22 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
 - Multi platform support: Android and Web
 - Multi language support: English and German
 
+## Tech Stack and Tooling
+
+| Area               | Tooling                                        | Role                                                                                         |
+| ------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| App framework      | Flutter, Dart                                  | Shared Android and Web app code, generated localization output, and the widget test harness  |
+| Backend            | Supabase                                       | Auth, Postgres with RLS, Storage, Edge Functions, SQL migrations, and seed data              |
+| Push notifications | Firebase Cloud Messaging                       | Android push delivery for notification events; server-side credentials stay outside the repo |
+| Web hosting        | Vercel                                         | Production/test web deployments and the friend profile preview Serverless Function           |
+| Localization       | Flutter gen-l10n, Crowdin                      | ARB source files in `lib/l10n/`, Crowdin translation sync, and generated Dart localizations  |
+| Quality checks     | flutter_lints, Flutter analyze/test, SonarQube | Lints, static analysis, tests, coverage, and the Sonar scan configured in CI                 |
+| Release notes      | cider                                          | Changelog entries, release sections, and GitHub tag/diff links                               |
+| CI/CD              | GitHub Actions                                 | Formatting, analysis, tests, web builds, Sonar scans, and Android release APK publishing     |
+| Maps and media     | MapLibre, Image Picker, Geolocator             | Statistics maps, entry/profile media, and optional location capture                          |
+| Local fallback     | SharedPreferences                              | Local repository storage when Supabase configuration is unavailable                          |
+| App assets         | flutter_launcher_icons, flutter_native_splash  | Launcher icon and splash screen generation from checked-in configuration                     |
+
 ## App Pages
 
 The app exposes one route per visible page. On Flutter Web, in-app routing currently uses hash URLs, so bookmarks look like `/#/feed`. Public friend profile shares use non-hash URLs so messengers can render link previews.
