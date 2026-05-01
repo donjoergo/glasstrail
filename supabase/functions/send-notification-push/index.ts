@@ -66,6 +66,7 @@ type FunctionDatabase = {
 type AppSupabaseClient = SupabaseClient<FunctionDatabase>;
 
 const mediaBucket = "user-media";
+const androidNotificationChannelId = "glass_trail_notifications";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -263,8 +264,11 @@ async function sendFcmMessage(
   }
 
   const androidNotification: Record<string, unknown> = {
+    channel_id: androidNotificationChannelId,
     default_sound: true,
+    default_vibrate_timings: true,
     click_action: "FLUTTER_NOTIFICATION_CLICK",
+    notification_priority: "PRIORITY_HIGH",
   };
   if (input.imageUrl != null) {
     androidNotification.image = input.imageUrl;
@@ -289,7 +293,7 @@ async function sendFcmMessage(
             route: routeForNotification(input.notification),
           },
           android: {
-            priority: "high",
+            priority: "HIGH",
             notification: androidNotification,
           },
         },
