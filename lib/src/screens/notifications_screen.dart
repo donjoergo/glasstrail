@@ -16,6 +16,8 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  bool _isMarkingAllRead = false;
+
   Future<void> _openNotification(AppNotification notification) async {
     final controller = AppScope.controllerOf(context);
     if (notification.isUnread) {
@@ -28,6 +30,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     Navigator.of(context).pushReplacementNamed(AppRoutes.profile);
   }
 
+  Future<void> _markAllNotificationsRead() async {
+    if (_isMarkingAllRead) {
+      return;
+    }
+
+    setState(() {
+      _isMarkingAllRead = true;
+    });
+
+    try {
+      await AppScope.controllerOf(context).markAllNotificationsRead();
+    } finally {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isMarkingAllRead = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.controllerOf(context);
@@ -36,7 +59,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.notifications)),
+      appBar: AppBar(
+        title: Text(l10n.notifications),
+        actions: <Widget>[
+          IconButton(
+            key: const Key('notifications-mark-all-read-button'),
+            onPressed: _isMarkingAllRead ? null : _markAllNotificationsRead,
+            tooltip: l10n.notificationsMarkAllRead,
+            icon: const Icon(Icons.done_all_rounded),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: notifications.isEmpty
             ? Center(
