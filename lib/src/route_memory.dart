@@ -40,7 +40,8 @@ class RouteMemory {
 
     return switch (normalizedRequested) {
       AppRoutes.root || AppRoutes.auth || AppRoutes.feed => _lastRoute,
-      _ when AppRoutes.isRestorable(normalizedRequested) => normalizedRequested,
+      _ when AppRoutes.isPostAuthRoute(normalizedRequested) =>
+        normalizedRequested,
       _ => _lastRoute,
     };
   }
@@ -71,7 +72,7 @@ class RouteMemory {
     );
     final targetRoute = _openFeedAfterNextAuth && !hasExplicitRedirect
         ? AppRoutes.feed
-        : hasExplicitRedirect || AppRoutes.isRestorable(redirectRoute)
+        : hasExplicitRedirect || AppRoutes.isPostAuthRoute(redirectRoute)
         ? AppRoutes.postAuthRoute(normalizedRedirect)
         : _lastRoute;
 
