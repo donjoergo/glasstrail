@@ -42,12 +42,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await AppScope.controllerOf(context).markAllNotificationsRead();
     } finally {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _isMarkingAllRead = false;
+        });
       }
-      setState(() {
-        _isMarkingAllRead = false;
-      });
     }
   }
 

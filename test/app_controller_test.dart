@@ -1132,7 +1132,6 @@ class _ControlledPushNotificationService extends PushNotificationService {
 class _ControlledPushTokenRefreshStream extends Stream<PushDeviceToken> {
   final cancelStarted = Completer<void>();
   final _cancelCompleter = Completer<void>();
-  void Function(PushDeviceToken event)? _onData;
 
   bool get cancelCompleted => _cancelCompleter.isCompleted;
 
@@ -1149,13 +1148,11 @@ class _ControlledPushTokenRefreshStream extends Stream<PushDeviceToken> {
     void Function()? onDone,
     bool? cancelOnError,
   }) {
-    _onData = onData;
     return _ControlledPushTokenRefreshSubscription(
       onCancel: () {
         if (!cancelStarted.isCompleted) {
           cancelStarted.complete();
         }
-        _onData = null;
         return _cancelCompleter.future;
       },
     );
