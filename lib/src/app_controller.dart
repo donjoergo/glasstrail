@@ -1253,19 +1253,20 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _unregisterPushTokenBestEffort() async {
-    unawaited(_pushTokenSubscription?.cancel());
+    final pushTokenSubscription = _pushTokenSubscription;
     _pushTokenSubscription = null;
+    await pushTokenSubscription?.cancel();
 
     final token = _registeredPushToken;
     final userId = _registeredPushTokenUserId ?? _currentUser?.id;
-    _registeredPushToken = null;
-    _registeredPushTokenUserId = null;
     if (token == null || userId == null) {
       return;
     }
 
     try {
       await _unregisterPushToken(token: token, userId: userId);
+      _registeredPushToken = null;
+      _registeredPushTokenUserId = null;
     } catch (_) {}
   }
 

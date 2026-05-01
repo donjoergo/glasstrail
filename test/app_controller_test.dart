@@ -346,6 +346,80 @@ void main() {
     expect(controller.isAuthenticated, isFalse);
   });
 
+  test(
+    'retries push token unregister after a transient sign-out failure',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = _FailingOnceTokenCleanupLocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+        pushNotificationService: const _StaticPushNotificationService(
+          PushDeviceToken(token: 'retry-token', platform: 'android'),
+        ),
+      );
+
+      expect(
+        await controller.signUp(
+          email: 'push-retry@example.com',
+          password: 'password123',
+          displayName: 'Push Retry',
+        ),
+        isTrue,
+      );
+
+      expect(await controller.signOut(), isTrue);
+      expect(controller.isAuthenticated, isFalse);
+      expect(repository.unregisterCalls, 1);
+
+      repository.failUnregister = false;
+      expect(await controller.signOut(), isTrue);
+      expect(repository.unregisterCalls, 2);
+      expect(repository.unregisteredTokens.single.token, 'retry-token');
+    },
+  );
+
+  test(
+    'awaits push token subscription cancellation before unregistering',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final tokenRefreshes = _ControlledPushTokenRefreshStream();
+      final repository = _OrderingTokenCleanupLocalAppRepository(
+        await SharedPreferences.getInstance(),
+        isCancellationComplete: () => tokenRefreshes.cancelCompleted,
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+        pushNotificationService: _ControlledPushNotificationService(
+          token: const PushDeviceToken(
+            token: 'ordered-token',
+            platform: 'android',
+          ),
+          refreshStream: tokenRefreshes,
+        ),
+      );
+
+      expect(
+        await controller.signUp(
+          email: 'push-order@example.com',
+          password: 'password123',
+          displayName: 'Push Order',
+        ),
+        isTrue,
+      );
+
+      final signOutFuture = controller.signOut();
+      await tokenRefreshes.cancelStarted.future;
+      expect(repository.unregisterSawPendingCancellation, isFalse);
+
+      tokenRefreshes.completeCancel();
+      expect(await signOutFuture, isTrue);
+      expect(repository.unregisterSawPendingCancellation, isFalse);
+      expect(repository.unregisterCalls, 1);
+    },
+  );
+
   test('localizes success flash messages and drink names', () async {
     final controller = await buildTestController();
     final german = _l10n('de');
@@ -1032,6 +1106,93 @@ class _StaticPushNotificationService extends PushNotificationService {
       const Stream<PushNotificationOpen>.empty();
 }
 
+class _ControlledPushNotificationService extends PushNotificationService {
+  const _ControlledPushNotificationService({
+    required this.token,
+    required this.refreshStream,
+  });
+
+  final PushDeviceToken token;
+  final _ControlledPushTokenRefreshStream refreshStream;
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() async => token;
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes => refreshStream;
+
+  @override
+  Future<PushNotificationOpen?> consumeInitialOpen() async => null;
+
+  @override
+  Stream<PushNotificationOpen> get openedNotifications =>
+      const Stream<PushNotificationOpen>.empty();
+}
+
+class _ControlledPushTokenRefreshStream extends Stream<PushDeviceToken> {
+  final cancelStarted = Completer<void>();
+  final _cancelCompleter = Completer<void>();
+  void Function(PushDeviceToken event)? _onData;
+
+  bool get cancelCompleted => _cancelCompleter.isCompleted;
+
+  void completeCancel() {
+    if (!_cancelCompleter.isCompleted) {
+      _cancelCompleter.complete();
+    }
+  }
+
+  @override
+  StreamSubscription<PushDeviceToken> listen(
+    void Function(PushDeviceToken event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    _onData = onData;
+    return _ControlledPushTokenRefreshSubscription(
+      onCancel: () {
+        if (!cancelStarted.isCompleted) {
+          cancelStarted.complete();
+        }
+        _onData = null;
+        return _cancelCompleter.future;
+      },
+    );
+  }
+}
+
+class _ControlledPushTokenRefreshSubscription
+    implements StreamSubscription<PushDeviceToken> {
+  _ControlledPushTokenRefreshSubscription({required this.onCancel});
+
+  final Future<void> Function() onCancel;
+
+  @override
+  Future<void> cancel() => onCancel();
+
+  @override
+  void onData(void Function(PushDeviceToken data)? handleData) {}
+
+  @override
+  void onError(Function? handleError) {}
+
+  @override
+  void onDone(void Function()? handleDone) {}
+
+  @override
+  void pause([Future<void>? resumeSignal]) {}
+
+  @override
+  void resume() {}
+
+  @override
+  bool get isPaused => false;
+
+  @override
+  Future<E> asFuture<E>([E? futureValue]) => Future<E>.value(futureValue);
+}
+
 class _FailingTokenLocalAppRepository extends LocalAppRepository {
   _FailingTokenLocalAppRepository(super.preferences);
 
@@ -1045,6 +1206,48 @@ class _FailingTokenLocalAppRepository extends LocalAppRepository {
   }) async {
     registerCalls++;
     throw const AppException('Token registration failed.');
+  }
+}
+
+class _FailingOnceTokenCleanupLocalAppRepository extends LocalAppRepository {
+  _FailingOnceTokenCleanupLocalAppRepository(super.preferences);
+
+  bool failUnregister = true;
+  int unregisterCalls = 0;
+  final unregisteredTokens = <_TokenCall>[];
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) async {
+    unregisterCalls++;
+    if (failUnregister) {
+      throw const AppException('Token cleanup failed.');
+    }
+    unregisteredTokens.add(_TokenCall(userId: userId, token: token));
+  }
+}
+
+class _OrderingTokenCleanupLocalAppRepository extends LocalAppRepository {
+  _OrderingTokenCleanupLocalAppRepository(
+    super.preferences, {
+    required this.isCancellationComplete,
+  });
+
+  final bool Function() isCancellationComplete;
+  int unregisterCalls = 0;
+  bool unregisterSawPendingCancellation = false;
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) async {
+    unregisterCalls++;
+    if (!isCancellationComplete()) {
+      unregisterSawPendingCancellation = true;
+    }
   }
 }
 
