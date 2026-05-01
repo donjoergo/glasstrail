@@ -50,6 +50,40 @@ for each row execute procedure public.touch_updated_at();
 
 alter table public.notification_device_tokens enable row level security;
 
+create or replace function public.notification_image_path_for_type(
+  notification_type text,
+  fallback_image_path text
+)
+returns text
+language sql
+stable
+set search_path = public
+as $$
+  select case btrim(coalesce(notification_type, ''))
+    when 'friend_request_accepted' then 'https://glasstrail.vercel.app/notification-assets/cheers.png'
+    when 'friend_request_rejected' then 'https://glasstrail.vercel.app/notification-assets/sad.jpg'
+    when 'friend_removed' then 'https://glasstrail.vercel.app/notification-assets/sad.jpg'
+    else nullif(btrim(fallback_image_path), '')
+  end;
+$$;
+
+create or replace function public.prune_expired_notifications()
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  delete from public.notifications
+  where (
+      read_at is not null
+      and read_at < now() - interval '30 days'
+    )
+    or (
+      read_at is null
+      and created_at < now() - interval '90 days'
+    );
+$$;
+
 create or replace function public.load_notifications()
 returns table (
   notification_id uuid,
@@ -63,24 +97,35 @@ returns table (
   read_at timestamptz,
   metadata jsonb
 )
-language sql
+language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  requesting_user_id uuid := (select auth.uid());
+begin
+  if requesting_user_id is null then
+    return;
+  end if;
+
+  perform public.prune_expired_notifications();
+
+  return query
   select
-    notifications.id as notification_id,
-    notifications.recipient_user_id,
-    notifications.sender_user_id,
-    notifications.sender_display_name,
-    notifications.image_path,
-    notifications.type as notification_type,
-    notifications.template_args,
-    notifications.created_at,
-    notifications.read_at,
-    notifications.metadata
-  from public.notifications
-  where notifications.recipient_user_id = (select auth.uid())
-  order by notifications.created_at desc;
+    n.id as notification_id,
+    n.recipient_user_id,
+    n.sender_user_id,
+    n.sender_display_name,
+    n.image_path,
+    n.type as notification_type,
+    n.template_args,
+    n.created_at,
+    n.read_at,
+    n.metadata
+  from public.notifications n
+  where n.recipient_user_id = requesting_user_id
+  order by n.created_at desc;
+end;
 $$;
 
 create or replace function public.mark_notifications_read(notification_ids uuid[])
@@ -107,28 +152,30 @@ begin
     return;
   end if;
 
+  perform public.prune_expired_notifications();
+
   if coalesce(array_length(notification_ids, 1), 0) > 0 then
-    update public.notifications
-    set read_at = coalesce(read_at, timezone('utc', now()))
-    where recipient_user_id = requesting_user_id
-      and id = any(notification_ids);
+    update public.notifications as n
+    set read_at = coalesce(n.read_at, now())
+    where n.recipient_user_id = requesting_user_id
+      and n.id = any(notification_ids);
   end if;
 
   return query
   select
-    notifications.id as notification_id,
-    notifications.recipient_user_id,
-    notifications.sender_user_id,
-    notifications.sender_display_name,
-    notifications.image_path,
-    notifications.type as notification_type,
-    notifications.template_args,
-    notifications.created_at,
-    notifications.read_at,
-    notifications.metadata
-  from public.notifications
-  where notifications.recipient_user_id = requesting_user_id
-  order by notifications.created_at desc;
+    n.id as notification_id,
+    n.recipient_user_id,
+    n.sender_user_id,
+    n.sender_display_name,
+    n.image_path,
+    n.type as notification_type,
+    n.template_args,
+    n.created_at,
+    n.read_at,
+    n.metadata
+  from public.notifications n
+  where n.recipient_user_id = requesting_user_id
+  order by n.created_at desc;
 end;
 $$;
 
@@ -210,9 +257,10 @@ as $$
 declare
   sender_display_name text := 'Glass Trail User';
   created_notification_id uuid;
+  normalized_notification_type text := btrim(coalesce(notification_type, ''));
 begin
   if target_recipient_user_id is null
-      or btrim(coalesce(notification_type, '')) = ''
+      or normalized_notification_type = ''
       or notification_template_args is null
       or jsonb_typeof(notification_template_args) <> 'object' then
     return null;
@@ -229,6 +277,8 @@ begin
     end if;
   end if;
 
+  perform public.prune_expired_notifications();
+
   insert into public.notifications (
     recipient_user_id,
     sender_user_id,
@@ -242,8 +292,11 @@ begin
     target_recipient_user_id,
     target_sender_user_id,
     sender_display_name,
-    nullif(btrim(notification_image_path), ''),
-    btrim(notification_type),
+    public.notification_image_path_for_type(
+      normalized_notification_type,
+      notification_image_path
+    ),
+    normalized_notification_type,
     notification_template_args,
     coalesce(notification_metadata, '{}'::jsonb)
   )
@@ -324,7 +377,6 @@ begin
     raise exception 'You cannot add yourself as a friend.';
   end if;
 
-  -- Let the unique pair index serialize concurrent requests for the same pair.
   insert into public.friend_relationships (requester_id, addressee_id, status)
   values (requesting_user_id, target_user_id, 'pending')
   on conflict (
@@ -413,6 +465,36 @@ begin
 end;
 $$;
 
+create or replace function public.cancel_friend_request(target_relationship_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  requester_user_id uuid;
+  addressee_user_id uuid;
+  deleted_id uuid;
+begin
+  delete from public.friend_relationships
+  where id = target_relationship_id
+    and requester_id = (select auth.uid())
+    and status = 'pending'
+  returning id, requester_id, addressee_id
+  into deleted_id, requester_user_id, addressee_user_id;
+
+  if deleted_id is null then
+    raise exception 'The friend request could not be withdrawn.';
+  end if;
+
+  delete from public.notifications
+  where type = 'friend_request_sent'
+    and recipient_user_id = addressee_user_id
+    and sender_user_id = requester_user_id
+    and metadata->>'relationshipId' = deleted_id::text;
+end;
+$$;
+
 create or replace function public.remove_friend(target_friend_user_id uuid)
 returns void
 language plpgsql
@@ -462,14 +544,26 @@ begin
 end;
 $$;
 
+revoke all on function public.notification_image_path_for_type(text, text) from public;
+revoke all on function public.prune_expired_notifications() from public;
 revoke all on function public.load_notifications() from public;
 revoke all on function public.mark_notifications_read(uuid[]) from public;
 revoke all on function public.register_notification_device_token(text, text) from public;
 revoke all on function public.unregister_notification_device_token(text) from public;
 revoke all on function public.create_notification(uuid, uuid, text, jsonb, text, jsonb) from public;
 revoke all on function public.create_friend_notification(uuid, uuid, text, jsonb) from public;
+revoke all on function public.send_friend_request_to_profile(text) from public;
+revoke all on function public.accept_friend_request(uuid) from public;
+revoke all on function public.reject_friend_request(uuid) from public;
+revoke all on function public.cancel_friend_request(uuid) from public;
+revoke all on function public.remove_friend(uuid) from public;
 
 grant execute on function public.load_notifications() to authenticated;
 grant execute on function public.mark_notifications_read(uuid[]) to authenticated;
 grant execute on function public.register_notification_device_token(text, text) to authenticated;
 grant execute on function public.unregister_notification_device_token(text) to authenticated;
+grant execute on function public.send_friend_request_to_profile(text) to authenticated;
+grant execute on function public.accept_friend_request(uuid) to authenticated;
+grant execute on function public.reject_friend_request(uuid) to authenticated;
+grant execute on function public.cancel_friend_request(uuid) to authenticated;
+grant execute on function public.remove_friend(uuid) to authenticated;
