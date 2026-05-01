@@ -47,6 +47,10 @@ class _HomeShellState extends State<HomeShell> {
     await Navigator.of(context).pushNamed(AppRoutes.addDrink);
   }
 
+  Future<void> _openNotifications(BuildContext context) async {
+    await Navigator.of(context).pushNamed(AppRoutes.notifications);
+  }
+
   String _targetRouteForHomeIndex(BuildContext context, int index) {
     final routeMemory = AppScope.routeMemoryOf(context).lastRoute;
     return switch (index) {
@@ -116,6 +120,13 @@ class _HomeShellState extends State<HomeShell> {
     final isLeftHanded = handedness == AppHandedness.left;
     final titles = <String>[l10n.feed, l10n.statistics, l10n.bar, l10n.profile];
     final currentPage = _buildCurrentPage();
+    final appBarActions = <Widget>[
+      _NotificationsAppBarButton(
+        unreadCount: controller.unreadNotificationCount,
+        tooltip: l10n.notificationsTooltip,
+        onPressed: () => _openNotifications(context),
+      ),
+    ];
     final isWide = MediaQuery.sizeOf(context).width >= 900;
     final appBarTitleStyle = theme.textTheme.headlineSmall?.copyWith(
       fontSize: isWide ? 24 : 20,
@@ -135,6 +146,7 @@ class _HomeShellState extends State<HomeShell> {
       return Scaffold(
         appBar: AppBar(
           title: Text(titles[currentIndex], style: appBarTitleStyle),
+          actions: appBarActions,
         ),
         body: Stack(
           children: <Widget>[
@@ -191,6 +203,7 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(titles[currentIndex], style: appBarTitleStyle),
+        actions: appBarActions,
       ),
       body: currentPage,
       floatingActionButton: fab,
@@ -222,6 +235,37 @@ class _HomeShellState extends State<HomeShell> {
             label: l10n.profile,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NotificationsAppBarButton extends StatelessWidget {
+  const _NotificationsAppBarButton({
+    required this.unreadCount,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final int unreadCount;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: 8),
+      child: Badge.count(
+        key: const Key('home-notifications-badge'),
+        count: unreadCount,
+        isLabelVisible: unreadCount > 0,
+        child: IconButton(
+          key: const Key('home-notifications-button'),
+          tooltip: tooltip,
+          onPressed: onPressed,
+          icon: const Icon(Icons.notifications_none_rounded),
+          selectedIcon: const Icon(Icons.notifications_rounded),
+        ),
       ),
     );
   }

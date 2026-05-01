@@ -16,37 +16,39 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
 
-Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders });
-  }
+if (import.meta.main) {
+  Deno.serve(async (request) => {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
 
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    return jsonResponse({ error: 'method_not_allowed' }, 405);
-  }
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      return jsonResponse({ error: 'method_not_allowed' }, 405);
+    }
 
-  const url = new URL(request.url);
-  const route = parseRoute(url);
-  if (route.code.length === 0) {
-    return invalidResponse();
-  }
-
-  try {
-    const profile = await loadProfile(route.code);
-    if (profile == null) {
+    const url = new URL(request.url);
+    const route = parseRoute(url);
+    if (route.code.length === 0) {
       return invalidResponse();
     }
 
-    if (route.isImage) {
-      return imageResponse(profile);
-    }
+    try {
+      const profile = await loadProfile(route.code);
+      if (profile == null) {
+        return invalidResponse();
+      }
 
-    return jsonResponse(publicProfileJson(profile, request), 200);
-  } catch (error) {
-    console.error(error);
-    return serverErrorResponse();
-  }
-});
+      if (route.isImage) {
+        return imageResponse(profile);
+      }
+
+      return jsonResponse(publicProfileJson(profile, request), 200);
+    } catch (error) {
+      console.error(error);
+      return serverErrorResponse();
+    }
+  });
+}
 
 function parseRoute(url: URL): { code: string; isImage: boolean } {
   const parts = url.pathname.split('/').filter((part) => part.length > 0);
@@ -63,8 +65,8 @@ function parseRoute(url: URL): { code: string; isImage: boolean } {
 
 async function loadProfile(code: string): Promise<ProfileRow | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-  const serviceRoleKey =
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ??
+    '';
   if (supabaseUrl.length === 0 || serviceRoleKey.length === 0) {
     throw new Error('Missing Supabase Edge Function configuration.');
   }
@@ -82,17 +84,14 @@ async function loadProfile(code: string): Promise<ProfileRow | null> {
   return data as ProfileRow | null;
 }
 
-function publicProfileJson(
+export function publicProfileJson(
   profile: ProfileRow,
   request: Request,
 ): Record<string, string | null> {
-  const imagePath = profile.profile_image_path?.trim() ?? '';
-  const hasProfileImage =
-    imagePath.length > 0 && isSafeProfileImagePath(profile, imagePath);
   return {
     id: profile.id,
     displayName: displayName(profile),
-    profileImageUrl: hasProfileImage ? profileImageUrl(request) : null,
+    profileImageUrl: publicProfileImageUrl(profile, request),
     profileShareCode: profile.profile_share_code,
   };
 }
@@ -100,13 +99,22 @@ function publicProfileJson(
 async function imageResponse(profile: ProfileRow): Promise<Response> {
   const fallbackUrl = iconUrl();
   const imagePath = profile.profile_image_path?.trim();
-  if (imagePath == null || !isSafeProfileImagePath(profile, imagePath)) {
+  if (imagePath == null) {
+    return redirectResponse(fallbackUrl);
+  }
+
+  const remoteUrl = remoteProfileImageUrl(imagePath);
+  if (remoteUrl != null) {
+    return redirectResponse(remoteUrl);
+  }
+
+  if (!isSafeProfileImagePath(profile, imagePath)) {
     return redirectResponse(fallbackUrl);
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-  const serviceRoleKey =
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ??
+    '';
   const client = createClient(supabaseUrl, serviceRoleKey);
   const { data, error } = await client.storage
     .from(mediaBucket)
@@ -153,6 +161,27 @@ function displayName(profile: ProfileRow): string {
   return value.length === 0 ? 'Glass Trail User' : value;
 }
 
+function publicProfileImageUrl(
+  profile: ProfileRow,
+  request: Request,
+): string | null {
+  const imagePath = profile.profile_image_path?.trim() ?? '';
+  if (imagePath.length === 0) {
+    return null;
+  }
+
+  const remoteUrl = remoteProfileImageUrl(imagePath);
+  if (remoteUrl != null) {
+    return remoteUrl;
+  }
+
+  if (!isSafeProfileImagePath(profile, imagePath)) {
+    return null;
+  }
+
+  return profileImageUrl(request);
+}
+
 function profileImageUrl(request: Request): string {
   const url = new URL(request.url);
   url.search = '';
@@ -180,7 +209,25 @@ function iconUrl(): string {
   return defaultIconUrl;
 }
 
-function isSafeProfileImagePath(profile: ProfileRow, imagePath: string): boolean {
+export function remoteProfileImageUrl(imagePath: string): string | null {
+  try {
+    const url = new URL(imagePath);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return null;
+    }
+    if (url.protocol === 'http:' && !isLocalHost(url.hostname)) {
+      url.protocol = 'https:';
+    }
+    return url.toString();
+  } catch (_) {
+    return null;
+  }
+}
+
+function isSafeProfileImagePath(
+  profile: ProfileRow,
+  imagePath: string,
+): boolean {
   return imagePath.startsWith(`${profile.id}/profiles/`) &&
     !imagePath.includes('..') &&
     !imagePath.startsWith('/');

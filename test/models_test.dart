@@ -1,5 +1,9 @@
+import 'dart:io';
+
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
 
 void main() {
@@ -57,6 +61,120 @@ void main() {
 
       expect(user.birthday, DateTime(2000, 7, 16));
       expect(user.toJson()['birthday'], '2000-07-16T00:00:00.000');
+    });
+  });
+
+  group('AppNotification', () {
+    test('reads generalized snake_case notification rows', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'notification_id': 'notification-1',
+        'recipient_user_id': 'recipient-1',
+        'sender_user_id': 'sender-1',
+        'sender_display_name': 'Sender User',
+        'image_path': 'sender/profile.png',
+        'notification_type': 'friend_request_sent',
+        'template_args': <String, String>{'senderDisplayName': 'Sender User'},
+        'created_at': '2026-04-26T10:00:00Z',
+        'metadata': <String, dynamic>{'route': '/profile'},
+      });
+
+      expect(notification.senderUserId, 'sender-1');
+      expect(notification.senderDisplayName, 'Sender User');
+      expect(notification.imagePath, 'sender/profile.png');
+      expect(notification.type, AppNotificationTypes.friendRequestSent);
+      expect(notification.templateArgs['senderDisplayName'], 'Sender User');
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('de'))),
+        lookupAppLocalizations(
+          const Locale('de'),
+        ).notificationFriendRequestSentTitle('Sender User'),
+      );
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentBody,
+      );
+      expect(notification.metadata['route'], '/profile');
+    });
+
+    test('uses sender display name when template args omit sender', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Sender User',
+        'type': AppNotificationTypes.friendRequestSent,
+        'templateArgs': const <String, dynamic>{},
+      });
+
+      expect(notification.templateSenderDisplayName, 'Sender User');
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentTitle('Sender User'),
+      );
+    });
+
+    test('supports notifications without text', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Sender User',
+        'type': 'custom',
+      });
+
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        'Glass Trail',
+      );
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        isNull,
+      );
+    });
+
+    test('maps friend notification types to static image urls', () {
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRequestAccepted,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.cheers,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRequestRejected,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.requestRejected,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRemoved,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.friendRemoved,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRequestSent,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        'sender/profile.png',
+      );
+      for (final imageUrl in <String>[
+        AppNotificationImageUrls.cheers,
+        AppNotificationImageUrls.requestRejected,
+        AppNotificationImageUrls.friendRemoved,
+      ]) {
+        final assetName = Uri.parse(imageUrl).pathSegments.last;
+        expect(
+          File('web/notification-assets/$assetName').existsSync(),
+          isTrue,
+          reason: imageUrl,
+        );
+      }
     });
   });
 

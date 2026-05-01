@@ -1,6 +1,10 @@
+import 'dart:convert';
+
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 
@@ -245,6 +249,218 @@ void main() {
       },
     );
 
+    test('creates notifications for friendship actions', () async {
+      final requester = await repository.signUp(
+        email: 'notify-requester@example.com',
+        password: 'secret',
+        displayName: 'Notify Requester',
+        profileImagePath: '/tmp/notify-requester.png',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'notify-addressee@example.com',
+        password: 'secret',
+        displayName: 'Notify Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+
+      final requesterConnections = await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+
+      final addresseeNotifications = await repository.loadNotifications(
+        addressee.id,
+      );
+      expect(addresseeNotifications, hasLength(1));
+      expect(
+        addresseeNotifications.single.type,
+        AppNotificationTypes.friendRequestSent,
+      );
+      expect(addresseeNotifications.single.senderUserId, requester.id);
+      expect(
+        addresseeNotifications.single.senderDisplayName,
+        'Notify Requester',
+      );
+      expect(
+        addresseeNotifications.single.imagePath,
+        '/tmp/notify-requester.png',
+      );
+      expect(
+        addresseeNotifications.single.templateArgs['senderDisplayName'],
+        'Notify Requester',
+      );
+      expect(
+        addresseeNotifications.single.title(
+          lookupAppLocalizations(const Locale('en')),
+        ),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentTitle('Notify Requester'),
+      );
+      expect(
+        addresseeNotifications.single.title(
+          lookupAppLocalizations(const Locale('de')),
+        ),
+        lookupAppLocalizations(
+          const Locale('de'),
+        ).notificationFriendRequestSentTitle('Notify Requester'),
+      );
+      expect(
+        addresseeNotifications.single.text(
+          lookupAppLocalizations(const Locale('en')),
+        ),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentBody,
+      );
+
+      await repository.acceptFriendRequest(
+        userId: addressee.id,
+        relationshipId: requesterConnections.single.id,
+      );
+      final requesterNotifications = await repository.loadNotifications(
+        requester.id,
+      );
+      expect(
+        requesterNotifications.single.type,
+        AppNotificationTypes.friendRequestAccepted,
+      );
+      expect(requesterNotifications.single.senderUserId, addressee.id);
+      expect(
+        requesterNotifications.single.imagePath,
+        AppNotificationImageUrls.cheers,
+      );
+
+      await repository.removeFriend(
+        userId: requester.id,
+        friendUserId: addressee.id,
+      );
+      final addresseeAfterRemoval = await repository.loadNotifications(
+        addressee.id,
+      );
+      expect(
+        addresseeAfterRemoval.first.type,
+        AppNotificationTypes.friendRemoved,
+      );
+      expect(addresseeAfterRemoval.first.senderUserId, requester.id);
+      expect(
+        addresseeAfterRemoval.first.imagePath,
+        AppNotificationImageUrls.friendRemoved,
+      );
+    });
+
+    test('creates rejected friend request notifications', () async {
+      final requester = await repository.signUp(
+        email: 'notify-reject-requester@example.com',
+        password: 'secret',
+        displayName: 'Reject Requester',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'notify-reject-addressee@example.com',
+        password: 'secret',
+        displayName: 'Reject Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+
+      await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      final addresseeConnections = await repository.loadFriendConnections(
+        addressee.id,
+      );
+
+      await repository.rejectFriendRequest(
+        userId: addressee.id,
+        relationshipId: addresseeConnections.single.id,
+      );
+
+      final requesterNotifications = await repository.loadNotifications(
+        requester.id,
+      );
+      expect(
+        requesterNotifications.single.type,
+        AppNotificationTypes.friendRequestRejected,
+      );
+      expect(requesterNotifications.single.senderUserId, addressee.id);
+      expect(
+        requesterNotifications.single.imagePath,
+        AppNotificationImageUrls.requestRejected,
+      );
+    });
+
+    test(
+      'does not duplicate notifications for existing pending requests',
+      () async {
+        final requester = await repository.signUp(
+          email: 'notify-duplicate-requester@example.com',
+          password: 'secret',
+          displayName: 'Duplicate Requester',
+        );
+        await repository.signOut();
+        final addressee = await repository.signUp(
+          email: 'notify-duplicate-addressee@example.com',
+          password: 'secret',
+          displayName: 'Duplicate Addressee',
+        );
+        final addresseeProfile = await repository.getOwnFriendProfile(
+          addressee.id,
+        );
+
+        await repository.sendFriendRequestToProfile(
+          userId: requester.id,
+          shareCode: addresseeProfile.profileShareCode!,
+        );
+        await repository.sendFriendRequestToProfile(
+          userId: requester.id,
+          shareCode: addresseeProfile.profileShareCode!,
+        );
+
+        expect(await repository.loadNotifications(addressee.id), hasLength(1));
+      },
+    );
+
+    test('marks notifications as read', () async {
+      final requester = await repository.signUp(
+        email: 'notify-read-requester@example.com',
+        password: 'secret',
+        displayName: 'Read Requester',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'notify-read-addressee@example.com',
+        password: 'secret',
+        displayName: 'Read Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+
+      await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      final notification = (await repository.loadNotifications(
+        addressee.id,
+      )).single;
+
+      expect(notification.isUnread, isTrue);
+
+      final updated = await repository.markNotificationsRead(
+        userId: addressee.id,
+        notificationIds: <String>[notification.id],
+      );
+
+      expect(updated.single.isRead, isTrue);
+      expect(updated.single.readAt, isNotNull);
+    });
+
     test('withdraws outgoing pending friend requests', () async {
       final requester = await repository.signUp(
         email: 'withdraw-requester@example.com',
@@ -265,6 +481,7 @@ void main() {
         userId: requester.id,
         shareCode: addresseeProfile.profileShareCode!,
       );
+      expect(await repository.loadNotifications(addressee.id), hasLength(1));
 
       final withdrawn = await repository.cancelFriendRequest(
         userId: requester.id,
@@ -273,6 +490,72 @@ void main() {
 
       expect(withdrawn, isEmpty);
       expect(await repository.loadFriendConnections(addressee.id), isEmpty);
+      expect(await repository.loadNotifications(addressee.id), isEmpty);
+    });
+
+    test('prunes old read and unread notifications', () async {
+      final preferences = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      const userId = 'retention-user';
+      final notifications = <AppNotification>[
+        AppNotification(
+          id: 'old-read',
+          recipientUserId: userId,
+          senderUserId: 'sender',
+          senderDisplayName: 'Sender',
+          type: AppNotificationTypes.friendRequestAccepted,
+          createdAt: now.subtract(const Duration(days: 60)),
+          readAt: now.subtract(const Duration(days: 31)),
+        ),
+        AppNotification(
+          id: 'recent-read',
+          recipientUserId: userId,
+          senderUserId: 'sender',
+          senderDisplayName: 'Sender',
+          type: AppNotificationTypes.friendRequestAccepted,
+          createdAt: now.subtract(const Duration(days: 60)),
+          readAt: now.subtract(const Duration(days: 29)),
+        ),
+        AppNotification(
+          id: 'old-unread',
+          recipientUserId: userId,
+          senderUserId: 'sender',
+          senderDisplayName: 'Sender',
+          type: AppNotificationTypes.friendRequestSent,
+          createdAt: now.subtract(const Duration(days: 91)),
+        ),
+        AppNotification(
+          id: 'recent-unread',
+          recipientUserId: userId,
+          senderUserId: 'sender',
+          senderDisplayName: 'Sender',
+          type: AppNotificationTypes.friendRequestSent,
+          createdAt: now.subtract(const Duration(days: 89)),
+        ),
+      ];
+      await preferences.setString(
+        'glasstrail.notifications',
+        jsonEncode(
+          notifications
+              .map((notification) => notification.toJson())
+              .toList(growable: false),
+        ),
+      );
+
+      final visible = await repository.loadNotifications(userId);
+      final stored = List<Map<String, dynamic>>.from(
+        (jsonDecode(preferences.getString('glasstrail.notifications')!) as List)
+            .map((item) => Map<String, dynamic>.from(item as Map)),
+      );
+
+      expect(
+        visible.map((notification) => notification.id),
+        unorderedEquals(<String>['recent-read', 'recent-unread']),
+      );
+      expect(
+        stored.map((notification) => notification['id']),
+        unorderedEquals(<String>['recent-read', 'recent-unread']),
+      );
     });
 
     test('rejects self friend requests', () async {

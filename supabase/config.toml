@@ -1,2 +1,5 @@
 [functions.friend-profile-preview]
 verify_jwt = false
+
+[functions.send-notification-push]
+verify_jwt = false

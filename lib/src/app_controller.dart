@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:glasstrail/l10n/app_localizations.dart';
@@ -7,6 +9,7 @@ import 'beer_with_me_import.dart';
 import 'birthday.dart';
 import 'l10n_extensions.dart';
 import 'models.dart';
+import 'push_notification_service.dart';
 import 'repository/app_repository.dart';
 import 'repository/repository_factory.dart';
 import 'stats_calculator.dart';
@@ -104,9 +107,14 @@ class BeerWithMeImportProgress {
 }
 
 class AppController extends ChangeNotifier {
-  AppController._(this._repository);
+  AppController._(
+    this._repository, {
+    PushNotificationService pushNotificationService =
+        const DisabledPushNotificationService(),
+  }) : _pushNotificationService = pushNotificationService;
 
   final AppRepository _repository;
+  final PushNotificationService _pushNotificationService;
 
   AppUser? _currentUser;
   UserSettings _settings = UserSettings.defaults();
@@ -114,23 +122,41 @@ class AppController extends ChangeNotifier {
   List<DrinkDefinition> _customDrinks = const <DrinkDefinition>[];
   List<DrinkEntry> _entries = const <DrinkEntry>[];
   List<FriendConnection> _friendConnections = const <FriendConnection>[];
+  List<AppNotification> _notifications = const <AppNotification>[];
+  final Map<String, DateTime> _notificationReadOverrides = <String, DateTime>{};
   bool _isBusy = false;
   AppBusyAction? _busyAction;
   BeerWithMeImportProgress? _beerWithMeImportProgress;
   bool _cancelBeerWithMeImportRequested = false;
   _FlashMessage? _flashMessage;
+  StreamSubscription<List<AppNotification>>? _notificationSubscription;
+  StreamSubscription<PushDeviceToken>? _pushTokenSubscription;
+  PushDeviceToken? _registeredPushToken;
+  String? _registeredPushTokenUserId;
 
-  static Future<AppController> bootstrap({BackendConfig? backendConfig}) async {
+  static Future<AppController> bootstrap({
+    BackendConfig? backendConfig,
+    PushNotificationService pushNotificationService =
+        const DisabledPushNotificationService(),
+  }) async {
     final repository = await createRepository(backendConfig: backendConfig);
-    final controller = AppController._(repository);
+    final controller = AppController._(
+      repository,
+      pushNotificationService: pushNotificationService,
+    );
     await controller._initialize();
     return controller;
   }
 
   static Future<AppController> bootstrapWithRepository(
-    AppRepository repository,
-  ) async {
-    final controller = AppController._(repository);
+    AppRepository repository, {
+    PushNotificationService pushNotificationService =
+        const DisabledPushNotificationService(),
+  }) async {
+    final controller = AppController._(
+      repository,
+      pushNotificationService: pushNotificationService,
+    );
     await controller._initialize();
     return controller;
   }
@@ -161,6 +187,9 @@ class AppController extends ChangeNotifier {
       (connection) => connection.isPending && connection.isOutgoing,
     ),
   );
+  List<AppNotification> get notifications => List.unmodifiable(_notifications);
+  int get unreadNotificationCount =>
+      _notifications.where((notification) => notification.isUnread).length;
   bool get isBusy => _isBusy;
   AppBusyAction? get busyAction => _busyAction;
   BeerWithMeImportProgress? get beerWithMeImportProgress =>
@@ -173,6 +202,13 @@ class AppController extends ChangeNotifier {
   AppStatistics get statistics => StatsCalculator.fromEntries(_entries);
 
   bool isBusyFor(AppBusyAction action) => _busyAction == action;
+
+  @override
+  void dispose() {
+    unawaited(_notificationSubscription?.cancel());
+    unawaited(_pushTokenSubscription?.cancel());
+    super.dispose();
+  }
 
   bool requestBeerWithMeImportCancellation() {
     if (_busyAction != AppBusyAction.importBeerWithMe ||
@@ -441,6 +477,7 @@ class AppController extends ChangeNotifier {
     String? profileImagePath,
   }) async {
     return _guardFor(AppBusyAction.signUp, () async {
+      await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signUp(
         email: email,
         password: password,
@@ -448,7 +485,10 @@ class AppController extends ChangeNotifier {
         birthday: normalizeBirthdayOrNull(birthday),
         profileImagePath: profileImagePath,
       );
+      _notificationReadOverrides.clear();
       await _reloadUserScope();
+      _subscribeToNotifications();
+      await _registerPushTokenBestEffort();
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.welcomeToGlassTrail,
       );
@@ -457,19 +497,28 @@ class AppController extends ChangeNotifier {
 
   Future<bool> signIn({required String email, required String password}) async {
     return _guardFor(AppBusyAction.signIn, () async {
+      await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signIn(email: email, password: password);
+      _notificationReadOverrides.clear();
       await _reloadUserScope();
+      _subscribeToNotifications();
+      await _registerPushTokenBestEffort();
       _flashMessage = const _FlashMessage.simple(_FlashMessageKind.welcomeBack);
     });
   }
 
   Future<bool> signOut() async {
     return _guardFor(AppBusyAction.signOut, () async {
+      await _unregisterPushTokenBestEffort();
+      unawaited(_notificationSubscription?.cancel());
+      _notificationSubscription = null;
       await _repository.signOut();
       _currentUser = null;
       _customDrinks = const <DrinkDefinition>[];
       _entries = const <DrinkEntry>[];
       _friendConnections = const <FriendConnection>[];
+      _notifications = const <AppNotification>[];
+      _notificationReadOverrides.clear();
     });
   }
 
@@ -962,10 +1011,96 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<bool> markNotificationsRead(List<String> notificationIds) async {
+    final user = _currentUser;
+    final ids = notificationIds.toSet();
+    if (user == null || ids.isEmpty) {
+      return false;
+    }
+
+    final readAt = DateTime.now();
+    final optimisticReadAtById = <String, DateTime>{};
+    var changed = false;
+    _notifications = _notifications
+        .map((notification) {
+          if (!ids.contains(notification.id) || notification.isRead) {
+            return notification;
+          }
+          changed = true;
+          optimisticReadAtById[notification.id] = readAt;
+          _notificationReadOverrides[notification.id] = readAt;
+          return notification.copyWith(readAt: readAt);
+        })
+        .toList(growable: false);
+    if (changed) {
+      notifyListeners();
+    }
+
+    try {
+      _notifications = _mergeNotificationReadOverrides(
+        await _repository.markNotificationsRead(
+          userId: user.id,
+          notificationIds: ids.toList(growable: false),
+        ),
+      );
+      notifyListeners();
+      return true;
+    } catch (_) {
+      if (optimisticReadAtById.isNotEmpty) {
+        for (final id in optimisticReadAtById.keys) {
+          _notificationReadOverrides.remove(id);
+        }
+        _notifications = _notifications
+            .map((notification) {
+              final optimisticReadAt = optimisticReadAtById[notification.id];
+              if (optimisticReadAt == null ||
+                  notification.readAt != optimisticReadAt) {
+                return notification;
+              }
+              return notification.copyWith(clearReadAt: true);
+            })
+            .toList(growable: false);
+        notifyListeners();
+      }
+      return false;
+    }
+  }
+
+  Future<bool> markAllNotificationsRead() async {
+    return markNotificationsRead(
+      _notifications
+          .where((notification) => notification.isUnread)
+          .map((notification) => notification.id)
+          .toList(growable: false),
+    );
+  }
+
   Future<bool> refreshData() async {
     return _guard(() async {
       await _reloadAppData();
+      _subscribeToNotifications();
     });
+  }
+
+  Future<bool> refreshFriendConnections() async {
+    final user = _currentUser;
+    if (user == null) {
+      return true;
+    }
+
+    try {
+      final friendConnections = await _repository.loadFriendConnections(
+        user.id,
+      );
+      if (_currentUser?.id != user.id) {
+        return true;
+      }
+      _friendConnections = friendConnections;
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _initialize() async {
@@ -976,6 +1111,8 @@ class AppController extends ChangeNotifier {
     _currentUser = await currentUserFuture;
     if (_currentUser != null) {
       await _reloadUserScope();
+      _subscribeToNotifications();
+      await _registerPushTokenBestEffort();
     }
   }
 
@@ -994,9 +1131,14 @@ class AppController extends ChangeNotifier {
     final friendsFuture = user == null
         ? null
         : _repository.loadFriendConnections(user.id);
+    final notificationsFuture = user == null
+        ? null
+        : _repository.loadNotifications(user.id);
 
     _defaultCatalog = await defaultCatalogFuture;
     if (user == null) {
+      _notifications = const <AppNotification>[];
+      _notificationReadOverrides.clear();
       return;
     }
 
@@ -1004,6 +1146,9 @@ class AppController extends ChangeNotifier {
     _entries = await entriesFuture!;
     _settings = await settingsFuture!;
     _friendConnections = await friendsFuture!;
+    _notifications = _mergeNotificationReadOverrides(
+      await notificationsFuture!,
+    );
   }
 
   Future<void> _reloadUserScope() async {
@@ -1015,11 +1160,126 @@ class AppController extends ChangeNotifier {
     final entriesFuture = _repository.loadEntries(user.id);
     final settingsFuture = _repository.loadSettings(user.id);
     final friendsFuture = _repository.loadFriendConnections(user.id);
+    final notificationsFuture = _repository.loadNotifications(user.id);
 
     _customDrinks = await customDrinksFuture;
     _entries = await entriesFuture;
     _settings = await settingsFuture;
     _friendConnections = await friendsFuture;
+    _notifications = _mergeNotificationReadOverrides(await notificationsFuture);
+  }
+
+  void _subscribeToNotifications() {
+    final user = _currentUser;
+    if (user == null) {
+      return;
+    }
+
+    unawaited(_notificationSubscription?.cancel());
+    _notificationSubscription = _repository.watchNotifications(user.id).listen((
+      notifications,
+    ) {
+      if (_currentUser?.id != user.id) {
+        return;
+      }
+      _notifications = _mergeNotificationReadOverrides(notifications);
+      notifyListeners();
+    }, onError: (_) {});
+  }
+
+  List<AppNotification> _mergeNotificationReadOverrides(
+    List<AppNotification> notifications,
+  ) {
+    return notifications
+        .map((notification) {
+          final overrideReadAt = _notificationReadOverrides[notification.id];
+          if (overrideReadAt == null || notification.isRead) {
+            return notification;
+          }
+          return notification.copyWith(readAt: overrideReadAt);
+        })
+        .toList(growable: false);
+  }
+
+  Future<void> _registerPushTokenBestEffort() async {
+    final user = _currentUser;
+    if (user == null) {
+      return;
+    }
+
+    await _pushTokenSubscription?.cancel();
+    _pushTokenSubscription = _pushNotificationService.tokenRefreshes.listen(
+      (token) => unawaited(_registerPushTokenForCurrentUser(token)),
+      onError: (_) {},
+    );
+
+    try {
+      final token = await _pushNotificationService.getDeviceToken();
+      if (token != null) {
+        await _registerPushTokenForCurrentUser(token);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _registerPushTokenForCurrentUser(PushDeviceToken token) async {
+    final user = _currentUser;
+    if (user == null || token.token.trim().isEmpty) {
+      return;
+    }
+
+    final previousToken = _registeredPushToken;
+    final previousUserId = _registeredPushTokenUserId;
+    try {
+      await _repository.registerNotificationDeviceToken(
+        userId: user.id,
+        token: token.token,
+        platform: token.platform,
+      );
+      if (_currentUser?.id != user.id) {
+        await _unregisterPushToken(token: token, userId: user.id);
+        return;
+      }
+      _registeredPushToken = token;
+      _registeredPushTokenUserId = user.id;
+      if (previousToken != null &&
+          previousUserId != null &&
+          (previousToken.token != token.token || previousUserId != user.id)) {
+        await _unregisterPushToken(
+          token: previousToken,
+          userId: previousUserId,
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _unregisterPushTokenBestEffort() async {
+    final pushTokenSubscription = _pushTokenSubscription;
+    _pushTokenSubscription = null;
+
+    final token = _registeredPushToken;
+    final userId = _registeredPushTokenUserId ?? _currentUser?.id;
+    if (token == null || userId == null) {
+      unawaited(pushTokenSubscription?.cancel());
+      return;
+    }
+
+    await pushTokenSubscription?.cancel();
+
+    try {
+      await _unregisterPushToken(token: token, userId: userId);
+      _registeredPushToken = null;
+      _registeredPushTokenUserId = null;
+    } catch (_) {}
+  }
+
+  Future<void> _unregisterPushToken({
+    required PushDeviceToken token,
+    required String userId,
+  }) {
+    return _repository.unregisterNotificationDeviceToken(
+      userId: userId,
+      token: token.token,
+    );
   }
 
   Set<String> _hiddenGlobalDrinkIdSet() =>

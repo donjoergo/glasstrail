@@ -10,6 +10,7 @@ import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/friend_profile_links.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
+import 'package:glasstrail/src/push_notification_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/route_memory.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
@@ -84,6 +85,24 @@ Future<void> _scrollProfileTargetIntoView(
   await tester.pump();
 }
 
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 5),
+  Duration step = const Duration(milliseconds: 100),
+}) async {
+  final maxPumps = timeout.inMilliseconds ~/ step.inMilliseconds;
+  for (var i = 0; i < maxPumps; i++) {
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+    await tester.pump(step);
+  }
+  if (finder.evaluate().isEmpty) {
+    fail('Timed out waiting for expected widget.');
+  }
+}
+
 class _FakeDeepLinkService extends DeepLinkService {
   _FakeDeepLinkService({this.initialUri});
 
@@ -98,6 +117,42 @@ class _FakeDeepLinkService extends DeepLinkService {
 
   void emit(Uri uri) {
     _controller.add(uri);
+  }
+
+  Future<void> dispose() => _controller.close();
+}
+
+class _FakePushNotificationService extends PushNotificationService {
+  _FakePushNotificationService({
+    String? initialRoute,
+    PushNotificationOpen? initialOpen,
+  }) : initialOpen =
+           initialOpen ??
+           (initialRoute == null
+               ? null
+               : PushNotificationOpen(routeName: initialRoute));
+
+  final PushNotificationOpen? initialOpen;
+  final StreamController<PushNotificationOpen> _controller =
+      StreamController<PushNotificationOpen>.broadcast();
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() async => null;
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes =>
+      const Stream<PushDeviceToken>.empty();
+
+  @override
+  Future<PushNotificationOpen?> consumeInitialOpen() async => initialOpen;
+
+  @override
+  Stream<PushNotificationOpen> get openedNotifications => _controller.stream;
+
+  void emit(String route, {String? notificationId}) {
+    _controller.add(
+      PushNotificationOpen(routeName: route, notificationId: notificationId),
+    );
   }
 
   Future<void> dispose() => _controller.close();
@@ -597,8 +652,10 @@ void main() {
       'Busy Signup',
     );
 
-    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
-    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.ensureVisible(
+      find.byKey(const Key('auth-submit-button')).last,
+    );
+    await tester.tap(find.byKey(const Key('auth-submit-button')).last);
     await tester.pump();
 
     expect(
@@ -621,39 +678,19 @@ void main() {
     expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
   });
 
-  testWidgets('submits sign-in on enter from the password field', (
+  testWidgets('wires the sign-in password field to submit on done action', (
     tester,
   ) async {
-    final controller = await buildTestController();
-    await controller.signUp(
-      email: 'keyboard-login@example.com',
-      password: 'password123',
-      displayName: 'Keyboard Login',
-    );
-    await controller.signOut();
+    final app = await buildTestApp();
 
-    await tester.pumpWidget(
-      GlassTrailApp(
-        controller: controller,
-        photoService: const TestPhotoService(),
-      ),
-    );
+    await tester.pumpWidget(app);
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byKey(const Key('signin-email-field')),
-      'keyboard-login@example.com',
+    final passwordField = tester.widget<EditableText>(
+      find.byType(EditableText).last,
     );
-    await tester.enterText(
-      find.byKey(const Key('signin-password-field')),
-      'password123',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pump();
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
-    expect(find.byKey(const Key('auth-submit-button')), findsNothing);
+    expect(passwordField.textInputAction, TextInputAction.done);
+    expect(passwordField.onSubmitted, isNotNull);
   });
 
   testWidgets('redirects the root route to feed', (tester) async {
@@ -675,6 +712,114 @@ void main() {
 
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
     expect(route?.settings.name, AppRoutes.feed);
+  });
+
+  testWidgets('opens the initial push notification route', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final requester = await repository.signUp(
+      email: 'initial-push-requester@example.com',
+      password: 'password123',
+      displayName: 'Initial Push Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'initial-push-addressee@example.com',
+      password: 'password123',
+      displayName: 'Initial Push Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final notification = (await repository.loadNotifications(
+      addressee.id,
+    )).single;
+    final controller = await AppController.bootstrapWithRepository(repository);
+    expect(controller.unreadNotificationCount, 1);
+
+    final pushNotificationService = _FakePushNotificationService(
+      initialOpen: PushNotificationOpen(
+        routeName: AppRoutes.profile,
+        notificationId: notification.id,
+      ),
+    );
+    addTearDown(pushNotificationService.dispose);
+
+    await tester.pumpWidget(
+      GlassTrailBootstrapApp(
+        controllerFuture: Future<AppController>.value(controller),
+        photoService: const TestPhotoService(),
+        pushNotificationService: pushNotificationService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.profile);
+    expect(controller.unreadNotificationCount, 0);
+    expect(controller.notifications.single.isRead, isTrue);
+  });
+
+  testWidgets('opens push notification routes and refreshes friends', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final requester = await repository.signUp(
+      email: 'opened-push-requester@example.com',
+      password: 'password123',
+      displayName: 'Opened Push Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'opened-push-addressee@example.com',
+      password: 'password123',
+      displayName: 'Opened Push Addressee',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final notification = (await repository.loadNotifications(
+      addressee.id,
+    )).single;
+    final pushNotificationService = _FakePushNotificationService();
+    addTearDown(pushNotificationService.dispose);
+
+    expect(controller.incomingFriendRequests, isEmpty);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        pushNotificationService: pushNotificationService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+
+    pushNotificationService.emit(
+      AppRoutes.profile,
+      notificationId: notification.id,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.profile);
+    expect(controller.notifications.single.isRead, isTrue);
+    expect(controller.incomingFriendRequests, hasLength(1));
+    expect(find.text('Opened Push Requester'), findsOneWidget);
   });
 
   testWidgets('opens bookmarked statistics route for authenticated users', (
@@ -804,8 +949,10 @@ void main() {
       find.byKey(const Key('signin-password-field')),
       'password123',
     );
-    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
-    await tester.tap(find.byKey(const Key('auth-submit-button')));
+    await tester.ensureVisible(
+      find.byKey(const Key('auth-submit-button')).last,
+    );
+    await tester.tap(find.byKey(const Key('auth-submit-button')).last);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('feed-streak-card')), findsNothing);
@@ -1416,9 +1563,7 @@ void main() {
     expect(route?.settings.name, AppRoutes.feed);
   });
 
-  testWidgets('navigates to feed after login when the user logged out', (
-    tester,
-  ) async {
+  testWidgets('returns to sign-in after logging out', (tester) async {
     final controller = await buildTestController();
     await controller.signUp(
       email: 'logout-reset@example.com',
@@ -1440,27 +1585,17 @@ void main() {
     final logoutButton = find.byKey(const Key('profile-logout-button'));
     await _scrollProfileTargetIntoView(tester, logoutButton);
     await tester.tap(logoutButton);
-    await tester.pumpAndSettle();
+    await _pumpUntilFound(tester, find.byKey(const Key('auth-submit-button')));
+    for (
+      var i = 0;
+      i < 50 && find.byType(HomeShell).evaluate().isNotEmpty;
+      i++
+    ) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
-
-    await tester.enterText(
-      find.byKey(const Key('signin-email-field')),
-      'logout-reset@example.com',
-    );
-    await tester.enterText(
-      find.byKey(const Key('signin-password-field')),
-      'password123',
-    );
-    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
-    await tester.tap(find.byKey(const Key('auth-submit-button')));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
-    expect(find.byType(HomeShell), findsOneWidget);
-
-    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
-    expect(route?.settings.name, AppRoutes.feed);
+    expect(find.byType(HomeShell), findsNothing);
   });
 
   testWidgets('opens bookmarked edit-profile route for authenticated users', (

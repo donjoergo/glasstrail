@@ -932,6 +932,84 @@ abstract class AppLocalizations {
   /// **'This friend profile link is invalid or no longer available.'**
   String get friendProfileLinkInvalidBody;
 
+  /// No description provided for @notifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notifications;
+
+  /// No description provided for @notificationsTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTooltip;
+
+  /// No description provided for @notificationsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get notificationsEmptyTitle;
+
+  /// No description provided for @notificationsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend requests and updates will appear here.'**
+  String get notificationsEmptyBody;
+
+  /// No description provided for @notificationFriendRequestSentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} sent you a friend request'**
+  String notificationFriendRequestSentTitle(String name);
+
+  /// No description provided for @notificationFriendRequestSentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Review it in your Friends section.'**
+  String get notificationFriendRequestSentBody;
+
+  /// No description provided for @notificationFriendRequestAcceptedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} accepted your friend request'**
+  String notificationFriendRequestAcceptedTitle(String name);
+
+  /// No description provided for @notificationFriendRequestAcceptedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You can now see each other\'s shared activity.'**
+  String get notificationFriendRequestAcceptedBody;
+
+  /// No description provided for @notificationFriendRequestRejectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} declined your friend request'**
+  String notificationFriendRequestRejectedTitle(String name);
+
+  /// No description provided for @notificationFriendRequestRejectedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You can send another request later.'**
+  String get notificationFriendRequestRejectedBody;
+
+  /// No description provided for @notificationFriendRemovedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} removed you as a friend'**
+  String notificationFriendRemovedTitle(String name);
+
+  /// No description provided for @notificationFriendRemovedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open your Friends section to review your connections.'**
+  String get notificationFriendRemovedBody;
+
+  /// No description provided for @notificationsMarkAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as read'**
+  String get notificationsMarkAllRead;
+
   /// No description provided for @customDrinks.
   ///
   /// In en, this message translates to:

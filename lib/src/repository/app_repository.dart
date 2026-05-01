@@ -53,6 +53,26 @@ abstract class AppRepository {
     required String friendUserId,
   });
 
+  Future<List<AppNotification>> loadNotifications(String userId);
+
+  Future<List<AppNotification>> markNotificationsRead({
+    required String userId,
+    required List<String> notificationIds,
+  });
+
+  Stream<List<AppNotification>> watchNotifications(String userId);
+
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  });
+
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  });
+
   Future<List<DrinkDefinition>> loadDefaultCatalog();
 
   Future<List<DrinkDefinition>> loadCustomDrinks(String userId);

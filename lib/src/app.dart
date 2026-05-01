@@ -16,12 +16,14 @@ import 'locale_memory.dart';
 import 'location_service.dart';
 import 'models.dart';
 import 'photo_service.dart';
+import 'push_notification_service.dart';
 import 'route_memory.dart';
 import 'screens/add_drink_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/friend_profile_screen.dart';
 import 'screens/home_shell.dart';
+import 'screens/notifications_screen.dart';
 
 const _appDisplayTitle = 'Glass Trail';
 const _brandIconAsset = 'assets/icon/app_icon.png';
@@ -38,6 +40,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
     this.routeMemoryFuture,
     this.localeMemoryFuture,
     this.deepLinkService = const DisabledDeepLinkService(),
+    this.pushNotificationService = const DisabledPushNotificationService(),
   });
 
   final PhotoService photoService;
@@ -49,6 +52,7 @@ class GlassTrailBootstrapApp extends StatefulWidget {
   final Future<RouteMemory>? routeMemoryFuture;
   final Future<LocaleMemory>? localeMemoryFuture;
   final DeepLinkService deepLinkService;
+  final PushNotificationService pushNotificationService;
 
   @override
   State<GlassTrailBootstrapApp> createState() => _GlassTrailBootstrapAppState();
@@ -62,7 +66,10 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
     super.initState();
     final controllerFuture =
         widget.controllerFuture ??
-        AppController.bootstrap(backendConfig: widget.backendConfig);
+        AppController.bootstrap(
+          backendConfig: widget.backendConfig,
+          pushNotificationService: widget.pushNotificationService,
+        );
     _bootstrapFuture = _loadBootstrapData(controllerFuture);
   }
 
@@ -81,6 +88,7 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
             routeMemory: bootstrapData.routeMemory,
             localeMemory: bootstrapData.localeMemory,
             deepLinkService: widget.deepLinkService,
+            pushNotificationService: widget.pushNotificationService,
             initialRoute: bootstrapData.initialRoute,
           );
         }
@@ -97,9 +105,14 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
     Future<AppController> controllerFuture,
   ) async {
     final controller = await controllerFuture;
+    final launchRoute = widget.initialRoute ?? _routeFromLaunchUri();
+    final initialPushOpen = launchRoute == null
+        ? await widget.pushNotificationService.consumeInitialOpen()
+        : null;
+    await _markNotificationOpenRead(controller, initialPushOpen);
     final initialRoute =
-        widget.initialRoute ??
-        _routeFromLaunchUri() ??
+        launchRoute ??
+        initialPushOpen?.routeName ??
         await _routeFromInitialDeepLink(widget.deepLinkService);
     final Future<RouteMemory> routeMemoryFuture =
         widget.routeMemoryFuture ??
@@ -161,6 +174,7 @@ class GlassTrailApp extends StatefulWidget {
     LocaleMemory? localeMemory,
     this.initialRoute,
     this.deepLinkService = const DisabledDeepLinkService(),
+    this.pushNotificationService = const DisabledPushNotificationService(),
   }) : routeMemory = routeMemory ?? RouteMemory.disabled(),
        localeMemory = localeMemory ?? LocaleMemory.disabled();
 
@@ -172,6 +186,7 @@ class GlassTrailApp extends StatefulWidget {
   final LocaleMemory localeMemory;
   final String? initialRoute;
   final DeepLinkService deepLinkService;
+  final PushNotificationService pushNotificationService;
 
   @override
   State<GlassTrailApp> createState() => _GlassTrailAppState();
@@ -180,11 +195,13 @@ class GlassTrailApp extends StatefulWidget {
 class _GlassTrailAppState extends State<GlassTrailApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<Uri>? _deepLinkSubscription;
+  StreamSubscription<PushNotificationOpen>? _notificationOpenSubscription;
 
   @override
   void initState() {
     super.initState();
     _subscribeToDeepLinks();
+    _subscribeToNotificationRoutes();
   }
 
   @override
@@ -194,11 +211,16 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
       unawaited(_deepLinkSubscription?.cancel());
       _subscribeToDeepLinks();
     }
+    if (oldWidget.pushNotificationService != widget.pushNotificationService) {
+      unawaited(_notificationOpenSubscription?.cancel());
+      _subscribeToNotificationRoutes();
+    }
   }
 
   @override
   void dispose() {
     unawaited(_deepLinkSubscription?.cancel());
+    unawaited(_notificationOpenSubscription?.cancel());
     super.dispose();
   }
 
@@ -209,12 +231,23 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
     );
   }
 
+  void _subscribeToNotificationRoutes() {
+    _notificationOpenSubscription = widget
+        .pushNotificationService
+        .openedNotifications
+        .listen((open) => unawaited(_openNotification(open)), onError: (_) {});
+  }
+
   void _openDeepLink(Uri uri) {
     final route = routeFromDeepLink(uri);
     if (route == null) {
       return;
     }
+    _openRouteName(route);
+  }
 
+  void _openRouteName(String routeName) {
+    final route = AppRoutes.normalize(routeName);
     void openRoute() {
       final navigator = _navigatorKey.currentState;
       if (navigator == null) {
@@ -228,6 +261,12 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
       return;
     }
     openRoute();
+  }
+
+  Future<void> _openNotification(PushNotificationOpen open) async {
+    await _markNotificationOpenRead(widget.controller, open);
+    _openRouteName(open.routeName);
+    unawaited(widget.controller.refreshFriendConnections());
   }
 
   @override
@@ -299,6 +338,17 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
       ),
     );
   }
+}
+
+Future<void> _markNotificationOpenRead(
+  AppController controller,
+  PushNotificationOpen? open,
+) async {
+  final notificationId = open?.notificationId;
+  if (notificationId == null || notificationId.isEmpty) {
+    return;
+  }
+  await controller.markNotificationsRead(<String>[notificationId]);
 }
 
 class _BootstrapShell extends StatelessWidget {
@@ -492,6 +542,7 @@ class _AppRouteScreen extends StatelessWidget {
     return switch (normalizedRoute) {
       AppRoutes.addDrink => const AddDrinkScreen(),
       AppRoutes.editProfile => const EditProfileScreen(),
+      AppRoutes.notifications => const NotificationsScreen(),
       AppRoutes.auth => const HomeShell(routeName: AppRoutes.feed),
       _ => const HomeShell(routeName: AppRoutes.feed),
     };

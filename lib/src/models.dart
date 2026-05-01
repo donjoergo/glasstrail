@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'birthday.dart';
 
@@ -467,6 +468,278 @@ class FriendConnection {
       ),
     );
   }
+}
+
+class AppNotificationTypes {
+  const AppNotificationTypes._();
+
+  static const friendRequestSent = 'friend_request_sent';
+  static const friendRequestAccepted = 'friend_request_accepted';
+  static const friendRequestRejected = 'friend_request_rejected';
+  static const friendRemoved = 'friend_removed';
+}
+
+class AppNotificationImageUrls {
+  const AppNotificationImageUrls._();
+
+  static const baseUrl = 'https://glasstrail.vercel.app/notification-assets';
+  static const cheers = '$baseUrl/cheers.png';
+  static const requestRejected = '$baseUrl/request_rejected.png';
+  static const friendRemoved = '$baseUrl/friend_removed.png';
+
+  static String? imagePathForType({
+    required String type,
+    String? fallbackImagePath,
+  }) {
+    final normalizedType = type.trim();
+    return switch (normalizedType) {
+      AppNotificationTypes.friendRequestAccepted => cheers,
+      AppNotificationTypes.friendRequestRejected => requestRejected,
+      AppNotificationTypes.friendRemoved => friendRemoved,
+      _ => _normalizedFallback(fallbackImagePath),
+    };
+  }
+
+  static String? _normalizedFallback(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
+}
+
+String appNotificationTitle({
+  required AppLocalizations l10n,
+  required String type,
+  required String senderDisplayName,
+}) {
+  return switch (type) {
+    AppNotificationTypes.friendRequestSent =>
+      l10n.notificationFriendRequestSentTitle(senderDisplayName),
+    AppNotificationTypes.friendRequestAccepted =>
+      l10n.notificationFriendRequestAcceptedTitle(senderDisplayName),
+    AppNotificationTypes.friendRequestRejected =>
+      l10n.notificationFriendRequestRejectedTitle(senderDisplayName),
+    AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedTitle(
+      senderDisplayName,
+    ),
+    _ => 'Glass Trail',
+  };
+}
+
+String? appNotificationText({
+  required AppLocalizations l10n,
+  required String type,
+}) {
+  return switch (type) {
+    AppNotificationTypes.friendRequestSent =>
+      l10n.notificationFriendRequestSentBody,
+    AppNotificationTypes.friendRequestAccepted =>
+      l10n.notificationFriendRequestAcceptedBody,
+    AppNotificationTypes.friendRequestRejected =>
+      l10n.notificationFriendRequestRejectedBody,
+    AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedBody,
+    _ => null,
+  };
+}
+
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.recipientUserId,
+    required this.senderUserId,
+    required this.senderDisplayName,
+    this.imagePath,
+    required this.type,
+    this.templateArgs = const <String, dynamic>{},
+    required this.createdAt,
+    this.readAt,
+    this.metadata = const <String, dynamic>{},
+  });
+
+  final String id;
+  final String recipientUserId;
+  final String? senderUserId;
+  final String senderDisplayName;
+  final String? imagePath;
+  final String type;
+  final Map<String, dynamic> templateArgs;
+  final DateTime createdAt;
+  final DateTime? readAt;
+  final Map<String, dynamic> metadata;
+
+  bool get isRead => readAt != null;
+  bool get isUnread => !isRead;
+
+  String get senderInitials {
+    final trimmed = senderDisplayName.trim();
+    if (trimmed.isEmpty) {
+      return 'GT';
+    }
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final first = parts.first.characters.first.toUpperCase();
+    final second = parts.length > 1
+        ? parts[1].characters.first.toUpperCase()
+        : '';
+    return '$first$second';
+  }
+
+  String get templateSenderDisplayName {
+    return _templateArgString('senderDisplayName', 'sender_display_name') ??
+        senderDisplayName;
+  }
+
+  String title(AppLocalizations l10n) {
+    return appNotificationTitle(
+      l10n: l10n,
+      type: type,
+      senderDisplayName: templateSenderDisplayName,
+    );
+  }
+
+  String? text(AppLocalizations l10n) {
+    return appNotificationText(l10n: l10n, type: type);
+  }
+
+  AppNotification copyWith({
+    String? senderDisplayName,
+    String? imagePath,
+    String? type,
+    Map<String, dynamic>? templateArgs,
+    DateTime? readAt,
+    bool clearReadAt = false,
+    Map<String, dynamic>? metadata,
+  }) {
+    return AppNotification(
+      id: id,
+      recipientUserId: recipientUserId,
+      senderUserId: senderUserId,
+      senderDisplayName: senderDisplayName ?? this.senderDisplayName,
+      imagePath: imagePath ?? this.imagePath,
+      type: type ?? this.type,
+      templateArgs: templateArgs ?? this.templateArgs,
+      createdAt: createdAt,
+      readAt: clearReadAt ? null : readAt ?? this.readAt,
+      metadata: metadata ?? this.metadata,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'recipientUserId': recipientUserId,
+      'senderUserId': senderUserId,
+      'senderDisplayName': senderDisplayName,
+      'imagePath': imagePath,
+      'type': type,
+      'templateArgs': templateArgs,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+      'readAt': readAt?.toUtc().toIso8601String(),
+      'metadata': metadata,
+    };
+  }
+
+  String? _templateArgString(String primary, [String? fallback]) {
+    final value =
+        templateArgs[primary] ??
+        (fallback == null ? null : templateArgs[fallback]);
+    if (value is! String) {
+      return null;
+    }
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    final typeValue = _normalizeNotificationType(
+      (json['type'] as String?) ?? (json['notification_type'] as String?),
+    );
+    final senderDisplayName =
+        (json['senderDisplayName'] as String?) ??
+        (json['sender_display_name'] as String?) ??
+        (json['actorDisplayName'] as String?) ??
+        (json['actor_display_name'] as String?) ??
+        'Glass Trail User';
+    final templateArgs = _templateArgsFromJson(
+      json['templateArgs'] ?? json['template_args'],
+      senderDisplayName: senderDisplayName,
+    );
+    return AppNotification(
+      id:
+          (json['id'] as String?) ??
+          (json['notificationId'] as String?) ??
+          (json['notification_id'] as String),
+      recipientUserId:
+          (json['recipientUserId'] as String?) ??
+          (json['recipient_user_id'] as String),
+      senderUserId:
+          (json['senderUserId'] as String?) ??
+          (json['sender_user_id'] as String?) ??
+          (json['actorUserId'] as String?) ??
+          (json['actor_user_id'] as String?),
+      senderDisplayName: senderDisplayName,
+      imagePath:
+          (json['imagePath'] as String?) ??
+          (json['image_path'] as String?) ??
+          (json['actorProfileImagePath'] as String?) ??
+          (json['actor_profile_image_path'] as String?),
+      type: typeValue,
+      templateArgs: templateArgs,
+      createdAt: _dateTimeFromJson(
+        json['createdAt'] ?? json['created_at'],
+        fallback: DateTime.now(),
+      ),
+      readAt: _nullableDateTimeFromJson(json['readAt'] ?? json['read_at']),
+      metadata: _metadataFromJson(json['metadata']),
+    );
+  }
+}
+
+String _normalizeNotificationType(String? value) {
+  return switch (value) {
+    'friendRequestSent' => AppNotificationTypes.friendRequestSent,
+    'friendRequestAccepted' => AppNotificationTypes.friendRequestAccepted,
+    'friendRequestRejected' => AppNotificationTypes.friendRequestRejected,
+    'friendRemoved' => AppNotificationTypes.friendRemoved,
+    final text? when text.trim().isNotEmpty => text.trim(),
+    _ => 'notification',
+  };
+}
+
+Map<String, dynamic> _templateArgsFromJson(
+  Object? value, {
+  required String senderDisplayName,
+}) {
+  final args = value is Map
+      ? Map<String, dynamic>.from(value)
+      : <String, dynamic>{};
+  if (!args.containsKey('senderDisplayName') &&
+      !args.containsKey('sender_display_name')) {
+    args['senderDisplayName'] = senderDisplayName;
+  }
+  return args;
+}
+
+DateTime _dateTimeFromJson(Object? value, {required DateTime fallback}) {
+  if (value is DateTime) {
+    return value.toLocal();
+  }
+  if (value is String && value.trim().isNotEmpty) {
+    return DateTime.parse(value).toLocal();
+  }
+  return fallback;
+}
+
+DateTime? _nullableDateTimeFromJson(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  return _dateTimeFromJson(value, fallback: DateTime.now());
+}
+
+Map<String, dynamic> _metadataFromJson(Object? value) {
+  if (value is Map) {
+    return Map<String, dynamic>.from(value);
+  }
+  return const <String, dynamic>{};
 }
 
 class DrinkDefinition {

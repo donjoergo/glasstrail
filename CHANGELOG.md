@@ -11,8 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Public profile link has a nice messenger preview
   - Accept/decline/withdraw friend requests
   - Deep linking: profile links open the Glass Trail app when installed, otherwise they show the web version
+- Notification foundation added
+  - Added dedicated notifications screen
+  - Push notifications are now being created for the following events:
+    - friend request sent
+    - friend request accepted
+    - friend request rejected
+    - friend removed
 - Added SonarQube analysis
 - Track alcohol-free beer separately in drink metadata and statistics.
+
+### Fixed
+- Fix logout without push token
 
 ## [1.2.1] - 2026-04-13
 ### Fixed
