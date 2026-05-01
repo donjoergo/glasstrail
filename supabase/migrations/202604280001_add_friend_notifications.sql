@@ -61,8 +61,8 @@ set search_path = public
 as $$
   select case btrim(coalesce(notification_type, ''))
     when 'friend_request_accepted' then 'https://glasstrail.vercel.app/notification-assets/cheers.png'
-    when 'friend_request_rejected' then 'https://glasstrail.vercel.app/notification-assets/sad.jpg'
-    when 'friend_removed' then 'https://glasstrail.vercel.app/notification-assets/sad.jpg'
+    when 'friend_request_rejected' then 'https://glasstrail.vercel.app/notification-assets/request_rejected.png'
+    when 'friend_removed' then 'https://glasstrail.vercel.app/notification-assets/friend_removed.png'
     else nullif(btrim(fallback_image_path), '')
   end;
 $$;
