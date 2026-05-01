@@ -310,6 +310,42 @@ void main() {
     },
   );
 
+  test('unregisters push token when sign-out wins registration race', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _DelayedTokenLocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final controller = await AppController.bootstrapWithRepository(
+      repository,
+      pushNotificationService: const _StaticPushNotificationService(
+        PushDeviceToken(token: 'race-token', platform: 'android'),
+      ),
+    );
+
+    final signUpFuture = controller.signUp(
+      email: 'push-race@example.com',
+      password: 'password123',
+      displayName: 'Push Race',
+    );
+    await repository.registerStarted.future;
+
+    final signOutSuccess = await controller.signOut();
+    expect(signOutSuccess, isTrue);
+    expect(controller.isAuthenticated, isFalse);
+
+    repository.completeRegistration();
+    expect(await signUpFuture, isTrue);
+
+    expect(repository.registeredTokens, hasLength(1));
+    expect(repository.unregisteredTokens, hasLength(1));
+    expect(
+      repository.unregisteredTokens.single.userId,
+      repository.registeredTokens.single.userId,
+    );
+    expect(repository.unregisteredTokens.single.token, 'race-token');
+    expect(controller.isAuthenticated, isFalse);
+  });
+
   test('localizes success flash messages and drink names', () async {
     final controller = await buildTestController();
     final german = _l10n('de');
@@ -1010,6 +1046,52 @@ class _FailingTokenLocalAppRepository extends LocalAppRepository {
     registerCalls++;
     throw const AppException('Token registration failed.');
   }
+}
+
+class _DelayedTokenLocalAppRepository extends LocalAppRepository {
+  _DelayedTokenLocalAppRepository(super.preferences);
+
+  final registerStarted = Completer<void>();
+  final _registrationCompleter = Completer<void>();
+  final registeredTokens = <_TokenCall>[];
+  final unregisteredTokens = <_TokenCall>[];
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) {
+    registeredTokens.add(
+      _TokenCall(userId: userId, token: token, platform: platform),
+    );
+    if (!registerStarted.isCompleted) {
+      registerStarted.complete();
+    }
+    return _registrationCompleter.future;
+  }
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) async {
+    unregisteredTokens.add(_TokenCall(userId: userId, token: token));
+  }
+
+  void completeRegistration() {
+    if (!_registrationCompleter.isCompleted) {
+      _registrationCompleter.complete();
+    }
+  }
+}
+
+class _TokenCall {
+  const _TokenCall({required this.userId, required this.token, this.platform});
+
+  final String userId;
+  final String token;
+  final String? platform;
 }
 
 class _BootstrapProbeRepository implements AppRepository {
