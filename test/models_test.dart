@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -145,14 +147,14 @@ void main() {
           type: AppNotificationTypes.friendRequestRejected,
           fallbackImagePath: 'sender/profile.png',
         ),
-        AppNotificationImageUrls.sad,
+        AppNotificationImageUrls.requestRejected,
       );
       expect(
         AppNotificationImageUrls.imagePathForType(
           type: AppNotificationTypes.friendRemoved,
           fallbackImagePath: 'sender/profile.png',
         ),
-        AppNotificationImageUrls.sad,
+        AppNotificationImageUrls.friendRemoved,
       );
       expect(
         AppNotificationImageUrls.imagePathForType(
@@ -161,6 +163,18 @@ void main() {
         ),
         'sender/profile.png',
       );
+      for (final imageUrl in <String>[
+        AppNotificationImageUrls.cheers,
+        AppNotificationImageUrls.requestRejected,
+        AppNotificationImageUrls.friendRemoved,
+      ]) {
+        final assetName = Uri.parse(imageUrl).pathSegments.last;
+        expect(
+          File('web/notification-assets/$assetName').existsSync(),
+          isTrue,
+          reason: imageUrl,
+        );
+      }
     });
   });
 

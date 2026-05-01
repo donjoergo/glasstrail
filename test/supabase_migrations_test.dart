@@ -44,6 +44,19 @@ void main() {
         "'https://glasstrail.vercel.app/notification-assets/cheers.png'",
       ),
     );
+    expect(
+      migration,
+      contains(
+        'https://glasstrail.vercel.app/notification-assets/request_rejected.png',
+      ),
+    );
+    expect(
+      migration,
+      contains(
+        'https://glasstrail.vercel.app/notification-assets/friend_removed.png',
+      ),
+    );
+    expect(migration, isNot(contains('notification-assets/sad.jpg')));
     expect(migration, isNot(contains('glasstrail-git-codex')));
   });
 

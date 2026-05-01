@@ -484,7 +484,8 @@ class AppNotificationImageUrls {
 
   static const baseUrl = 'https://glasstrail.vercel.app/notification-assets';
   static const cheers = '$baseUrl/cheers.png';
-  static const sad = '$baseUrl/sad.jpg';
+  static const requestRejected = '$baseUrl/request_rejected.png';
+  static const friendRemoved = '$baseUrl/friend_removed.png';
 
   static String? imagePathForType({
     required String type,
@@ -493,8 +494,8 @@ class AppNotificationImageUrls {
     final normalizedType = type.trim();
     return switch (normalizedType) {
       AppNotificationTypes.friendRequestAccepted => cheers,
-      AppNotificationTypes.friendRequestRejected => sad,
-      AppNotificationTypes.friendRemoved => sad,
+      AppNotificationTypes.friendRequestRejected => requestRejected,
+      AppNotificationTypes.friendRemoved => friendRemoved,
       _ => _normalizedFallback(fallbackImagePath),
     };
   }
