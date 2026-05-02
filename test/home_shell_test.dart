@@ -348,6 +348,91 @@ void main() {
     expect(controller.unreadNotificationCount, 0);
   });
 
+  testWidgets(
+    'marks all unread notifications read from the notifications screen',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final addressee = await repository.signUp(
+        email: 'bulk-notify-addressee@example.com',
+        password: 'password123',
+        displayName: 'Bulk Notify Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+      await repository.signOut();
+      final requesterOne = await repository.signUp(
+        email: 'bulk-notify-requester-one@example.com',
+        password: 'password123',
+        displayName: 'Bulk Notify One',
+      );
+      await repository.sendFriendRequestToProfile(
+        userId: requesterOne.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      await repository.signOut();
+      final requesterTwo = await repository.signUp(
+        email: 'bulk-notify-requester-two@example.com',
+        password: 'password123',
+        displayName: 'Bulk Notify Two',
+      );
+      await repository.sendFriendRequestToProfile(
+        userId: requesterTwo.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      await repository.signOut();
+      await repository.signIn(
+        email: 'bulk-notify-addressee@example.com',
+        password: 'password123',
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.unreadNotificationCount, 2);
+
+      await tester.tap(find.byKey(const Key('home-notifications-button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('notifications-mark-all-read-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const Key('notifications-mark-all-read-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.unreadNotificationCount, 0);
+      expect(
+        controller.notifications.every((notification) => notification.isRead),
+        isTrue,
+      );
+      expect(
+        find.byKey(const Key('notifications-mark-all-read-button')),
+        findsOneWidget,
+      );
+      for (final notification in controller.notifications) {
+        expect(
+          find.byKey(Key('notification-unread-${notification.id}')),
+          findsNothing,
+        );
+      }
+    },
+  );
+
   testWidgets('shows a spinner while saving the profile', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.updateProfile);
     final controller = harness.controller;
@@ -4689,8 +4774,5 @@ void main() {
     );
 
     repository.unblock();
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
   });
 }

@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -17,6 +17,9 @@ class SupabaseAppRepository implements AppRepository {
 
   final SupabaseClient _client;
   final Uuid _uuid;
+
+  @visibleForTesting
+  static const notificationSubscriptionErrorStackTrace = StackTrace.empty;
 
   @override
   String get backendLabel => 'Supabase';
@@ -387,7 +390,7 @@ class SupabaseAppRepository implements AppRepository {
   @override
   Stream<List<AppNotification>> watchNotifications(String userId) {
     late final StreamController<List<AppNotification>> controller;
-    RealtimeChannel? channel;
+    Future<void> Function()? stopWatchingNotifications;
     var isClosed = false;
 
     Future<void> publishSnapshot() async {
@@ -408,31 +411,65 @@ class SupabaseAppRepository implements AppRepository {
 
     controller = StreamController<List<AppNotification>>.broadcast(
       onListen: () {
-        unawaited(publishSnapshot());
-        channel = _client
-            .channel('notifications:$userId')
-            .onPostgresChanges(
-              event: PostgresChangeEvent.all,
-              schema: 'public',
-              table: 'notifications',
-              filter: PostgresChangeFilter(
-                type: PostgresChangeFilterType.eq,
-                column: 'recipient_user_id',
-                value: userId,
-              ),
-              callback: (_) => unawaited(publishSnapshot()),
-            )
-            .subscribe();
+        stopWatchingNotifications = startWatchingNotifications(
+          userId: userId,
+          publishSnapshot: publishSnapshot,
+          publishError: (error, stackTrace) {
+            if (!isClosed) {
+              controller.addError(error, stackTrace);
+            }
+          },
+        );
       },
       onCancel: () async {
         isClosed = true;
-        final activeChannel = channel;
-        if (activeChannel != null) {
-          await _client.removeChannel(activeChannel);
+        final stopWatching = stopWatchingNotifications;
+        if (stopWatching != null) {
+          await stopWatching();
         }
       },
     );
     return controller.stream;
+  }
+
+  @visibleForTesting
+  Future<void> Function() startWatchingNotifications({
+    required String userId,
+    required Future<void> Function() publishSnapshot,
+    required void Function(Object error, StackTrace stackTrace) publishError,
+  }) {
+    final channel = _client
+        .channel('notifications:$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'recipient_user_id',
+            value: userId,
+          ),
+          callback: (_) => unawaited(publishSnapshot()),
+        );
+
+    channel.subscribe((status, [error]) {
+      switch (status) {
+        case RealtimeSubscribeStatus.subscribed:
+          unawaited(publishSnapshot());
+          break;
+        case RealtimeSubscribeStatus.channelError:
+        case RealtimeSubscribeStatus.timedOut:
+          publishError(
+            error ?? Exception('Notification realtime subscription failed.'),
+            notificationSubscriptionErrorStackTrace,
+          );
+          break;
+        case RealtimeSubscribeStatus.closed:
+          break;
+      }
+    });
+
+    return () => _client.removeChannel(channel);
   }
 
   @override

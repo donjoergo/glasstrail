@@ -143,6 +143,26 @@ class AppRoutes {
       bar ||
       barSorting ||
       barCustom ||
+      profile => true,
+      _ => false,
+    };
+  }
+
+  static bool isPostAuthRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    if (isFriendProfileRoute(normalized)) {
+      return true;
+    }
+    return switch (normalized) {
+      feed ||
+      statistics ||
+      statisticsOverview ||
+      statisticsMap ||
+      statisticsGallery ||
+      statisticsHistory ||
+      bar ||
+      barSorting ||
+      barCustom ||
       profile ||
       notifications ||
       addDrink ||

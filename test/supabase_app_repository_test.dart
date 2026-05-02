@@ -145,6 +145,65 @@ void main() {
       expect(server.lastEntryInsertBody?['is_alcohol_free'], isTrue);
     });
   });
+
+  group('SupabaseAppRepository.watchNotifications', () {
+    test(
+      'waits for subscription confirmation before loading snapshot',
+      () async {
+        final repository = _ControllableNotificationWatchRepository();
+        final notifications = <AppNotification>[
+          AppNotification(
+            id: 'notification-1',
+            recipientUserId: 'user-123',
+            senderUserId: 'friend-456',
+            senderDisplayName: 'Test Friend',
+            type: AppNotificationTypes.friendRequestSent,
+            createdAt: DateTime.utc(2026, 5, 2, 12),
+          ),
+        ];
+        repository.notificationsToReturn = notifications;
+        final emitted = <List<AppNotification>>[];
+
+        final subscription = repository
+            .watchNotifications('user-123')
+            .listen(emitted.add);
+        addTearDown(subscription.cancel);
+
+        expect(repository.loadNotificationsCallCount, 0);
+        expect(emitted, isEmpty);
+
+        await repository.emitSubscribed();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(repository.loadNotificationsCallCount, 1);
+        expect(emitted.single, same(notifications));
+      },
+    );
+
+    test('reloads snapshot when subscription is confirmed again', () async {
+      final repository = _ControllableNotificationWatchRepository();
+      repository.notificationsToReturn = <AppNotification>[
+        AppNotification(
+          id: 'notification-1',
+          recipientUserId: 'user-123',
+          senderUserId: 'friend-456',
+          senderDisplayName: 'Test Friend',
+          type: AppNotificationTypes.friendRequestSent,
+          createdAt: DateTime.utc(2026, 5, 2, 12),
+        ),
+      ];
+
+      final subscription = repository
+          .watchNotifications('user-123')
+          .listen((_) {});
+      addTearDown(subscription.cancel);
+
+      await repository.emitSubscribed();
+      await repository.emitSubscribed();
+
+      expect(repository.loadNotificationsCallCount, 2);
+    });
+  });
 }
 
 class _MockSupabaseServer {
@@ -254,5 +313,34 @@ class _MockSupabaseServer {
       return null;
     }
     return value.startsWith('eq.') ? value.substring(3) : value;
+  }
+}
+
+class _ControllableNotificationWatchRepository extends SupabaseAppRepository {
+  _ControllableNotificationWatchRepository()
+    : super(SupabaseClient('http://127.0.0.1:54321', 'test-key'));
+
+  List<AppNotification> notificationsToReturn = const <AppNotification>[];
+  int loadNotificationsCallCount = 0;
+  Future<void> Function()? _publishSnapshot;
+
+  @override
+  Future<List<AppNotification>> loadNotifications(String userId) async {
+    loadNotificationsCallCount++;
+    return notificationsToReturn;
+  }
+
+  @override
+  Future<void> Function() startWatchingNotifications({
+    required String userId,
+    required Future<void> Function() publishSnapshot,
+    required void Function(Object error, StackTrace stackTrace) publishError,
+  }) {
+    _publishSnapshot = publishSnapshot;
+    return () async {};
+  }
+
+  Future<void> emitSubscribed() async {
+    await _publishSnapshot?.call();
   }
 }

@@ -47,4 +47,36 @@ void main() {
       AppRoutes.feed,
     );
   });
+
+  test('does not restore notifications as the cold-start route', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'glasstrail.last_route': AppRoutes.notifications,
+    });
+    final routeMemory = await RouteMemory.create();
+
+    expect(routeMemory.lastRoute, AppRoutes.feed);
+    expect(routeMemory.resolveInitialRoute(AppRoutes.root), AppRoutes.feed);
+  });
+
+  test('does not remember add-drink or edit-profile routes', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final routeMemory = await RouteMemory.create();
+
+    await routeMemory.rememberRoute(AppRoutes.statisticsMap);
+    await routeMemory.rememberRoute(AppRoutes.addDrink);
+    await routeMemory.rememberRoute(AppRoutes.editProfile);
+
+    expect(routeMemory.lastRoute, AppRoutes.statisticsMap);
+  });
+
+  test('still returns explicit secondary routes after auth', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final routeMemory = await RouteMemory.create();
+
+    expect(
+      await routeMemory.consumePostAuthRoute(AppRoutes.editProfile),
+      AppRoutes.editProfile,
+    );
+    expect(routeMemory.lastRoute, AppRoutes.feed);
+  });
 }

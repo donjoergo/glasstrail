@@ -1236,6 +1236,7 @@ class AppController extends ChangeNotifier {
         platform: token.platform,
       );
       if (_currentUser?.id != user.id) {
+        await _unregisterPushToken(token: token, userId: user.id);
         return;
       }
       _registeredPushToken = token;
@@ -1243,32 +1244,42 @@ class AppController extends ChangeNotifier {
       if (previousToken != null &&
           previousUserId != null &&
           (previousToken.token != token.token || previousUserId != user.id)) {
-        await _repository.unregisterNotificationDeviceToken(
+        await _unregisterPushToken(
+          token: previousToken,
           userId: previousUserId,
-          token: previousToken.token,
         );
       }
     } catch (_) {}
   }
 
   Future<void> _unregisterPushTokenBestEffort() async {
-    unawaited(_pushTokenSubscription?.cancel());
+    final pushTokenSubscription = _pushTokenSubscription;
     _pushTokenSubscription = null;
 
     final token = _registeredPushToken;
     final userId = _registeredPushTokenUserId ?? _currentUser?.id;
-    _registeredPushToken = null;
-    _registeredPushTokenUserId = null;
     if (token == null || userId == null) {
+      unawaited(pushTokenSubscription?.cancel());
       return;
     }
 
+    await pushTokenSubscription?.cancel();
+
     try {
-      await _repository.unregisterNotificationDeviceToken(
-        userId: userId,
-        token: token.token,
-      );
+      await _unregisterPushToken(token: token, userId: userId);
+      _registeredPushToken = null;
+      _registeredPushTokenUserId = null;
     } catch (_) {}
+  }
+
+  Future<void> _unregisterPushToken({
+    required PushDeviceToken token,
+    required String userId,
+  }) {
+    return _repository.unregisterNotificationDeviceToken(
+      userId: userId,
+      token: token.token,
+    );
   }
 
   Set<String> _hiddenGlobalDrinkIdSet() =>

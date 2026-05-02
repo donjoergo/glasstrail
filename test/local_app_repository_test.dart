@@ -348,7 +348,7 @@ void main() {
       expect(addresseeAfterRemoval.first.senderUserId, requester.id);
       expect(
         addresseeAfterRemoval.first.imagePath,
-        AppNotificationImageUrls.sad,
+        AppNotificationImageUrls.friendRemoved,
       );
     });
 
@@ -391,7 +391,7 @@ void main() {
       expect(requesterNotifications.single.senderUserId, addressee.id);
       expect(
         requesterNotifications.single.imagePath,
-        AppNotificationImageUrls.sad,
+        AppNotificationImageUrls.requestRejected,
       );
     });
 
