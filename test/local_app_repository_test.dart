@@ -396,6 +396,297 @@ void main() {
     });
 
     test(
+      'loads own and accepted friend feed posts newest first with pagination',
+      () async {
+        final user = await repository.signUp(
+          email: 'feed-owner@example.com',
+          password: 'secret',
+          displayName: 'Feed Owner',
+        );
+        await repository.signOut();
+        final friend = await repository.signUp(
+          email: 'feed-friend@example.com',
+          password: 'secret',
+          displayName: 'Feed Friend',
+        );
+        await repository.signOut();
+        final stranger = await repository.signUp(
+          email: 'feed-stranger@example.com',
+          password: 'secret',
+          displayName: 'Feed Stranger',
+        );
+
+        final friendProfile = await repository.getOwnFriendProfile(friend.id);
+        final userConnections = await repository.sendFriendRequestToProfile(
+          userId: user.id,
+          shareCode: friendProfile.profileShareCode!,
+        );
+        await repository.acceptFriendRequest(
+          userId: friend.id,
+          relationshipId: userConnections.single.id,
+        );
+
+        final drink = (await repository.loadDefaultCatalog()).firstWhere(
+          (candidate) => candidate.id == 'beer-pils',
+        );
+        final baseTime = DateTime(2026, 4, 29, 20);
+        await repository.addDrinkEntry(
+          user: user,
+          drink: drink,
+          consumedAt: baseTime.subtract(const Duration(minutes: 1)),
+        );
+        await repository.addDrinkEntry(
+          user: friend,
+          drink: drink,
+          consumedAt: baseTime,
+        );
+        await repository.addDrinkEntry(
+          user: stranger,
+          drink: drink,
+          consumedAt: baseTime.add(const Duration(minutes: 1)),
+        );
+
+        final page = await repository.loadFeedDrinkPosts(
+          userId: user.id,
+          limit: 1,
+        );
+        final nextPage = await repository.loadFeedDrinkPosts(
+          userId: user.id,
+          cursor: page.cursor,
+          limit: 1,
+        );
+
+        expect(page.posts, hasLength(1));
+        expect(page.posts.single.authorProfile.id, friend.id);
+        expect(page.posts.single.isOwnEntry, isFalse);
+        expect(page.hasMore, isTrue);
+        expect(nextPage.posts, hasLength(1));
+        expect(nextPage.posts.single.authorProfile.id, user.id);
+        expect(nextPage.posts.single.isOwnEntry, isTrue);
+        expect(nextPage.hasMore, isFalse);
+        expect(
+          <FeedDrinkPost>[
+            ...page.posts,
+            ...nextPage.posts,
+          ].map((post) => post.authorProfile.id),
+          isNot(contains(stranger.id)),
+        );
+      },
+    );
+
+    test('paginates feed posts twenty at a time', () async {
+      final user = await repository.signUp(
+        email: 'feed-page-owner@example.com',
+        password: 'secret',
+        displayName: 'Feed Page Owner',
+      );
+      final drink = (await repository.loadDefaultCatalog()).firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final baseTime = DateTime(2026, 4, 29, 20);
+      for (var index = 0; index < 25; index++) {
+        await repository.addDrinkEntry(
+          user: user,
+          drink: drink,
+          consumedAt: baseTime.subtract(Duration(minutes: index)),
+        );
+      }
+
+      final firstPage = await repository.loadFeedDrinkPosts(userId: user.id);
+      final secondPage = await repository.loadFeedDrinkPosts(
+        userId: user.id,
+        cursor: firstPage.cursor,
+      );
+
+      expect(firstPage.posts, hasLength(20));
+      expect(firstPage.hasMore, isTrue);
+      expect(firstPage.cursor, isNotNull);
+      expect(secondPage.posts, hasLength(5));
+      expect(secondPage.hasMore, isFalse);
+      expect(
+        firstPage.posts
+            .map((post) => post.entry.id)
+            .toSet()
+            .intersection(
+              secondPage.posts.map((post) => post.entry.id).toSet(),
+            ),
+        isEmpty,
+      );
+    });
+
+    test('creates drink logged notifications for accepted friends', () async {
+      final friend = await repository.signUp(
+        email: 'drink-notify-friend@example.com',
+        password: 'secret',
+        displayName: 'Drink Notify Friend',
+      );
+      await repository.signOut();
+      final logger = await repository.signUp(
+        email: 'drink-notify-logger@example.com',
+        password: 'secret',
+        displayName: 'Drink Notify Logger',
+      );
+      final loggerProfile = await repository.getOwnFriendProfile(logger.id);
+      final friendConnections = await repository.sendFriendRequestToProfile(
+        userId: friend.id,
+        shareCode: loggerProfile.profileShareCode!,
+      );
+      await repository.acceptFriendRequest(
+        userId: logger.id,
+        relationshipId: friendConnections.single.id,
+      );
+
+      final drink = (await repository.loadDefaultCatalog()).firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      await repository.addDrinkEntry(
+        user: logger,
+        drink: drink,
+        comment: 'Cheers from the park',
+        imagePath: '/tmp/entry-photo.png',
+        locationAddress: 'Park Street 1',
+      );
+
+      final notifications = await repository.loadNotifications(friend.id);
+      final drinkNotification = notifications.firstWhere(
+        (notification) =>
+            notification.type == AppNotificationTypes.friendDrinkLogged,
+      );
+
+      expect(drinkNotification.senderUserId, logger.id);
+      expect(drinkNotification.imagePath, '/tmp/entry-photo.png');
+      expect(
+        drinkNotification.title(lookupAppLocalizations(const Locale('en'))),
+        'Drink Notify Logger drinks Pils',
+      );
+      expect(
+        drinkNotification.text(lookupAppLocalizations(const Locale('en'))),
+        'Cheers from the park\nPark Street 1',
+      );
+      expect(drinkNotification.metadata['route'], '/feed');
+      expect(drinkNotification.metadata['entryId'], isNotEmpty);
+    });
+
+    test(
+      'uses drink images and app icon fallback for drink notifications',
+      () async {
+        final friend = await repository.signUp(
+          email: 'drink-image-friend@example.com',
+          password: 'secret',
+          displayName: 'Drink Image Friend',
+        );
+        await repository.signOut();
+        final logger = await repository.signUp(
+          email: 'drink-image-logger@example.com',
+          password: 'secret',
+          displayName: 'Drink Image Logger',
+        );
+        final loggerProfile = await repository.getOwnFriendProfile(logger.id);
+        final friendConnections = await repository.sendFriendRequestToProfile(
+          userId: friend.id,
+          shareCode: loggerProfile.profileShareCode!,
+        );
+        await repository.acceptFriendRequest(
+          userId: logger.id,
+          relationshipId: friendConnections.single.id,
+        );
+
+        final customDrink = await repository.saveCustomDrink(
+          userId: logger.id,
+          name: 'Custom Cola',
+          category: DrinkCategory.nonAlcoholic,
+          imagePath: '/tmp/custom-cola.png',
+        );
+        await repository.addDrinkEntry(user: logger, drink: customDrink);
+        final pils = (await repository.loadDefaultCatalog()).firstWhere(
+          (candidate) => candidate.id == 'beer-pils',
+        );
+        await repository.addDrinkEntry(user: logger, drink: pils);
+
+        final drinkNotifications =
+            (await repository.loadNotifications(friend.id))
+                .where(
+                  (notification) =>
+                      notification.type ==
+                      AppNotificationTypes.friendDrinkLogged,
+                )
+                .toList(growable: false);
+
+        expect(
+          drinkNotifications
+              .firstWhere(
+                (notification) =>
+                    notification.templateArgs['drinkName'] == 'Pils',
+              )
+              .imagePath,
+          AppNotificationImageUrls.appIcon,
+        );
+        expect(
+          drinkNotifications
+              .firstWhere(
+                (notification) =>
+                    notification.templateArgs['drinkName'] == 'Custom Cola',
+              )
+              .imagePath,
+          '/tmp/custom-cola.png',
+        );
+      },
+    );
+
+    test(
+      'shows imported friend entries in feed without notifications',
+      () async {
+        final friend = await repository.signUp(
+          email: 'import-feed-friend@example.com',
+          password: 'secret',
+          displayName: 'Import Feed Friend',
+        );
+        await repository.signOut();
+        final importer = await repository.signUp(
+          email: 'import-feed-logger@example.com',
+          password: 'secret',
+          displayName: 'Import Feed Logger',
+        );
+        final importerProfile = await repository.getOwnFriendProfile(
+          importer.id,
+        );
+        final friendConnections = await repository.sendFriendRequestToProfile(
+          userId: friend.id,
+          shareCode: importerProfile.profileShareCode!,
+        );
+        await repository.acceptFriendRequest(
+          userId: importer.id,
+          relationshipId: friendConnections.single.id,
+        );
+
+        final drink = (await repository.loadDefaultCatalog()).firstWhere(
+          (candidate) => candidate.id == 'beer-pils',
+        );
+        final importedEntry = await repository.addDrinkEntry(
+          user: importer,
+          drink: drink,
+          importSource: 'beer_with_me',
+          importSourceId: 'import-1',
+        );
+
+        final feed = await repository.loadFeedDrinkPosts(userId: friend.id);
+        final notifications = await repository.loadNotifications(friend.id);
+
+        expect(
+          feed.posts.map((post) => post.entry.id),
+          contains(importedEntry.id),
+        );
+        expect(
+          notifications.where(
+            (notification) =>
+                notification.type == AppNotificationTypes.friendDrinkLogged,
+          ),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
       'does not duplicate notifications for existing pending requests',
       () async {
         final requester = await repository.signUp(

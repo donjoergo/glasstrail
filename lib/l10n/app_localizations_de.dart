@@ -205,7 +205,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get feedBody =>
-      'V1 zeigt deine persönliche Historie. Freunde, Kommentare und Cheers folgen später.';
+      'Sieh deine eigenen Drinks und die neuesten Drinks angenommener Freunde.';
 
   @override
   String get noEntries => 'Noch keine Getränke erfasst.';
@@ -508,6 +508,19 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get notificationFriendRemovedBody =>
       'Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.';
+
+  @override
+  String notificationFriendDrinkLoggedTitle(String name, String drink) {
+    return '$name trinkt $drink';
+  }
+
+  @override
+  String notificationFriendDrinkLoggedBody(
+    String comment,
+    String locationAddress,
+  ) {
+    return '$comment\n$locationAddress';
+  }
 
   @override
   String get notificationsMarkAllRead => 'Alle als gelesen markieren';

@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - friend removed
 - Added SonarQube analysis
 - Track alcohol-free beer separately in drink metadata and statistics.
+- Friend activity feed with drink notifications
 
 ### Fixed
 - Fix logout without push token

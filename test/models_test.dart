@@ -163,6 +163,41 @@ void main() {
         ),
         'sender/profile.png',
       );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendDrinkLogged,
+          fallbackImagePath: null,
+        ),
+        AppNotificationImageUrls.appIcon,
+      );
+    });
+
+    test('formats drink logged notifications with compact body lines', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Friend User',
+        'type': AppNotificationTypes.friendDrinkLogged,
+        'templateArgs': const <String, dynamic>{
+          'senderDisplayName': 'Friend User',
+          'drinkName': 'Pils',
+          'comment': 'Cheers from the park',
+          'locationAddress': 'Park Street 1',
+        },
+      });
+
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        'Friend User drinks Pils',
+      );
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('de'))),
+        'Friend User trinkt Pils',
+      );
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        'Cheers from the park\nPark Street 1',
+      );
       for (final imageUrl in <String>[
         AppNotificationImageUrls.cheers,
         AppNotificationImageUrls.requestRejected,

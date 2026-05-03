@@ -473,7 +473,7 @@ abstract class AppLocalizations {
   /// No description provided for @feedBody.
   ///
   /// In en, this message translates to:
-  /// **'This V1 shows your personal history. Friends, comments, and cheers arrive later.'**
+  /// **'See your own drinks and the latest drinks from accepted friends.'**
   String get feedBody;
 
   /// No description provided for @noEntries.
@@ -1003,6 +1003,21 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open your Friends section to review your connections.'**
   String get notificationFriendRemovedBody;
+
+  /// No description provided for @notificationFriendDrinkLoggedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} drinks {drink}'**
+  String notificationFriendDrinkLoggedTitle(String name, String drink);
+
+  /// No description provided for @notificationFriendDrinkLoggedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{comment}\n{locationAddress}'**
+  String notificationFriendDrinkLoggedBody(
+    String comment,
+    String locationAddress,
+  );
 
   /// No description provided for @notificationsMarkAllRead.
   ///

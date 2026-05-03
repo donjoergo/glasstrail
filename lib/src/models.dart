@@ -477,6 +477,7 @@ class AppNotificationTypes {
   static const friendRequestAccepted = 'friend_request_accepted';
   static const friendRequestRejected = 'friend_request_rejected';
   static const friendRemoved = 'friend_removed';
+  static const friendDrinkLogged = 'friend_drink_logged';
 }
 
 class AppNotificationImageUrls {
@@ -486,6 +487,7 @@ class AppNotificationImageUrls {
   static const cheers = '$baseUrl/cheers.png';
   static const requestRejected = '$baseUrl/request_rejected.png';
   static const friendRemoved = '$baseUrl/friend_removed.png';
+  static const appIcon = '$baseUrl/app-icon.png';
 
   static String? imagePathForType({
     required String type,
@@ -496,6 +498,8 @@ class AppNotificationImageUrls {
       AppNotificationTypes.friendRequestAccepted => cheers,
       AppNotificationTypes.friendRequestRejected => requestRejected,
       AppNotificationTypes.friendRemoved => friendRemoved,
+      AppNotificationTypes.friendDrinkLogged =>
+        _normalizedFallback(fallbackImagePath) ?? appIcon,
       _ => _normalizedFallback(fallbackImagePath),
     };
   }
@@ -510,6 +514,7 @@ String appNotificationTitle({
   required AppLocalizations l10n,
   required String type,
   required String senderDisplayName,
+  String? drinkName,
 }) {
   return switch (type) {
     AppNotificationTypes.friendRequestSent =>
@@ -521,6 +526,11 @@ String appNotificationTitle({
     AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedTitle(
       senderDisplayName,
     ),
+    AppNotificationTypes.friendDrinkLogged =>
+      l10n.notificationFriendDrinkLoggedTitle(
+        senderDisplayName,
+        _notificationDrinkName(drinkName),
+      ),
     _ => 'Glass Trail',
   };
 }
@@ -528,6 +538,8 @@ String appNotificationTitle({
 String? appNotificationText({
   required AppLocalizations l10n,
   required String type,
+  String? comment,
+  String? locationAddress,
 }) {
   return switch (type) {
     AppNotificationTypes.friendRequestSent =>
@@ -537,8 +549,33 @@ String? appNotificationText({
     AppNotificationTypes.friendRequestRejected =>
       l10n.notificationFriendRequestRejectedBody,
     AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedBody,
+    AppNotificationTypes.friendDrinkLogged => _friendDrinkLoggedText(
+      comment: comment,
+      locationAddress: locationAddress,
+    ),
     _ => null,
   };
+}
+
+String _notificationDrinkName(String? value) {
+  final normalized = value?.trim();
+  return normalized == null || normalized.isEmpty ? 'a drink' : normalized;
+}
+
+String? _friendDrinkLoggedText({
+  required String? comment,
+  required String? locationAddress,
+}) {
+  final lines = <String>[
+    ?_nonEmptyString(comment),
+    ?_nonEmptyString(locationAddress),
+  ];
+  return lines.isEmpty ? null : lines.join('\n');
+}
+
+String? _nonEmptyString(String? value) {
+  final normalized = value?.trim();
+  return normalized == null || normalized.isEmpty ? null : normalized;
 }
 
 class AppNotification {
@@ -587,16 +624,34 @@ class AppNotification {
         senderDisplayName;
   }
 
+  String? get templateDrinkName {
+    return _templateArgString('drinkName', 'drink_name');
+  }
+
+  String? get templateComment {
+    return _templateArgString('comment');
+  }
+
+  String? get templateLocationAddress {
+    return _templateArgString('locationAddress', 'location_address');
+  }
+
   String title(AppLocalizations l10n) {
     return appNotificationTitle(
       l10n: l10n,
       type: type,
       senderDisplayName: templateSenderDisplayName,
+      drinkName: templateDrinkName,
     );
   }
 
   String? text(AppLocalizations l10n) {
-    return appNotificationText(l10n: l10n, type: type);
+    return appNotificationText(
+      l10n: l10n,
+      type: type,
+      comment: templateComment,
+      locationAddress: templateLocationAddress,
+    );
   }
 
   AppNotification copyWith({
@@ -699,6 +754,7 @@ String _normalizeNotificationType(String? value) {
     'friendRequestAccepted' => AppNotificationTypes.friendRequestAccepted,
     'friendRequestRejected' => AppNotificationTypes.friendRequestRejected,
     'friendRemoved' => AppNotificationTypes.friendRemoved,
+    'friendDrinkLogged' => AppNotificationTypes.friendDrinkLogged,
     final text? when text.trim().isNotEmpty => text.trim(),
     _ => 'notification',
   };
@@ -938,6 +994,45 @@ class DrinkEntry {
       category == DrinkCategory.nonAlcoholic || isAlcoholFree;
   bool get shouldShowAlcoholFreeMarker =>
       category != DrinkCategory.nonAlcoholic && isEffectivelyAlcoholFree;
+}
+
+class FeedDrinkPostCursor {
+  const FeedDrinkPostCursor({required this.consumedAt, required this.entryId});
+
+  final DateTime consumedAt;
+  final String entryId;
+}
+
+class FeedDrinkPost {
+  const FeedDrinkPost({
+    required this.entry,
+    required this.authorProfile,
+    required this.isOwnEntry,
+  });
+
+  final DrinkEntry entry;
+  final FriendProfile authorProfile;
+  final bool isOwnEntry;
+
+  FeedDrinkPostCursor get cursor {
+    return FeedDrinkPostCursor(consumedAt: entry.consumedAt, entryId: entry.id);
+  }
+
+  String get authorDisplayName => authorProfile.displayName;
+  String? get authorImagePath => authorProfile.profileImagePath;
+  String get authorInitials => authorProfile.initials;
+}
+
+class FeedDrinkPostPage {
+  const FeedDrinkPostPage({
+    required this.posts,
+    required this.cursor,
+    required this.hasMore,
+  });
+
+  final List<FeedDrinkPost> posts;
+  final FeedDrinkPostCursor? cursor;
+  final bool hasMore;
 }
 
 class UserSettings {

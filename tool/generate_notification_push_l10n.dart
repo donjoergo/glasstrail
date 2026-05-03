@@ -22,6 +22,10 @@ const _notificationTemplateKeys = <String, Map<String, String>>{
     'title': 'notificationFriendRemovedTitle',
     'body': 'notificationFriendRemovedBody',
   },
+  'friend_drink_logged': <String, String>{
+    'title': 'notificationFriendDrinkLoggedTitle',
+    'body': 'notificationFriendDrinkLoggedBody',
+  },
 };
 
 void main() {
@@ -112,7 +116,7 @@ export function notificationPushBody(
   input: NotificationPushInput,
 ): string | null {
   const body = messageFor(input.type, input.locale)?.body;
-  return body == null ? null : formatTemplate(body, input);
+  return body == null ? null : compactBody(formatTemplate(body, input));
 }
 
 function messageFor(type: string, locale: string): NotificationMessage | null {
@@ -124,18 +128,39 @@ function messageFor(type: string, locale: string): NotificationMessage | null {
 }
 
 function formatTemplate(template: string, input: NotificationPushInput): string {
-  return template.replaceAll("{name}", senderDisplayName(input));
+  return template
+    .replaceAll("{name}", senderDisplayName(input))
+    .replaceAll("{drink}", templateString(input, "drinkName", "drink_name") || "a drink")
+    .replaceAll("{comment}", templateString(input, "comment"))
+    .replaceAll("{locationAddress}", templateString(input, "locationAddress", "location_address"));
 }
 
 function senderDisplayName(input: NotificationPushInput): string {
-  const fromTemplateArgs = stringValue(input.templateArgs?.["senderDisplayName"]) ||
-    stringValue(input.templateArgs?.["sender_display_name"]);
+  const fromTemplateArgs = templateString(input, "senderDisplayName", "sender_display_name");
   if (fromTemplateArgs.length > 0) {
     return fromTemplateArgs;
   }
 
   const fromRow = stringValue(input.senderDisplayName);
   return fromRow.length > 0 ? fromRow : "Glass Trail User";
+}
+
+function templateString(
+  input: NotificationPushInput,
+  primary: string,
+  fallback?: string,
+): string {
+  return stringValue(input.templateArgs?.[primary]) ||
+    (fallback == null ? "" : stringValue(input.templateArgs?.[fallback]));
+}
+
+function compactBody(value: string): string | null {
+  const body = value
+    .split("\\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join("\\n");
+  return body.length > 0 ? body : null;
 }
 
 function normalizeLocale(value: string): string {

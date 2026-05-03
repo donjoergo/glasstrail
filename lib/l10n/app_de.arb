@@ -73,7 +73,7 @@
     }
   },
   "feedHeadline": "Dein Aktivitätsfeed",
-  "feedBody": "V1 zeigt deine persönliche Historie. Freunde, Kommentare und Cheers folgen später.",
+  "feedBody": "Sieh deine eigenen Drinks und die neuesten Drinks angenommener Freunde.",
   "noEntries": "Noch keine Getränke erfasst.",
   "startLogging": "Starte mit deinem ersten Eintrag.",
   "weeklyTotal": "Woche",
@@ -228,6 +228,28 @@
     }
   },
   "notificationFriendRemovedBody": "Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.",
+  "notificationFriendDrinkLoggedTitle": "{name} trinkt {drink}",
+  "@notificationFriendDrinkLoggedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "drink": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendDrinkLoggedBody": "{comment}\n{locationAddress}",
+  "@notificationFriendDrinkLoggedBody": {
+    "placeholders": {
+      "comment": {
+        "type": "String"
+      },
+      "locationAddress": {
+        "type": "String"
+      }
+    }
+  },
   "notificationsMarkAllRead": "Alle als gelesen markieren",
   "customDrinks": "Meine eigenen Getränke",
   "addCustomDrinkAction": "Eigenes Getränk hinzufügen",

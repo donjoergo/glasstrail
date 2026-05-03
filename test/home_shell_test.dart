@@ -3004,6 +3004,142 @@ void main() {
     expect(find.text('Pils'), findsOneWidget);
   });
 
+  testWidgets('shows friend feed posts without edit or delete controls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'friend-feed-owner@example.com',
+      password: 'password123',
+      displayName: 'Feed Owner',
+    );
+    final owner = controller.currentUser!;
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    await externalRepository.signOut();
+    final friend = await externalRepository.signUp(
+      email: 'friend-feed-friend@example.com',
+      password: 'password123',
+      displayName: 'Feed Friend',
+    );
+    final friendProfile = await externalRepository.getOwnFriendProfile(
+      friend.id,
+    );
+    final ownerConnections = await externalRepository
+        .sendFriendRequestToProfile(
+          userId: owner.id,
+          shareCode: friendProfile.profileShareCode!,
+        );
+    await externalRepository.acceptFriendRequest(
+      userId: friend.id,
+      relationshipId: ownerConnections.single.id,
+    );
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final friendEntry = await externalRepository.addDrinkEntry(
+      user: friend,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      comment: 'Park cheers',
+      locationAddress: 'Park Street 1',
+    );
+    await controller.refreshData();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(Key('feed-post-${friendEntry.id}')), findsOneWidget);
+    expect(find.text('Feed Friend'), findsOneWidget);
+    expect(find.text('Pils'), findsOneWidget);
+    expect(find.text('Park cheers'), findsOneWidget);
+    expect(find.text('Park Street 1'), findsOneWidget);
+    expect(
+      find.byKey(Key('feed-entry-actions-${friendEntry.id}')),
+      findsNothing,
+    );
+    expect(find.byKey(Key('feed-entry-edit-${friendEntry.id}')), findsNothing);
+    expect(
+      find.byKey(Key('feed-entry-delete-${friendEntry.id}')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('loads more feed posts while scrolling', (tester) async {
+    tester.view.physicalSize = const Size(430, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'feed-scroll@example.com',
+      password: 'password123',
+      displayName: 'Feed Scroll',
+    );
+    final user = controller.currentUser!;
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final baseTime = DateTime(2026, 4, 29, 20);
+    DrinkEntry? oldestEntry;
+    for (var index = 0; index < 25; index++) {
+      final entry = await externalRepository.addDrinkEntry(
+        user: user,
+        drink: drink,
+        consumedAt: baseTime.subtract(Duration(minutes: index)),
+      );
+      oldestEntry = entry;
+    }
+    await controller.refreshData();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.feedPosts, hasLength(20));
+    expect(controller.hasMoreFeedPosts, isTrue);
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      isNot(contains(oldestEntry!.id)),
+    );
+
+    await tester.drag(
+      find.byKey(const Key('feed-list-view')),
+      const Offset(0, -1800),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+
+    expect(controller.feedPosts, hasLength(25));
+    expect(controller.hasMoreFeedPosts, isFalse);
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      contains(oldestEntry.id),
+    );
+  });
+
   testWidgets('refreshes the statistics with pull to refresh', (tester) async {
     tester.view.physicalSize = const Size(430, 1000);
     tester.view.devicePixelRatio = 1.0;
