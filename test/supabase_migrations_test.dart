@@ -124,9 +124,7 @@ void main() {
 
     expect(
       migration,
-      contains(
-        'https://glasstrail.vercel.app/notification-assets/cheers.png',
-      ),
+      contains('https://glasstrail.vercel.app/notification-assets/cheers.png'),
     );
     expect(
       migration,
