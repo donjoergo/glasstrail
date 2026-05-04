@@ -204,10 +204,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get feedHeadline => 'Dein Aktivitätsfeed';
 
   @override
-  String get feedBody =>
-      'Sieh deine eigenen Drinks und die neuesten Drinks angenommener Freunde.';
-
-  @override
   String get noEntries => 'Noch keine Getränke erfasst.';
 
   @override

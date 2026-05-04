@@ -73,7 +73,6 @@
     }
   },
   "feedHeadline": "Your activity feed",
-  "feedBody": "See your own drinks and the latest drinks from accepted friends.",
   "noEntries": "No drinks logged yet.",
   "startLogging": "Start by logging your first drink.",
   "weeklyTotal": "Weekly",

@@ -470,12 +470,6 @@ abstract class AppLocalizations {
   /// **'Your activity feed'**
   String get feedHeadline;
 
-  /// No description provided for @feedBody.
-  ///
-  /// In en, this message translates to:
-  /// **'See your own drinks and the latest drinks from accepted friends.'**
-  String get feedBody;
-
   /// No description provided for @noEntries.
   ///
   /// In en, this message translates to:

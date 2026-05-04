@@ -203,10 +203,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feedHeadline => 'Your activity feed';
 
   @override
-  String get feedBody =>
-      'See your own drinks and the latest drinks from accepted friends.';
-
-  @override
   String get noEntries => 'No drinks logged yet.';
 
   @override
