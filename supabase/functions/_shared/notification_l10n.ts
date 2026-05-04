@@ -37,7 +37,7 @@ const messages: Record<string, Record<string, NotificationMessage>> = {
     },
     "friend_drink_logged": {
       "title": "{name} trinkt {drink}",
-      "body": "{comment}\n{locationAddress}",
+      "body": "{commentLine}\n{locationAddressLine}",
     },
   },
   "en": {
@@ -59,7 +59,7 @@ const messages: Record<string, Record<string, NotificationMessage>> = {
     },
     "friend_drink_logged": {
       "title": "{name} drinks {drink}",
-      "body": "{comment}\n{locationAddress}",
+      "body": "{commentLine}\n{locationAddressLine}",
     },
   },
 };
@@ -94,6 +94,17 @@ function formatTemplate(
       "{drink}",
       templateString(input, "drinkName", "drink_name") || "a drink",
     )
+    .replaceAll(
+      "{commentLine}",
+      prefixedNotificationLine("🗨️", templateString(input, "comment")),
+    )
+    .replaceAll(
+      "{locationAddressLine}",
+      prefixedNotificationLine(
+        "📍",
+        templateString(input, "locationAddress", "location_address"),
+      ),
+    )
     .replaceAll("{comment}", templateString(input, "comment"))
     .replaceAll(
       "{locationAddress}",
@@ -122,6 +133,10 @@ function templateString(
 ): string {
   return stringValue(input.templateArgs?.[primary]) ||
     (fallback == null ? "" : stringValue(input.templateArgs?.[fallback]));
+}
+
+function prefixedNotificationLine(prefix: string, value: string): string {
+  return value.length > 0 ? `${prefix} ${value}` : "";
 }
 
 function compactBody(value: string): string | null {

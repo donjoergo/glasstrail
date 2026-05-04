@@ -567,10 +567,18 @@ String? _friendDrinkLoggedText({
   required String? locationAddress,
 }) {
   final lines = <String>[
-    ?_nonEmptyString(comment),
-    ?_nonEmptyString(locationAddress),
+    ?_prefixedNotificationLine('🗨️', comment),
+    ?_prefixedNotificationLine('📍', locationAddress),
   ];
   return lines.isEmpty ? null : lines.join('\n');
+}
+
+String? _prefixedNotificationLine(String prefix, String? value) {
+  final normalized = _nonEmptyString(value);
+  if (normalized == null) {
+    return null;
+  }
+  return '$prefix $normalized';
 }
 
 String? _nonEmptyString(String? value) {

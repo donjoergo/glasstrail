@@ -131,6 +131,14 @@ function formatTemplate(template: string, input: NotificationPushInput): string 
   return template
     .replaceAll("{name}", senderDisplayName(input))
     .replaceAll("{drink}", templateString(input, "drinkName", "drink_name") || "a drink")
+    .replaceAll("{commentLine}", prefixedNotificationLine("🗨️", templateString(input, "comment")))
+    .replaceAll(
+      "{locationAddressLine}",
+      prefixedNotificationLine(
+        "📍",
+        templateString(input, "locationAddress", "location_address"),
+      ),
+    )
     .replaceAll("{comment}", templateString(input, "comment"))
     .replaceAll("{locationAddress}", templateString(input, "locationAddress", "location_address"));
 }
@@ -152,6 +160,10 @@ function templateString(
 ): string {
   return stringValue(input.templateArgs?.[primary]) ||
     (fallback == null ? "" : stringValue(input.templateArgs?.[fallback]));
+}
+
+function prefixedNotificationLine(prefix: string, value: string): string {
+  return value.length > 0 ? `\${prefix} \${value}` : "";
 }
 
 function compactBody(value: string): string | null {

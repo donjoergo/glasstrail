@@ -380,7 +380,9 @@ void main() {
         email: 'widget-feed-friend@example.com',
         password: 'password123',
       );
-      final controller = await AppController.bootstrapWithRepository(repository);
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
 
       await tester.pumpWidget(
         GlassTrailApp(
@@ -397,6 +399,7 @@ void main() {
         user: logger,
         drink: drink,
         comment: 'Refresh me from notifications',
+        locationAddress: 'Park Street 1',
       );
       await tester.pump();
       await tester.pumpAndSettle();
@@ -409,6 +412,11 @@ void main() {
       await tester.tap(find.byKey(const Key('home-notifications-button')));
       await tester.pumpAndSettle();
 
+      expect(
+        find.text('🗨️ Refresh me from notifications\n📍 Park Street 1'),
+        findsOneWidget,
+      );
+
       await tester.tap(find.byKey(Key('notification-${drinkNotification.id}')));
       await tester.pumpAndSettle();
 
@@ -419,6 +427,7 @@ void main() {
       );
       expect(find.text('Widget Feed Logger'), findsOneWidget);
       expect(find.text('Refresh me from notifications'), findsOneWidget);
+      expect(find.text('Park Street 1'), findsOneWidget);
     },
   );
 

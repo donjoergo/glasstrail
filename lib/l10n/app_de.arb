@@ -238,13 +238,13 @@
       }
     }
   },
-  "notificationFriendDrinkLoggedBody": "{comment}\n{locationAddress}",
+  "notificationFriendDrinkLoggedBody": "{commentLine}\n{locationAddressLine}",
   "@notificationFriendDrinkLoggedBody": {
     "placeholders": {
-      "comment": {
+      "commentLine": {
         "type": "String"
       },
-      "locationAddress": {
+      "locationAddressLine": {
         "type": "String"
       }
     }

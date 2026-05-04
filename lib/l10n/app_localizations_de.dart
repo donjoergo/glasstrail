@@ -512,10 +512,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String notificationFriendDrinkLoggedBody(
-    String comment,
-    String locationAddress,
+    String commentLine,
+    String locationAddressLine,
   ) {
-    return '$comment\n$locationAddress';
+    return '$commentLine\n$locationAddressLine';
   }
 
   @override

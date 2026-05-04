@@ -1007,10 +1007,10 @@ abstract class AppLocalizations {
   /// No description provided for @notificationFriendDrinkLoggedBody.
   ///
   /// In en, this message translates to:
-  /// **'{comment}\n{locationAddress}'**
+  /// **'{commentLine}\n{locationAddressLine}'**
   String notificationFriendDrinkLoggedBody(
-    String comment,
-    String locationAddress,
+    String commentLine,
+    String locationAddressLine,
   );
 
   /// No description provided for @notificationsMarkAllRead.

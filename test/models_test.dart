@@ -196,7 +196,38 @@ void main() {
       );
       expect(
         notification.text(lookupAppLocalizations(const Locale('en'))),
-        'Cheers from the park\nPark Street 1',
+        '🗨️ Cheers from the park\n📍 Park Street 1',
+      );
+      for (final imageUrl in <String>[
+        AppNotificationImageUrls.cheers,
+        AppNotificationImageUrls.requestRejected,
+        AppNotificationImageUrls.friendRemoved,
+      ]) {
+        final assetName = Uri.parse(imageUrl).pathSegments.last;
+        expect(
+          File('web/notification-assets/$assetName').existsSync(),
+          isTrue,
+          reason: imageUrl,
+        );
+      }
+    });
+
+    test('omits empty drink logged notification body lines', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Friend User',
+        'type': AppNotificationTypes.friendDrinkLogged,
+        'templateArgs': const <String, dynamic>{
+          'senderDisplayName': 'Friend User',
+          'drinkName': 'Pils',
+          'locationAddress': 'Park Street 1',
+        },
+      });
+
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        '📍 Park Street 1',
       );
       for (final imageUrl in <String>[
         AppNotificationImageUrls.cheers,
