@@ -63,6 +63,132 @@ const messages: Record<string, Record<string, NotificationMessage>> = {
     },
   },
 };
+const defaultDrinkNames: Record<string, Record<string, string>> = {
+  "en": {
+    "appleWines-apple-wine": "Apple Wine",
+    "appleWines-cider": "Cider",
+    "appleWines-hard-seltzer": "Hard Seltzer",
+    "beer-alt": "Alt",
+    "beer-can": "Beer Can",
+    "beer-classic": "Beer",
+    "beer-goassmass": "Goaßmaß",
+    "beer-helles": "Helles",
+    "beer-ipa": "IPA",
+    "beer-kellerbier": "Kellerbier",
+    "beer-kölsch": "Kölsch",
+    "beer-mass": "Maß",
+    "beer-non-alcoholic": "Non-alcoholic Beer",
+    "beer-pils": "Pils",
+    "beer-radler": "Radler",
+    "beer-stout": "Stout",
+    "beer-weizen": "Weizen",
+    "cocktails-caipirinha": "Caipirinha",
+    "cocktails-cocktail": "Cocktail",
+    "cocktails-margarita": "Margarita",
+    "cocktails-martini": "Martini",
+    "cocktails-mojito": "Mojito",
+    "longdrinks-cuba-libre": "Cuba Libre",
+    "longdrinks-gin-tonic": "Gin & Tonic",
+    "longdrinks-jacki-cola": "Jacki Cola",
+    "longdrinks-longdrink": "Longdrink",
+    "longdrinks-vodka-bull": "Vodka Bull",
+    "longdrinks-vodka-o": "Vodka O",
+    "nonAlcoholic-club-mate": "Club-Mate",
+    "nonAlcoholic-coffee": "Coffee",
+    "nonAlcoholic-cola": "Cola",
+    "nonAlcoholic-energy-drink": "Energy Drink",
+    "nonAlcoholic-juice": "Juice",
+    "nonAlcoholic-lemonade": "Lemonade",
+    "nonAlcoholic-mate-tea": "Mate Tea",
+    "nonAlcoholic-sparkling-water": "Sparkling Water",
+    "nonAlcoholic-tea": "Tea",
+    "nonAlcoholic-water": "Water",
+    "shots-berliner-luft": "Berliner Luft",
+    "shots-ficken": "Ficken",
+    "shots-jaegermeister": "Jägermeister",
+    "shots-limoncello": "Limoncello",
+    "shots-pfeffi": "Pfeffi",
+    "shots-shot": "Shot",
+    "sparklingWines-champagne": "Champagne",
+    "spirits-cognac": "Cognac",
+    "spirits-gin": "Gin",
+    "spirits-rum": "Rum",
+    "spirits-tequila": "Tequila",
+    "spirits-vodka": "Vodka",
+    "spirits-whiskey": "Whiskey",
+    "wine-aperol-spritz": "Aperol Spritz",
+    "wine-mulled-wine": "Mulled Wine",
+    "wine-red-wine": "Red Wine",
+    "wine-rosé-wine": "Rosé Wine",
+    "wine-sangria": "Sangria",
+    "wine-sparkling-wine": "Sparkling Wine",
+    "wine-spritzer": "Spritzer",
+    "wine-white-wine": "White Wine",
+    "wine-wine-spritzer": "Wine Spritzer",
+  },
+  "de": {
+    "appleWines-apple-wine": "Apfelwein",
+    "appleWines-cider": "Cider",
+    "appleWines-hard-seltzer": "Hard Seltzer",
+    "beer-alt": "Alt",
+    "beer-can": "Dosenbier",
+    "beer-classic": "Bier",
+    "beer-goassmass": "Goaßmaß",
+    "beer-helles": "Helles",
+    "beer-ipa": "IPA",
+    "beer-kellerbier": "Kellerbier",
+    "beer-kölsch": "Kölsch",
+    "beer-mass": "Maß",
+    "beer-non-alcoholic": "Alkoholfreies Bier",
+    "beer-pils": "Pils",
+    "beer-radler": "Radler",
+    "beer-stout": "Stout",
+    "beer-weizen": "Weizen",
+    "cocktails-caipirinha": "Caipirinha",
+    "cocktails-cocktail": "Cocktail",
+    "cocktails-margarita": "Margarita",
+    "cocktails-martini": "Martini",
+    "cocktails-mojito": "Mojito",
+    "longdrinks-cuba-libre": "Cuba Libre",
+    "longdrinks-gin-tonic": "Gin & Tonic",
+    "longdrinks-jacki-cola": "Jacki Cola",
+    "longdrinks-longdrink": "Longdrink",
+    "longdrinks-vodka-bull": "Vodka Bull",
+    "longdrinks-vodka-o": "Vodka O",
+    "nonAlcoholic-club-mate": "Club-Mate",
+    "nonAlcoholic-coffee": "Kaffee",
+    "nonAlcoholic-cola": "Cola",
+    "nonAlcoholic-energy-drink": "Energy Drink",
+    "nonAlcoholic-juice": "Saft",
+    "nonAlcoholic-lemonade": "Limonade",
+    "nonAlcoholic-mate-tea": "Mate Tee",
+    "nonAlcoholic-sparkling-water": "Sprudelwasser",
+    "nonAlcoholic-tea": "Tee",
+    "nonAlcoholic-water": "Wasser",
+    "shots-berliner-luft": "Berliner Luft",
+    "shots-ficken": "Ficken",
+    "shots-jaegermeister": "Jägermeister",
+    "shots-limoncello": "Limoncello",
+    "shots-pfeffi": "Pfeffi",
+    "shots-shot": "Shot",
+    "sparklingWines-champagne": "Champagner",
+    "spirits-cognac": "Cognac",
+    "spirits-gin": "Gin",
+    "spirits-rum": "Rum",
+    "spirits-tequila": "Tequila",
+    "spirits-vodka": "Wodka",
+    "spirits-whiskey": "Whiskey",
+    "wine-aperol-spritz": "Aperol Spritz",
+    "wine-mulled-wine": "Glühwein",
+    "wine-red-wine": "Rotwein",
+    "wine-rosé-wine": "Roséwein",
+    "wine-sangria": "Sangria",
+    "wine-sparkling-wine": "Sekt",
+    "wine-spritzer": "Spritzer",
+    "wine-white-wine": "Weißwein",
+    "wine-wine-spritzer": "Weinschorle",
+  },
+};
 
 export function notificationPushTitle(input: NotificationPushInput): string {
   const title = messageFor(input.type, input.locale)?.title ?? fallbackTitle;
@@ -90,10 +216,7 @@ function formatTemplate(
 ): string {
   return template
     .replaceAll("{name}", senderDisplayName(input))
-    .replaceAll(
-      "{drink}",
-      templateString(input, "drinkName", "drink_name") || "a drink",
-    )
+    .replaceAll("{drink}", localizedDrinkName(input))
     .replaceAll(
       "{commentLine}",
       prefixedNotificationLine("🗨️", templateString(input, "comment")),
@@ -124,6 +247,17 @@ function senderDisplayName(input: NotificationPushInput): string {
 
   const fromRow = stringValue(input.senderDisplayName);
   return fromRow.length > 0 ? fromRow : "Glass Trail User";
+}
+
+function localizedDrinkName(input: NotificationPushInput): string {
+  const drinkId = templateString(input, "drinkId", "drink_id");
+  const locale = languageFromLocale(normalizeLocale(input.locale));
+  const localized = stringValue(defaultDrinkNames[locale]?.[drinkId]) ||
+    stringValue(defaultDrinkNames[fallbackLocale]?.[drinkId]);
+  if (localized.length > 0) {
+    return localized;
+  }
+  return templateString(input, "drinkName", "drink_name") || "a drink";
 }
 
 function templateString(

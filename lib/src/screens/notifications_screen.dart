@@ -104,6 +104,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   return _NotificationTile(
                     key: Key('notification-${notification.id}'),
                     notification: notification,
+                    title: controller.localizedNotificationTitle(
+                      notification,
+                      l10n,
+                    ),
                     dateLabel: DateFormat.yMMMd(
                       l10n.localeName,
                     ).add_Hm().format(notification.createdAt),
@@ -121,11 +125,13 @@ class _NotificationTile extends StatelessWidget {
   const _NotificationTile({
     super.key,
     required this.notification,
+    required this.title,
     required this.dateLabel,
     required this.onTap,
   });
 
   final AppNotification notification;
+  final String title;
   final String dateLabel;
   final VoidCallback onTap;
 
@@ -166,7 +172,7 @@ class _NotificationTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      notification.title(l10n),
+                      title,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: colorScheme.onSurface,

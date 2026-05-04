@@ -180,6 +180,7 @@ void main() {
         'type': AppNotificationTypes.friendDrinkLogged,
         'templateArgs': const <String, dynamic>{
           'senderDisplayName': 'Friend User',
+          'drinkId': 'beer-pils',
           'drinkName': 'Pils',
           'comment': 'Cheers from the park',
           'locationAddress': 'Park Street 1',
@@ -194,6 +195,7 @@ void main() {
         notification.title(lookupAppLocalizations(const Locale('de'))),
         'Friend User trinkt Pils',
       );
+      expect(notification.templateDrinkId, 'beer-pils');
       expect(
         notification.text(lookupAppLocalizations(const Locale('en'))),
         '🗨️ Cheers from the park\n📍 Park Street 1',
@@ -220,6 +222,7 @@ void main() {
         'type': AppNotificationTypes.friendDrinkLogged,
         'templateArgs': const <String, dynamic>{
           'senderDisplayName': 'Friend User',
+          'drinkId': 'beer-pils',
           'drinkName': 'Pils',
           'locationAddress': 'Park Street 1',
         },

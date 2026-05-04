@@ -636,6 +636,10 @@ class AppNotification {
     return _templateArgString('drinkName', 'drink_name');
   }
 
+  String? get templateDrinkId {
+    return _templateArgString('drinkId', 'drink_id');
+  }
+
   String? get templateComment {
     return _templateArgString('comment');
   }

@@ -162,6 +162,7 @@ begin
 
   notification_template_args = jsonb_build_object(
     'senderDisplayName', sender_display_name,
+    'drinkId', new.source_drink_id,
     'drinkName', new.drink_name
   );
 
@@ -265,6 +266,7 @@ begin
 
   notification_template_args = jsonb_build_object(
     'senderDisplayName', current_sender_display_name,
+    'drinkId', new.source_drink_id,
     'drinkName', new.drink_name
   );
 

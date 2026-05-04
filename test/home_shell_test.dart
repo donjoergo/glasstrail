@@ -391,9 +391,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await controller.updateSettings(
+        controller.settings.copyWith(localeCode: 'de'),
+      );
+      await tester.pumpAndSettle();
 
       final drink = (await repository.loadDefaultCatalog()).firstWhere(
-        (candidate) => candidate.id == 'beer-pils',
+        (candidate) => candidate.id == 'beer-classic',
       );
       final entry = await repository.addDrinkEntry(
         user: logger,
@@ -412,6 +416,7 @@ void main() {
       await tester.tap(find.byKey(const Key('home-notifications-button')));
       await tester.pumpAndSettle();
 
+      expect(find.text('Widget Feed Logger trinkt Bier'), findsOneWidget);
       expect(
         find.text('🗨️ Refresh me from notifications\n📍 Park Street 1'),
         findsOneWidget,
@@ -426,6 +431,7 @@ void main() {
         contains(entry.id),
       );
       expect(find.text('Widget Feed Logger'), findsOneWidget);
+      expect(find.text('Bier'), findsOneWidget);
       expect(find.text('Refresh me from notifications'), findsOneWidget);
       expect(find.text('Park Street 1'), findsOneWidget);
     },

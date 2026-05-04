@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update drink notifications after edits
 - Use profile images for drink alerts
 - Refresh push notifications by type
+- Localize drink names in drink alerts
 
 ## [1.2.1] - 2026-04-13
 ### Fixed

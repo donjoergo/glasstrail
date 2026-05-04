@@ -1120,6 +1120,7 @@ class LocalAppRepository implements AppRepository {
   }) {
     final templateArgs = <String, dynamic>{
       'senderDisplayName': senderDisplayName,
+      'drinkId': entry.drinkId,
       'drinkName': entry.drinkName,
     };
     final comment = _nonEmptyText(entry.comment);

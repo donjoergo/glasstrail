@@ -116,6 +116,8 @@ void main() {
     expect(migration, contains("relationships.status = 'accepted'"));
     expect(migration, contains("'friend_drink_logged'"));
     expect(migration, contains("'entryId', new.id, 'route', '/feed'"));
+    expect(migration, contains("'drinkId', new.source_drink_id"));
+    expect(migration, contains("'drinkName', new.drink_name"));
   });
 
   test('extends notification image mappings without changing old friend art', () {
@@ -190,6 +192,8 @@ void main() {
       contains("set sender_display_name = current_sender_display_name"),
     );
     expect(migration, contains('template_args = notification_template_args'));
+    expect(migration, contains("'drinkId', new.source_drink_id"));
+    expect(migration, contains("'drinkName', new.drink_name"));
     expect(
       migration,
       contains(

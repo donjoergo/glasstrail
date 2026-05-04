@@ -555,13 +555,14 @@ void main() {
 
       expect(drinkNotification.senderUserId, logger.id);
       expect(drinkNotification.imagePath, '/tmp/entry-photo.png');
+      expect(drinkNotification.templateDrinkId, 'beer-pils');
       expect(
         drinkNotification.title(lookupAppLocalizations(const Locale('en'))),
         'Drink Notify Logger drinks Pils',
       );
       expect(
         drinkNotification.text(lookupAppLocalizations(const Locale('en'))),
-        'Cheers from the park\nPark Street 1',
+        '🗨️ Cheers from the park\n📍 Park Street 1',
       );
       expect(drinkNotification.metadata['route'], '/feed');
       expect(drinkNotification.metadata['entryId'], isNotEmpty);
@@ -625,6 +626,7 @@ void main() {
 
         expect(updatedNotification.id, initialNotification.id);
         expect(updatedNotification.isRead, isTrue);
+        expect(updatedNotification.templateDrinkId, 'beer-pils');
         expect(updatedNotification.templateDrinkName, 'Pils');
         expect(updatedNotification.templateComment, 'Updated note');
         expect(updatedNotification.imagePath, '/tmp/updated-entry-photo.png');

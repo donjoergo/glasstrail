@@ -483,6 +483,25 @@ class AppController extends ChangeNotifier {
     return localizedEntryDrinkName(post.entry, localeCode: localeCode);
   }
 
+  String localizedNotificationTitle(
+    AppNotification notification,
+    AppLocalizations l10n,
+  ) {
+    if (notification.type != AppNotificationTypes.friendDrinkLogged) {
+      return notification.title(l10n);
+    }
+    return appNotificationTitle(
+      l10n: l10n,
+      type: notification.type,
+      senderDisplayName: notification.templateSenderDisplayName,
+      drinkName: localizedDrinkName(
+        notification.templateDrinkId ?? '',
+        notification.templateDrinkName ?? '',
+        l10n.locale.languageCode,
+      ),
+    );
+  }
+
   Future<bool> signUp({
     required String email,
     required String password,
