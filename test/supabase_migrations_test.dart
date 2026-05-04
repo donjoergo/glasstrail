@@ -148,7 +148,10 @@ void main() {
     expect(migration, isNot(contains('notification-assets/sad.jpg')));
     expect(migration, contains("when 'friend_drink_logged' then coalesce"));
     expect(migration, contains("nullif(btrim(new.image_path), '')"));
-    expect(migration, contains("nullif(btrim(profiles.profile_image_path), '')"));
+    expect(
+      migration,
+      contains("nullif(btrim(profiles.profile_image_path), '')"),
+    );
   });
 
   test('removes friend drink notifications when entries are deleted', () {
@@ -163,10 +166,7 @@ void main() {
         'after delete on public.drink_entries',
       ),
     );
-    expect(
-      migration,
-      contains("delete from public.notifications"),
-    );
+    expect(migration, contains("delete from public.notifications"));
     expect(migration, contains("where type = 'friend_drink_logged'"));
     expect(migration, contains("and sender_user_id = old.user_id"));
     expect(migration, contains("and metadata ->> 'entryId' = old.id::text"));
@@ -184,11 +184,11 @@ void main() {
         'after update on public.drink_entries',
       ),
     );
+    expect(migration, contains('update public.notifications'));
     expect(
       migration,
-      contains('update public.notifications'),
+      contains("set sender_display_name = current_sender_display_name"),
     );
-    expect(migration, contains("set sender_display_name = current_sender_display_name"));
     expect(migration, contains('template_args = notification_template_args'));
     expect(
       migration,

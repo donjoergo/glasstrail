@@ -588,10 +588,7 @@ class LocalAppRepository implements AppRepository {
     map[user.id] = raw;
     await _writeJsonMap(_entriesKey, map);
     if (_shouldNotifyFriendsForEntry(entry)) {
-      await _addDrinkLoggedNotifications(
-        sender: user,
-        entry: entry,
-      );
+      await _addDrinkLoggedNotifications(sender: user, entry: entry);
     }
     return entry;
   }
@@ -625,10 +622,7 @@ class LocalAppRepository implements AppRepository {
     map[user.id] = raw;
     await _writeJsonMap(_entriesKey, map);
     if (_shouldNotifyFriendsForEntry(updated)) {
-      await _updateFriendDrinkLoggedNotifications(
-        sender: user,
-        entry: updated,
-      );
+      await _updateFriendDrinkLoggedNotifications(sender: user, entry: updated);
     } else {
       await _deleteFriendDrinkLoggedNotifications(
         senderUserId: user.id,

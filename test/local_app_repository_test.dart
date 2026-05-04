@@ -647,10 +647,7 @@ void main() {
             );
         expect(fallbackNotification.id, initialNotification.id);
         expect(fallbackNotification.isRead, isTrue);
-        expect(
-          fallbackNotification.imagePath,
-          '/tmp/drink-update-profile.png',
-        );
+        expect(fallbackNotification.imagePath, '/tmp/drink-update-profile.png');
       },
     );
 
@@ -764,7 +761,8 @@ void main() {
           userId: loggerWithoutProfile.id,
           relationshipId: secondConnections
               .firstWhere(
-                (connection) => connection.profile.id == loggerWithoutProfile.id,
+                (connection) =>
+                    connection.profile.id == loggerWithoutProfile.id,
               )
               .id,
         );
@@ -782,10 +780,7 @@ void main() {
         final pils = (await repository.loadDefaultCatalog()).firstWhere(
           (candidate) => candidate.id == 'beer-pils',
         );
-        await repository.addDrinkEntry(
-          user: loggerWithoutProfile,
-          drink: pils,
-        );
+        await repository.addDrinkEntry(user: loggerWithoutProfile, drink: pils);
 
         final drinkNotifications =
             (await repository.loadNotifications(friend.id))
