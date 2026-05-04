@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added SonarQube analysis
 - Track alcohol-free beer separately in drink metadata and statistics.
 
+### Fixed
+- Delete drink notifications with entries
+
 ## [1.2.1] - 2026-04-13
 ### Fixed
 - Fix failing tests in CI pipeline

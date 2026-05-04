@@ -568,6 +568,73 @@ void main() {
     });
 
     test(
+      'deletes only the corresponding drink logged notification with the entry',
+      () async {
+        final friend = await repository.signUp(
+          email: 'drink-delete-friend@example.com',
+          password: 'secret',
+          displayName: 'Drink Delete Friend',
+        );
+        await repository.signOut();
+        final logger = await repository.signUp(
+          email: 'drink-delete-logger@example.com',
+          password: 'secret',
+          displayName: 'Drink Delete Logger',
+        );
+        final loggerProfile = await repository.getOwnFriendProfile(logger.id);
+        final friendConnections = await repository.sendFriendRequestToProfile(
+          userId: friend.id,
+          shareCode: loggerProfile.profileShareCode!,
+        );
+        await repository.acceptFriendRequest(
+          userId: logger.id,
+          relationshipId: friendConnections.single.id,
+        );
+
+        final drink = (await repository.loadDefaultCatalog()).firstWhere(
+          (candidate) => candidate.id == 'beer-pils',
+        );
+        final firstEntry = await repository.addDrinkEntry(
+          user: logger,
+          drink: drink,
+          comment: 'First round',
+        );
+        final secondEntry = await repository.addDrinkEntry(
+          user: logger,
+          drink: drink,
+          comment: 'Second round',
+        );
+
+        expect(
+          (await repository.loadNotifications(friend.id))
+              .where(
+                (notification) =>
+                    notification.type == AppNotificationTypes.friendDrinkLogged,
+              )
+              .map((notification) => notification.metadata['entryId'])
+              .toSet(),
+          {firstEntry.id, secondEntry.id},
+        );
+
+        await repository.deleteDrinkEntry(userId: logger.id, entry: firstEntry);
+
+        final remainingNotifications = await repository.loadNotifications(
+          friend.id,
+        );
+        expect(
+          remainingNotifications
+              .where(
+                (notification) =>
+                    notification.type == AppNotificationTypes.friendDrinkLogged,
+              )
+              .map((notification) => notification.metadata['entryId'])
+              .toList(growable: false),
+          [secondEntry.id],
+        );
+      },
+    );
+
+    test(
       'uses drink images and app icon fallback for drink notifications',
       () async {
         final friend = await repository.signUp(

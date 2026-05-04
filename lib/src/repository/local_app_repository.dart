@@ -642,6 +642,10 @@ class LocalAppRepository implements AppRepository {
     }
     map[userId] = raw;
     await _writeJsonMap(_entriesKey, map);
+    await _deleteFriendDrinkLoggedNotifications(
+      senderUserId: userId,
+      entryId: entry.id,
+    );
   }
 
   @override
@@ -868,6 +872,37 @@ class LocalAppRepository implements AppRepository {
     }
     await _saveNotifications(notifications);
     _publishNotifications(addresseeUserId);
+  }
+
+  Future<void> _deleteFriendDrinkLoggedNotifications({
+    required String senderUserId,
+    required String entryId,
+  }) async {
+    final notifications = _loadNotifications();
+    if (notifications.isEmpty) {
+      return;
+    }
+
+    final affectedUserIds = <String>{};
+    notifications.removeWhere((item) {
+      final notification = AppNotification.fromJson(item);
+      final matches =
+          notification.type == AppNotificationTypes.friendDrinkLogged &&
+          notification.senderUserId == senderUserId &&
+          notification.metadata['entryId'] == entryId;
+      if (matches) {
+        affectedUserIds.add(notification.recipientUserId);
+      }
+      return matches;
+    });
+
+    if (affectedUserIds.isEmpty) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    for (final userId in affectedUserIds) {
+      _publishNotifications(userId);
+    }
   }
 
   Future<void> _pruneExpiredNotifications() async {

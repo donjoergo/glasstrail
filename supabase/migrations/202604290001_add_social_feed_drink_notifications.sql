@@ -208,13 +208,39 @@ begin
 end;
 $$;
 
+create or replace function public.delete_friend_drink_logged_notifications()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if old.user_id is null then
+    return old;
+  end if;
+
+  delete from public.notifications
+  where type = 'friend_drink_logged'
+    and sender_user_id = old.user_id
+    and metadata ->> 'entryId' = old.id::text;
+
+  return old;
+end;
+$$;
+
 drop trigger if exists friend_drink_logged_notifications on public.drink_entries;
 create trigger friend_drink_logged_notifications
 after insert on public.drink_entries
 for each row execute function public.create_friend_drink_logged_notifications();
 
+drop trigger if exists friend_drink_logged_notifications_cleanup on public.drink_entries;
+create trigger friend_drink_logged_notifications_cleanup
+after delete on public.drink_entries
+for each row execute function public.delete_friend_drink_logged_notifications();
+
 revoke all on function public.notification_image_path_for_type(text, text) from public;
 revoke all on function public.load_feed_drink_posts(integer, timestamptz, uuid) from public;
 revoke all on function public.create_friend_drink_logged_notifications() from public;
+revoke all on function public.delete_friend_drink_logged_notifications() from public;
 
 grant execute on function public.load_feed_drink_posts(integer, timestamptz, uuid) to authenticated;
