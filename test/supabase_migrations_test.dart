@@ -148,7 +148,7 @@ void main() {
     expect(migration, isNot(contains('notification-assets/sad.jpg')));
     expect(migration, contains("when 'friend_drink_logged' then coalesce"));
     expect(migration, contains("nullif(btrim(new.image_path), '')"));
-    expect(migration, contains("nullif(btrim(custom_drink_image_path), '')"));
+    expect(migration, contains("nullif(btrim(profiles.profile_image_path), '')"));
   });
 
   test('removes friend drink notifications when entries are deleted', () {

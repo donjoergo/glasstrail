@@ -134,7 +134,7 @@ as $$
 declare
   recipient_user_id uuid;
   sender_display_name text := 'Glass Trail User';
-  custom_drink_image_path text;
+  sender_profile_image_path text;
   notification_image_path text;
   notification_template_args jsonb;
 begin
@@ -143,8 +143,10 @@ begin
     return new;
   end if;
 
-  select coalesce(nullif(btrim(profiles.display_name), ''), 'Glass Trail User')
-  into sender_display_name
+  select
+    coalesce(nullif(btrim(profiles.display_name), ''), 'Glass Trail User'),
+    nullif(btrim(profiles.profile_image_path), '')
+  into sender_display_name, sender_profile_image_path
   from public.profiles
   where profiles.id = new.user_id;
 
@@ -152,18 +154,9 @@ begin
     return new;
   end if;
 
-  if new.source_type = 'custom' then
-    select user_drinks.image_path
-    into custom_drink_image_path
-    from public.user_drinks
-    where user_drinks.user_id = new.user_id
-      and user_drinks.id::text = new.source_drink_id
-    limit 1;
-  end if;
-
   notification_image_path = coalesce(
     nullif(btrim(new.image_path), ''),
-    nullif(btrim(custom_drink_image_path), ''),
+    sender_profile_image_path,
     'https://glasstrail.vercel.app/notification-assets/app-icon.png'
   );
 
@@ -236,7 +229,7 @@ set search_path = public
 as $$
 declare
   current_sender_display_name text := 'Glass Trail User';
-  custom_drink_image_path text;
+  current_sender_profile_image_path text;
   notification_image_path text;
   notification_template_args jsonb;
 begin
@@ -253,8 +246,10 @@ begin
     return new;
   end if;
 
-  select coalesce(nullif(btrim(profiles.display_name), ''), 'Glass Trail User')
-  into current_sender_display_name
+  select
+    coalesce(nullif(btrim(profiles.display_name), ''), 'Glass Trail User'),
+    nullif(btrim(profiles.profile_image_path), '')
+  into current_sender_display_name, current_sender_profile_image_path
   from public.profiles
   where profiles.id = new.user_id;
 
@@ -262,18 +257,9 @@ begin
     return new;
   end if;
 
-  if new.source_type = 'custom' then
-    select user_drinks.image_path
-    into custom_drink_image_path
-    from public.user_drinks
-    where user_drinks.user_id = new.user_id
-      and user_drinks.id::text = new.source_drink_id
-    limit 1;
-  end if;
-
   notification_image_path = coalesce(
     nullif(btrim(new.image_path), ''),
-    nullif(btrim(custom_drink_image_path), ''),
+    current_sender_profile_image_path,
     'https://glasstrail.vercel.app/notification-assets/app-icon.png'
   );
 

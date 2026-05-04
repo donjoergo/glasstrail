@@ -591,7 +591,6 @@ class LocalAppRepository implements AppRepository {
       await _addDrinkLoggedNotifications(
         sender: user,
         entry: entry,
-        drink: drink,
       );
     }
     return entry;
@@ -821,7 +820,6 @@ class LocalAppRepository implements AppRepository {
   Future<void> _addDrinkLoggedNotifications({
     required AppUser sender,
     required DrinkEntry entry,
-    required DrinkDefinition drink,
   }) async {
     final recipientIds = _friendConnectionsForUser(sender.id)
         .where((connection) => connection.isAccepted)
@@ -833,7 +831,7 @@ class LocalAppRepository implements AppRepository {
 
     final notificationImagePath = _friendDrinkLoggedNotificationImagePath(
       entry: entry,
-      drink: drink,
+      senderProfileImagePath: sender.profileImagePath,
     );
     final templateArgs = _friendDrinkLoggedTemplateArgs(
       senderDisplayName: sender.displayName,
@@ -860,10 +858,9 @@ class LocalAppRepository implements AppRepository {
       return;
     }
 
-    final drink = _drinkDefinitionForEntry(sender.id, entry);
     final notificationImagePath = _friendDrinkLoggedNotificationImagePath(
       entry: entry,
-      drink: drink,
+      senderProfileImagePath: sender.profileImagePath,
     );
     final templateArgs = _friendDrinkLoggedTemplateArgs(
       senderDisplayName: sender.displayName,
@@ -1144,35 +1141,15 @@ class LocalAppRepository implements AppRepository {
 
   String _friendDrinkLoggedNotificationImagePath({
     required DrinkEntry entry,
-    DrinkDefinition? drink,
+    required String? senderProfileImagePath,
   }) {
     return AppNotificationImageUrls.imagePathForType(
           type: AppNotificationTypes.friendDrinkLogged,
           fallbackImagePath:
               _normalizedImagePath(entry.imagePath) ??
-              _normalizedImagePath(drink?.imagePath),
+              _normalizedImagePath(senderProfileImagePath),
         ) ??
         AppNotificationImageUrls.appIcon;
-  }
-
-  DrinkDefinition? _drinkDefinitionForEntry(String userId, DrinkEntry entry) {
-    for (final drink in buildDefaultDrinkCatalog()) {
-      if (drink.id == entry.drinkId) {
-        return drink;
-      }
-    }
-
-    final map = _readJsonMap(_customDrinksKey);
-    final raw = (map[userId] as List?) ?? const <dynamic>[];
-    for (final item in raw) {
-      final drink = DrinkDefinition.fromJson(
-        Map<String, dynamic>.from(item as Map),
-      );
-      if (drink.id == entry.drinkId) {
-        return drink;
-      }
-    }
-    return null;
   }
 
   Map<String, dynamic> _readJsonMap(String key) {

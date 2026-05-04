@@ -580,6 +580,7 @@ void main() {
           email: 'drink-update-logger@example.com',
           password: 'secret',
           displayName: 'Drink Update Logger',
+          profileImagePath: '/tmp/drink-update-profile.png',
         );
         final loggerProfile = await repository.getOwnFriendProfile(logger.id);
         final friendConnections = await repository.sendFriendRequestToProfile(
@@ -628,6 +629,28 @@ void main() {
         expect(updatedNotification.templateComment, 'Updated note');
         expect(updatedNotification.imagePath, '/tmp/updated-entry-photo.png');
         expect(updatedNotification.metadata['entryId'], entry.id);
+
+        await repository.updateDrinkEntry(
+          user: logger,
+          entry: entry.copyWith(
+            comment: 'Updated note',
+            imagePath: '/tmp/updated-entry-photo.png',
+          ),
+          comment: 'Updated note',
+          imagePath: null,
+        );
+
+        final fallbackNotification =
+            (await repository.loadNotifications(friend.id)).firstWhere(
+              (notification) =>
+                  notification.type == AppNotificationTypes.friendDrinkLogged,
+            );
+        expect(fallbackNotification.id, initialNotification.id);
+        expect(fallbackNotification.isRead, isTrue);
+        expect(
+          fallbackNotification.imagePath,
+          '/tmp/drink-update-profile.png',
+        );
       },
     );
 
@@ -699,7 +722,7 @@ void main() {
     );
 
     test(
-      'uses drink images and app icon fallback for drink notifications',
+      'uses profile images and app icon fallback for drink notifications',
       () async {
         final friend = await repository.signUp(
           email: 'drink-image-friend@example.com',
@@ -707,32 +730,62 @@ void main() {
           displayName: 'Drink Image Friend',
         );
         await repository.signOut();
-        final logger = await repository.signUp(
-          email: 'drink-image-logger@example.com',
+        final loggerWithProfile = await repository.signUp(
+          email: 'drink-image-logger-profile@example.com',
           password: 'secret',
-          displayName: 'Drink Image Logger',
+          displayName: 'Drink Image Logger Profile',
+          profileImagePath: '/tmp/drink-image-profile.png',
         );
-        final loggerProfile = await repository.getOwnFriendProfile(logger.id);
-        final friendConnections = await repository.sendFriendRequestToProfile(
+        final loggerWithProfileLink = await repository.getOwnFriendProfile(
+          loggerWithProfile.id,
+        );
+        final firstConnections = await repository.sendFriendRequestToProfile(
           userId: friend.id,
-          shareCode: loggerProfile.profileShareCode!,
+          shareCode: loggerWithProfileLink.profileShareCode!,
         );
         await repository.acceptFriendRequest(
-          userId: logger.id,
-          relationshipId: friendConnections.single.id,
+          userId: loggerWithProfile.id,
+          relationshipId: firstConnections.single.id,
+        );
+
+        final loggerWithoutProfile = await repository.signUp(
+          email: 'drink-image-logger-fallback@example.com',
+          password: 'secret',
+          displayName: 'Drink Image Logger Fallback',
+        );
+        final loggerWithoutProfileLink = await repository.getOwnFriendProfile(
+          loggerWithoutProfile.id,
+        );
+        final secondConnections = await repository.sendFriendRequestToProfile(
+          userId: friend.id,
+          shareCode: loggerWithoutProfileLink.profileShareCode!,
+        );
+        await repository.acceptFriendRequest(
+          userId: loggerWithoutProfile.id,
+          relationshipId: secondConnections
+              .firstWhere(
+                (connection) => connection.profile.id == loggerWithoutProfile.id,
+              )
+              .id,
         );
 
         final customDrink = await repository.saveCustomDrink(
-          userId: logger.id,
+          userId: loggerWithProfile.id,
           name: 'Custom Cola',
           category: DrinkCategory.nonAlcoholic,
           imagePath: '/tmp/custom-cola.png',
         );
-        await repository.addDrinkEntry(user: logger, drink: customDrink);
+        await repository.addDrinkEntry(
+          user: loggerWithProfile,
+          drink: customDrink,
+        );
         final pils = (await repository.loadDefaultCatalog()).firstWhere(
           (candidate) => candidate.id == 'beer-pils',
         );
-        await repository.addDrinkEntry(user: logger, drink: pils);
+        await repository.addDrinkEntry(
+          user: loggerWithoutProfile,
+          drink: pils,
+        );
 
         final drinkNotifications =
             (await repository.loadNotifications(friend.id))
@@ -747,19 +800,19 @@ void main() {
           drinkNotifications
               .firstWhere(
                 (notification) =>
-                    notification.templateArgs['drinkName'] == 'Pils',
+                    notification.senderUserId == loggerWithProfile.id,
               )
               .imagePath,
-          AppNotificationImageUrls.appIcon,
+          '/tmp/drink-image-profile.png',
         );
         expect(
           drinkNotifications
               .firstWhere(
                 (notification) =>
-                    notification.templateArgs['drinkName'] == 'Custom Cola',
+                    notification.senderUserId == loggerWithoutProfile.id,
               )
               .imagePath,
-          '/tmp/custom-cola.png',
+          AppNotificationImageUrls.appIcon,
         );
       },
     );
