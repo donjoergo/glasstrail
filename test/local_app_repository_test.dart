@@ -568,6 +568,70 @@ void main() {
     });
 
     test(
+      'updates existing drink logged notifications when entry details change',
+      () async {
+        final friend = await repository.signUp(
+          email: 'drink-update-friend@example.com',
+          password: 'secret',
+          displayName: 'Drink Update Friend',
+        );
+        await repository.signOut();
+        final logger = await repository.signUp(
+          email: 'drink-update-logger@example.com',
+          password: 'secret',
+          displayName: 'Drink Update Logger',
+        );
+        final loggerProfile = await repository.getOwnFriendProfile(logger.id);
+        final friendConnections = await repository.sendFriendRequestToProfile(
+          userId: friend.id,
+          shareCode: loggerProfile.profileShareCode!,
+        );
+        await repository.acceptFriendRequest(
+          userId: logger.id,
+          relationshipId: friendConnections.single.id,
+        );
+
+        final drink = (await repository.loadDefaultCatalog()).firstWhere(
+          (candidate) => candidate.id == 'beer-pils',
+        );
+        final entry = await repository.addDrinkEntry(
+          user: logger,
+          drink: drink,
+          comment: 'Original note',
+        );
+        final initialNotification =
+            (await repository.loadNotifications(friend.id)).firstWhere(
+              (notification) =>
+                  notification.type == AppNotificationTypes.friendDrinkLogged,
+            );
+        await repository.markNotificationsRead(
+          userId: friend.id,
+          notificationIds: [initialNotification.id],
+        );
+
+        await repository.updateDrinkEntry(
+          user: logger,
+          entry: entry,
+          comment: 'Updated note',
+          imagePath: '/tmp/updated-entry-photo.png',
+        );
+
+        final updatedNotification =
+            (await repository.loadNotifications(friend.id)).firstWhere(
+              (notification) =>
+                  notification.type == AppNotificationTypes.friendDrinkLogged,
+            );
+
+        expect(updatedNotification.id, initialNotification.id);
+        expect(updatedNotification.isRead, isTrue);
+        expect(updatedNotification.templateDrinkName, 'Pils');
+        expect(updatedNotification.templateComment, 'Updated note');
+        expect(updatedNotification.imagePath, '/tmp/updated-entry-photo.png');
+        expect(updatedNotification.metadata['entryId'], entry.id);
+      },
+    );
+
+    test(
       'deletes only the corresponding drink logged notification with the entry',
       () async {
         final friend = await repository.signUp(

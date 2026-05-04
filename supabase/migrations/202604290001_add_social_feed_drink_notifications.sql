@@ -228,10 +228,94 @@ begin
 end;
 $$;
 
+create or replace function public.update_friend_drink_logged_notifications()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_sender_display_name text := 'Glass Trail User';
+  custom_drink_image_path text;
+  notification_image_path text;
+  notification_template_args jsonb;
+begin
+  if old.user_id is null then
+    return new;
+  end if;
+
+  if new.user_id is null
+      or nullif(btrim(coalesce(new.import_source, '')), '') is not null then
+    delete from public.notifications
+    where type = 'friend_drink_logged'
+      and sender_user_id = old.user_id
+      and metadata ->> 'entryId' = old.id::text;
+    return new;
+  end if;
+
+  select coalesce(nullif(btrim(profiles.display_name), ''), 'Glass Trail User')
+  into current_sender_display_name
+  from public.profiles
+  where profiles.id = new.user_id;
+
+  if not found then
+    return new;
+  end if;
+
+  if new.source_type = 'custom' then
+    select user_drinks.image_path
+    into custom_drink_image_path
+    from public.user_drinks
+    where user_drinks.user_id = new.user_id
+      and user_drinks.id::text = new.source_drink_id
+    limit 1;
+  end if;
+
+  notification_image_path = coalesce(
+    nullif(btrim(new.image_path), ''),
+    nullif(btrim(custom_drink_image_path), ''),
+    'https://glasstrail.vercel.app/notification-assets/app-icon.png'
+  );
+
+  notification_template_args = jsonb_build_object(
+    'senderDisplayName', current_sender_display_name,
+    'drinkName', new.drink_name
+  );
+
+  if nullif(btrim(coalesce(new.comment, '')), '') is not null then
+    notification_template_args = notification_template_args ||
+      jsonb_build_object('comment', btrim(new.comment));
+  end if;
+
+  if nullif(btrim(coalesce(new.location_address, '')), '') is not null then
+    notification_template_args = notification_template_args ||
+      jsonb_build_object('locationAddress', btrim(new.location_address));
+  end if;
+
+  update public.notifications
+  set sender_display_name = current_sender_display_name,
+      image_path = public.notification_image_path_for_type(
+        'friend_drink_logged',
+        notification_image_path
+      ),
+      template_args = notification_template_args
+  where type = 'friend_drink_logged'
+    and sender_user_id = old.user_id
+    and metadata ->> 'entryId' = old.id::text;
+
+  return new;
+end;
+$$;
+
 drop trigger if exists friend_drink_logged_notifications on public.drink_entries;
 create trigger friend_drink_logged_notifications
 after insert on public.drink_entries
 for each row execute function public.create_friend_drink_logged_notifications();
+
+drop trigger if exists friend_drink_logged_notifications_update on public.drink_entries;
+create trigger friend_drink_logged_notifications_update
+after update on public.drink_entries
+for each row execute function public.update_friend_drink_logged_notifications();
 
 drop trigger if exists friend_drink_logged_notifications_cleanup on public.drink_entries;
 create trigger friend_drink_logged_notifications_cleanup
@@ -241,6 +325,7 @@ for each row execute function public.delete_friend_drink_logged_notifications();
 revoke all on function public.notification_image_path_for_type(text, text) from public;
 revoke all on function public.load_feed_drink_posts(integer, timestamptz, uuid) from public;
 revoke all on function public.create_friend_drink_logged_notifications() from public;
+revoke all on function public.update_friend_drink_logged_notifications() from public;
 revoke all on function public.delete_friend_drink_logged_notifications() from public;
 
 grant execute on function public.load_feed_drink_posts(integer, timestamptz, uuid) to authenticated;

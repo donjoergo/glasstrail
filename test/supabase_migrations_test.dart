@@ -171,4 +171,34 @@ void main() {
     expect(migration, contains("and sender_user_id = old.user_id"));
     expect(migration, contains("and metadata ->> 'entryId' = old.id::text"));
   });
+
+  test('updates friend drink notifications when entries are edited', () {
+    final migration = File(
+      'supabase/migrations/202604290001_add_social_feed_drink_notifications.sql',
+    ).readAsStringSync();
+
+    expect(
+      migration,
+      contains(
+        'create trigger friend_drink_logged_notifications_update\n'
+        'after update on public.drink_entries',
+      ),
+    );
+    expect(
+      migration,
+      contains('update public.notifications'),
+    );
+    expect(migration, contains("set sender_display_name = current_sender_display_name"));
+    expect(migration, contains('template_args = notification_template_args'));
+    expect(
+      migration,
+      contains(
+        "image_path = public.notification_image_path_for_type(\n"
+        "        'friend_drink_logged',\n"
+        '        notification_image_path\n'
+        '      )',
+      ),
+    );
+    expect(migration, contains("and metadata ->> 'entryId' = old.id::text"));
+  });
 }

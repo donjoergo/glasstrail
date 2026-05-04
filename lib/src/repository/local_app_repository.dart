@@ -625,6 +625,17 @@ class LocalAppRepository implements AppRepository {
     raw[index] = updated.toJson();
     map[user.id] = raw;
     await _writeJsonMap(_entriesKey, map);
+    if (_shouldNotifyFriendsForEntry(updated)) {
+      await _updateFriendDrinkLoggedNotifications(
+        sender: user,
+        entry: updated,
+      );
+    } else {
+      await _deleteFriendDrinkLoggedNotifications(
+        senderUserId: user.id,
+        entryId: updated.id,
+      );
+    }
     return updated;
   }
 
@@ -820,22 +831,14 @@ class LocalAppRepository implements AppRepository {
       return;
     }
 
-    final notificationImagePath =
-        _normalizedImagePath(entry.imagePath) ??
-        _normalizedImagePath(drink.imagePath) ??
-        AppNotificationImageUrls.appIcon;
-    final templateArgs = <String, dynamic>{
-      'senderDisplayName': sender.displayName,
-      'drinkName': entry.drinkName,
-    };
-    final comment = _nonEmptyText(entry.comment);
-    if (comment != null) {
-      templateArgs['comment'] = comment;
-    }
-    final locationAddress = _nonEmptyText(entry.locationAddress);
-    if (locationAddress != null) {
-      templateArgs['locationAddress'] = locationAddress;
-    }
+    final notificationImagePath = _friendDrinkLoggedNotificationImagePath(
+      entry: entry,
+      drink: drink,
+    );
+    final templateArgs = _friendDrinkLoggedTemplateArgs(
+      senderDisplayName: sender.displayName,
+      entry: entry,
+    );
     for (final recipientId in recipientIds) {
       await _addNotification(
         recipientUserId: recipientId,
@@ -845,6 +848,56 @@ class LocalAppRepository implements AppRepository {
         templateArgs: templateArgs,
         metadata: <String, dynamic>{'entryId': entry.id, 'route': '/feed'},
       );
+    }
+  }
+
+  Future<void> _updateFriendDrinkLoggedNotifications({
+    required AppUser sender,
+    required DrinkEntry entry,
+  }) async {
+    final notifications = _loadNotifications();
+    if (notifications.isEmpty) {
+      return;
+    }
+
+    final drink = _drinkDefinitionForEntry(sender.id, entry);
+    final notificationImagePath = _friendDrinkLoggedNotificationImagePath(
+      entry: entry,
+      drink: drink,
+    );
+    final templateArgs = _friendDrinkLoggedTemplateArgs(
+      senderDisplayName: sender.displayName,
+      entry: entry,
+    );
+    final affectedUserIds = <String>{};
+    var changed = false;
+
+    for (var index = 0; index < notifications.length; index++) {
+      final notification = AppNotification.fromJson(notifications[index]);
+      final matches =
+          notification.type == AppNotificationTypes.friendDrinkLogged &&
+          notification.senderUserId == sender.id &&
+          notification.metadata['entryId'] == entry.id;
+      if (!matches) {
+        continue;
+      }
+      notifications[index] = notification
+          .copyWith(
+            senderDisplayName: sender.displayName,
+            imagePath: notificationImagePath,
+            templateArgs: templateArgs,
+          )
+          .toJson();
+      affectedUserIds.add(notification.recipientUserId);
+      changed = true;
+    }
+
+    if (!changed) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    for (final userId in affectedUserIds) {
+      _publishNotifications(userId);
     }
   }
 
@@ -1068,6 +1121,58 @@ class LocalAppRepository implements AppRepository {
   String? _nonEmptyText(String? value) {
     final normalized = value?.trim();
     return normalized == null || normalized.isEmpty ? null : normalized;
+  }
+
+  Map<String, dynamic> _friendDrinkLoggedTemplateArgs({
+    required String senderDisplayName,
+    required DrinkEntry entry,
+  }) {
+    final templateArgs = <String, dynamic>{
+      'senderDisplayName': senderDisplayName,
+      'drinkName': entry.drinkName,
+    };
+    final comment = _nonEmptyText(entry.comment);
+    if (comment != null) {
+      templateArgs['comment'] = comment;
+    }
+    final locationAddress = _nonEmptyText(entry.locationAddress);
+    if (locationAddress != null) {
+      templateArgs['locationAddress'] = locationAddress;
+    }
+    return templateArgs;
+  }
+
+  String _friendDrinkLoggedNotificationImagePath({
+    required DrinkEntry entry,
+    DrinkDefinition? drink,
+  }) {
+    return AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendDrinkLogged,
+          fallbackImagePath:
+              _normalizedImagePath(entry.imagePath) ??
+              _normalizedImagePath(drink?.imagePath),
+        ) ??
+        AppNotificationImageUrls.appIcon;
+  }
+
+  DrinkDefinition? _drinkDefinitionForEntry(String userId, DrinkEntry entry) {
+    for (final drink in buildDefaultDrinkCatalog()) {
+      if (drink.id == entry.drinkId) {
+        return drink;
+      }
+    }
+
+    final map = _readJsonMap(_customDrinksKey);
+    final raw = (map[userId] as List?) ?? const <dynamic>[];
+    for (final item in raw) {
+      final drink = DrinkDefinition.fromJson(
+        Map<String, dynamic>.from(item as Map),
+      );
+      if (drink.id == entry.drinkId) {
+        return drink;
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic> _readJsonMap(String key) {
