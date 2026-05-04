@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Delete drink notifications with entries
 - Update drink notifications after edits
 - Use profile images for drink alerts
+- Refresh push notifications by type
 
 ## [1.2.1] - 2026-04-13
 ### Fixed

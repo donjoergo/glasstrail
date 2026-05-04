@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import 'app_routes.dart';
 import 'backend_config.dart';
 import 'beer_with_me_import.dart';
 import 'birthday.dart';
@@ -1122,6 +1123,24 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<bool> refreshForNotification(AppNotification notification) {
+    return _refreshForNotificationType(
+      type: notification.type,
+      routeName: notification.metadata['route'] as String?,
+    );
+  }
+
+  Future<bool> refreshForNotificationOpen({
+    required String routeName,
+    String? notificationId,
+  }) {
+    final notification = _notificationById(notificationId);
+    if (notification != null) {
+      return refreshForNotification(notification);
+    }
+    return _refreshForNotificationRoute(routeName);
+  }
+
   Future<bool> loadMoreFeedPosts() async {
     final user = _currentUser;
     if (user == null || !_hasMoreFeedPosts || _isLoadingMoreFeedPosts) {
@@ -1170,6 +1189,43 @@ class AppController extends ChangeNotifier {
     } catch (_) {
       return false;
     }
+  }
+
+  AppNotification? _notificationById(String? notificationId) {
+    if (notificationId == null || notificationId.isEmpty) {
+      return null;
+    }
+    for (final notification in _notifications) {
+      if (notification.id == notificationId) {
+        return notification;
+      }
+    }
+    return null;
+  }
+
+  Future<bool> _refreshForNotificationType({
+    required String type,
+    String? routeName,
+  }) {
+    return switch (type) {
+      AppNotificationTypes.friendDrinkLogged => refreshData(),
+      AppNotificationTypes.friendRequestSent ||
+      AppNotificationTypes.friendRequestAccepted ||
+      AppNotificationTypes.friendRequestRejected ||
+      AppNotificationTypes.friendRemoved => refreshFriendConnections(),
+      _ => _refreshForNotificationRoute(routeName),
+    };
+  }
+
+  Future<bool> _refreshForNotificationRoute(String? routeName) {
+    final route = AppRoutes.normalize(routeName);
+    if (route == AppRoutes.feed) {
+      return refreshData();
+    }
+    if (route == AppRoutes.profile || AppRoutes.isFriendProfileRoute(route)) {
+      return refreshFriendConnections();
+    }
+    return SynchronousFuture<bool>(true);
   }
 
   Future<void> _initialize() async {

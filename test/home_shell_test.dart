@@ -349,6 +349,80 @@ void main() {
   });
 
   testWidgets(
+    'opens friend drink notifications on feed and refreshes feed data',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final friend = await repository.signUp(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Friend',
+      );
+      final friendProfile = await repository.getOwnFriendProfile(friend.id);
+      await repository.signOut();
+      final logger = await repository.signUp(
+        email: 'widget-feed-logger@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Logger',
+      );
+      final friendConnections = await repository.sendFriendRequestToProfile(
+        userId: logger.id,
+        shareCode: friendProfile.profileShareCode!,
+      );
+      await repository.acceptFriendRequest(
+        userId: friend.id,
+        relationshipId: friendConnections.single.id,
+      );
+      await repository.signOut();
+      await repository.signIn(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+      );
+      final controller = await AppController.bootstrapWithRepository(repository);
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final drink = (await repository.loadDefaultCatalog()).firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final entry = await repository.addDrinkEntry(
+        user: logger,
+        drink: drink,
+        comment: 'Refresh me from notifications',
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final drinkNotification = controller.notifications.firstWhere(
+        (notification) =>
+            notification.type == AppNotificationTypes.friendDrinkLogged,
+      );
+
+      await tester.tap(find.byKey(const Key('home-notifications-button')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(Key('notification-${drinkNotification.id}')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('feed-list-view')), findsOneWidget);
+      expect(
+        controller.feedPosts.map((post) => post.entry.id),
+        contains(entry.id),
+      );
+      expect(find.text('Widget Feed Logger'), findsOneWidget);
+      expect(find.text('Refresh me from notifications'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'marks all unread notifications read from the notifications screen',
     (tester) async {
       SharedPreferences.setMockInitialValues(<String, Object>{});

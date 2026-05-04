@@ -18,16 +18,26 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isMarkingAllRead = false;
 
+  String _targetRouteForNotification(AppNotification notification) {
+    final route = notification.metadata['route'];
+    if (route is String && route.trim().isNotEmpty) {
+      return AppRoutes.postAuthRoute(route.trim());
+    }
+    return AppRoutes.profile;
+  }
+
   Future<void> _openNotification(AppNotification notification) async {
     final controller = AppScope.controllerOf(context);
     if (notification.isUnread) {
       await controller.markNotificationsRead(<String>[notification.id]);
     }
-    await controller.refreshData();
+    await controller.refreshForNotification(notification);
     if (!mounted) {
       return;
     }
-    Navigator.of(context).pushReplacementNamed(AppRoutes.profile);
+    Navigator.of(
+      context,
+    ).pushReplacementNamed(_targetRouteForNotification(notification));
   }
 
   Future<void> _markAllNotificationsRead() async {
