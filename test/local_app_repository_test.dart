@@ -132,6 +132,7 @@ void main() {
           localeCode: 'de',
           unit: AppUnit.oz,
           handedness: AppHandedness.left,
+          shareStatsWithFriends: false,
           hiddenGlobalDrinkIds: <String>['beer-pils'],
           hiddenGlobalDrinkCategories: <DrinkCategory>[DrinkCategory.wine],
           globalDrinkOrderOverrides: <DrinkCategory, List<String>>{
@@ -146,6 +147,7 @@ void main() {
       expect(restored.localeCode, 'de');
       expect(restored.unit, AppUnit.oz);
       expect(restored.handedness, AppHandedness.left);
+      expect(restored.shareStatsWithFriends, isFalse);
       expect(restored.hiddenGlobalDrinkIds, <String>['beer-pils']);
       expect(restored.hiddenGlobalDrinkCategories, <DrinkCategory>[
         DrinkCategory.wine,
@@ -190,6 +192,129 @@ void main() {
       expect(publicProfile.id, user.id);
       expect(publicProfile.displayName, 'Public Profile Link');
       expect(publicProfile.toJson(), isNot(contains('email')));
+    });
+
+    test('loads shared stats for accepted friends', () async {
+      final requester = await repository.signUp(
+        email: 'stats-requester@example.com',
+        password: 'secret',
+        displayName: 'Stats Requester',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'stats-addressee@example.com',
+        password: 'secret',
+        displayName: 'Stats Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+      await repository.addDrinkEntry(
+        user: addressee,
+        drink: const DrinkDefinition(
+          id: 'beer-pils',
+          name: 'Pils',
+          category: DrinkCategory.beer,
+        ),
+        consumedAt: DateTime.now(),
+      );
+      await repository.addDrinkEntry(
+        user: addressee,
+        drink: const DrinkDefinition(
+          id: 'wine-red',
+          name: 'Red Wine',
+          category: DrinkCategory.wine,
+        ),
+        consumedAt: DateTime.now().subtract(const Duration(days: 1)),
+      );
+
+      await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      final addresseeConnections = await repository.loadFriendConnections(
+        addressee.id,
+      );
+      await repository.acceptFriendRequest(
+        userId: addressee.id,
+        relationshipId: addresseeConnections.single.id,
+      );
+
+      final profile = await repository.loadFriendStatsProfile(
+        userId: requester.id,
+        friendUserId: addressee.id,
+      );
+
+      expect(profile.id, addressee.id);
+      expect(profile.displayName, 'Stats Addressee');
+      expect(profile.shareStatsWithFriends, isTrue);
+      expect(profile.statistics, isNotNull);
+      expect(profile.statistics!.totalEntries, 2);
+      expect(profile.statistics!.categoryCounts[DrinkCategory.beer], 1);
+      expect(profile.statistics!.categoryCounts[DrinkCategory.wine], 1);
+    });
+
+    test('returns null statistics when friend sharing is disabled', () async {
+      final requester = await repository.signUp(
+        email: 'stats-disabled-requester@example.com',
+        password: 'secret',
+        displayName: 'Stats Disabled Requester',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'stats-disabled-addressee@example.com',
+        password: 'secret',
+        displayName: 'Stats Disabled Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+      await repository.saveSettings(
+        addressee.id,
+        UserSettings.defaults().copyWith(shareStatsWithFriends: false),
+      );
+
+      await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      final addresseeConnections = await repository.loadFriendConnections(
+        addressee.id,
+      );
+      await repository.acceptFriendRequest(
+        userId: addressee.id,
+        relationshipId: addresseeConnections.single.id,
+      );
+
+      final profile = await repository.loadFriendStatsProfile(
+        userId: requester.id,
+        friendUserId: addressee.id,
+      );
+
+      expect(profile.shareStatsWithFriends, isFalse);
+      expect(profile.statistics, isNull);
+    });
+
+    test('rejects shared stats loading for non-friends', () async {
+      final viewer = await repository.signUp(
+        email: 'stats-blocked-viewer@example.com',
+        password: 'secret',
+        displayName: 'Stats Blocked Viewer',
+      );
+      await repository.signOut();
+      final stranger = await repository.signUp(
+        email: 'stats-blocked-stranger@example.com',
+        password: 'secret',
+        displayName: 'Stats Blocked Stranger',
+      );
+
+      expect(
+        () => repository.loadFriendStatsProfile(
+          userId: viewer.id,
+          friendUserId: stranger.id,
+        ),
+        throwsA(isA<AppException>()),
+      );
     });
 
     test(

@@ -75,9 +75,9 @@
   "feedHeadline": "Dein Aktivitätsfeed",
   "noEntries": "Noch keine Getränke erfasst.",
   "startLogging": "Starte mit deinem ersten Eintrag.",
-  "weeklyTotal": "Woche",
-  "monthlyTotal": "Monat",
-  "yearlyTotal": "Jahr",
+  "weeklyTotal": "Diese Woche",
+  "monthlyTotal": "Dieser Monat",
+  "yearlyTotal": "Dieses Jahr",
   "currentStreak": "Aktuelle Serie",
   "bestStreak": "Beste Serie",
   "thisWeek": "Diese Woche",
@@ -121,6 +121,8 @@
   "language": "Sprache",
   "units": "Einheiten",
   "handedness": "Bedienseite",
+  "shareStatsWithFriends": "Statistiken mit Freunden teilen",
+  "shareStatsWithFriendsBody": "Bestätigte Freunde können deine geteilten Statistiken direkt in der App öffnen.",
   "logout": "Abmelden",
   "editProfile": "Profil bearbeiten",
   "friends": "Freunde",
@@ -165,6 +167,17 @@
       }
     }
   },
+  "friendStatsNotSharedTitle": "Statistiken nicht geteilt",
+  "friendStatsNotSharedBody": "{name} teilt aktuell keine Statistiken mit Freunden.",
+  "@friendStatsNotSharedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendStatsUnavailableTitle": "Freundesprofil nicht verfügbar",
+  "friendStatsUnavailableBody": "Dieses geteilte Freundesprofil ist nicht verfügbar oder wird nicht mehr mit dir geteilt.",
   "addAsFriend": "Als Freund hinzufügen",
   "goToFeed": "Zum Feed",
   "withdrawFriendRequest": "Zurückziehen",

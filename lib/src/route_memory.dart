@@ -30,7 +30,7 @@ class RouteMemory {
   String resolveInitialRoute(String? requestedRoute) {
     final normalizedRequested = AppRoutes.normalize(requestedRoute);
     if (_openFeedAfterNextAuth &&
-        AppRoutes.isFriendProfileRoute(normalizedRequested)) {
+        AppRoutes.isExplicitPostAuthRedirectRoute(normalizedRequested)) {
       return normalizedRequested;
     }
 
@@ -67,7 +67,7 @@ class RouteMemory {
 
   Future<String> consumePostAuthRoute(String? redirectRoute) async {
     final normalizedRedirect = AppRoutes.normalize(redirectRoute);
-    final hasExplicitRedirect = AppRoutes.isFriendProfileRoute(
+    final hasExplicitRedirect = AppRoutes.isExplicitPostAuthRedirectRoute(
       normalizedRedirect,
     );
     final targetRoute = _openFeedAfterNextAuth && !hasExplicitRedirect

@@ -6,6 +6,7 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/beer_with_me_import.dart';
+import 'package:glasstrail/src/friend_stats_profile.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/push_notification_service.dart';
 import 'package:glasstrail/src/repository/app_repository.dart';
@@ -1682,6 +1683,14 @@ class _BootstrapProbeRepository implements AppRepository {
 
   @override
   Future<FriendProfile> getOwnFriendProfile(String userId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<FriendStatsProfile> loadFriendStatsProfile({
+    required String userId,
+    required String friendUserId,
+  }) {
     throw UnimplementedError();
   }
 

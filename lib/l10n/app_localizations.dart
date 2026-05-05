@@ -485,19 +485,19 @@ abstract class AppLocalizations {
   /// No description provided for @weeklyTotal.
   ///
   /// In en, this message translates to:
-  /// **'Weekly'**
+  /// **'This Week'**
   String get weeklyTotal;
 
   /// No description provided for @monthlyTotal.
   ///
   /// In en, this message translates to:
-  /// **'Monthly'**
+  /// **'This Month'**
   String get monthlyTotal;
 
   /// No description provided for @yearlyTotal.
   ///
   /// In en, this message translates to:
-  /// **'Yearly'**
+  /// **'This Year'**
   String get yearlyTotal;
 
   /// No description provided for @currentStreak.
@@ -758,6 +758,18 @@ abstract class AppLocalizations {
   /// **'Handedness'**
   String get handedness;
 
+  /// No description provided for @shareStatsWithFriends.
+  ///
+  /// In en, this message translates to:
+  /// **'Share stats with friends'**
+  String get shareStatsWithFriends;
+
+  /// No description provided for @shareStatsWithFriendsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted friends can open your shared statistics inside the app.'**
+  String get shareStatsWithFriendsBody;
+
   /// No description provided for @logout.
   ///
   /// In en, this message translates to:
@@ -877,6 +889,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} wants to be your friend on Glass Trail.'**
   String friendProfilePublicPrompt(String name);
+
+  /// No description provided for @friendStatsNotSharedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics not shared'**
+  String get friendStatsNotSharedTitle;
+
+  /// No description provided for @friendStatsNotSharedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is not sharing statistics with friends right now.'**
+  String friendStatsNotSharedBody(String name);
+
+  /// No description provided for @friendStatsUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend profile unavailable'**
+  String get friendStatsUnavailableTitle;
+
+  /// No description provided for @friendStatsUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This friend\'s shared profile is unavailable or no longer shared with you.'**
+  String get friendStatsUnavailableBody;
 
   /// No description provided for @addAsFriend.
   ///

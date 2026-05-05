@@ -210,13 +210,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get startLogging => 'Starte mit deinem ersten Eintrag.';
 
   @override
-  String get weeklyTotal => 'Woche';
+  String get weeklyTotal => 'Diese Woche';
 
   @override
-  String get monthlyTotal => 'Monat';
+  String get monthlyTotal => 'Dieser Monat';
 
   @override
-  String get yearlyTotal => 'Jahr';
+  String get yearlyTotal => 'Dieses Jahr';
 
   @override
   String get currentStreak => 'Aktuelle Serie';
@@ -359,6 +359,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get handedness => 'Bedienseite';
 
   @override
+  String get shareStatsWithFriends => 'Statistiken mit Freunden teilen';
+
+  @override
+  String get shareStatsWithFriendsBody =>
+      'Bestätigte Freunde können deine geteilten Statistiken direkt in der App öffnen.';
+
+  @override
   String get logout => 'Abmelden';
 
   @override
@@ -426,6 +433,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String friendProfilePublicPrompt(String name) {
     return '$name möchte dein Freund in Glass Trail sein.';
   }
+
+  @override
+  String get friendStatsNotSharedTitle => 'Statistiken nicht geteilt';
+
+  @override
+  String friendStatsNotSharedBody(String name) {
+    return '$name teilt aktuell keine Statistiken mit Freunden.';
+  }
+
+  @override
+  String get friendStatsUnavailableTitle => 'Freundesprofil nicht verfügbar';
+
+  @override
+  String get friendStatsUnavailableBody =>
+      'Dieses geteilte Freundesprofil ist nicht verfügbar oder wird nicht mehr mit dir geteilt.';
 
   @override
   String get addAsFriend => 'Als Freund hinzufügen';
