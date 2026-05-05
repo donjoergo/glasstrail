@@ -45,17 +45,17 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
 
 The app exposes one route per visible page. On Flutter Web, in-app routing currently uses hash URLs, so bookmarks look like `/#/feed`. Public friend profile shares use non-hash URLs so messengers can render link previews.
 
-| Page           | Route                     | Purpose                                             |
-| -------------- | ------------------------- | --------------------------------------------------- |
-| Auth           | `/auth`                   | Sign in and sign up                                 |
-| Feed           | `/feed`                   | Personal and social drink feed                      |
-| Statistics     | `/statistics`             | Trends, streaks, and category breakdown             |
-| Bar            | `/bar`                    | Organize the drink catalog and manage custom drinks |
-| Profile        | `/profile`                | Profile summary and app settings                    |
+| Page           | Route                     | Purpose                                                                  |
+| -------------- | ------------------------- | ------------------------------------------------------------------------ |
+| Auth           | `/auth`                   | Sign in and sign up                                                      |
+| Feed           | `/feed`                   | Personal and social drink feed                                           |
+| Statistics     | `/statistics`             | Trends, streaks, and category breakdown                                  |
+| Bar            | `/bar`                    | Organize the drink catalog and manage custom drinks                      |
+| Profile        | `/profile`                | Profile summary and app settings                                         |
 | Notifications  | `/notifications`          | In-app alerts for friend requests, drink updates, and friendship changes |
-| Edit Profile   | `/profile/edit`           | Dedicated profile editing page                      |
-| Friend Profile | `/friends/profile/<code>` | In-app friend profile route for sending requests    |
-| Add Drink      | `/add-drink`              | Log a drink from recent, global, or custom options  |
+| Edit Profile   | `/profile/edit`           | Dedicated profile editing page                                           |
+| Friend Profile | `/friends/profile/<code>` | In-app friend profile route for sending requests                         |
+| Add Drink      | `/add-drink`              | Log a drink from recent, global, or custom options                       |
 
 Additional routing behavior:
 
