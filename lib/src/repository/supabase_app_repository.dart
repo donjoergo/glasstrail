@@ -645,6 +645,37 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
+  Future<FeedDrinkPostPage> loadFeedDrinkPosts({
+    required String userId,
+    FeedDrinkPostCursor? cursor,
+    int limit = 20,
+  }) async {
+    try {
+      final pageLimit = limit.clamp(1, 50).toInt();
+      final params = <String, dynamic>{
+        'page_limit': pageLimit,
+        if (cursor != null) ...<String, dynamic>{
+          'cursor_consumed_at': cursor.consumedAt.toUtc().toIso8601String(),
+          'cursor_id': cursor.entryId,
+        },
+      };
+      final rows = await _client.rpc('load_feed_drink_posts', params: params);
+      final posts = (rows as List<dynamic>)
+          .map((row) => _feedPostFromRow(Map<String, dynamic>.from(row as Map)))
+          .toList(growable: false);
+      final hasMore = posts.length > pageLimit;
+      final pagePosts = posts.take(pageLimit).toList(growable: false);
+      return FeedDrinkPostPage(
+        posts: pagePosts,
+        cursor: hasMore && pagePosts.isNotEmpty ? pagePosts.last.cursor : null,
+        hasMore: hasMore,
+      );
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,
@@ -1001,6 +1032,23 @@ class SupabaseAppRepository implements AppRepository {
       locationAddress: row['location_address'] as String?,
       importSource: row['import_source'] as String?,
       importSourceId: row['import_source_id'] as String?,
+    );
+  }
+
+  FeedDrinkPost _feedPostFromRow(Map<String, dynamic> row) {
+    final authorProfile = FriendProfile(
+      id: row['author_profile_id'] as String,
+      email: (row['author_email'] as String?) ?? '',
+      displayName:
+          (row['author_display_name'] as String?) ??
+          _fallbackDisplayName(row['author_email'] as String?),
+      profileImagePath: row['author_profile_image_path'] as String?,
+      profileShareCode: row['author_profile_share_code'] as String?,
+    );
+    return FeedDrinkPost(
+      entry: _entryFromRow(row),
+      authorProfile: authorProfile,
+      isOwnEntry: row['is_own_entry'] == true,
     );
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
@@ -39,6 +41,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   _UpdateNoticeData? _updateNotice;
   bool _isHandlingUpdateNotice = false;
+  late final ScrollController _scrollController;
 
   LaunchMode get _changelogLaunchMode {
     return switch (defaultTargetPlatform) {
@@ -51,7 +54,30 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController()..addListener(_handleScroll);
     _loadUpdateNotice();
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    if (!mounted || !_scrollController.hasClients) {
+      return;
+    }
+    final position = _scrollController.position;
+    if (position.extentAfter > position.viewportDimension * 2) {
+      return;
+    }
+    final controller = AppScope.controllerOf(context);
+    if (controller.hasMoreFeedPosts && !controller.isLoadingMoreFeedPosts) {
+      unawaited(controller.loadMoreFeedPosts());
+    }
   }
 
   Future<void> _loadUpdateNotice() async {
@@ -169,7 +195,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
-    final entries = controller.entries;
+    final posts = controller.feedPosts;
     final stats = controller.statistics;
     final locale = controller.settings.localeCode;
 
@@ -178,6 +204,7 @@ class _FeedScreenState extends State<FeedScreen> {
       onRefresh: _refresh,
       child: ListView(
         key: const Key('feed-list-view'),
+        controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         children: <Widget>[
@@ -193,7 +220,7 @@ class _FeedScreenState extends State<FeedScreen> {
           ],
           _FeedStreakCard(stats: stats),
           const SizedBox(height: 24),
-          if (entries.isEmpty)
+          if (posts.isEmpty)
             AppEmptyStateCard(
               key: const Key('feed-empty-state'),
               icon: Icons.hourglass_empty_rounded,
@@ -201,18 +228,28 @@ class _FeedScreenState extends State<FeedScreen> {
               body: l10n.startLogging,
             )
           else
-            ...entries.map(
-              (entry) => Padding(
+            ...posts.map(
+              (post) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _DrinkEntryCard(
-                  entry: entry,
-                  drinkName: controller.localizedEntryDrinkName(entry),
+                  post: post,
+                  drinkName: controller.localizedFeedPostDrinkName(post),
                   locale: locale,
                   unit: controller.settings.unit,
-                  categoryLabel: l10n.categoryLabel(entry.category),
+                  categoryLabel: l10n.categoryLabel(post.entry.category),
                 ),
               ),
             ),
+          if (controller.isLoadingMoreFeedPosts) ...<Widget>[
+            const SizedBox(height: 12),
+            const Center(
+              child: SizedBox.square(
+                key: Key('feed-loading-more'),
+                dimension: 28,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -512,18 +549,20 @@ enum _DrinkEntryAction { edit, delete }
 
 class _DrinkEntryCard extends StatelessWidget {
   const _DrinkEntryCard({
-    required this.entry,
+    required this.post,
     required this.drinkName,
     required this.locale,
     required this.unit,
     required this.categoryLabel,
   });
 
-  final DrinkEntry entry;
+  final FeedDrinkPost post;
   final String drinkName;
   final String locale;
   final AppUnit unit;
   final String categoryLabel;
+
+  DrinkEntry get entry => post.entry;
 
   Future<void> _handleAction(
     BuildContext context,
@@ -572,6 +611,7 @@ class _DrinkEntryCard extends StatelessWidget {
     ].join(' • ');
     final locationAddress = _normalizedLocationAddress(entry.locationAddress);
     return Container(
+      key: Key('feed-post-${entry.id}'),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -582,12 +622,19 @@ class _DrinkEntryCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              CircleAvatar(
+              AppAvatar(
+                imagePath: post.authorImagePath,
+                radius: 20,
                 backgroundColor: theme.colorScheme.primary.withValues(
                   alpha: 0.12,
                 ),
-                foregroundColor: theme.colorScheme.primary,
-                child: Icon(entry.category.icon),
+                fallback: Text(
+                  post.authorInitials,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -595,16 +642,38 @@ class _DrinkEntryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      drinkName,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      post.authorDisplayName,
+                      key: Key('feed-entry-author-${entry.id}'),
+                      style: theme.textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      metadataLabel,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                      drinkName,
+                      key: Key('feed-entry-drink-${entry.id}'),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: <Widget>[
+                        Icon(
+                          entry.category.icon,
+                          size: 16,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            metadataLabel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     if (locationAddress != null) ...<Widget>[
                       const SizedBox(height: 4),
@@ -644,28 +713,29 @@ class _DrinkEntryCard extends StatelessWidget {
                   ),
                   child: Text(unit.formatVolume(entry.volumeMl)),
                 ),
-              PopupMenuButton<_DrinkEntryAction>(
-                key: Key('feed-entry-actions-${entry.id}'),
-                enabled: !controller.isBusy,
-                onSelected: (action) {
-                  _handleAction(context, action);
-                },
-                itemBuilder: (context) => <PopupMenuEntry<_DrinkEntryAction>>[
-                  PopupMenuItem<_DrinkEntryAction>(
-                    key: Key('feed-entry-edit-${entry.id}'),
-                    value: _DrinkEntryAction.edit,
-                    child: Text(AppLocalizations.of(context).editEntry),
-                  ),
-                  PopupMenuItem<_DrinkEntryAction>(
-                    key: Key('feed-entry-delete-${entry.id}'),
-                    value: _DrinkEntryAction.delete,
-                    child: Text(
-                      AppLocalizations.of(context).deleteEntry,
-                      style: AppTheme.destructiveMenuTextStyle(theme),
+              if (post.isOwnEntry)
+                PopupMenuButton<_DrinkEntryAction>(
+                  key: Key('feed-entry-actions-${entry.id}'),
+                  enabled: !controller.isBusy,
+                  onSelected: (action) {
+                    _handleAction(context, action);
+                  },
+                  itemBuilder: (context) => <PopupMenuEntry<_DrinkEntryAction>>[
+                    PopupMenuItem<_DrinkEntryAction>(
+                      key: Key('feed-entry-edit-${entry.id}'),
+                      value: _DrinkEntryAction.edit,
+                      child: Text(AppLocalizations.of(context).editEntry),
                     ),
-                  ),
-                ],
-              ),
+                    PopupMenuItem<_DrinkEntryAction>(
+                      key: Key('feed-entry-delete-${entry.id}'),
+                      value: _DrinkEntryAction.delete,
+                      child: Text(
+                        AppLocalizations.of(context).deleteEntry,
+                        style: AppTheme.destructiveMenuTextStyle(theme),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
           if (entry.comment != null && entry.comment!.isNotEmpty) ...<Widget>[

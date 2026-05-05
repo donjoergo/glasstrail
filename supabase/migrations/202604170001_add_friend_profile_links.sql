@@ -333,9 +333,20 @@ using (
     coalesce((storage.foldername(name))[1], '') = (select auth.uid())::text
     or (
       coalesce((storage.foldername(name))[1], '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-      and public.are_friends(
-        (select auth.uid()),
-        coalesce((storage.foldername(name))[1], '')::uuid
+      and exists (
+        select 1
+        from public.friend_relationships relationships
+        where relationships.status in ('pending', 'accepted')
+          and (
+            (
+              relationships.requester_id = (select auth.uid())
+              and relationships.addressee_id = coalesce((storage.foldername(name))[1], '')::uuid
+            )
+            or (
+              relationships.requester_id = coalesce((storage.foldername(name))[1], '')::uuid
+              and relationships.addressee_id = (select auth.uid())
+            )
+          )
       )
     )
   )

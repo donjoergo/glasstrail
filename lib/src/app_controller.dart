@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import 'app_routes.dart';
 import 'backend_config.dart';
 import 'beer_with_me_import.dart';
 import 'birthday.dart';
@@ -113,6 +114,8 @@ class AppController extends ChangeNotifier {
         const DisabledPushNotificationService(),
   }) : _pushNotificationService = pushNotificationService;
 
+  static const _feedPageSize = 20;
+
   final AppRepository _repository;
   final PushNotificationService _pushNotificationService;
 
@@ -121,6 +124,10 @@ class AppController extends ChangeNotifier {
   List<DrinkDefinition> _defaultCatalog = const <DrinkDefinition>[];
   List<DrinkDefinition> _customDrinks = const <DrinkDefinition>[];
   List<DrinkEntry> _entries = const <DrinkEntry>[];
+  List<FeedDrinkPost> _feedPosts = const <FeedDrinkPost>[];
+  FeedDrinkPostCursor? _feedCursor;
+  bool _hasMoreFeedPosts = false;
+  bool _isLoadingMoreFeedPosts = false;
   List<FriendConnection> _friendConnections = const <FriendConnection>[];
   List<AppNotification> _notifications = const <AppNotification>[];
   final Map<String, DateTime> _notificationReadOverrides = <String, DateTime>{};
@@ -172,6 +179,9 @@ class AppController extends ChangeNotifier {
     ..._customDrinks,
   ]);
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
+  List<FeedDrinkPost> get feedPosts => List.unmodifiable(_feedPosts);
+  bool get hasMoreFeedPosts => _hasMoreFeedPosts;
+  bool get isLoadingMoreFeedPosts => _isLoadingMoreFeedPosts;
   List<FriendConnection> get friendConnections =>
       List.unmodifiable(_friendConnections);
   List<FriendConnection> get friends => List.unmodifiable(
@@ -469,6 +479,29 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  String localizedFeedPostDrinkName(FeedDrinkPost post, {String? localeCode}) {
+    return localizedEntryDrinkName(post.entry, localeCode: localeCode);
+  }
+
+  String localizedNotificationTitle(
+    AppNotification notification,
+    AppLocalizations l10n,
+  ) {
+    if (notification.type != AppNotificationTypes.friendDrinkLogged) {
+      return notification.title(l10n);
+    }
+    return appNotificationTitle(
+      l10n: l10n,
+      type: notification.type,
+      senderDisplayName: notification.templateSenderDisplayName,
+      drinkName: localizedDrinkName(
+        notification.templateDrinkId ?? '',
+        notification.templateDrinkName ?? '',
+        l10n.locale.languageCode,
+      ),
+    );
+  }
+
   Future<bool> signUp({
     required String email,
     required String password,
@@ -516,6 +549,9 @@ class AppController extends ChangeNotifier {
       _currentUser = null;
       _customDrinks = const <DrinkDefinition>[];
       _entries = const <DrinkEntry>[];
+      _feedPosts = const <FeedDrinkPost>[];
+      _feedCursor = null;
+      _hasMoreFeedPosts = false;
       _friendConnections = const <FriendConnection>[];
       _notifications = const <AppNotification>[];
       _notificationReadOverrides.clear();
@@ -633,6 +669,13 @@ class AppController extends ChangeNotifier {
       );
       _entries = [entry, ..._entries]
         ..sort((left, right) => right.consumedAt.compareTo(left.consumedAt));
+      _upsertFeedPost(
+        FeedDrinkPost(
+          entry: entry,
+          authorProfile: FriendProfile.fromUser(user),
+          isOwnEntry: true,
+        ),
+      );
       _flashMessage = _FlashMessage.drinkLogged(
         drinkId: entry.drinkId,
         fallbackDrinkName: entry.drinkName,
@@ -816,6 +859,7 @@ class AppController extends ChangeNotifier {
         (left, right) => right.consumedAt.compareTo(left.consumedAt),
       );
       _entries = entries;
+      await _reloadInitialFeedPosts(user.id);
       return BeerWithMeImportResult(
         totalRows: totalRows,
         processedCount: processedCount,
@@ -870,6 +914,19 @@ class AppController extends ChangeNotifier {
             ..sort(
               (left, right) => right.consumedAt.compareTo(left.consumedAt),
             );
+      _feedPosts =
+          _feedPosts
+              .map(
+                (post) => post.entry.id == updated.id
+                    ? FeedDrinkPost(
+                        entry: updated,
+                        authorProfile: post.authorProfile,
+                        isOwnEntry: post.isOwnEntry,
+                      )
+                    : post,
+              )
+              .toList(growable: false)
+            ..sort(_compareFeedPosts);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.drinkEntryUpdated,
       );
@@ -885,6 +942,9 @@ class AppController extends ChangeNotifier {
       await _repository.deleteDrinkEntry(userId: user.id, entry: entry);
       _entries = _entries
           .where((candidate) => candidate.id != entry.id)
+          .toList(growable: false);
+      _feedPosts = _feedPosts
+          .where((post) => post.entry.id != entry.id)
           .toList(growable: false);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.drinkEntryDeleted,
@@ -957,6 +1017,7 @@ class AppController extends ChangeNotifier {
         userId: user.id,
         relationshipId: connection.id,
       );
+      await _reloadInitialFeedPosts(user.id);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.friendRequestAccepted,
       );
@@ -1005,6 +1066,7 @@ class AppController extends ChangeNotifier {
         userId: user.id,
         friendUserId: connection.profile.id,
       );
+      await _reloadInitialFeedPosts(user.id);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.friendRemoved,
       );
@@ -1082,6 +1144,53 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<bool> refreshForNotification(AppNotification notification) {
+    return _refreshForNotificationType(
+      type: notification.type,
+      routeName: notification.metadata['route'] as String?,
+    );
+  }
+
+  Future<bool> refreshForNotificationOpen({
+    required String routeName,
+    String? notificationId,
+  }) {
+    final notification = _notificationById(notificationId);
+    if (notification != null) {
+      return refreshForNotification(notification);
+    }
+    return _refreshForNotificationRoute(routeName);
+  }
+
+  Future<bool> loadMoreFeedPosts() async {
+    final user = _currentUser;
+    if (user == null || !_hasMoreFeedPosts || _isLoadingMoreFeedPosts) {
+      return false;
+    }
+
+    _isLoadingMoreFeedPosts = true;
+    notifyListeners();
+    try {
+      final page = await _repository.loadFeedDrinkPosts(
+        userId: user.id,
+        cursor: _feedCursor,
+        limit: _feedPageSize,
+      );
+      if (_currentUser?.id != user.id) {
+        return true;
+      }
+      _feedPosts = _mergeFeedPosts(_feedPosts, page.posts);
+      _feedCursor = page.cursor;
+      _hasMoreFeedPosts = page.hasMore;
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      _isLoadingMoreFeedPosts = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> refreshFriendConnections() async {
     final user = _currentUser;
     if (user == null) {
@@ -1101,6 +1210,71 @@ class AppController extends ChangeNotifier {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<bool> _refreshFriendConnectionsAndFeed() async {
+    final user = _currentUser;
+    if (user == null) {
+      return true;
+    }
+
+    try {
+      final friendConnectionsFuture = _repository.loadFriendConnections(
+        user.id,
+      );
+      final feedPostsFuture = _repository.loadFeedDrinkPosts(
+        userId: user.id,
+        limit: _feedPageSize,
+      );
+      final friendConnections = await friendConnectionsFuture;
+      final feedPostsPage = await feedPostsFuture;
+      if (_currentUser?.id != user.id) {
+        return true;
+      }
+      _friendConnections = friendConnections;
+      _applyFeedPostPage(feedPostsPage);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  AppNotification? _notificationById(String? notificationId) {
+    if (notificationId == null || notificationId.isEmpty) {
+      return null;
+    }
+    for (final notification in _notifications) {
+      if (notification.id == notificationId) {
+        return notification;
+      }
+    }
+    return null;
+  }
+
+  Future<bool> _refreshForNotificationType({
+    required String type,
+    String? routeName,
+  }) {
+    return switch (type) {
+      AppNotificationTypes.friendDrinkLogged => refreshData(),
+      AppNotificationTypes.friendRequestSent ||
+      AppNotificationTypes.friendRequestAccepted ||
+      AppNotificationTypes.friendRequestRejected ||
+      AppNotificationTypes.friendRemoved => _refreshFriendConnectionsAndFeed(),
+      _ => _refreshForNotificationRoute(routeName),
+    };
+  }
+
+  Future<bool> _refreshForNotificationRoute(String? routeName) {
+    final route = AppRoutes.normalize(routeName);
+    if (route == AppRoutes.feed) {
+      return refreshData();
+    }
+    if (route == AppRoutes.profile || AppRoutes.isFriendProfileRoute(route)) {
+      return _refreshFriendConnectionsAndFeed();
+    }
+    return SynchronousFuture<bool>(true);
   }
 
   Future<void> _initialize() async {
@@ -1125,6 +1299,9 @@ class AppController extends ChangeNotifier {
     final entriesFuture = user == null
         ? null
         : _repository.loadEntries(user.id);
+    final feedPostsFuture = user == null
+        ? null
+        : _repository.loadFeedDrinkPosts(userId: user.id, limit: _feedPageSize);
     final settingsFuture = user == null
         ? null
         : _repository.loadSettings(user.id);
@@ -1138,12 +1315,16 @@ class AppController extends ChangeNotifier {
     _defaultCatalog = await defaultCatalogFuture;
     if (user == null) {
       _notifications = const <AppNotification>[];
+      _feedPosts = const <FeedDrinkPost>[];
+      _feedCursor = null;
+      _hasMoreFeedPosts = false;
       _notificationReadOverrides.clear();
       return;
     }
 
     _customDrinks = await customDrinksFuture!;
     _entries = await entriesFuture!;
+    _applyFeedPostPage(await feedPostsFuture!);
     _settings = await settingsFuture!;
     _friendConnections = await friendsFuture!;
     _notifications = _mergeNotificationReadOverrides(
@@ -1158,12 +1339,17 @@ class AppController extends ChangeNotifier {
     }
     final customDrinksFuture = _repository.loadCustomDrinks(user.id);
     final entriesFuture = _repository.loadEntries(user.id);
+    final feedPostsFuture = _repository.loadFeedDrinkPosts(
+      userId: user.id,
+      limit: _feedPageSize,
+    );
     final settingsFuture = _repository.loadSettings(user.id);
     final friendsFuture = _repository.loadFriendConnections(user.id);
     final notificationsFuture = _repository.loadNotifications(user.id);
 
     _customDrinks = await customDrinksFuture;
     _entries = await entriesFuture;
+    _applyFeedPostPage(await feedPostsFuture);
     _settings = await settingsFuture;
     _friendConnections = await friendsFuture;
     _notifications = _mergeNotificationReadOverrides(await notificationsFuture);
@@ -1199,6 +1385,49 @@ class AppController extends ChangeNotifier {
           return notification.copyWith(readAt: overrideReadAt);
         })
         .toList(growable: false);
+  }
+
+  Future<void> _reloadInitialFeedPosts(String userId) async {
+    _applyFeedPostPage(
+      await _repository.loadFeedDrinkPosts(
+        userId: userId,
+        limit: _feedPageSize,
+      ),
+    );
+  }
+
+  void _applyFeedPostPage(FeedDrinkPostPage page) {
+    _feedPosts = page.posts;
+    _feedCursor = page.cursor;
+    _hasMoreFeedPosts = page.hasMore;
+  }
+
+  void _upsertFeedPost(FeedDrinkPost post) {
+    _feedPosts = <FeedDrinkPost>[
+      post,
+      ..._feedPosts.where((candidate) => candidate.entry.id != post.entry.id),
+    ]..sort(_compareFeedPosts);
+  }
+
+  List<FeedDrinkPost> _mergeFeedPosts(
+    List<FeedDrinkPost> currentPosts,
+    List<FeedDrinkPost> nextPosts,
+  ) {
+    final postsById = <String, FeedDrinkPost>{
+      for (final post in currentPosts) post.entry.id: post,
+      for (final post in nextPosts) post.entry.id: post,
+    };
+    return postsById.values.toList(growable: false)..sort(_compareFeedPosts);
+  }
+
+  int _compareFeedPosts(FeedDrinkPost left, FeedDrinkPost right) {
+    final consumedAtComparison = right.entry.consumedAt.compareTo(
+      left.entry.consumedAt,
+    );
+    if (consumedAtComparison != 0) {
+      return consumedAtComparison;
+    }
+    return right.entry.id.compareTo(left.entry.id);
   }
 
   Future<void> _registerPushTokenBestEffort() async {

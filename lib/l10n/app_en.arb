@@ -73,7 +73,6 @@
     }
   },
   "feedHeadline": "Your activity feed",
-  "feedBody": "This V1 shows your personal history. Friends, comments, and cheers arrive later.",
   "noEntries": "No drinks logged yet.",
   "startLogging": "Start by logging your first drink.",
   "weeklyTotal": "Weekly",
@@ -228,6 +227,28 @@
     }
   },
   "notificationFriendRemovedBody": "Open your Friends section to review your connections.",
+  "notificationFriendDrinkLoggedTitle": "{name} drinks {drink}",
+  "@notificationFriendDrinkLoggedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "drink": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendDrinkLoggedBody": "{commentLine}\n{locationAddressLine}",
+  "@notificationFriendDrinkLoggedBody": {
+    "placeholders": {
+      "commentLine": {
+        "type": "String"
+      },
+      "locationAddressLine": {
+        "type": "String"
+      }
+    }
+  },
   "notificationsMarkAllRead": "Mark all as read",
   "customDrinks": "My custom drinks",
   "addCustomDrinkAction": "Add custom drink",
@@ -238,7 +259,7 @@
   "roadmap": "Planned next",
   "about": "About",
   "github": "GitHub",
-  "roadmapBody": "Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.",
+  "roadmapBody": "Cheers reactions and achievements are planned next.",
   "beerWithMeImport": "Beer With Me Import",
   "beerWithMeImportBody": "Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.",
   "beerWithMeImportAction": "Import Beer With Me export",

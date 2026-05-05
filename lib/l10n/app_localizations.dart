@@ -470,12 +470,6 @@ abstract class AppLocalizations {
   /// **'Your activity feed'**
   String get feedHeadline;
 
-  /// No description provided for @feedBody.
-  ///
-  /// In en, this message translates to:
-  /// **'This V1 shows your personal history. Friends, comments, and cheers arrive later.'**
-  String get feedBody;
-
   /// No description provided for @noEntries.
   ///
   /// In en, this message translates to:
@@ -1004,6 +998,21 @@ abstract class AppLocalizations {
   /// **'Open your Friends section to review your connections.'**
   String get notificationFriendRemovedBody;
 
+  /// No description provided for @notificationFriendDrinkLoggedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} drinks {drink}'**
+  String notificationFriendDrinkLoggedTitle(String name, String drink);
+
+  /// No description provided for @notificationFriendDrinkLoggedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{commentLine}\n{locationAddressLine}'**
+  String notificationFriendDrinkLoggedBody(
+    String commentLine,
+    String locationAddressLine,
+  );
+
   /// No description provided for @notificationsMarkAllRead.
   ///
   /// In en, this message translates to:
@@ -1067,7 +1076,7 @@ abstract class AppLocalizations {
   /// No description provided for @roadmapBody.
   ///
   /// In en, this message translates to:
-  /// **'Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.'**
+  /// **'Cheers reactions and achievements are planned next.'**
   String get roadmapBody;
 
   /// No description provided for @beerWithMeImport.
