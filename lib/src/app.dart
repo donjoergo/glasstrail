@@ -267,7 +267,10 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
   Future<void> _openNotification(PushNotificationOpen open) async {
     await _markNotificationOpenRead(widget.controller, open);
     _openRouteName(open.routeName);
-    unawaited(widget.controller.refreshFriendConnections());
+    await widget.controller.refreshForNotificationOpen(
+      routeName: open.routeName,
+      notificationId: open.notificationId,
+    );
   }
 
   @override

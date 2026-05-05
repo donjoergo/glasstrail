@@ -18,16 +18,26 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isMarkingAllRead = false;
 
+  String _targetRouteForNotification(AppNotification notification) {
+    final route = notification.metadata['route'];
+    if (route is String && route.trim().isNotEmpty) {
+      return AppRoutes.postAuthRoute(route.trim());
+    }
+    return AppRoutes.profile;
+  }
+
   Future<void> _openNotification(AppNotification notification) async {
     final controller = AppScope.controllerOf(context);
     if (notification.isUnread) {
       await controller.markNotificationsRead(<String>[notification.id]);
     }
-    await controller.refreshData();
+    await controller.refreshForNotification(notification);
     if (!mounted) {
       return;
     }
-    Navigator.of(context).pushReplacementNamed(AppRoutes.profile);
+    Navigator.of(
+      context,
+    ).pushReplacementNamed(_targetRouteForNotification(notification));
   }
 
   Future<void> _markAllNotificationsRead() async {
@@ -71,7 +81,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: SafeArea(
         child: notifications.isEmpty
-            ? Center(
+            ? Align(
+                alignment: Alignment.topCenter,
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: ConstrainedBox(
@@ -80,6 +91,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       icon: Icons.notifications_none_rounded,
                       title: l10n.notificationsEmptyTitle,
                       body: l10n.notificationsEmptyBody,
+                      compact: true,
                     ),
                   ),
                 ),
@@ -94,6 +106,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   return _NotificationTile(
                     key: Key('notification-${notification.id}'),
                     notification: notification,
+                    title: controller.localizedNotificationTitle(
+                      notification,
+                      l10n,
+                    ),
                     dateLabel: DateFormat.yMMMd(
                       l10n.localeName,
                     ).add_Hm().format(notification.createdAt),
@@ -111,11 +127,13 @@ class _NotificationTile extends StatelessWidget {
   const _NotificationTile({
     super.key,
     required this.notification,
+    required this.title,
     required this.dateLabel,
     required this.onTap,
   });
 
   final AppNotification notification;
+  final String title;
   final String dateLabel;
   final VoidCallback onTap;
 
@@ -156,7 +174,7 @@ class _NotificationTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      notification.title(l10n),
+                      title,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: colorScheme.onSurface,

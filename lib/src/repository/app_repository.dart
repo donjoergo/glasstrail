@@ -100,6 +100,12 @@ abstract class AppRepository {
 
   Future<List<DrinkEntry>> loadEntries(String userId);
 
+  Future<FeedDrinkPostPage> loadFeedDrinkPosts({
+    required String userId,
+    FeedDrinkPostCursor? cursor,
+    int limit = 20,
+  });
+
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,

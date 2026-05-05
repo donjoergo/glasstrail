@@ -470,12 +470,6 @@ abstract class AppLocalizations {
   /// **'Your activity feed'**
   String get feedHeadline;
 
-  /// No description provided for @feedBody.
-  ///
-  /// In en, this message translates to:
-  /// **'This V1 shows your personal history. Friends, comments, and cheers arrive later.'**
-  String get feedBody;
-
   /// No description provided for @noEntries.
   ///
   /// In en, this message translates to:
@@ -983,13 +977,13 @@ abstract class AppLocalizations {
   /// No description provided for @notificationsEmptyTitle.
   ///
   /// In en, this message translates to:
-  /// **'No notifications yet'**
+  /// **'No notifications right now'**
   String get notificationsEmptyTitle;
 
   /// No description provided for @notificationsEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'Friend requests and updates will appear here.'**
+  /// **'When friends log drinks or send you friend requests, you\'ll see them here. Read notifications are deleted after 30 days, unread notifications after 90 days.'**
   String get notificationsEmptyBody;
 
   /// No description provided for @notificationFriendRequestSentTitle.
@@ -1039,6 +1033,21 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open your Friends section to review your connections.'**
   String get notificationFriendRemovedBody;
+
+  /// No description provided for @notificationFriendDrinkLoggedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} drinks {drink}'**
+  String notificationFriendDrinkLoggedTitle(String name, String drink);
+
+  /// No description provided for @notificationFriendDrinkLoggedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{commentLine}\n{locationAddressLine}'**
+  String notificationFriendDrinkLoggedBody(
+    String commentLine,
+    String locationAddressLine,
+  );
 
   /// No description provided for @notificationsMarkAllRead.
   ///
@@ -1103,7 +1112,7 @@ abstract class AppLocalizations {
   /// No description provided for @roadmapBody.
   ///
   /// In en, this message translates to:
-  /// **'Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.'**
+  /// **'Cheers reactions and achievements are planned next.'**
   String get roadmapBody;
 
   /// No description provided for @beerWithMeImport.

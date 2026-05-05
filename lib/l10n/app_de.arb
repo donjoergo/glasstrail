@@ -73,7 +73,6 @@
     }
   },
   "feedHeadline": "Dein Aktivitätsfeed",
-  "feedBody": "V1 zeigt deine persönliche Historie. Freunde, Kommentare und Cheers folgen später.",
   "noEntries": "Noch keine Getränke erfasst.",
   "startLogging": "Starte mit deinem ersten Eintrag.",
   "weeklyTotal": "Diese Woche",
@@ -203,8 +202,8 @@
   "friendProfileLinkInvalidBody": "Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.",
   "notifications": "Mitteilungen",
   "notificationsTooltip": "Mitteilungen",
-  "notificationsEmptyTitle": "Noch keine Mitteilungen",
-  "notificationsEmptyBody": "Freundschaftsanfragen und Aktualisierungen erscheinen hier.",
+  "notificationsEmptyTitle": "Aktuell keine Benachrichtigungen",
+  "notificationsEmptyBody": "Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.",
   "notificationFriendRequestSentTitle": "{name} hat dir eine Freundschaftsanfrage gesendet",
   "@notificationFriendRequestSentTitle": {
     "placeholders": {
@@ -241,6 +240,28 @@
     }
   },
   "notificationFriendRemovedBody": "Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.",
+  "notificationFriendDrinkLoggedTitle": "{name} trinkt {drink}",
+  "@notificationFriendDrinkLoggedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "drink": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendDrinkLoggedBody": "{commentLine}\n{locationAddressLine}",
+  "@notificationFriendDrinkLoggedBody": {
+    "placeholders": {
+      "commentLine": {
+        "type": "String"
+      },
+      "locationAddressLine": {
+        "type": "String"
+      }
+    }
+  },
   "notificationsMarkAllRead": "Alle als gelesen markieren",
   "customDrinks": "Meine eigenen Getränke",
   "addCustomDrinkAction": "Eigenes Getränk hinzufügen",
@@ -251,7 +272,7 @@
   "roadmap": "Als Nächstes geplant",
   "about": "Über die App",
   "github": "GitHub",
-  "roadmapBody": "Freunde, Social Feed und Erfolge sind im Plan, aber bewusst nicht Teil von V1.",
+  "roadmapBody": "Als Nächstes kommen Cheers-Reaktionen und Erfolge.",
   "beerWithMeImport": "Beer With Me-Import",
   "beerWithMeImportBody": "Importiere einen Beer With Me-Export in deine GlassTrail-Historie. Bereits importierte Beer With Me-Einträge werden automatisch erkannt und übersprungen.",
   "beerWithMeImportAction": "Beer With Me-Export importieren",

@@ -357,6 +357,10 @@ class LocalAppRepository implements AppRepository {
       );
     }
     await _saveFriendRelationships(relationships);
+    await _deleteFriendDrinkLoggedNotificationsBetweenUsers(
+      firstUserId: userId,
+      secondUserId: friendUserId,
+    );
     return _friendConnectionsForUser(userId);
   }
 
@@ -520,6 +524,61 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
+  Future<FeedDrinkPostPage> loadFeedDrinkPosts({
+    required String userId,
+    FeedDrinkPostCursor? cursor,
+    int limit = 20,
+  }) async {
+    final pageLimit = limit.clamp(1, 50).toInt();
+    final usersById = <String, AppUser>{
+      for (final user in _loadUsers()) user.id: user,
+    };
+    final visibleUserIds = <String>{
+      userId,
+      ..._friendConnectionsForUser(userId)
+          .where((connection) => connection.isAccepted)
+          .map((connection) => connection.profile.id),
+    };
+    final entryMap = _readJsonMap(_entriesKey);
+    final posts = <FeedDrinkPost>[];
+
+    for (final visibleUserId in visibleUserIds) {
+      final author = usersById[visibleUserId];
+      if (author == null) {
+        continue;
+      }
+      final rawEntries =
+          (entryMap[visibleUserId] as List?) ?? const <dynamic>[];
+      for (final item in rawEntries) {
+        final entry = DrinkEntry.fromJson(
+          Map<String, dynamic>.from(item as Map),
+        );
+        posts.add(
+          FeedDrinkPost(
+            entry: entry,
+            authorProfile: FriendProfile.fromUser(author),
+            isOwnEntry: entry.userId == userId,
+          ),
+        );
+      }
+    }
+
+    posts.sort(_compareFeedPosts);
+    final filtered = cursor == null
+        ? posts
+        : posts
+              .where((post) => _isFeedPostAfterCursor(post, cursor))
+              .toList(growable: false);
+    final hasMore = filtered.length > pageLimit;
+    final pagePosts = filtered.take(pageLimit).toList(growable: false);
+    return FeedDrinkPostPage(
+      posts: pagePosts,
+      cursor: hasMore && pagePosts.isNotEmpty ? pagePosts.last.cursor : null,
+      hasMore: hasMore,
+    );
+  }
+
+  @override
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,
@@ -562,6 +621,9 @@ class LocalAppRepository implements AppRepository {
     raw.add(entry.toJson());
     map[user.id] = raw;
     await _writeJsonMap(_entriesKey, map);
+    if (_shouldNotifyFriendsForEntry(entry)) {
+      await _addDrinkLoggedNotifications(sender: user, entry: entry);
+    }
     return entry;
   }
 
@@ -593,6 +655,14 @@ class LocalAppRepository implements AppRepository {
     raw[index] = updated.toJson();
     map[user.id] = raw;
     await _writeJsonMap(_entriesKey, map);
+    if (_shouldNotifyFriendsForEntry(updated)) {
+      await _updateFriendDrinkLoggedNotifications(sender: user, entry: updated);
+    } else {
+      await _deleteFriendDrinkLoggedNotifications(
+        senderUserId: user.id,
+        entryId: updated.id,
+      );
+    }
     return updated;
   }
 
@@ -610,6 +680,10 @@ class LocalAppRepository implements AppRepository {
     }
     map[userId] = raw;
     await _writeJsonMap(_entriesKey, map);
+    await _deleteFriendDrinkLoggedNotifications(
+      senderUserId: userId,
+      entryId: entry.id,
+    );
   }
 
   @override
@@ -743,6 +817,8 @@ class LocalAppRepository implements AppRepository {
     required String recipientUserId,
     required AppUser sender,
     required String type,
+    Map<String, dynamic>? templateArgs,
+    String? imagePath,
     Map<String, dynamic> metadata = const <String, dynamic>{},
   }) async {
     await _pruneExpiredNotifications();
@@ -755,18 +831,99 @@ class LocalAppRepository implements AppRepository {
         senderDisplayName: sender.displayName,
         imagePath: AppNotificationImageUrls.imagePathForType(
           type: type,
-          fallbackImagePath: sender.profileImagePath,
+          fallbackImagePath: imagePath ?? sender.profileImagePath,
         ),
         type: type,
-        templateArgs: <String, dynamic>{
-          'senderDisplayName': sender.displayName,
-        },
+        templateArgs:
+            templateArgs ??
+            <String, dynamic>{'senderDisplayName': sender.displayName},
         createdAt: DateTime.now(),
         metadata: metadata,
       ).toJson(),
     );
     await _saveNotifications(notifications);
     _publishNotifications(recipientUserId);
+  }
+
+  Future<void> _addDrinkLoggedNotifications({
+    required AppUser sender,
+    required DrinkEntry entry,
+  }) async {
+    final recipientIds = _friendConnectionsForUser(sender.id)
+        .where((connection) => connection.isAccepted)
+        .map((connection) => connection.profile.id)
+        .toList(growable: false);
+    if (recipientIds.isEmpty) {
+      return;
+    }
+
+    final notificationImagePath = _friendDrinkLoggedNotificationImagePath(
+      entry: entry,
+      senderProfileImagePath: sender.profileImagePath,
+    );
+    final templateArgs = _friendDrinkLoggedTemplateArgs(
+      senderDisplayName: sender.displayName,
+      entry: entry,
+    );
+    for (final recipientId in recipientIds) {
+      await _addNotification(
+        recipientUserId: recipientId,
+        sender: sender,
+        type: AppNotificationTypes.friendDrinkLogged,
+        imagePath: notificationImagePath,
+        templateArgs: templateArgs,
+        metadata: <String, dynamic>{'entryId': entry.id, 'route': '/feed'},
+      );
+    }
+  }
+
+  Future<void> _updateFriendDrinkLoggedNotifications({
+    required AppUser sender,
+    required DrinkEntry entry,
+  }) async {
+    final notifications = _loadNotifications();
+    if (notifications.isEmpty) {
+      return;
+    }
+
+    final notificationImagePath = _friendDrinkLoggedNotificationImagePath(
+      entry: entry,
+      senderProfileImagePath: sender.profileImagePath,
+    );
+    final templateArgs = _friendDrinkLoggedTemplateArgs(
+      senderDisplayName: sender.displayName,
+      entry: entry,
+    );
+    final affectedUserIds = <String>{};
+    var changed = false;
+
+    for (var index = 0; index < notifications.length; index++) {
+      final notification = AppNotification.fromJson(notifications[index]);
+      final matches =
+          notification.type == AppNotificationTypes.friendDrinkLogged &&
+          notification.senderUserId == sender.id &&
+          notification.metadata['entryId'] == entry.id;
+      if (!matches) {
+        continue;
+      }
+      notifications[index] = notification
+          .copyWith(
+            senderDisplayName: sender.displayName,
+            imagePath: notificationImagePath,
+            templateArgs: templateArgs,
+          )
+          .toJson();
+      affectedUserIds.add(notification.recipientUserId);
+      changed = true;
+    }
+
+    if (!changed) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    for (final userId in affectedUserIds) {
+      _publishNotifications(userId);
+    }
   }
 
   Future<void> _deleteFriendRequestSentNotification({
@@ -793,6 +950,70 @@ class LocalAppRepository implements AppRepository {
     }
     await _saveNotifications(notifications);
     _publishNotifications(addresseeUserId);
+  }
+
+  Future<void> _deleteFriendDrinkLoggedNotifications({
+    required String senderUserId,
+    required String entryId,
+  }) async {
+    final notifications = _loadNotifications();
+    if (notifications.isEmpty) {
+      return;
+    }
+
+    final affectedUserIds = <String>{};
+    notifications.removeWhere((item) {
+      final notification = AppNotification.fromJson(item);
+      final matches =
+          notification.type == AppNotificationTypes.friendDrinkLogged &&
+          notification.senderUserId == senderUserId &&
+          notification.metadata['entryId'] == entryId;
+      if (matches) {
+        affectedUserIds.add(notification.recipientUserId);
+      }
+      return matches;
+    });
+
+    if (affectedUserIds.isEmpty) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    for (final userId in affectedUserIds) {
+      _publishNotifications(userId);
+    }
+  }
+
+  Future<void> _deleteFriendDrinkLoggedNotificationsBetweenUsers({
+    required String firstUserId,
+    required String secondUserId,
+  }) async {
+    final notifications = _loadNotifications();
+    if (notifications.isEmpty) {
+      return;
+    }
+
+    final affectedUserIds = <String>{};
+    notifications.removeWhere((item) {
+      final notification = AppNotification.fromJson(item);
+      final matches =
+          notification.type == AppNotificationTypes.friendDrinkLogged &&
+          ((notification.senderUserId == firstUserId &&
+                  notification.recipientUserId == secondUserId) ||
+              (notification.senderUserId == secondUserId &&
+                  notification.recipientUserId == firstUserId));
+      if (matches) {
+        affectedUserIds.add(notification.recipientUserId);
+      }
+      return matches;
+    });
+
+    if (affectedUserIds.isEmpty) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    for (final userId in affectedUserIds) {
+      _publishNotifications(userId);
+    }
   }
 
   Future<void> _pruneExpiredNotifications() async {
@@ -933,6 +1154,75 @@ class LocalAppRepository implements AppRepository {
     final addresseeId = relationship['addresseeId'] as String;
     return (requesterId == leftUserId && addresseeId == rightUserId) ||
         (requesterId == rightUserId && addresseeId == leftUserId);
+  }
+
+  int _compareFeedPosts(FeedDrinkPost left, FeedDrinkPost right) {
+    final consumedAtComparison = right.entry.consumedAt.compareTo(
+      left.entry.consumedAt,
+    );
+    if (consumedAtComparison != 0) {
+      return consumedAtComparison;
+    }
+    return right.entry.id.compareTo(left.entry.id);
+  }
+
+  bool _isFeedPostAfterCursor(FeedDrinkPost post, FeedDrinkPostCursor cursor) {
+    final entry = post.entry;
+    if (entry.consumedAt.isBefore(cursor.consumedAt)) {
+      return true;
+    }
+    if (entry.consumedAt.isAfter(cursor.consumedAt)) {
+      return false;
+    }
+    return entry.id.compareTo(cursor.entryId) < 0;
+  }
+
+  bool _shouldNotifyFriendsForEntry(DrinkEntry entry) {
+    final source = entry.importSource?.trim();
+    return source == null || source.isEmpty;
+  }
+
+  String? _normalizedImagePath(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
+
+  String? _nonEmptyText(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
+
+  Map<String, dynamic> _friendDrinkLoggedTemplateArgs({
+    required String senderDisplayName,
+    required DrinkEntry entry,
+  }) {
+    final templateArgs = <String, dynamic>{
+      'senderDisplayName': senderDisplayName,
+      'drinkId': entry.drinkId,
+      'drinkName': entry.drinkName,
+    };
+    final comment = _nonEmptyText(entry.comment);
+    if (comment != null) {
+      templateArgs['comment'] = comment;
+    }
+    final locationAddress = _nonEmptyText(entry.locationAddress);
+    if (locationAddress != null) {
+      templateArgs['locationAddress'] = locationAddress;
+    }
+    return templateArgs;
+  }
+
+  String _friendDrinkLoggedNotificationImagePath({
+    required DrinkEntry entry,
+    required String? senderProfileImagePath,
+  }) {
+    return AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendDrinkLogged,
+          fallbackImagePath:
+              _normalizedImagePath(entry.imagePath) ??
+              _normalizedImagePath(senderProfileImagePath),
+        ) ??
+        AppNotificationImageUrls.appIcon;
   }
 
   Map<String, dynamic> _readJsonMap(String key) {
