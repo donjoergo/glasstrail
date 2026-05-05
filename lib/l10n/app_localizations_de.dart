@@ -204,6 +204,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get feedHeadline => 'Dein Aktivitätsfeed';
 
   @override
+  String get feedCheersAction => 'Prost';
+
+  @override
   String get noEntries => 'Noch keine Getränke erfasst.';
 
   @override
@@ -504,6 +507,14 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get notificationFriendRemovedBody =>
       'Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.';
+
+  @override
+  String notificationFriendDrinkCheeredTitle(String name) {
+    return '$name prostet dir zu 🍻';
+  }
+
+  @override
+  String get notificationFriendDrinkCheeredBody => '';
 
   @override
   String notificationFriendDrinkLoggedTitle(String name, String drink) {

@@ -15,6 +15,7 @@ class LocalAppRepository implements AppRepository {
   static const _sessionUserIdKey = 'glasstrail.session_user_id';
   static const _customDrinksKey = 'glasstrail.custom_drinks';
   static const _entriesKey = 'glasstrail.entries';
+  static const _feedEntryCheersKey = 'glasstrail.feed_entry_cheers';
   static const _settingsKey = 'glasstrail.settings';
   static const _friendRelationshipsKey = 'glasstrail.friend_relationships';
   static const _notificationsKey = 'glasstrail.notifications';
@@ -327,7 +328,15 @@ class LocalAppRepository implements AppRepository {
       );
     }
     await _saveFriendRelationships(relationships);
+    await _deleteFeedEntryCheersBetweenUsers(
+      firstUserId: userId,
+      secondUserId: friendUserId,
+    );
     await _deleteFriendDrinkLoggedNotificationsBetweenUsers(
+      firstUserId: userId,
+      secondUserId: friendUserId,
+    );
+    await _deleteFriendDrinkCheeredNotificationsBetweenUsers(
       firstUserId: userId,
       secondUserId: friendUserId,
     );
@@ -509,6 +518,7 @@ class LocalAppRepository implements AppRepository {
           .where((connection) => connection.isAccepted)
           .map((connection) => connection.profile.id),
     };
+    final cheersByEntryId = _loadFeedEntryCheers();
     final entryMap = _readJsonMap(_entriesKey);
     final posts = <FeedDrinkPost>[];
 
@@ -528,6 +538,9 @@ class LocalAppRepository implements AppRepository {
             entry: entry,
             authorProfile: FriendProfile.fromUser(author),
             isOwnEntry: entry.userId == userId,
+            cheersCount: cheersByEntryId[entry.id]?.length ?? 0,
+            hasCurrentUserCheered:
+                cheersByEntryId[entry.id]?.contains(userId) ?? false,
           ),
         );
       }
@@ -545,6 +558,60 @@ class LocalAppRepository implements AppRepository {
       posts: pagePosts,
       cursor: hasMore && pagePosts.isNotEmpty ? pagePosts.last.cursor : null,
       hasMore: hasMore,
+    );
+  }
+
+  @override
+  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+    required String userId,
+    required String entryId,
+    required bool shouldCheer,
+  }) async {
+    final entry = _loadEntriesById()[entryId];
+    if (entry == null ||
+        entry.userId == userId ||
+        !_isAcceptedFriendshipBetween(userId, entry.userId)) {
+      throw const AppException('The cheers could not be updated.');
+    }
+
+    final cheersByEntryId = _loadFeedEntryCheers();
+    final cheerUserIds = Set<String>.from(
+      cheersByEntryId[entryId] ?? const <String>{},
+    );
+    final hadCheered = cheerUserIds.contains(userId);
+
+    if (shouldCheer) {
+      if (cheerUserIds.add(userId)) {
+        cheersByEntryId[entryId] = cheerUserIds;
+        await _saveFeedEntryCheers(cheersByEntryId);
+        final sender = _userById(userId);
+        if (sender != null) {
+          await _addNotification(
+            recipientUserId: entry.userId,
+            sender: sender,
+            type: AppNotificationTypes.friendDrinkCheered,
+            metadata: <String, dynamic>{'entryId': entry.id, 'route': '/feed'},
+          );
+        }
+      }
+    } else if (hadCheered) {
+      cheerUserIds.remove(userId);
+      if (cheerUserIds.isEmpty) {
+        cheersByEntryId.remove(entryId);
+      } else {
+        cheersByEntryId[entryId] = cheerUserIds;
+      }
+      await _saveFeedEntryCheers(cheersByEntryId);
+      await _deleteFriendDrinkCheeredNotification(
+        recipientUserId: entry.userId,
+        senderUserId: userId,
+        entryId: entry.id,
+      );
+    }
+
+    return FeedEntryCheersUpdate(
+      cheersCount: cheerUserIds.length,
+      hasCurrentUserCheered: cheerUserIds.contains(userId),
     );
   }
 
@@ -650,10 +717,12 @@ class LocalAppRepository implements AppRepository {
     }
     map[userId] = raw;
     await _writeJsonMap(_entriesKey, map);
+    await _deleteFeedEntryCheers(entry.id);
     await _deleteFriendDrinkLoggedNotifications(
       senderUserId: userId,
       entryId: entry.id,
     );
+    await _deleteFriendDrinkCheeredNotificationsForEntry(entry.id);
   }
 
   @override
@@ -781,6 +850,26 @@ class LocalAppRepository implements AppRepository {
     List<Map<String, dynamic>> notifications,
   ) async {
     await _preferences.setString(_notificationsKey, jsonEncode(notifications));
+  }
+
+  Map<String, Set<String>> _loadFeedEntryCheers() {
+    final raw = _readJsonMap(_feedEntryCheersKey);
+    return <String, Set<String>>{
+      for (final entry in raw.entries)
+        entry.key:
+            List<String>.from((entry.value as List?) ?? const <dynamic>[])
+                .map((value) => value.trim())
+                .where((value) => value.isNotEmpty)
+                .toSet(),
+    };
+  }
+
+  Future<void> _saveFeedEntryCheers(Map<String, Set<String>> cheersByEntryId) {
+    return _writeJsonMap(_feedEntryCheersKey, <String, dynamic>{
+      for (final entry in cheersByEntryId.entries)
+        if (entry.value.isNotEmpty)
+          entry.key: (entry.value.toList(growable: false)..sort()),
+    });
   }
 
   Future<void> _addNotification({
@@ -986,6 +1075,94 @@ class LocalAppRepository implements AppRepository {
     }
   }
 
+  Future<void> _deleteFriendDrinkCheeredNotification({
+    required String recipientUserId,
+    required String senderUserId,
+    required String entryId,
+  }) async {
+    final notifications = _loadNotifications();
+    var changed = false;
+    notifications.removeWhere((item) {
+      final notification = AppNotification.fromJson(item);
+      final matches =
+          notification.type == AppNotificationTypes.friendDrinkCheered &&
+          notification.recipientUserId == recipientUserId &&
+          notification.senderUserId == senderUserId &&
+          notification.metadata['entryId'] == entryId;
+      if (matches) {
+        changed = true;
+      }
+      return matches;
+    });
+    if (!changed) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    _publishNotifications(recipientUserId);
+  }
+
+  Future<void> _deleteFriendDrinkCheeredNotificationsForEntry(
+    String entryId,
+  ) async {
+    final notifications = _loadNotifications();
+    if (notifications.isEmpty) {
+      return;
+    }
+
+    final affectedUserIds = <String>{};
+    notifications.removeWhere((item) {
+      final notification = AppNotification.fromJson(item);
+      final matches =
+          notification.type == AppNotificationTypes.friendDrinkCheered &&
+          notification.metadata['entryId'] == entryId;
+      if (matches) {
+        affectedUserIds.add(notification.recipientUserId);
+      }
+      return matches;
+    });
+
+    if (affectedUserIds.isEmpty) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    for (final userId in affectedUserIds) {
+      _publishNotifications(userId);
+    }
+  }
+
+  Future<void> _deleteFriendDrinkCheeredNotificationsBetweenUsers({
+    required String firstUserId,
+    required String secondUserId,
+  }) async {
+    final notifications = _loadNotifications();
+    if (notifications.isEmpty) {
+      return;
+    }
+
+    final affectedUserIds = <String>{};
+    notifications.removeWhere((item) {
+      final notification = AppNotification.fromJson(item);
+      final matches =
+          notification.type == AppNotificationTypes.friendDrinkCheered &&
+          ((notification.senderUserId == firstUserId &&
+                  notification.recipientUserId == secondUserId) ||
+              (notification.senderUserId == secondUserId &&
+                  notification.recipientUserId == firstUserId));
+      if (matches) {
+        affectedUserIds.add(notification.recipientUserId);
+      }
+      return matches;
+    });
+
+    if (affectedUserIds.isEmpty) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    for (final userId in affectedUserIds) {
+      _publishNotifications(userId);
+    }
+  }
+
   Future<void> _pruneExpiredNotifications() async {
     final notifications = _loadNotifications();
     if (notifications.isEmpty) {
@@ -1084,6 +1261,14 @@ class LocalAppRepository implements AppRepository {
     return connections;
   }
 
+  bool _isAcceptedFriendshipBetween(String firstUserId, String secondUserId) {
+    return _loadFriendRelationships().any(
+      (relationship) =>
+          relationship['status'] == FriendRequestStatus.accepted.storageValue &&
+          _isRelationshipBetween(relationship, firstUserId, secondUserId),
+    );
+  }
+
   int _compareFriendConnections(FriendConnection left, FriendConnection right) {
     final statusComparison = _friendConnectionSortRank(
       left,
@@ -1139,6 +1324,73 @@ class LocalAppRepository implements AppRepository {
   bool _shouldNotifyFriendsForEntry(DrinkEntry entry) {
     final source = entry.importSource?.trim();
     return source == null || source.isEmpty;
+  }
+
+  Map<String, DrinkEntry> _loadEntriesById() {
+    final entriesById = <String, DrinkEntry>{};
+    final entryMap = _readJsonMap(_entriesKey);
+    for (final rawEntries in entryMap.values) {
+      for (final item in (rawEntries as List?) ?? const <dynamic>[]) {
+        final entry = DrinkEntry.fromJson(
+          Map<String, dynamic>.from(item as Map),
+        );
+        entriesById[entry.id] = entry;
+      }
+    }
+    return entriesById;
+  }
+
+  Future<void> _deleteFeedEntryCheers(String entryId) async {
+    final cheersByEntryId = _loadFeedEntryCheers();
+    if (cheersByEntryId.remove(entryId) == null) {
+      return;
+    }
+    await _saveFeedEntryCheers(cheersByEntryId);
+  }
+
+  Future<void> _deleteFeedEntryCheersBetweenUsers({
+    required String firstUserId,
+    required String secondUserId,
+  }) async {
+    final cheersByEntryId = _loadFeedEntryCheers();
+    if (cheersByEntryId.isEmpty) {
+      return;
+    }
+
+    final entriesById = _loadEntriesById();
+    var changed = false;
+    for (final entryId in cheersByEntryId.keys.toList(growable: false)) {
+      final entry = entriesById[entryId];
+      if (entry == null) {
+        cheersByEntryId.remove(entryId);
+        changed = true;
+        continue;
+      }
+
+      final cheerUserIds = cheersByEntryId[entryId];
+      if (cheerUserIds == null) {
+        continue;
+      }
+
+      final removed = entry.userId == firstUserId
+          ? cheerUserIds.remove(secondUserId)
+          : entry.userId == secondUserId
+          ? cheerUserIds.remove(firstUserId)
+          : false;
+      if (!removed) {
+        continue;
+      }
+
+      changed = true;
+      if (cheerUserIds.isEmpty) {
+        cheersByEntryId.remove(entryId);
+      }
+    }
+
+    if (!changed) {
+      return;
+    }
+    await _saveFeedEntryCheers(cheersByEntryId);
   }
 
   String? _normalizedImagePath(String? value) {

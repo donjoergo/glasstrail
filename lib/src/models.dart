@@ -478,12 +478,14 @@ class AppNotificationTypes {
   static const friendRequestRejected = 'friend_request_rejected';
   static const friendRemoved = 'friend_removed';
   static const friendDrinkLogged = 'friend_drink_logged';
+  static const friendDrinkCheered = 'friend_drink_cheered';
 }
 
 class AppNotificationImageUrls {
   const AppNotificationImageUrls._();
 
   static const baseUrl = 'https://glasstrail.vercel.app/notification-assets';
+  static const requestAccepted = '$baseUrl/request_accepted.png';
   static const cheers = '$baseUrl/cheers.png';
   static const requestRejected = '$baseUrl/request_rejected.png';
   static const friendRemoved = '$baseUrl/friend_removed.png';
@@ -495,9 +497,10 @@ class AppNotificationImageUrls {
   }) {
     final normalizedType = type.trim();
     return switch (normalizedType) {
-      AppNotificationTypes.friendRequestAccepted => cheers,
+      AppNotificationTypes.friendRequestAccepted => requestAccepted,
       AppNotificationTypes.friendRequestRejected => requestRejected,
       AppNotificationTypes.friendRemoved => friendRemoved,
+      AppNotificationTypes.friendDrinkCheered => cheers,
       AppNotificationTypes.friendDrinkLogged =>
         _normalizedFallback(fallbackImagePath) ?? appIcon,
       _ => _normalizedFallback(fallbackImagePath),
@@ -526,6 +529,8 @@ String appNotificationTitle({
     AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedTitle(
       senderDisplayName,
     ),
+    AppNotificationTypes.friendDrinkCheered =>
+      l10n.notificationFriendDrinkCheeredTitle(senderDisplayName),
     AppNotificationTypes.friendDrinkLogged =>
       l10n.notificationFriendDrinkLoggedTitle(
         senderDisplayName,
@@ -541,7 +546,7 @@ String? appNotificationText({
   String? comment,
   String? locationAddress,
 }) {
-  return switch (type) {
+  return _nonEmptyString(switch (type) {
     AppNotificationTypes.friendRequestSent =>
       l10n.notificationFriendRequestSentBody,
     AppNotificationTypes.friendRequestAccepted =>
@@ -549,12 +554,14 @@ String? appNotificationText({
     AppNotificationTypes.friendRequestRejected =>
       l10n.notificationFriendRequestRejectedBody,
     AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedBody,
+    AppNotificationTypes.friendDrinkCheered =>
+      l10n.notificationFriendDrinkCheeredBody,
     AppNotificationTypes.friendDrinkLogged => _friendDrinkLoggedText(
       comment: comment,
       locationAddress: locationAddress,
     ),
     _ => null,
-  };
+  });
 }
 
 String _notificationDrinkName(String? value) {
@@ -766,6 +773,7 @@ String _normalizeNotificationType(String? value) {
     'friendRequestAccepted' => AppNotificationTypes.friendRequestAccepted,
     'friendRequestRejected' => AppNotificationTypes.friendRequestRejected,
     'friendRemoved' => AppNotificationTypes.friendRemoved,
+    'friendDrinkCheered' => AppNotificationTypes.friendDrinkCheered,
     'friendDrinkLogged' => AppNotificationTypes.friendDrinkLogged,
     final text? when text.trim().isNotEmpty => text.trim(),
     _ => 'notification',
@@ -1015,16 +1023,47 @@ class FeedDrinkPostCursor {
   final String entryId;
 }
 
+class FeedEntryCheersUpdate {
+  const FeedEntryCheersUpdate({
+    required this.cheersCount,
+    required this.hasCurrentUserCheered,
+  });
+
+  final int cheersCount;
+  final bool hasCurrentUserCheered;
+}
+
 class FeedDrinkPost {
   const FeedDrinkPost({
     required this.entry,
     required this.authorProfile,
     required this.isOwnEntry,
+    this.cheersCount = 0,
+    this.hasCurrentUserCheered = false,
   });
 
   final DrinkEntry entry;
   final FriendProfile authorProfile;
   final bool isOwnEntry;
+  final int cheersCount;
+  final bool hasCurrentUserCheered;
+
+  FeedDrinkPost copyWith({
+    DrinkEntry? entry,
+    FriendProfile? authorProfile,
+    bool? isOwnEntry,
+    int? cheersCount,
+    bool? hasCurrentUserCheered,
+  }) {
+    return FeedDrinkPost(
+      entry: entry ?? this.entry,
+      authorProfile: authorProfile ?? this.authorProfile,
+      isOwnEntry: isOwnEntry ?? this.isOwnEntry,
+      cheersCount: cheersCount ?? this.cheersCount,
+      hasCurrentUserCheered:
+          hasCurrentUserCheered ?? this.hasCurrentUserCheered,
+    );
+  }
 
   FeedDrinkPostCursor get cursor {
     return FeedDrinkPostCursor(consumedAt: entry.consumedAt, entryId: entry.id);

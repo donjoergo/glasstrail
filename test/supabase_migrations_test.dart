@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _notificationMigrationPath =
     'supabase/migrations/202604280001_add_friend_notifications.sql';
+const _feedCheersMigrationPath =
+    'supabase/migrations/202605060001_add_feed_entry_cheers.sql';
 const _supersededNotificationMigrationPaths = <String>[
   'supabase/migrations/202604250001_add_friend_notifications.sql',
   'supabase/migrations/202604260001_generalize_notifications.sql',
@@ -259,5 +261,101 @@ void main() {
       ),
     );
     expect(migration, contains("'friend_removed'"));
+  });
+
+  test('adds the cheers table and cheers rpc in a new migration', () {
+    final migration = File(_feedCheersMigrationPath).readAsStringSync();
+
+    expect(
+      migration,
+      contains('create table if not exists public.drink_entry_cheers'),
+    );
+    expect(migration, contains('primary key (entry_id, user_id)'));
+    expect(
+      migration,
+      contains('references public.drink_entries(id) on delete cascade'),
+    );
+    expect(
+      migration,
+      contains('create or replace function public.set_feed_entry_cheers'),
+    );
+    expect(
+      migration,
+      contains(
+        'grant execute on function public.set_feed_entry_cheers(uuid, boolean) to authenticated',
+      ),
+    );
+  });
+
+  test('remaps static notification art for accepted requests and cheers', () {
+    final migration = File(_feedCheersMigrationPath).readAsStringSync();
+
+    expect(
+      migration,
+      contains(
+        'https://glasstrail.vercel.app/notification-assets/request_accepted.png',
+      ),
+    );
+    expect(
+      migration,
+      contains('https://glasstrail.vercel.app/notification-assets/cheers.png'),
+    );
+    expect(migration, contains("when 'friend_drink_cheered' then"));
+    expect(migration, contains('update public.notifications'));
+  });
+
+  test('extends the feed rpc with cheers aggregates', () {
+    final migration = File(_feedCheersMigrationPath).readAsStringSync();
+
+    expect(
+      migration,
+      contains('create or replace function public.load_feed_drink_posts'),
+    );
+    expect(migration, contains('cheers_count integer'));
+    expect(migration, contains('has_current_user_cheered boolean'));
+    expect(
+      migration,
+      contains(
+        'select count(*)::integer\n      from public.drink_entry_cheers cheers',
+      ),
+    );
+    expect(migration, contains('and cheers.user_id = requesting_user_id'));
+  });
+
+  test('validates and cleans up cheers in the cheers migration', () {
+    final migration = File(_feedCheersMigrationPath).readAsStringSync();
+
+    expect(
+      migration,
+      contains("raise exception 'The cheers could not be updated.'"),
+    );
+    expect(migration, contains('entry_owner_user_id = requesting_user_id'));
+    expect(migration, contains("relationships.status = 'accepted'"));
+    expect(migration, contains("perform public.create_friend_notification("));
+    expect(migration, contains("'friend_drink_cheered'"));
+    expect(
+      migration,
+      contains(
+        'create trigger friend_drink_cheered_notifications_cleanup\n'
+        'after delete on public.drink_entries',
+      ),
+    );
+    expect(
+      migration,
+      contains(
+        'create trigger cleanup_feed_cheers_for_deleted_friendship\n'
+        'after delete on public.friend_relationships',
+      ),
+    );
+    expect(
+      migration,
+      contains(
+        'delete from public.drink_entry_cheers cheers\n  using public.drink_entries entries',
+      ),
+    );
+    expect(
+      migration,
+      contains("metadata ->> 'entryId' = target_entry_id::text"),
+    );
   });
 }

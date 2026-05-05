@@ -327,6 +327,184 @@ void main() {
     );
   });
 
+  test('optimistically toggles cheers with per-entry pending state', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _BlockingCheersLocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final logger = await repository.signUp(
+      email: 'controller-cheers-logger@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Logger',
+    );
+    final loggerProfile = await repository.getOwnFriendProfile(logger.id);
+    await repository.signOut();
+    final cheerer = await repository.signUp(
+      email: 'controller-cheers-cheerer@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Cheerer',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: cheerer.id,
+      shareCode: loggerProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: logger.id,
+      relationshipId: connections.single.id,
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final entry = await repository.addDrinkEntry(user: logger, drink: drink);
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final post = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+
+    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    await repository.setCheersStarted.future;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.isFeedEntryCheersPending(entry.id), isTrue);
+    final optimisticPost = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+    expect(optimisticPost.cheersCount, 1);
+    expect(optimisticPost.hasCurrentUserCheered, isTrue);
+
+    repository.unblockSetCheers();
+    final success = await toggleFuture;
+
+    expect(success, isTrue);
+    expect(controller.isFeedEntryCheersPending(entry.id), isFalse);
+    final confirmedPost = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+    expect(confirmedPost.cheersCount, 1);
+    expect(confirmedPost.hasCurrentUserCheered, isTrue);
+  });
+
+  test('rolls back optimistic cheers when the repository call fails', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _BlockingCheersLocalAppRepository(
+      await SharedPreferences.getInstance(),
+    )..failSetCheers = true;
+    final logger = await repository.signUp(
+      email: 'controller-cheers-fail-logger@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Fail Logger',
+    );
+    final loggerProfile = await repository.getOwnFriendProfile(logger.id);
+    await repository.signOut();
+    final cheerer = await repository.signUp(
+      email: 'controller-cheers-fail-cheerer@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Fail Cheerer',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: cheerer.id,
+      shareCode: loggerProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: logger.id,
+      relationshipId: connections.single.id,
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final entry = await repository.addDrinkEntry(user: logger, drink: drink);
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final post = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+
+    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    await repository.setCheersStarted.future;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.isFeedEntryCheersPending(entry.id), isTrue);
+
+    repository.unblockSetCheers();
+    final success = await toggleFuture;
+
+    expect(success, isFalse);
+    expect(controller.isFeedEntryCheersPending(entry.id), isFalse);
+    final rolledBackPost = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+    expect(rolledBackPost.cheersCount, 0);
+    expect(rolledBackPost.hasCurrentUserCheered, isFalse);
+    expect(
+      controller.takeFlashMessage(_l10n('en')),
+      _l10n('en').somethingWentWrong,
+    );
+  });
+
+  test('refreshing a cheers notification reloads feed cheers state', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final owner = await repository.signUp(
+      email: 'controller-cheers-owner@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Owner',
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final entry = await repository.addDrinkEntry(user: owner, drink: drink);
+    final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+    await repository.signOut();
+    final friend = await repository.signUp(
+      email: 'controller-cheers-owner-friend@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Owner Friend',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: friend.id,
+      shareCode: ownerProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: owner.id,
+      relationshipId: connections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'controller-cheers-owner@example.com',
+      password: 'password123',
+    );
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+    expect(
+      controller.feedPosts
+          .firstWhere((post) => post.entry.id == entry.id)
+          .cheersCount,
+      0,
+    );
+
+    await repository.setFeedEntryCheers(
+      userId: friend.id,
+      entryId: entry.id,
+      shouldCheer: true,
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    final notification = controller.notifications.firstWhere(
+      (candidate) => candidate.type == AppNotificationTypes.friendDrinkCheered,
+    );
+    final success = await controller.refreshForNotification(notification);
+
+    expect(success, isTrue);
+    final refreshedPost = controller.feedPosts.firstWhere(
+      (post) => post.entry.id == entry.id,
+    );
+    expect(refreshedPost.cheersCount, 1);
+    expect(refreshedPost.hasCurrentUserCheered, isFalse);
+  });
+
   test('tracks sign-up as the active busy action while pending', () async {
     final repository = await buildBlockingLocalRepository(
       blockedAction: AppBusyAction.signUp,
@@ -1324,6 +1502,40 @@ class _ManualNotificationStreamLocalRepository extends LocalAppRepository {
   Future<void> dispose() => _notificationsController.close();
 }
 
+class _BlockingCheersLocalAppRepository extends LocalAppRepository {
+  _BlockingCheersLocalAppRepository(super.preferences);
+
+  final setCheersStarted = Completer<void>();
+  final _setCheersCompleter = Completer<void>();
+  bool failSetCheers = false;
+
+  void unblockSetCheers() {
+    if (!_setCheersCompleter.isCompleted) {
+      _setCheersCompleter.complete();
+    }
+  }
+
+  @override
+  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+    required String userId,
+    required String entryId,
+    required bool shouldCheer,
+  }) async {
+    if (!setCheersStarted.isCompleted) {
+      setCheersStarted.complete();
+    }
+    await _setCheersCompleter.future;
+    if (failSetCheers) {
+      throw const AppException('Cheers failed.');
+    }
+    return super.setFeedEntryCheers(
+      userId: userId,
+      entryId: entryId,
+      shouldCheer: shouldCheer,
+    );
+  }
+}
+
 class _StaticPushNotificationService extends PushNotificationService {
   const _StaticPushNotificationService(this.token);
 
@@ -1652,6 +1864,15 @@ class _BootstrapProbeRepository implements AppRepository {
     DateTime? consumedAt,
     String? importSource,
     String? importSourceId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+    required String userId,
+    required String entryId,
+    required bool shouldCheer,
   }) {
     throw UnimplementedError();
   }

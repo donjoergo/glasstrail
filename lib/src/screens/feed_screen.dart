@@ -601,6 +601,8 @@ class _DrinkEntryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
+    final cheersPending = controller.isFeedEntryCheersPending(entry.id);
+    final cheersEnabled = !post.isOwnEntry && !cheersPending;
     final timeLabel = DateFormat.yMMMd(
       locale,
     ).add_Hm().format(entry.consumedAt);
@@ -751,6 +753,51 @@ class _DrinkEntryCard extends StatelessWidget {
               enableFullscreenOnTap: true,
             ),
           ],
+          const SizedBox(height: 14),
+          Divider(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            children: <Widget>[
+              TextButton.icon(
+                key: Key('feed-entry-cheers-${entry.id}'),
+                onPressed: cheersEnabled
+                    ? () => unawaited(controller.toggleFeedEntryCheers(post))
+                    : null,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 0,
+                    vertical: 8,
+                  ),
+                ),
+                icon: cheersPending
+                    ? SizedBox.square(
+                        key: Key('feed-entry-cheers-loading-${entry.id}'),
+                        dimension: 18,
+                        child: const CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        post.hasCurrentUserCheered
+                            ? Icons.sports_bar_rounded
+                            : Icons.sports_bar_outlined,
+                        size: 18,
+                      ),
+                label: Text(l10n.feedCheersAction),
+              ),
+              const Spacer(),
+              Text(
+                '${post.cheersCount}',
+                key: Key('feed-entry-cheers-count-${entry.id}'),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: post.hasCurrentUserCheered
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -73,6 +73,7 @@
     }
   },
   "feedHeadline": "Dein Aktivitätsfeed",
+  "feedCheersAction": "Prost",
   "noEntries": "Noch keine Getränke erfasst.",
   "startLogging": "Starte mit deinem ersten Eintrag.",
   "weeklyTotal": "Woche",
@@ -227,6 +228,15 @@
     }
   },
   "notificationFriendRemovedBody": "Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.",
+  "notificationFriendDrinkCheeredTitle": "{name} prostet dir zu 🍻",
+  "@notificationFriendDrinkCheeredTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendDrinkCheeredBody": "",
   "notificationFriendDrinkLoggedTitle": "{name} trinkt {drink}",
   "@notificationFriendDrinkLoggedTitle": {
     "placeholders": {
