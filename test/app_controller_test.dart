@@ -327,6 +327,85 @@ void main() {
     );
   });
 
+  test(
+    'refreshing a friend notification catches both refresh failures',
+    () async {
+      final repository = _BootstrapProbeRepository();
+      repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
+      repository.restoreSessionCompleter.complete(
+        const AppUser(
+          id: 'user-1',
+          email: 'user@example.com',
+          displayName: 'User Example',
+        ),
+      );
+      repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
+      repository.entriesCompleter.complete(const <DrinkEntry>[]);
+      repository.feedPostsCompleter.complete(
+        const FeedDrinkPostPage(
+          posts: <FeedDrinkPost>[],
+          cursor: null,
+          hasMore: false,
+        ),
+      );
+      repository.settingsCompleter.complete(UserSettings.defaults());
+      repository.friendConnectionsCompleter.complete(
+        const <FriendConnection>[],
+      );
+      repository.notificationsCompleter.complete(const <AppNotification>[]);
+
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      late Completer<List<FriendConnection>> friendConnectionsCompleter;
+      late Completer<FeedDrinkPostPage> feedPostsCompleter;
+      repository.onLoadFriendConnections = (_) {
+        friendConnectionsCompleter = Completer<List<FriendConnection>>();
+        return friendConnectionsCompleter.future;
+      };
+      repository.onLoadFeedDrinkPosts =
+          ({
+            required String userId,
+            FeedDrinkPostCursor? cursor,
+            int limit = 20,
+          }) {
+            feedPostsCompleter = Completer<FeedDrinkPostPage>();
+            return feedPostsCompleter.future;
+          };
+
+      final uncaughtErrors = <Object>[];
+      final success = await runZonedGuarded<Future<bool>>(
+        () async {
+          final refreshFuture = controller.refreshForNotification(
+            AppNotification(
+              id: 'notification-1',
+              recipientUserId: 'user-1',
+              senderUserId: 'friend-1',
+              senderDisplayName: 'Friend Example',
+              type: AppNotificationTypes.friendRequestAccepted,
+              createdAt: DateTime.utc(2026, 5, 6),
+            ),
+          );
+          friendConnectionsCompleter.completeError(
+            const AppException('friends failed'),
+          );
+          await Future<void>.delayed(Duration.zero);
+          feedPostsCompleter.completeError(const AppException('feed failed'));
+          final success = await refreshFuture;
+          await Future<void>.delayed(Duration.zero);
+          return success;
+        },
+        (error, stack) {
+          uncaughtErrors.add(error);
+        },
+      )!;
+
+      expect(success, isFalse);
+      expect(uncaughtErrors, isEmpty);
+    },
+  );
+
   test('tracks sign-up as the active busy action while pending', () async {
     final repository = await buildBlockingLocalRepository(
       blockedAction: AppBusyAction.signUp,
@@ -1533,6 +1612,15 @@ class _TokenCall {
 }
 
 class _BootstrapProbeRepository implements AppRepository {
+  Future<FeedDrinkPostPage> Function({
+    required String userId,
+    FeedDrinkPostCursor? cursor,
+    int limit,
+  })?
+  onLoadFeedDrinkPosts;
+  Future<List<FriendConnection>> Function(String userId)?
+  onLoadFriendConnections;
+
   final defaultCatalogCompleter = Completer<List<DrinkDefinition>>();
   final restoreSessionCompleter = Completer<AppUser?>();
   final customDrinksCompleter = Completer<List<DrinkDefinition>>();
@@ -1588,6 +1676,10 @@ class _BootstrapProbeRepository implements AppRepository {
     int limit = 20,
   }) {
     loadFeedDrinkPostsCalls++;
+    final handler = onLoadFeedDrinkPosts;
+    if (handler != null) {
+      return handler(userId: userId, cursor: cursor, limit: limit);
+    }
     return feedPostsCompleter.future;
   }
 
@@ -1600,6 +1692,10 @@ class _BootstrapProbeRepository implements AppRepository {
   @override
   Future<List<FriendConnection>> loadFriendConnections(String userId) {
     loadFriendConnectionsCalls++;
+    final handler = onLoadFriendConnections;
+    if (handler != null) {
+      return handler(userId);
+    }
     return friendConnectionsCompleter.future;
   }
 
