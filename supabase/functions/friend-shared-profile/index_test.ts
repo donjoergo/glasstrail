@@ -1,4 +1,7 @@
-import { buildFriendSharedProfileResponse } from "./index.ts";
+import {
+  buildFriendSharedProfileResponse,
+  loadAllDrinkEntries,
+} from "./index.ts";
 
 type ProfileRow = {
   id: string;
@@ -49,6 +52,18 @@ async function responseJson(response: Response): Promise<unknown> {
   return JSON.parse(await response.text());
 }
 
+function drinkEntryRow(
+  overrides: Partial<DrinkEntryRow> = {},
+): DrinkEntryRow {
+  return {
+    user_id: "22222222-2222-4222-8222-222222222222",
+    category_slug: "beer",
+    is_alcohol_free: false,
+    consumed_at: "2026-05-05T07:00:00Z",
+    ...overrides,
+  };
+}
+
 Deno.test("returns not found when the viewer is not an accepted friend", async () => {
   const response = await buildFriendSharedProfileResponse({
     viewerUserId: "11111111-1111-4111-8111-111111111111",
@@ -91,38 +106,75 @@ Deno.test("returns profile data without statistics when sharing is disabled", as
   }, "body");
 });
 
+Deno.test("loadAllDrinkEntries fetches every page past the default row cap", async () => {
+  const requestedRanges: Array<[number, number]> = [];
+  const firstPage = Array.from({ length: 1_000 }, (_, index) =>
+    drinkEntryRow({
+      consumed_at: new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString(),
+    }));
+  const secondPage = [
+    drinkEntryRow({
+      category_slug: "wine",
+      consumed_at: "2026-01-01T00:16:40.000Z",
+    }),
+    drinkEntryRow({
+      category_slug: "cocktails",
+      consumed_at: "2026-01-01T00:16:41.000Z",
+    }),
+  ];
+  let page = 0;
+
+  const entries = await loadAllDrinkEntries(
+    async (fromInclusive, toInclusive) => {
+      requestedRanges.push([fromInclusive, toInclusive]);
+
+      switch (page++) {
+        case 0:
+          return firstPage;
+        case 1:
+          return secondPage;
+        default:
+          return [];
+      }
+    },
+  );
+
+  expectEqual(requestedRanges, [
+    [0, 999],
+    [1000, 1999],
+  ], "requestedRanges");
+  expectEqual(entries.length, 1_002, "entry count");
+  expectEqual(entries[0], firstPage[0], "first entry");
+  expectEqual(entries[entries.length - 1], secondPage[1], "last entry");
+});
+
 Deno.test("returns deterministic statistics json for a fixed set of entries", async () => {
   const entries: DrinkEntryRow[] = [
-    {
-      user_id: "22222222-2222-4222-8222-222222222222",
+    drinkEntryRow({
       category_slug: "beer",
       is_alcohol_free: false,
       consumed_at: "2026-05-05T07:00:00Z",
-    },
-    {
-      user_id: "22222222-2222-4222-8222-222222222222",
+    }),
+    drinkEntryRow({
       category_slug: "beer",
       is_alcohol_free: true,
       consumed_at: "2026-05-04T21:30:00Z",
-    },
-    {
-      user_id: "22222222-2222-4222-8222-222222222222",
+    }),
+    drinkEntryRow({
       category_slug: "wine",
       is_alcohol_free: false,
       consumed_at: "2026-05-03T18:00:00Z",
-    },
-    {
-      user_id: "22222222-2222-4222-8222-222222222222",
+    }),
+    drinkEntryRow({
       category_slug: "cocktails",
       is_alcohol_free: false,
       consumed_at: "2026-04-30T22:30:00Z",
-    },
-    {
-      user_id: "22222222-2222-4222-8222-222222222222",
+    }),
+    drinkEntryRow({
       category_slug: "nonAlcoholic",
       is_alcohol_free: false,
       consumed_at: "2025-12-31T23:30:00Z",
-    },
+    }),
   ];
 
   const response = await buildFriendSharedProfileResponse({
@@ -218,18 +270,16 @@ Deno.test("returns deterministic statistics json for a fixed set of entries", as
 
 Deno.test("uses timezone rules for historical DST boundaries", async () => {
   const entries: DrinkEntryRow[] = [
-    {
-      user_id: "22222222-2222-4222-8222-222222222222",
+    drinkEntryRow({
       category_slug: "beer",
       is_alcohol_free: false,
       consumed_at: "2026-01-15T22:30:00Z",
-    },
-    {
-      user_id: "22222222-2222-4222-8222-222222222222",
+    }),
+    drinkEntryRow({
       category_slug: "wine",
       is_alcohol_free: false,
       consumed_at: "2026-01-16T10:00:00Z",
-    },
+    }),
   ];
 
   const response = await buildFriendSharedProfileResponse({

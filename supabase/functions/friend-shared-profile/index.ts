@@ -102,6 +102,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const drinkEntriesPageSize = 1_000;
+
 if (import.meta.main) {
   Deno.serve(async (request) => {
     if (request.method === "OPTIONS") {
@@ -221,6 +223,28 @@ export async function buildFriendSharedProfileResponse(input: {
   );
 }
 
+export async function loadAllDrinkEntries(
+  loadPage: (
+    fromInclusive: number,
+    toInclusive: number,
+  ) => Promise<DrinkEntryRow[]>,
+): Promise<DrinkEntryRow[]> {
+  const entries: DrinkEntryRow[] = [];
+  let fromInclusive = 0;
+
+  while (true) {
+    const toInclusive = fromInclusive + drinkEntriesPageSize - 1;
+    const page = await loadPage(fromInclusive, toInclusive);
+    entries.push(...page);
+
+    if (page.length < drinkEntriesPageSize) {
+      return entries;
+    }
+
+    fromInclusive += drinkEntriesPageSize;
+  }
+}
+
 function dataSourceForClient(
   client: AppSupabaseClient,
 ): FriendSharedProfileDataSource {
@@ -268,15 +292,20 @@ function dataSourceForClient(
     },
 
     async loadEntries(friendUserId) {
-      const { data, error } = await client
-        .from("drink_entries")
-        .select("category_slug, is_alcohol_free, consumed_at")
-        .eq("user_id", friendUserId);
+      return await loadAllDrinkEntries(async (fromInclusive, toInclusive) => {
+        const { data, error } = await client
+          .from("drink_entries")
+          .select("category_slug, is_alcohol_free, consumed_at")
+          .eq("user_id", friendUserId)
+          .order("consumed_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(fromInclusive, toInclusive);
 
-      if (error != null) {
-        throw error;
-      }
-      return (data ?? []) as DrinkEntryRow[];
+        if (error != null) {
+          throw error;
+        }
+        return (data ?? []) as DrinkEntryRow[];
+      });
     },
   };
 }
