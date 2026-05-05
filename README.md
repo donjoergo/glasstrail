@@ -45,17 +45,18 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
 
 The app exposes one route per visible page. On Flutter Web, in-app routing currently uses hash URLs, so bookmarks look like `/#/feed`. Public friend profile shares use non-hash URLs so messengers can render link previews.
 
-| Page           | Route                     | Purpose                                                                  |
-| -------------- | ------------------------- | ------------------------------------------------------------------------ |
-| Auth           | `/auth`                   | Sign in and sign up                                                      |
-| Feed           | `/feed`                   | Personal and social drink feed                                           |
-| Statistics     | `/statistics`             | Trends, streaks, and category breakdown                                  |
-| Bar            | `/bar`                    | Organize the drink catalog and manage custom drinks                      |
-| Profile        | `/profile`                | Profile summary and app settings                                         |
-| Notifications  | `/notifications`          | In-app alerts for friend requests, drink updates, and friendship changes |
-| Edit Profile   | `/profile/edit`           | Dedicated profile editing page                                           |
-| Friend Profile | `/friends/profile/<code>` | In-app friend profile route for sending requests                         |
-| Add Drink      | `/add-drink`              | Log a drink from recent, global, or custom options                       |
+| Page               | Route                             | Purpose                                                                  |
+| ------------------ | --------------------------------- | ------------------------------------------------------------------------ |
+| Auth               | `/auth`                           | Sign in and sign up                                                      |
+| Feed               | `/feed`                           | Personal and social drink feed                                           |
+| Statistics         | `/statistics`                     | Trends, streaks, and category breakdown                                  |
+| Bar                | `/bar`                            | Organize the drink catalog and manage custom drinks                      |
+| Profile            | `/profile`                        | Profile summary and app settings                                         |
+| Notifications      | `/notifications`                  | In-app alerts for friend requests, drink updates, and friendship changes |
+| Edit Profile       | `/profile/edit`                   | Dedicated profile editing page                                           |
+| Friend Profile     | `/friends/profile/<code>`         | In-app friend profile route for sending requests                         |
+| Friend Stats       | `/friends/view/<friendUserId>`    | Protected in-app statistics view for an accepted friend                  |
+| Add Drink          | `/add-drink`                      | Log a drink from recent, global, or custom options                       |
 
 Additional routing behavior:
 
@@ -64,6 +65,7 @@ Additional routing behavior:
 - After successful authentication, the app returns to the originally requested protected route
 - Public friend profile links use `https://glasstrail.vercel.app/friends/profile/<code>` for previews
 - In-app friend profile links use `https://glasstrail.vercel.app/#/friends/profile/<code>` for Flutter routing
+- In-app friend stats links use `https://glasstrail.vercel.app/#/friends/view/<friendUserId>` for Flutter routing
 - Friend profile links are reusable; signed-out viewers see a public invitation with a sign-in CTA
 - On Flutter Web, a full browser reload restores the last visited page
 - After an explicit logout, the next login lands on `/feed`
@@ -85,6 +87,7 @@ flowchart TD
     Profile --> AddDrink
 
     Profile --> EditProfile["/profile/edit"]
+    Profile --> FriendStats["/friends/view/:friendUserId"]
 
     Feed --> Notifications["/notifications"]
     Statistics --> Notifications
