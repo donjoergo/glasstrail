@@ -348,6 +348,46 @@ void main() {
     expect(controller.unreadNotificationCount, 0);
   });
 
+  testWidgets('shows the localized empty state on the notifications screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'empty-notifications@example.com',
+      password: 'password123',
+      displayName: 'Empty Notifications',
+    );
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aktuell keine Benachrichtigungen'), findsOneWidget);
+    expect(
+      find.text(
+        'Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'marks all unread notifications read from the notifications screen',
     (tester) async {

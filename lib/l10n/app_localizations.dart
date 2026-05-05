@@ -947,13 +947,13 @@ abstract class AppLocalizations {
   /// No description provided for @notificationsEmptyTitle.
   ///
   /// In en, this message translates to:
-  /// **'No notifications yet'**
+  /// **'No notifications right now'**
   String get notificationsEmptyTitle;
 
   /// No description provided for @notificationsEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'Friend requests and updates will appear here.'**
+  /// **'When friends log drinks or send you friend requests, you\'ll see them here. Read notifications are deleted after 30 days, unread notifications after 90 days.'**
   String get notificationsEmptyBody;
 
   /// No description provided for @notificationFriendRequestSentTitle.

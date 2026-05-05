@@ -464,11 +464,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsTooltip => 'Notifications';
 
   @override
-  String get notificationsEmptyTitle => 'No notifications yet';
+  String get notificationsEmptyTitle => 'No notifications right now';
 
   @override
   String get notificationsEmptyBody =>
-      'Friend requests and updates will appear here.';
+      'When friends log drinks or send you friend requests, you\'ll see them here. Read notifications are deleted after 30 days, unread notifications after 90 days.';
 
   @override
   String notificationFriendRequestSentTitle(String name) {

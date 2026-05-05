@@ -467,11 +467,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get notificationsTooltip => 'Mitteilungen';
 
   @override
-  String get notificationsEmptyTitle => 'Noch keine Mitteilungen';
+  String get notificationsEmptyTitle => 'Aktuell keine Benachrichtigungen';
 
   @override
   String get notificationsEmptyBody =>
-      'Freundschaftsanfragen und Aktualisierungen erscheinen hier.';
+      'Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.';
 
   @override
   String notificationFriendRequestSentTitle(String name) {
