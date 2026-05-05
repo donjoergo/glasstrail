@@ -8,16 +8,22 @@ import 'package:uuid/uuid.dart';
 import '../birthday.dart';
 import '../friend_stats_profile.dart';
 import '../models.dart';
+import '../time_zone_provider.dart';
 import 'app_repository.dart';
 
 class SupabaseAppRepository implements AppRepository {
-  SupabaseAppRepository(this._client, {Uuid? uuid})
-    : _uuid = uuid ?? const Uuid();
+  SupabaseAppRepository(
+    this._client, {
+    Uuid? uuid,
+    TimeZoneProvider? timeZoneProvider,
+  }) : _uuid = uuid ?? const Uuid(),
+       _timeZoneProvider = timeZoneProvider ?? const PlatformTimeZoneProvider();
 
   static const _mediaBucket = 'user-media';
 
   final SupabaseClient _client;
   final Uuid _uuid;
+  final TimeZoneProvider _timeZoneProvider;
 
   @visibleForTesting
   static const notificationSubscriptionErrorStackTrace = StackTrace.empty;
@@ -227,12 +233,15 @@ class SupabaseAppRepository implements AppRepository {
     required String friendUserId,
   }) async {
     try {
+      final utcOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+      final timeZone = await _timeZoneProvider.getLocalTimeZoneIdentifier();
       final response = await _client.functions.invoke(
         'friend-shared-profile',
         method: HttpMethod.post,
         body: <String, dynamic>{
           'friendUserId': friendUserId.trim(),
-          'utcOffsetMinutes': DateTime.now().timeZoneOffset.inMinutes,
+          'utcOffsetMinutes': utcOffsetMinutes,
+          'timeZone': ?timeZone,
         },
       );
       final data = response.data;

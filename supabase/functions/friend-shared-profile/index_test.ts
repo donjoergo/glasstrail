@@ -215,3 +215,44 @@ Deno.test("returns deterministic statistics json for a fixed set of entries", as
     },
   }, "body");
 });
+
+Deno.test("uses timezone rules for historical DST boundaries", async () => {
+  const entries: DrinkEntryRow[] = [
+    {
+      user_id: "22222222-2222-4222-8222-222222222222",
+      category_slug: "beer",
+      is_alcohol_free: false,
+      consumed_at: "2026-01-15T22:30:00Z",
+    },
+    {
+      user_id: "22222222-2222-4222-8222-222222222222",
+      category_slug: "wine",
+      is_alcohol_free: false,
+      consumed_at: "2026-01-16T10:00:00Z",
+    },
+  ];
+
+  const response = await buildFriendSharedProfileResponse({
+    viewerUserId: "11111111-1111-4111-8111-111111111111",
+    friendUserId: "22222222-2222-4222-8222-222222222222",
+    timeZone: "Europe/Berlin",
+    utcOffsetMinutes: 120,
+    now: new Date("2026-07-01T10:00:00Z"),
+    dataSource: dataSource({
+      loadEntries: async () => entries,
+    }),
+  });
+
+  const body = await responseJson(response) as {
+    statistics: {
+      bestStreak: number;
+      bestStreakStart: string | null;
+      bestStreakEnd: string | null;
+    };
+  };
+
+  expectEqual(response.status, 200, "status");
+  expectEqual(body.statistics.bestStreak, 2, "bestStreak");
+  expectEqual(body.statistics.bestStreakStart, "2026-01-15", "bestStreakStart");
+  expectEqual(body.statistics.bestStreakEnd, "2026-01-16", "bestStreakEnd");
+});

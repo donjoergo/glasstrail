@@ -75,6 +75,14 @@ type CalendarDay = {
   day: number;
 };
 
+type CalendarDayContext =
+  | {
+    timeZoneFormatter: Intl.DateTimeFormat;
+  }
+  | {
+    utcOffsetMinutes: number;
+  };
+
 const drinkCategories = [
   "beer",
   "wine",
@@ -119,7 +127,11 @@ if (import.meta.main) {
     const body = await requestBody(request);
     const friendUserId = stringValue(body?.friendUserId);
     const utcOffsetMinutes = integerValue(body?.utcOffsetMinutes);
-    if (!isUuid(friendUserId) || utcOffsetMinutes == null) {
+    const timeZone = stringValue(body?.timeZone) || null;
+    if (
+      !isUuid(friendUserId) ||
+      (timeZone == null && utcOffsetMinutes == null)
+    ) {
       return jsonResponse({ error: "invalid_request" }, 400);
     }
 
@@ -139,6 +151,7 @@ if (import.meta.main) {
       return await buildFriendSharedProfileResponse({
         viewerUserId: user.id,
         friendUserId,
+        timeZone,
         utcOffsetMinutes,
         dataSource: dataSourceForClient(client),
       });
@@ -152,13 +165,15 @@ if (import.meta.main) {
 export async function buildFriendSharedProfileResponse(input: {
   viewerUserId: string;
   friendUserId: string;
-  utcOffsetMinutes: number;
+  timeZone?: string | null;
+  utcOffsetMinutes?: number | null;
   dataSource: FriendSharedProfileDataSource;
   now?: Date;
 }): Promise<Response> {
   const {
     viewerUserId,
     friendUserId,
+    timeZone,
     utcOffsetMinutes,
     dataSource,
     now = new Date(),
@@ -198,6 +213,7 @@ export async function buildFriendSharedProfileResponse(input: {
       shareStatsWithFriends,
       statistics: computeSharedStatistics(entries, {
         now,
+        timeZone,
         utcOffsetMinutes,
       }),
     }),
@@ -281,9 +297,14 @@ function friendSharedProfileJson(input: {
 
 export function computeSharedStatistics(
   entries: DrinkEntryRow[],
-  input: { now: Date; utcOffsetMinutes: number },
+  input: {
+    now: Date;
+    timeZone?: string | null;
+    utcOffsetMinutes?: number | null;
+  },
 ): Record<string, unknown> {
-  const today = calendarDayFor(input.now, input.utcOffsetMinutes);
+  const dayContext = calendarDayContextFor(input);
+  const today = calendarDayFor(input.now, dayContext);
   const todayKey = dayKey(today);
   const weekStartKey = subtractDays(todayKey, weekdayForDayKey(todayKey) - 1);
 
@@ -301,7 +322,7 @@ export function computeSharedStatistics(
 
   for (const entry of entries) {
     const entryDate = new Date(entry.consumed_at);
-    const entryDay = calendarDayFor(entryDate, input.utcOffsetMinutes);
+    const entryDay = calendarDayFor(entryDate, dayContext);
     const entryDayKey = dayKey(entryDay);
     uniqueDayKeys.add(entryDayKey);
 
@@ -420,7 +441,69 @@ function normalizeCategory(value: string): (typeof drinkCategories)[number] {
     : "nonAlcoholic";
 }
 
-function calendarDayFor(date: Date, utcOffsetMinutes: number): CalendarDay {
+const calendarDayFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function calendarDayContextFor(input: {
+  timeZone?: string | null;
+  utcOffsetMinutes?: number | null;
+}): CalendarDayContext {
+  const formatter = formatterForTimeZone(input.timeZone ?? null);
+  if (formatter != null) {
+    return { timeZoneFormatter: formatter };
+  }
+  if (input.utcOffsetMinutes == null) {
+    throw new Error("Missing calendar day context.");
+  }
+  return { utcOffsetMinutes: input.utcOffsetMinutes };
+}
+
+function formatterForTimeZone(
+  timeZone: string | null,
+): Intl.DateTimeFormat | null {
+  if (timeZone == null) {
+    return null;
+  }
+  const normalized = timeZone.trim();
+  if (normalized.length === 0) {
+    return null;
+  }
+  const cached = calendarDayFormatters.get(normalized);
+  if (cached != null) {
+    return cached;
+  }
+  try {
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: normalized,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    calendarDayFormatters.set(normalized, formatter);
+    return formatter;
+  } catch (_) {
+    return null;
+  }
+}
+
+function calendarDayFromParts(parts: Intl.DateTimeFormatPart[]): CalendarDay {
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    throw new Error("Unable to derive calendar day.");
+  }
+  return { year, month, day };
+}
+
+function calendarDayFor(date: Date, context: CalendarDayContext): CalendarDay {
+  if ("timeZoneFormatter" in context) {
+    return calendarDayFromParts(context.timeZoneFormatter.formatToParts(date));
+  }
+  const { utcOffsetMinutes } = context;
   const shifted = new Date(date.getTime() + utcOffsetMinutes * 60 * 1000);
   return {
     year: shifted.getUTCFullYear(),
@@ -455,7 +538,11 @@ function weekdayForDayKey(value: string): number {
 function addDays(value: string, days: number): string {
   const date = dateFromDayKey(value);
   date.setUTCDate(date.getUTCDate() + days);
-  return dayKey(calendarDayFor(date, 0));
+  return dayKey({
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  });
 }
 
 function subtractDays(value: string, days: number): string {
