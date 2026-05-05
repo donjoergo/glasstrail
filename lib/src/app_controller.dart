@@ -1017,6 +1017,7 @@ class AppController extends ChangeNotifier {
         userId: user.id,
         relationshipId: connection.id,
       );
+      await _reloadInitialFeedPosts(user.id);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.friendRequestAccepted,
       );
@@ -1065,6 +1066,7 @@ class AppController extends ChangeNotifier {
         userId: user.id,
         friendUserId: connection.profile.id,
       );
+      await _reloadInitialFeedPosts(user.id);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.friendRemoved,
       );
@@ -1210,6 +1212,32 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<bool> _refreshFriendConnectionsAndFeed() async {
+    final user = _currentUser;
+    if (user == null) {
+      return true;
+    }
+
+    try {
+      final friendConnectionsFuture = _repository.loadFriendConnections(user.id);
+      final feedPostsFuture = _repository.loadFeedDrinkPosts(
+        userId: user.id,
+        limit: _feedPageSize,
+      );
+      final friendConnections = await friendConnectionsFuture;
+      final feedPostsPage = await feedPostsFuture;
+      if (_currentUser?.id != user.id) {
+        return true;
+      }
+      _friendConnections = friendConnections;
+      _applyFeedPostPage(feedPostsPage);
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   AppNotification? _notificationById(String? notificationId) {
     if (notificationId == null || notificationId.isEmpty) {
       return null;
@@ -1231,7 +1259,7 @@ class AppController extends ChangeNotifier {
       AppNotificationTypes.friendRequestSent ||
       AppNotificationTypes.friendRequestAccepted ||
       AppNotificationTypes.friendRequestRejected ||
-      AppNotificationTypes.friendRemoved => refreshFriendConnections(),
+      AppNotificationTypes.friendRemoved => _refreshFriendConnectionsAndFeed(),
       _ => _refreshForNotificationRoute(routeName),
     };
   }
@@ -1242,7 +1270,7 @@ class AppController extends ChangeNotifier {
       return refreshData();
     }
     if (route == AppRoutes.profile || AppRoutes.isFriendProfileRoute(route)) {
-      return refreshFriendConnections();
+      return _refreshFriendConnectionsAndFeed();
     }
     return SynchronousFuture<bool>(true);
   }
