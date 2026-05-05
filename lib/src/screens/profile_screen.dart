@@ -18,7 +18,13 @@ import '../l10n_extensions.dart';
 import '../models.dart';
 import '../widgets/app_media.dart';
 
-enum _ProfilePendingSetting { theme, language, unit, handedness }
+enum _ProfilePendingSetting {
+  theme,
+  language,
+  unit,
+  handedness,
+  shareStatsWithFriends,
+}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -563,6 +569,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _openFriendStatsProfile(FriendConnection connection) {
+    return Navigator.of(
+      context,
+    ).pushNamed(AppRoutes.friendStatsProfileRoute(connection.profile.id));
+  }
+
   Future<bool?> _confirmRemoveFriend(FriendConnection connection) {
     final l10n = AppLocalizations.of(context);
     return showDialog<bool>(
@@ -1015,6 +1027,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     settings.copyWith(handedness: value),
                   ),
                 ),
+                const SizedBox(height: 16),
+                _SettingsSwitchField(
+                  key: const Key('share-stats-settings-tile'),
+                  label: l10n.shareStatsWithFriends,
+                  description: l10n.shareStatsWithFriendsBody,
+                  value: settings.shareStatsWithFriends,
+                  enabled: !isBusy,
+                  isLoading:
+                      _pendingSetting ==
+                          _ProfilePendingSetting.shareStatsWithFriends &&
+                      controller.isBusyFor(AppBusyAction.updateSettings),
+                  switchKey: const Key('share-stats-settings-switch'),
+                  loadingIndicatorKey: const Key(
+                    'share-stats-settings-loading',
+                  ),
+                  onChanged: (value) => _updateSettings(
+                    _ProfilePendingSetting.shareStatsWithFriends,
+                    settings.copyWith(shareStatsWithFriends: value),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1261,6 +1293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 connection: friend,
                 statusLabel: l10n.friendAccepted,
                 leadingColor: theme.colorScheme.primaryContainer,
+                onTap: () => _openFriendStatsProfile(friend),
                 trailing: OutlinedButton.icon(
                   key: Key('friend-remove-${friend.id}'),
                   onPressed: isBusy ? null : () => _removeFriend(friend),
@@ -1333,12 +1366,14 @@ class _FriendConnectionTile extends StatelessWidget {
     required this.statusLabel,
     required this.leadingColor,
     required this.trailing,
+    this.onTap,
   });
 
   final FriendConnection connection;
   final String statusLabel;
   final Color leadingColor;
   final Widget trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1385,10 +1420,17 @@ class _FriendConnectionTile extends StatelessWidget {
             ],
           ),
         ),
+        if (onTap != null) ...<Widget>[
+          const SizedBox(width: 8),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ],
       ],
     );
 
-    return Container(
+    final child = Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1403,6 +1445,96 @@ class _FriendConnectionTile extends StatelessWidget {
           Align(alignment: AlignmentDirectional.centerEnd, child: trailing),
         ],
       ),
+    );
+
+    if (onTap == null) {
+      return child;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _SettingsSwitchField extends StatelessWidget {
+  const _SettingsSwitchField({
+    super.key,
+    required this.label,
+    required this.description,
+    required this.value,
+    required this.onChanged,
+    required this.enabled,
+    required this.switchKey,
+    this.isLoading = false,
+    this.loadingIndicatorKey,
+  });
+
+  final String label;
+  final String description;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final bool enabled;
+  final Key switchKey;
+  final bool isLoading;
+  final Key? loadingIndicatorKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (isLoading) ...<Widget>[
+                    const SizedBox(width: 8),
+                    SizedBox.square(
+                      dimension: 14,
+                      child: CircularProgressIndicator(
+                        key: loadingIndicatorKey,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                description,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Switch.adaptive(
+          key: switchKey,
+          value: value,
+          onChanged: enabled ? onChanged : null,
+        ),
+      ],
     );
   }
 }

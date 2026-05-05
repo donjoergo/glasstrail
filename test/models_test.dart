@@ -4,7 +4,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:glasstrail/l10n/app_localizations.dart';
+import 'package:glasstrail/src/friend_stats_profile.dart';
 import 'package:glasstrail/src/models.dart';
+import 'package:glasstrail/src/stats_calculator.dart';
 
 void main() {
   group('AppUnit', () {
@@ -28,6 +30,7 @@ void main() {
         'locale_code': 'de',
         'unit': 'oz',
         'handedness': 'left',
+        'share_stats_with_friends': false,
         'hidden_global_drink_ids': <String>['beer-pils'],
         'hidden_global_drink_categories': <String>['beer'],
         'global_drink_order_overrides': <String, List<String>>{
@@ -39,6 +42,7 @@ void main() {
       expect(settings.localeCode, 'de');
       expect(settings.unit, AppUnit.oz);
       expect(settings.handedness, AppHandedness.left);
+      expect(settings.shareStatsWithFriends, isFalse);
       expect(settings.hiddenGlobalDrinkIds, <String>['beer-pils']);
       expect(settings.hiddenGlobalDrinkCategories, <DrinkCategory>[
         DrinkCategory.beer,
@@ -47,6 +51,17 @@ void main() {
         'beer-ipa',
         'beer-pils',
       ]);
+    });
+
+    test('defaults stats sharing to true when the field is missing', () {
+      final settings = UserSettings.fromJson(<String, dynamic>{
+        'theme_preference': 'system',
+        'locale_code': 'en',
+        'unit': 'ml',
+        'handedness': 'right',
+      });
+
+      expect(settings.shareStatsWithFriends, isTrue);
     });
   });
 
@@ -409,6 +424,63 @@ void main() {
       expect(entry.shouldShowAlcoholFreeMarker, isTrue);
       expect(entry.toJson()['isAlcoholFree'], isTrue);
       expect(DrinkEntry.fromJson(entry.toJson()).isAlcoholFree, isTrue);
+    });
+  });
+
+  group('FriendStatsProfile', () {
+    test('reads shared statistics payloads', () {
+      final profile = FriendStatsProfile.fromJson(<String, dynamic>{
+        'id': 'friend-1',
+        'displayName': 'Shared Friend',
+        'profileImagePath': 'friend-1/profiles/avatar.png',
+        'shareStatsWithFriends': true,
+        'statistics': <String, dynamic>{
+          'weeklyTotal': 1,
+          'monthlyTotal': 2,
+          'yearlyTotal': 3,
+          'currentStreak': 1,
+          'bestStreak': 2,
+          'bestStreakStart': '2026-05-01',
+          'bestStreakEnd': '2026-05-02',
+          'hasEntryToday': true,
+          'streakThroughYesterday': 1,
+          'streakMessageState': 'startedToday',
+          'weekProgress': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'date': '2026-05-05',
+              'weekday': 2,
+              'hasEntry': true,
+              'isToday': true,
+            },
+          ],
+          'categoryCounts': <String, int>{
+            'beer': 1,
+            'wine': 0,
+            'sparklingWines': 0,
+            'longdrinks': 0,
+            'spirits': 0,
+            'shots': 0,
+            'cocktails': 0,
+            'appleWines': 0,
+            'nonAlcoholic': 0,
+          },
+          'totalEntries': 1,
+          'beerTotalCount': 1,
+          'regularBeerCount': 1,
+          'alcoholFreeBeerCount': 0,
+        },
+      });
+
+      expect(profile.displayName, 'Shared Friend');
+      expect(profile.profileImagePath, 'friend-1/profiles/avatar.png');
+      expect(profile.shareStatsWithFriends, isTrue);
+      expect(profile.statistics, isNotNull);
+      expect(
+        profile.statistics!.streakMessageState,
+        StreakMessageState.startedToday,
+      );
+      expect(profile.statistics!.weekProgress.single.isToday, isTrue);
+      expect(profile.statistics!.categoryCounts[DrinkCategory.beer], 1);
     });
   });
 }

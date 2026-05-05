@@ -122,6 +122,8 @@
   "language": "Language",
   "units": "Units",
   "handedness": "Handedness",
+  "shareStatsWithFriends": "Share stats with friends",
+  "shareStatsWithFriendsBody": "Accepted friends can open your shared statistics inside the app.",
   "logout": "Log out",
   "editProfile": "Edit profile",
   "friends": "Friends",
@@ -166,6 +168,17 @@
       }
     }
   },
+  "friendStatsNotSharedTitle": "Statistics not shared",
+  "friendStatsNotSharedBody": "{name} is not sharing statistics with friends right now.",
+  "@friendStatsNotSharedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendStatsUnavailableTitle": "Friend profile unavailable",
+  "friendStatsUnavailableBody": "This friend's shared profile is unavailable or no longer shared with you.",
   "addAsFriend": "Add as friend",
   "goToFeed": "Go to feed",
   "withdrawFriendRequest": "Withdraw",

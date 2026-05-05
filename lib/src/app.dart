@@ -22,6 +22,7 @@ import 'screens/add_drink_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/friend_profile_screen.dart';
+import 'screens/friend_stats_profile_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/notifications_screen.dart';
 
@@ -529,6 +530,12 @@ class _AppRouteScreen extends StatelessWidget {
       return _RouteRedirectScreen(
         targetRoute: AppRoutes.auth,
         arguments: normalizedRoute,
+      );
+    }
+
+    if (AppRoutes.isFriendStatsProfileRoute(normalizedRoute)) {
+      return FriendStatsProfileScreen(
+        friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
       );
     }
 

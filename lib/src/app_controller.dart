@@ -7,6 +7,7 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 import 'backend_config.dart';
 import 'beer_with_me_import.dart';
 import 'birthday.dart';
+import 'friend_stats_profile.dart';
 import 'l10n_extensions.dart';
 import 'models.dart';
 import 'push_notification_service.dart';
@@ -903,6 +904,23 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  Future<FriendStatsProfile?> loadFriendStatsProfile(
+    String friendUserId,
+  ) async {
+    final user = _currentUser;
+    final normalizedFriendUserId = friendUserId.trim();
+    if (user == null || normalizedFriendUserId.isEmpty) {
+      return null;
+    }
+    return _loadFriendProfileFor(
+      AppBusyAction.loadFriendProfile,
+      () => _repository.loadFriendStatsProfile(
+        userId: user.id,
+        friendUserId: normalizedFriendUserId,
+      ),
+    );
+  }
+
   Future<FriendProfile?> resolveFriendProfileLink(String shareCode) async {
     final normalizedCode = shareCode.trim();
     if (normalizedCode.isEmpty) {
@@ -1402,6 +1420,7 @@ class AppController extends ChangeNotifier {
       'The drink entry could not be updated.' => l10n.entryUpdateFailed,
       'The drink entry could not be deleted.' => l10n.entryDeleteFailed,
       'The profile link is invalid.' => l10n.friendProfileLinkInvalid,
+      'This friend profile is unavailable.' => l10n.friendStatsUnavailableBody,
       'You cannot add yourself as a friend.' => l10n.friendSelfRequestBlocked,
       'The friend request could not be accepted.' =>
         l10n.friendRequestAcceptFailed,

@@ -4,7 +4,9 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../friend_stats_profile.dart';
 import '../models.dart';
+import '../stats_calculator.dart';
 import 'app_repository.dart';
 
 class LocalAppRepository implements AppRepository {
@@ -124,6 +126,34 @@ class LocalAppRepository implements AppRepository {
   Future<FriendProfile> getOwnFriendProfile(String userId) async {
     final user = await _ensureProfileShareCode(userId);
     return FriendProfile.fromUser(user);
+  }
+
+  @override
+  Future<FriendStatsProfile> loadFriendStatsProfile({
+    required String userId,
+    required String friendUserId,
+  }) async {
+    if (!_areAcceptedFriends(userId: userId, friendUserId: friendUserId)) {
+      throw const AppException('This friend profile is unavailable.');
+    }
+
+    final friend = _userById(friendUserId);
+    if (friend == null) {
+      throw const AppException('This friend profile is unavailable.');
+    }
+
+    final settings = await loadSettings(friendUserId);
+    final statistics = settings.shareStatsWithFriends
+        ? StatsCalculator.fromEntries(await loadEntries(friendUserId))
+        : null;
+
+    return FriendStatsProfile(
+      id: friend.id,
+      displayName: friend.displayName,
+      profileImagePath: friend.profileImagePath,
+      shareStatsWithFriends: settings.shareStatsWithFriends,
+      statistics: statistics,
+    );
   }
 
   @override
@@ -881,6 +911,17 @@ class LocalAppRepository implements AppRepository {
       return 1;
     }
     return 2;
+  }
+
+  bool _areAcceptedFriends({
+    required String userId,
+    required String friendUserId,
+  }) {
+    return _loadFriendRelationships().any(
+      (relationship) =>
+          _isRelationshipBetween(relationship, userId, friendUserId) &&
+          relationship['status'] == FriendRequestStatus.accepted.storageValue,
+    );
   }
 
   bool _isRelationshipBetween(

@@ -946,6 +946,7 @@ class UserSettings {
     required this.localeCode,
     required this.unit,
     required this.handedness,
+    required this.shareStatsWithFriends,
     this.hiddenGlobalDrinkIds = const <String>[],
     this.hiddenGlobalDrinkCategories = const <DrinkCategory>[],
     this.globalDrinkOrderOverrides = const <DrinkCategory, List<String>>{},
@@ -957,6 +958,7 @@ class UserSettings {
       localeCode: 'en',
       unit: AppUnit.ml,
       handedness: AppHandedness.right,
+      shareStatsWithFriends: true,
       hiddenGlobalDrinkIds: <String>[],
       hiddenGlobalDrinkCategories: <DrinkCategory>[],
       globalDrinkOrderOverrides: <DrinkCategory, List<String>>{},
@@ -967,6 +969,7 @@ class UserSettings {
   final String localeCode;
   final AppUnit unit;
   final AppHandedness handedness;
+  final bool shareStatsWithFriends;
   final List<String> hiddenGlobalDrinkIds;
   final List<DrinkCategory> hiddenGlobalDrinkCategories;
   final Map<DrinkCategory, List<String>> globalDrinkOrderOverrides;
@@ -976,6 +979,7 @@ class UserSettings {
     String? localeCode,
     AppUnit? unit,
     AppHandedness? handedness,
+    bool? shareStatsWithFriends,
     List<String>? hiddenGlobalDrinkIds,
     List<DrinkCategory>? hiddenGlobalDrinkCategories,
     Map<DrinkCategory, List<String>>? globalDrinkOrderOverrides,
@@ -985,6 +989,8 @@ class UserSettings {
       localeCode: localeCode ?? this.localeCode,
       unit: unit ?? this.unit,
       handedness: handedness ?? this.handedness,
+      shareStatsWithFriends:
+          shareStatsWithFriends ?? this.shareStatsWithFriends,
       hiddenGlobalDrinkIds: hiddenGlobalDrinkIds ?? this.hiddenGlobalDrinkIds,
       hiddenGlobalDrinkCategories:
           hiddenGlobalDrinkCategories ?? this.hiddenGlobalDrinkCategories,
@@ -999,6 +1005,7 @@ class UserSettings {
       'localeCode': localeCode,
       'unit': unit.storageValue,
       'handedness': handedness.storageValue,
+      'shareStatsWithFriends': shareStatsWithFriends,
       'hiddenGlobalDrinkIds': hiddenGlobalDrinkIds.toList(growable: false),
       'hiddenGlobalDrinkCategories': hiddenGlobalDrinkCategories
           .map((category) => category.storageValue)
@@ -1018,6 +1025,11 @@ class UserSettings {
       localeCode: _readString(json, 'localeCode', 'locale_code') ?? 'en',
       unit: AppUnitX.fromStorage(_readString(json, 'unit')),
       handedness: AppHandednessX.fromStorage(_readString(json, 'handedness')),
+      shareStatsWithFriends:
+          json.containsKey('shareStatsWithFriends') ||
+              json.containsKey('share_stats_with_friends')
+          ? _readBool(json, 'shareStatsWithFriends', 'share_stats_with_friends')
+          : true,
       hiddenGlobalDrinkIds: _readStringList(
         json,
         'hiddenGlobalDrinkIds',

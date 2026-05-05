@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../birthday.dart';
+import '../friend_stats_profile.dart';
 import '../models.dart';
 import 'app_repository.dart';
 
@@ -217,6 +218,38 @@ class SupabaseAppRepository implements AppRepository {
       return _profileRowToFriendProfile(Map<String, dynamic>.from(row));
     } on PostgrestException catch (error) {
       throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<FriendStatsProfile> loadFriendStatsProfile({
+    required String userId,
+    required String friendUserId,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'friend-shared-profile',
+        method: HttpMethod.post,
+        body: <String, dynamic>{
+          'friendUserId': friendUserId.trim(),
+          'utcOffsetMinutes': DateTime.now().timeZoneOffset.inMinutes,
+        },
+      );
+      final data = response.data;
+      if (data is! Map) {
+        throw const AppException('This friend profile is unavailable.');
+      }
+      return FriendStatsProfile.fromJson(Map<String, dynamic>.from(data));
+    } on FunctionException catch (error) {
+      if (error.status == 404) {
+        throw const AppException('This friend profile is unavailable.');
+      }
+      if (error.status == 403) {
+        throw const AppException('This friend profile is unavailable.');
+      }
+      throw AppException(
+        error.reasonPhrase ?? 'This friend profile is unavailable.',
+      );
     }
   }
 
@@ -809,6 +842,7 @@ class SupabaseAppRepository implements AppRepository {
             'locale_code': settings.localeCode,
             'unit': settings.unit.storageValue,
             'handedness': settings.handedness.storageValue,
+            'share_stats_with_friends': settings.shareStatsWithFriends,
             'hidden_global_drink_ids': settings.hiddenGlobalDrinkIds,
             'hidden_global_drink_categories': settings
                 .hiddenGlobalDrinkCategories
@@ -890,6 +924,7 @@ class SupabaseAppRepository implements AppRepository {
             'locale_code': 'en',
             'unit': AppUnit.ml.storageValue,
             'handedness': AppHandedness.right.storageValue,
+            'share_stats_with_friends': true,
             'hidden_global_drink_ids': const <String>[],
             'global_drink_order_overrides': const <String, List<String>>{},
           },

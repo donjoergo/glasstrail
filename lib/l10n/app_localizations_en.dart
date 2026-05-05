@@ -360,6 +360,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get handedness => 'Handedness';
 
   @override
+  String get shareStatsWithFriends => 'Share stats with friends';
+
+  @override
+  String get shareStatsWithFriendsBody =>
+      'Accepted friends can open your shared statistics inside the app.';
+
+  @override
   String get logout => 'Log out';
 
   @override
@@ -427,6 +434,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String friendProfilePublicPrompt(String name) {
     return '$name wants to be your friend on Glass Trail.';
   }
+
+  @override
+  String get friendStatsNotSharedTitle => 'Statistics not shared';
+
+  @override
+  String friendStatsNotSharedBody(String name) {
+    return '$name is not sharing statistics with friends right now.';
+  }
+
+  @override
+  String get friendStatsUnavailableTitle => 'Friend profile unavailable';
+
+  @override
+  String get friendStatsUnavailableBody =>
+      'This friend\'s shared profile is unavailable or no longer shared with you.';
 
   @override
   String get addAsFriend => 'Add as friend';
