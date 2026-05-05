@@ -765,61 +765,155 @@ void main() {
     expect(controller.notifications.single.isRead, isTrue);
   });
 
-  testWidgets('opens push notification routes and refreshes friends', (
+  testWidgets(
+    'opens friendship push notification routes and refreshes friends',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final requester = await repository.signUp(
+        email: 'opened-push-requester@example.com',
+        password: 'password123',
+        displayName: 'Opened Push Requester',
+      );
+      await repository.signOut();
+      final addressee = await repository.signUp(
+        email: 'opened-push-addressee@example.com',
+        password: 'password123',
+        displayName: 'Opened Push Addressee',
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+      await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      final notification = (await repository.loadNotifications(
+        addressee.id,
+      )).single;
+      final pushNotificationService = _FakePushNotificationService();
+      addTearDown(pushNotificationService.dispose);
+
+      expect(controller.incomingFriendRequests, isEmpty);
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          pushNotificationService: pushNotificationService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+
+      pushNotificationService.emit(
+        AppRoutes.profile,
+        notificationId: notification.id,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProfileScreen), findsOneWidget);
+      final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+      expect(route?.settings.name, AppRoutes.profile);
+      expect(controller.notifications.single.isRead, isTrue);
+      expect(controller.incomingFriendRequests, hasLength(1));
+      expect(find.text('Opened Push Requester'), findsOneWidget);
+    },
+  );
+
+  testWidgets('opens drink push notification routes and refreshes feed', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final repository = LocalAppRepository(
       await SharedPreferences.getInstance(),
     );
-    final requester = await repository.signUp(
-      email: 'opened-push-requester@example.com',
+    final friend = await repository.signUp(
+      email: 'push-feed-friend@example.com',
       password: 'password123',
-      displayName: 'Opened Push Requester',
+      displayName: 'Push Feed Friend',
+    );
+    final friendProfile = await repository.getOwnFriendProfile(friend.id);
+    await repository.signOut();
+    final logger = await repository.signUp(
+      email: 'push-feed-logger@example.com',
+      password: 'password123',
+      displayName: 'Push Feed Logger',
+    );
+    final friendConnections = await repository.sendFriendRequestToProfile(
+      userId: logger.id,
+      shareCode: friendProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: friend.id,
+      relationshipId: friendConnections.single.id,
     );
     await repository.signOut();
-    final addressee = await repository.signUp(
-      email: 'opened-push-addressee@example.com',
+    await repository.signIn(
+      email: 'push-feed-friend@example.com',
       password: 'password123',
-      displayName: 'Opened Push Addressee',
     );
     final controller = await AppController.bootstrapWithRepository(repository);
-    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
-    await repository.sendFriendRequestToProfile(
-      userId: requester.id,
-      shareCode: addresseeProfile.profileShareCode!,
-    );
-    final notification = (await repository.loadNotifications(
-      addressee.id,
-    )).single;
     final pushNotificationService = _FakePushNotificationService();
     addTearDown(pushNotificationService.dispose);
-
-    expect(controller.incomingFriendRequests, isEmpty);
 
     await tester.pumpWidget(
       GlassTrailApp(
         controller: controller,
         photoService: const TestPhotoService(),
         pushNotificationService: pushNotificationService,
+        initialRoute: AppRoutes.profile,
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final entry = await repository.addDrinkEntry(
+      user: logger,
+      drink: drink,
+      comment: 'Push feed refresh',
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final drinkNotification = controller.notifications.firstWhere(
+      (notification) =>
+          notification.type == AppNotificationTypes.friendDrinkLogged,
+    );
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      isNot(contains(entry.id)),
+    );
 
     pushNotificationService.emit(
-      AppRoutes.profile,
-      notificationId: notification.id,
+      AppRoutes.feed,
+      notificationId: drinkNotification.id,
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(ProfileScreen), findsOneWidget);
+    expect(find.byKey(const Key('feed-list-view')), findsOneWidget);
     final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
-    expect(route?.settings.name, AppRoutes.profile);
-    expect(controller.notifications.single.isRead, isTrue);
-    expect(controller.incomingFriendRequests, hasLength(1));
-    expect(find.text('Opened Push Requester'), findsOneWidget);
+    expect(route?.settings.name, AppRoutes.feed);
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      contains(entry.id),
+    );
+    expect(
+      controller.notifications
+          .firstWhere((notification) => notification.id == drinkNotification.id)
+          .isRead,
+      isTrue,
+    );
+    expect(find.text('Push Feed Logger'), findsOneWidget);
+    expect(find.text('Push feed refresh'), findsOneWidget);
   });
 
   testWidgets('opens bookmarked statistics route for authenticated users', (

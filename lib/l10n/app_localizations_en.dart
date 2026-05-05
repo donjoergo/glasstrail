@@ -203,10 +203,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feedHeadline => 'Your activity feed';
 
   @override
-  String get feedBody =>
-      'This V1 shows your personal history. Friends, comments, and cheers arrive later.';
-
-  @override
   String get noEntries => 'No drinks logged yet.';
 
   @override
@@ -507,6 +503,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open your Friends section to review your connections.';
 
   @override
+  String notificationFriendDrinkLoggedTitle(String name, String drink) {
+    return '$name drinks $drink';
+  }
+
+  @override
+  String notificationFriendDrinkLoggedBody(
+    String commentLine,
+    String locationAddressLine,
+  ) {
+    return '$commentLine\n$locationAddressLine';
+  }
+
+  @override
   String get notificationsMarkAllRead => 'Mark all as read';
 
   @override
@@ -540,7 +549,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roadmapBody =>
-      'Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.';
+      'Cheers reactions and achievements are planned next.';
 
   @override
   String get beerWithMeImport => 'Beer With Me Import';

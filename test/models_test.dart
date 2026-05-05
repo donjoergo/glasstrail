@@ -163,6 +163,75 @@ void main() {
         ),
         'sender/profile.png',
       );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendDrinkLogged,
+          fallbackImagePath: null,
+        ),
+        AppNotificationImageUrls.appIcon,
+      );
+    });
+
+    test('formats drink logged notifications with compact body lines', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Friend User',
+        'type': AppNotificationTypes.friendDrinkLogged,
+        'templateArgs': const <String, dynamic>{
+          'senderDisplayName': 'Friend User',
+          'drinkId': 'beer-pils',
+          'drinkName': 'Pils',
+          'comment': 'Cheers from the park',
+          'locationAddress': 'Park Street 1',
+        },
+      });
+
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        'Friend User drinks Pils',
+      );
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('de'))),
+        'Friend User trinkt Pils',
+      );
+      expect(notification.templateDrinkId, 'beer-pils');
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        '🗨️ Cheers from the park\n📍 Park Street 1',
+      );
+      for (final imageUrl in <String>[
+        AppNotificationImageUrls.cheers,
+        AppNotificationImageUrls.requestRejected,
+        AppNotificationImageUrls.friendRemoved,
+      ]) {
+        final assetName = Uri.parse(imageUrl).pathSegments.last;
+        expect(
+          File('web/notification-assets/$assetName').existsSync(),
+          isTrue,
+          reason: imageUrl,
+        );
+      }
+    });
+
+    test('omits empty drink logged notification body lines', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Friend User',
+        'type': AppNotificationTypes.friendDrinkLogged,
+        'templateArgs': const <String, dynamic>{
+          'senderDisplayName': 'Friend User',
+          'drinkId': 'beer-pils',
+          'drinkName': 'Pils',
+          'locationAddress': 'Park Street 1',
+        },
+      });
+
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        '📍 Park Street 1',
+      );
       for (final imageUrl in <String>[
         AppNotificationImageUrls.cheers,
         AppNotificationImageUrls.requestRejected,

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="default_notification_channel_id">glass_trail_notifications</string>
+    <string name="default_notification_channel_name">Glass Trail notifications</string>
+    <string name="default_notification_channel_description">Friend and drink activity alerts.</string>
+</resources>
