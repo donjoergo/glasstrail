@@ -721,6 +721,96 @@ void main() {
     );
 
     test(
+      'removes friend drink notifications for both users when unfriending',
+      () async {
+        final requester = await repository.signUp(
+          email: 'unfriend-drink-requester@example.com',
+          password: 'secret',
+          displayName: 'Unfriend Drink Requester',
+        );
+        await repository.signOut();
+        final addressee = await repository.signUp(
+          email: 'unfriend-drink-addressee@example.com',
+          password: 'secret',
+          displayName: 'Unfriend Drink Addressee',
+        );
+        final addresseeProfile = await repository.getOwnFriendProfile(
+          addressee.id,
+        );
+        final requesterConnections = await repository
+            .sendFriendRequestToProfile(
+              userId: requester.id,
+              shareCode: addresseeProfile.profileShareCode!,
+            );
+        await repository.acceptFriendRequest(
+          userId: addressee.id,
+          relationshipId: requesterConnections.single.id,
+        );
+
+        final drink = (await repository.loadDefaultCatalog()).firstWhere(
+          (candidate) => candidate.id == 'beer-pils',
+        );
+        await repository.addDrinkEntry(user: requester, drink: drink);
+        await repository.addDrinkEntry(user: addressee, drink: drink);
+
+        expect(
+          (await repository.loadNotifications(requester.id)).any(
+            (notification) =>
+                notification.type == AppNotificationTypes.friendDrinkLogged &&
+                notification.senderUserId == addressee.id,
+          ),
+          isTrue,
+        );
+        expect(
+          (await repository.loadNotifications(addressee.id)).any(
+            (notification) =>
+                notification.type == AppNotificationTypes.friendDrinkLogged &&
+                notification.senderUserId == requester.id,
+          ),
+          isTrue,
+        );
+
+        await repository.removeFriend(
+          userId: requester.id,
+          friendUserId: addressee.id,
+        );
+
+        final requesterNotifications = await repository.loadNotifications(
+          requester.id,
+        );
+        final addresseeNotifications = await repository.loadNotifications(
+          addressee.id,
+        );
+
+        expect(
+          requesterNotifications.any(
+            (notification) =>
+                notification.type == AppNotificationTypes.friendDrinkLogged,
+          ),
+          isFalse,
+        );
+        expect(
+          addresseeNotifications.any(
+            (notification) =>
+                notification.type == AppNotificationTypes.friendDrinkLogged,
+          ),
+          isFalse,
+        );
+        expect(
+          requesterNotifications.map((notification) => notification.type),
+          [AppNotificationTypes.friendRequestAccepted],
+        );
+        expect(
+          addresseeNotifications.map((notification) => notification.type),
+          unorderedEquals([
+            AppNotificationTypes.friendRequestSent,
+            AppNotificationTypes.friendRemoved,
+          ]),
+        );
+      },
+    );
+
+    test(
       'uses profile images and app icon fallback for drink notifications',
       () async {
         final friend = await repository.signUp(

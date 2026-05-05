@@ -327,6 +327,10 @@ class LocalAppRepository implements AppRepository {
       );
     }
     await _saveFriendRelationships(relationships);
+    await _deleteFriendDrinkLoggedNotificationsBetweenUsers(
+      firstUserId: userId,
+      secondUserId: friendUserId,
+    );
     return _friendConnectionsForUser(userId);
   }
 
@@ -934,6 +938,39 @@ class LocalAppRepository implements AppRepository {
           notification.type == AppNotificationTypes.friendDrinkLogged &&
           notification.senderUserId == senderUserId &&
           notification.metadata['entryId'] == entryId;
+      if (matches) {
+        affectedUserIds.add(notification.recipientUserId);
+      }
+      return matches;
+    });
+
+    if (affectedUserIds.isEmpty) {
+      return;
+    }
+    await _saveNotifications(notifications);
+    for (final userId in affectedUserIds) {
+      _publishNotifications(userId);
+    }
+  }
+
+  Future<void> _deleteFriendDrinkLoggedNotificationsBetweenUsers({
+    required String firstUserId,
+    required String secondUserId,
+  }) async {
+    final notifications = _loadNotifications();
+    if (notifications.isEmpty) {
+      return;
+    }
+
+    final affectedUserIds = <String>{};
+    notifications.removeWhere((item) {
+      final notification = AppNotification.fromJson(item);
+      final matches =
+          notification.type == AppNotificationTypes.friendDrinkLogged &&
+          ((notification.senderUserId == firstUserId &&
+                  notification.recipientUserId == secondUserId) ||
+              (notification.senderUserId == secondUserId &&
+                  notification.recipientUserId == firstUserId));
       if (matches) {
         affectedUserIds.add(notification.recipientUserId);
       }

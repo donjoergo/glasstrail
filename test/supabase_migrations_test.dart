@@ -235,4 +235,29 @@ void main() {
     );
     expect(migration, contains("and metadata ->> 'entryId' = old.id::text"));
   });
+
+  test('removes friend drink notifications when friendships are removed', () {
+    final migration = File(
+      'supabase/migrations/202604290001_add_social_feed_drink_notifications.sql',
+    ).readAsStringSync();
+
+    expect(
+      migration,
+      contains('create or replace function public.remove_friend'),
+    );
+    expect(migration, contains("where type = 'friend_drink_logged'"));
+    expect(
+      migration,
+      contains(
+        '(recipient_user_id = requesting_user_id and sender_user_id = target_friend_user_id)',
+      ),
+    );
+    expect(
+      migration,
+      contains(
+        '(recipient_user_id = target_friend_user_id and sender_user_id = requesting_user_id)',
+      ),
+    );
+    expect(migration, contains("'friend_removed'"));
+  });
 }

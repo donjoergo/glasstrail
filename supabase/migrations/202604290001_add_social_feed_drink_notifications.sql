@@ -295,6 +295,44 @@ begin
 end;
 $$;
 
+create or replace function public.remove_friend(target_friend_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  requesting_user_id uuid := (select auth.uid());
+  deleted_id uuid;
+begin
+  delete from public.friend_relationships
+  where status = 'accepted'
+    and (
+      (requester_id = requesting_user_id and addressee_id = target_friend_user_id)
+      or (requester_id = target_friend_user_id and addressee_id = requesting_user_id)
+    )
+  returning id into deleted_id;
+
+  if deleted_id is null then
+    raise exception 'The friend could not be removed.';
+  end if;
+
+  delete from public.notifications
+  where type = 'friend_drink_logged'
+    and (
+      (recipient_user_id = requesting_user_id and sender_user_id = target_friend_user_id)
+      or (recipient_user_id = target_friend_user_id and sender_user_id = requesting_user_id)
+    );
+
+  perform public.create_friend_notification(
+    target_friend_user_id,
+    requesting_user_id,
+    'friend_removed',
+    jsonb_build_object('relationshipId', deleted_id)
+  );
+end;
+$$;
+
 drop trigger if exists friend_drink_logged_notifications on public.drink_entries;
 create trigger friend_drink_logged_notifications
 after insert on public.drink_entries
