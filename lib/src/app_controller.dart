@@ -1237,6 +1237,8 @@ class AppController extends ChangeNotifier {
     }
 
     try {
+      late List<FriendConnection> friendConnections;
+      late FeedDrinkPostPage feedPostsPage;
       final friendConnectionsFuture = _repository.loadFriendConnections(
         user.id,
       );
@@ -1244,8 +1246,10 @@ class AppController extends ChangeNotifier {
         userId: user.id,
         limit: _feedPageSize,
       );
-      final friendConnections = await friendConnectionsFuture;
-      final feedPostsPage = await feedPostsFuture;
+      await Future.wait<void>(<Future<void>>[
+        friendConnectionsFuture.then((value) => friendConnections = value),
+        feedPostsFuture.then((value) => feedPostsPage = value),
+      ]);
       if (_currentUser?.id != user.id) {
         return true;
       }
