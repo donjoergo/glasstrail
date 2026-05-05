@@ -549,7 +549,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roadmapBody =>
-      'Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.';
+      'Cheers reactions and achievements are planned next.';
 
   @override
   String get beerWithMeImport => 'Beer With Me Import';

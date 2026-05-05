@@ -552,7 +552,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get roadmapBody =>
-      'Freunde, Social Feed und Erfolge sind im Plan, aber bewusst nicht Teil von V1.';
+      'Als Nächstes kommen Cheers-Reaktionen und Erfolge.';
 
   @override
   String get beerWithMeImport => 'Beer With Me-Import';

@@ -259,7 +259,7 @@
   "roadmap": "Planned next",
   "about": "About",
   "github": "GitHub",
-  "roadmapBody": "Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.",
+  "roadmapBody": "Cheers reactions and achievements are planned next.",
   "beerWithMeImport": "Beer With Me Import",
   "beerWithMeImportBody": "Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.",
   "beerWithMeImportAction": "Import Beer With Me export",

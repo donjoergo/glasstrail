@@ -1076,7 +1076,7 @@ abstract class AppLocalizations {
   /// No description provided for @roadmapBody.
   ///
   /// In en, this message translates to:
-  /// **'Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.'**
+  /// **'Cheers reactions and achievements are planned next.'**
   String get roadmapBody;
 
   /// No description provided for @beerWithMeImport.

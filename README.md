@@ -6,12 +6,15 @@
 
 [Web App](https://glasstrail.vercel.app/) | [Android App](https://github.com/donjoergo/glasstrail/releases)
 
-GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in statistics, and sharing the drinks and cheering with friends. The initial idea was to make a worthy successor to [Beer With Me](https://play.google.com/store/apps/details?id=se.dagsappar.beer&hl=de) with modern design and a few extra perks.
+GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in statistics, following friends in a shared feed, and staying on top of social activity with notifications. The initial idea was to make a worthy successor to [Beer With Me](https://play.google.com/store/apps/details?id=se.dagsappar.beer&hl=de) with modern design and a few extra perks.
 
 ## Features
 
 - Intuitive drink logging with photo, location and comment
-- Feed view for past entries
+- Personal feed for your own drink history
+- Friends feature with shareable profile links, incoming requests, and private friend connections
+- Social feed with friends' drink entries, comments, photos, and locations
+- In-app and Android push notifications for friend requests, friendship updates, and new drinks from friends
 - Statistics with streaks, category breakdown, map, and gallery
 - Global drink catalog plus user-defined custom drinks
 - Bar management with drink sorting, visibility controls, and custom drinks
@@ -45,11 +48,11 @@ The app exposes one route per visible page. On Flutter Web, in-app routing curre
 | Page           | Route                     | Purpose                                             |
 | -------------- | ------------------------- | --------------------------------------------------- |
 | Auth           | `/auth`                   | Sign in and sign up                                 |
-| Feed           | `/feed`                   | Main history/feed view                              |
+| Feed           | `/feed`                   | Personal and social drink feed                      |
 | Statistics     | `/statistics`             | Trends, streaks, and category breakdown             |
 | Bar            | `/bar`                    | Organize the drink catalog and manage custom drinks |
 | Profile        | `/profile`                | Profile summary and app settings                    |
-| Notifications  | `/notifications`          | In-app friendship notification history              |
+| Notifications  | `/notifications`          | In-app alerts for friend requests, drink updates, and friendship changes |
 | Edit Profile   | `/profile/edit`           | Dedicated profile editing page                      |
 | Friend Profile | `/friends/profile/<code>` | In-app friend profile route for sending requests    |
 | Add Drink      | `/add-drink`              | Log a drink from recent, global, or custom options  |
@@ -180,7 +183,7 @@ flutter run \
 
 ### Push Notifications
 
-GlassTrail sends notifications for certain events. An in app notification page exists. Additionally Firebase Cloud Messaging (FCM) is used to send push notifications to Android devices when the app is in the background.
+GlassTrail keeps users informed about social activity with an in-app notification inbox. Friend requests, accepted or removed friendships, and newly logged drinks from friends show up there. On Android, the same events can also arrive as push notifications via Firebase Cloud Messaging (FCM) while the app is in the background.
 
 #### Notification Flow
 
