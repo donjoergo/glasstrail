@@ -14,6 +14,36 @@ const _supersededNotificationMigrationPaths = <String>[
 ];
 
 void main() {
+  test('allows pending-request profile media access', () {
+    final migration = File(
+      'supabase/migrations/202604170001_add_friend_profile_links.sql',
+    ).readAsStringSync();
+
+    expect(
+      migration,
+      contains(
+        'create policy "Users can read own and friends media"\n'
+        'on storage.objects',
+      ),
+    );
+    expect(
+      migration,
+      contains("where relationships.status in ('pending', 'accepted')"),
+    );
+    expect(
+      migration,
+      contains(
+        "relationships.addressee_id = coalesce((storage.foldername(name))[1], '')::uuid",
+      ),
+    );
+    expect(
+      migration,
+      contains(
+        "relationships.requester_id = coalesce((storage.foldername(name))[1], '')::uuid",
+      ),
+    );
+  });
+
   test('qualifies notification read update columns', () {
     final migration = File(_notificationMigrationPath).readAsStringSync();
 
