@@ -25,6 +25,30 @@ void main() {
     expect(routeMemory.lastRoute, friendRoute);
   });
 
+  test('opens explicit friend stats links after logout', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final routeMemory = await RouteMemory.create();
+    final friendStatsRoute = AppRoutes.friendStatsProfileRoute('friend-user');
+
+    await routeMemory.markLoggedOut();
+
+    expect(routeMemory.resolveInitialRoute(friendStatsRoute), friendStatsRoute);
+  });
+
+  test('returns to explicit friend stats links after auth', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final routeMemory = await RouteMemory.create();
+    final friendStatsRoute = AppRoutes.friendStatsProfileRoute('friend-user');
+
+    await routeMemory.markLoggedOut();
+
+    expect(
+      await routeMemory.consumePostAuthRoute(friendStatsRoute),
+      friendStatsRoute,
+    );
+    expect(routeMemory.lastRoute, friendStatsRoute);
+  });
+
   test('keeps feed as the post-auth route after normal logout', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final routeMemory = await RouteMemory.create();

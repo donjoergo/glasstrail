@@ -66,6 +66,12 @@ class AppRoutes {
         normalized.length > friendStatsProfilePrefix.length;
   }
 
+  static bool isExplicitPostAuthRedirectRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    return isFriendProfileRoute(normalized) ||
+        isFriendStatsProfileRoute(normalized);
+  }
+
   static String? friendProfileShareCode(String? routeName) {
     final normalized = normalize(routeName);
     if (!isFriendProfileRoute(normalized)) {
