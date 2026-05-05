@@ -24,6 +24,7 @@ import 'package:glasstrail/src/screens/feed_screen.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
+import 'package:glasstrail/src/widgets/app_empty_state_card.dart';
 
 import 'support/test_harness.dart';
 
@@ -379,6 +380,8 @@ void main() {
     await tester.tap(find.byKey(const Key('home-notifications-button')));
     await tester.pumpAndSettle();
 
+    final emptyStateCard = find.byType(AppEmptyStateCard);
+
     expect(find.text('Aktuell keine Benachrichtigungen'), findsOneWidget);
     expect(
       find.text(
@@ -386,6 +389,7 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(tester.getTopLeft(emptyStateCard).dy, lessThan(140));
   });
 
   testWidgets(
