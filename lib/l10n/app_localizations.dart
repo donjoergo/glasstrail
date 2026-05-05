@@ -491,19 +491,19 @@ abstract class AppLocalizations {
   /// No description provided for @weeklyTotal.
   ///
   /// In en, this message translates to:
-  /// **'Weekly'**
+  /// **'This Week'**
   String get weeklyTotal;
 
   /// No description provided for @monthlyTotal.
   ///
   /// In en, this message translates to:
-  /// **'Monthly'**
+  /// **'This Month'**
   String get monthlyTotal;
 
   /// No description provided for @yearlyTotal.
   ///
   /// In en, this message translates to:
-  /// **'Yearly'**
+  /// **'This Year'**
   String get yearlyTotal;
 
   /// No description provided for @currentStreak.

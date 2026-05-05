@@ -213,13 +213,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startLogging => 'Start by logging your first drink.';
 
   @override
-  String get weeklyTotal => 'Weekly';
+  String get weeklyTotal => 'This Week';
 
   @override
-  String get monthlyTotal => 'Monthly';
+  String get monthlyTotal => 'This Month';
 
   @override
-  String get yearlyTotal => 'Yearly';
+  String get yearlyTotal => 'This Year';
 
   @override
   String get currentStreak => 'Current streak';

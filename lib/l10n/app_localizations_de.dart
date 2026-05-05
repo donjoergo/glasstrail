@@ -214,13 +214,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get startLogging => 'Starte mit deinem ersten Eintrag.';
 
   @override
-  String get weeklyTotal => 'Woche';
+  String get weeklyTotal => 'Diese Woche';
 
   @override
-  String get monthlyTotal => 'Monat';
+  String get monthlyTotal => 'Dieser Monat';
 
   @override
-  String get yearlyTotal => 'Jahr';
+  String get yearlyTotal => 'Dieses Jahr';
 
   @override
   String get currentStreak => 'Aktuelle Serie';
