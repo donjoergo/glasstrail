@@ -189,8 +189,8 @@
   "friendProfileLinkInvalidBody": "This friend profile link is invalid or no longer available.",
   "notifications": "Notifications",
   "notificationsTooltip": "Notifications",
-  "notificationsEmptyTitle": "No notifications yet",
-  "notificationsEmptyBody": "Friend requests and updates will appear here.",
+  "notificationsEmptyTitle": "No notifications right now",
+  "notificationsEmptyBody": "When friends log drinks or send you friend requests, you'll see them here. Read notifications are deleted after 30 days, unread notifications after 90 days.",
   "notificationFriendRequestSentTitle": "{name} sent you a friend request",
   "@notificationFriendRequestSentTitle": {
     "placeholders": {

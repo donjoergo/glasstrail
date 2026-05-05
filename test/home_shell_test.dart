@@ -24,6 +24,7 @@ import 'package:glasstrail/src/screens/feed_screen.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
+import 'package:glasstrail/src/widgets/app_empty_state_card.dart';
 
 import 'support/test_harness.dart';
 
@@ -346,6 +347,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.unreadNotificationCount, 0);
+  });
+
+  testWidgets('shows the localized empty state on the notifications screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'empty-notifications@example.com',
+      password: 'password123',
+      displayName: 'Empty Notifications',
+    );
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+
+    final emptyStateCard = find.byType(AppEmptyStateCard);
+
+    expect(find.text('Aktuell keine Benachrichtigungen'), findsOneWidget);
+    expect(
+      find.text(
+        'Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.getTopLeft(emptyStateCard).dy, lessThan(140));
   });
 
   testWidgets(

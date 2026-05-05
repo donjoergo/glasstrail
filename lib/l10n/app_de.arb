@@ -189,8 +189,8 @@
   "friendProfileLinkInvalidBody": "Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.",
   "notifications": "Mitteilungen",
   "notificationsTooltip": "Mitteilungen",
-  "notificationsEmptyTitle": "Noch keine Mitteilungen",
-  "notificationsEmptyBody": "Freundschaftsanfragen und Aktualisierungen erscheinen hier.",
+  "notificationsEmptyTitle": "Aktuell keine Benachrichtigungen",
+  "notificationsEmptyBody": "Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.",
   "notificationFriendRequestSentTitle": "{name} hat dir eine Freundschaftsanfrage gesendet",
   "@notificationFriendRequestSentTitle": {
     "placeholders": {
