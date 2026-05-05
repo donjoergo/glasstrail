@@ -130,9 +130,7 @@ void main() {
       password: 'password123',
       displayName: 'Accept Refresh Addressee',
     );
-    final addresseeProfile = await repository.getOwnFriendProfile(
-      addressee.id,
-    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
     await repository.sendFriendRequestToProfile(
       userId: requester.id,
       shareCode: addresseeProfile.profileShareCode!,
@@ -242,7 +240,9 @@ void main() {
         shareCode: addresseeProfile.profileShareCode!,
       );
 
-      final controller = await AppController.bootstrapWithRepository(repository);
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
 
       expect(
         controller.feedPosts.map((post) => post.entry.id),
@@ -253,12 +253,11 @@ void main() {
         userId: addressee.id,
         relationshipId: connections.single.id,
       );
-      final notification = (await repository.loadNotifications(
-        requester.id,
-      )).firstWhere(
-        (candidate) =>
-            candidate.type == AppNotificationTypes.friendRequestAccepted,
-      );
+      final notification = (await repository.loadNotifications(requester.id))
+          .firstWhere(
+            (candidate) =>
+                candidate.type == AppNotificationTypes.friendRequestAccepted,
+          );
 
       final success = await controller.refreshForNotification(notification);
 

@@ -1219,7 +1219,9 @@ class AppController extends ChangeNotifier {
     }
 
     try {
-      final friendConnectionsFuture = _repository.loadFriendConnections(user.id);
+      final friendConnectionsFuture = _repository.loadFriendConnections(
+        user.id,
+      );
       final feedPostsFuture = _repository.loadFeedDrinkPosts(
         userId: user.id,
         limit: _feedPageSize,
