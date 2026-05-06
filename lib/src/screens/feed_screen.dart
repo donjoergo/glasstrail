@@ -614,7 +614,6 @@ class _DrinkEntryCard extends StatelessWidget {
     final locationAddress = _normalizedLocationAddress(entry.locationAddress);
     return Container(
       key: Key('feed-post-${entry.id}'),
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
@@ -622,181 +621,217 @@ class _DrinkEntryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              AppAvatar(
-                imagePath: post.authorImagePath,
-                radius: 20,
-                backgroundColor: theme.colorScheme.primary.withValues(
-                  alpha: 0.12,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    AppAvatar(
+                      imagePath: post.authorImagePath,
+                      radius: 20,
+                      backgroundColor: theme.colorScheme.primary.withValues(
+                        alpha: 0.12,
+                      ),
+                      fallback: Text(
+                        post.authorInitials,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            post.authorDisplayName,
+                            key: Key('feed-entry-author-${entry.id}'),
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            drinkName,
+                            key: Key('feed-entry-drink-${entry.id}'),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: <Widget>[
+                              Icon(
+                                entry.category.icon,
+                                size: 16,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  metadataLabel,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (locationAddress != null) ...<Widget>[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: <Widget>[
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  key: Key(
+                                    'feed-entry-location-icon-${entry.id}',
+                                  ),
+                                  size: 16,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    locationAddress,
+                                    key: Key('feed-entry-location-${entry.id}'),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (entry.volumeMl != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(unit.formatVolume(entry.volumeMl)),
+                      ),
+                    if (post.isOwnEntry)
+                      PopupMenuButton<_DrinkEntryAction>(
+                        key: Key('feed-entry-actions-${entry.id}'),
+                        enabled: !controller.isBusy,
+                        onSelected: (action) {
+                          _handleAction(context, action);
+                        },
+                        itemBuilder: (context) =>
+                            <PopupMenuEntry<_DrinkEntryAction>>[
+                              PopupMenuItem<_DrinkEntryAction>(
+                                key: Key('feed-entry-edit-${entry.id}'),
+                                value: _DrinkEntryAction.edit,
+                                child: Text(
+                                  AppLocalizations.of(context).editEntry,
+                                ),
+                              ),
+                              PopupMenuItem<_DrinkEntryAction>(
+                                key: Key('feed-entry-delete-${entry.id}'),
+                                value: _DrinkEntryAction.delete,
+                                child: Text(
+                                  AppLocalizations.of(context).deleteEntry,
+                                  style: AppTheme.destructiveMenuTextStyle(
+                                    theme,
+                                  ),
+                                ),
+                              ),
+                            ],
+                      ),
+                  ],
                 ),
-                fallback: Text(
-                  post.authorInitials,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w800,
+                if (entry.comment != null &&
+                    entry.comment!.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 14),
+                  Text(entry.comment!),
+                ],
+                if (entry.imagePath != null) ...<Widget>[
+                  const SizedBox(height: 14),
+                  AppPhotoPreview(
+                    key: Key('feed-entry-image-${entry.id}'),
+                    imagePath: entry.imagePath,
+                    cropPortraitToSquare: true,
+                    enableFullscreenOnTap: true,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Divider(
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.5,
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 2),
+                Row(
                   children: <Widget>[
-                    Text(
-                      post.authorDisplayName,
-                      key: Key('feed-entry-author-${entry.id}'),
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      drinkName,
-                      key: Key('feed-entry-drink-${entry.id}'),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        Icon(
-                          entry.category.icon,
-                          size: 16,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            metadataLabel,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                        TextButton.icon(
+                          key: Key('feed-entry-cheers-${entry.id}'),
+                          onPressed: cheersEnabled
+                              ? () => unawaited(
+                                  controller.toggleFeedEntryCheers(post),
+                                )
+                              : null,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 0,
+                              vertical: 8,
                             ),
+                          ),
+                          icon: cheersPending
+                              ? SizedBox.square(
+                                  key: Key(
+                                    'feed-entry-cheers-loading-${entry.id}',
+                                  ),
+                                  dimension: 18,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  post.hasCurrentUserCheered
+                                      ? Icons.sports_bar_rounded
+                                      : Icons.sports_bar_outlined,
+                                  size: 18,
+                                ),
+                          label: Text(l10n.feedCheersAction),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${post.cheersCount}',
+                          key: Key('feed-entry-cheers-count-${entry.id}'),
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: post.hasCurrentUserCheered
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
                     ),
-                    if (locationAddress != null) ...<Widget>[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: <Widget>[
-                          Icon(
-                            Icons.location_on_outlined,
-                            key: Key('feed-entry-location-icon-${entry.id}'),
-                            size: 16,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              locationAddress,
-                              key: Key('feed-entry-location-${entry.id}'),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
-              ),
-              if (entry.volumeMl != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(unit.formatVolume(entry.volumeMl)),
-                ),
-              if (post.isOwnEntry)
-                PopupMenuButton<_DrinkEntryAction>(
-                  key: Key('feed-entry-actions-${entry.id}'),
-                  enabled: !controller.isBusy,
-                  onSelected: (action) {
-                    _handleAction(context, action);
-                  },
-                  itemBuilder: (context) => <PopupMenuEntry<_DrinkEntryAction>>[
-                    PopupMenuItem<_DrinkEntryAction>(
-                      key: Key('feed-entry-edit-${entry.id}'),
-                      value: _DrinkEntryAction.edit,
-                      child: Text(AppLocalizations.of(context).editEntry),
-                    ),
-                    PopupMenuItem<_DrinkEntryAction>(
-                      key: Key('feed-entry-delete-${entry.id}'),
-                      value: _DrinkEntryAction.delete,
-                      child: Text(
-                        AppLocalizations.of(context).deleteEntry,
-                        style: AppTheme.destructiveMenuTextStyle(theme),
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-          if (entry.comment != null && entry.comment!.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 14),
-            Text(entry.comment!),
-          ],
-          if (entry.imagePath != null) ...<Widget>[
-            const SizedBox(height: 14),
-            AppPhotoPreview(
-              key: Key('feed-entry-image-${entry.id}'),
-              imagePath: entry.imagePath,
-              cropPortraitToSquare: true,
-              enableFullscreenOnTap: true,
+              ],
             ),
-          ],
-          const SizedBox(height: 14),
-          Divider(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: <Widget>[
-              TextButton.icon(
-                key: Key('feed-entry-cheers-${entry.id}'),
-                onPressed: cheersEnabled
-                    ? () => unawaited(controller.toggleFeedEntryCheers(post))
-                    : null,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 0,
-                    vertical: 8,
-                  ),
-                ),
-                icon: cheersPending
-                    ? SizedBox.square(
-                        key: Key('feed-entry-cheers-loading-${entry.id}'),
-                        dimension: 18,
-                        child: const CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        post.hasCurrentUserCheered
-                            ? Icons.sports_bar_rounded
-                            : Icons.sports_bar_outlined,
-                        size: 18,
-                      ),
-                label: Text(l10n.feedCheersAction),
-              ),
-              const Spacer(),
-              Text(
-                '${post.cheersCount}',
-                key: Key('feed-entry-cheers-count-${entry.id}'),
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: post.hasCurrentUserCheered
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
           ),
         ],
       ),

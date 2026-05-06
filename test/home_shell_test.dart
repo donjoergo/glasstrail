@@ -3364,6 +3364,10 @@ void main() {
       expect(cheersButton, findsOneWidget);
       expect(tester.widget<TextButton>(cheersButton).onPressed, isNotNull);
       expect(tester.widget<Text>(cheersCount).data, '0');
+      expect(
+        tester.getTopLeft(cheersCount).dx - tester.getTopRight(cheersButton).dx,
+        lessThanOrEqualTo(12),
+      );
 
       await tester.tap(cheersButton);
       await tester.pumpAndSettle();
