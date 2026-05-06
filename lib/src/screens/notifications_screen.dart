@@ -81,7 +81,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: SafeArea(
         child: notifications.isEmpty
-            ? Center(
+            ? Align(
+                alignment: Alignment.topCenter,
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: ConstrainedBox(
@@ -90,6 +91,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       icon: Icons.notifications_none_rounded,
                       title: l10n.notificationsEmptyTitle,
                       body: l10n.notificationsEmptyBody,
+                      compact: true,
                     ),
                   ),
                 ),

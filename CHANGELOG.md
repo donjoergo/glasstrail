@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Public profile page which can be shared with friends
   - Public profile link has a nice messenger preview
   - Accept/decline/withdraw friend requests
+  - Friend profile statistics screen
   - Deep linking: profile links open the Glass Trail app when installed, otherwise they show the web version
   - Feed: See drink entries from friends
 - Notifications

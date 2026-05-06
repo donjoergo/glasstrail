@@ -2,6 +2,17 @@ import 'models.dart';
 
 enum StreakMessageState { start, keepAlive, startedToday, continuedToday }
 
+extension StreakMessageStateX on StreakMessageState {
+  String get storageValue => name;
+
+  static StreakMessageState fromStorage(String? value) {
+    return StreakMessageState.values.firstWhere(
+      (candidate) => candidate.name == value,
+      orElse: () => StreakMessageState.start,
+    );
+  }
+}
+
 class WeekProgressDay {
   const WeekProgressDay({
     required this.date,
@@ -14,6 +25,24 @@ class WeekProgressDay {
   final int weekday;
   final bool hasEntry;
   final bool isToday;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'date': _dateOnlyString(date),
+      'weekday': weekday,
+      'hasEntry': hasEntry,
+      'isToday': isToday,
+    };
+  }
+
+  factory WeekProgressDay.fromJson(Map<String, dynamic> json) {
+    return WeekProgressDay(
+      date: DateTime.parse(json['date'] as String),
+      weekday: json['weekday'] as int,
+      hasEntry: json['hasEntry'] == true,
+      isToday: json['isToday'] == true,
+    );
+  }
 }
 
 class AppStatistics {
@@ -52,6 +81,75 @@ class AppStatistics {
   final int beerTotalCount;
   final int regularBeerCount;
   final int alcoholFreeBeerCount;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'weeklyTotal': weeklyTotal,
+      'monthlyTotal': monthlyTotal,
+      'yearlyTotal': yearlyTotal,
+      'currentStreak': currentStreak,
+      'bestStreak': bestStreak,
+      'bestStreakStart': bestStreakStart == null
+          ? null
+          : _dateOnlyString(bestStreakStart!),
+      'bestStreakEnd': bestStreakEnd == null
+          ? null
+          : _dateOnlyString(bestStreakEnd!),
+      'hasEntryToday': hasEntryToday,
+      'streakThroughYesterday': streakThroughYesterday,
+      'streakMessageState': streakMessageState.storageValue,
+      'weekProgress': weekProgress
+          .map((day) => day.toJson())
+          .toList(growable: false),
+      'categoryCounts': <String, int>{
+        for (final entry in categoryCounts.entries)
+          entry.key.storageValue: entry.value,
+      },
+      'totalEntries': totalEntries,
+      'beerTotalCount': beerTotalCount,
+      'regularBeerCount': regularBeerCount,
+      'alcoholFreeBeerCount': alcoholFreeBeerCount,
+    };
+  }
+
+  factory AppStatistics.fromJson(Map<String, dynamic> json) {
+    final categoryCountsJson = json['categoryCounts'] is Map
+        ? Map<String, dynamic>.from(json['categoryCounts'] as Map)
+        : const <String, dynamic>{};
+    return AppStatistics(
+      weeklyTotal: (json['weeklyTotal'] as num?)?.toInt() ?? 0,
+      monthlyTotal: (json['monthlyTotal'] as num?)?.toInt() ?? 0,
+      yearlyTotal: (json['yearlyTotal'] as num?)?.toInt() ?? 0,
+      currentStreak: (json['currentStreak'] as num?)?.toInt() ?? 0,
+      bestStreak: (json['bestStreak'] as num?)?.toInt() ?? 0,
+      bestStreakStart: _dateFromJson(json['bestStreakStart']),
+      bestStreakEnd: _dateFromJson(json['bestStreakEnd']),
+      hasEntryToday: json['hasEntryToday'] == true,
+      streakThroughYesterday:
+          (json['streakThroughYesterday'] as num?)?.toInt() ?? 0,
+      streakMessageState: StreakMessageStateX.fromStorage(
+        json['streakMessageState'] as String?,
+      ),
+      weekProgress:
+          (json['weekProgress'] as List<dynamic>? ?? const <dynamic>[])
+              .map(
+                (item) => WeekProgressDay.fromJson(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
+              .toList(growable: false),
+      categoryCounts: <DrinkCategory, int>{
+        for (final category in DrinkCategory.values)
+          category:
+              (categoryCountsJson[category.storageValue] as num?)?.toInt() ?? 0,
+      },
+      totalEntries: (json['totalEntries'] as num?)?.toInt() ?? 0,
+      beerTotalCount: (json['beerTotalCount'] as num?)?.toInt() ?? 0,
+      regularBeerCount: (json['regularBeerCount'] as num?)?.toInt() ?? 0,
+      alcoholFreeBeerCount:
+          (json['alcoholFreeBeerCount'] as num?)?.toInt() ?? 0,
+    );
+  }
 }
 
 class StatsCalculator {
@@ -188,4 +286,18 @@ class StatsCalculator {
     }
     return streak;
   }
+}
+
+DateTime? _dateFromJson(Object? value) {
+  if (value is! String || value.trim().isEmpty) {
+    return null;
+  }
+  return DateTime.parse(value);
+}
+
+String _dateOnlyString(DateTime date) {
+  final year = date.year.toString().padLeft(4, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final day = date.day.toString().padLeft(2, '0');
+  return '$year-$month-$day';
 }

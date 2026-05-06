@@ -24,6 +24,7 @@ import 'package:glasstrail/src/screens/feed_screen.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
+import 'package:glasstrail/src/widgets/app_empty_state_card.dart';
 
 import 'support/test_harness.dart';
 
@@ -347,6 +348,138 @@ void main() {
 
     expect(controller.unreadNotificationCount, 0);
   });
+
+  testWidgets('shows the localized empty state on the notifications screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'empty-notifications@example.com',
+      password: 'password123',
+      displayName: 'Empty Notifications',
+    );
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+
+    final emptyStateCard = find.byType(AppEmptyStateCard);
+
+    expect(find.text('Aktuell keine Benachrichtigungen'), findsOneWidget);
+    expect(
+      find.text(
+        'Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.getTopLeft(emptyStateCard).dy, lessThan(140));
+  });
+
+  testWidgets(
+    'opens friend drink notifications on feed and refreshes feed data',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final friend = await repository.signUp(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Friend',
+      );
+      final friendProfile = await repository.getOwnFriendProfile(friend.id);
+      await repository.signOut();
+      final logger = await repository.signUp(
+        email: 'widget-feed-logger@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Logger',
+      );
+      final friendConnections = await repository.sendFriendRequestToProfile(
+        userId: logger.id,
+        shareCode: friendProfile.profileShareCode!,
+      );
+      await repository.acceptFriendRequest(
+        userId: friend.id,
+        relationshipId: friendConnections.single.id,
+      );
+      await repository.signOut();
+      await repository.signIn(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await controller.updateSettings(
+        controller.settings.copyWith(localeCode: 'de'),
+      );
+      await tester.pumpAndSettle();
+
+      final drink = (await repository.loadDefaultCatalog()).firstWhere(
+        (candidate) => candidate.id == 'beer-classic',
+      );
+      final entry = await repository.addDrinkEntry(
+        user: logger,
+        drink: drink,
+        comment: 'Refresh me from notifications',
+        locationAddress: 'Park Street 1',
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final drinkNotification = controller.notifications.firstWhere(
+        (notification) =>
+            notification.type == AppNotificationTypes.friendDrinkLogged,
+      );
+
+      await tester.tap(find.byKey(const Key('home-notifications-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Widget Feed Logger trinkt Bier'), findsOneWidget);
+      expect(
+        find.text('🗨️ Refresh me from notifications\n📍 Park Street 1'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(Key('notification-${drinkNotification.id}')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('feed-list-view')), findsOneWidget);
+      expect(
+        controller.feedPosts.map((post) => post.entry.id),
+        contains(entry.id),
+      );
+      expect(find.text('Widget Feed Logger'), findsOneWidget);
+      expect(find.text('Bier'), findsOneWidget);
+      expect(find.text('Refresh me from notifications'), findsOneWidget);
+      expect(find.text('Park Street 1'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'opens friend drink notifications on feed and refreshes feed data',
@@ -3360,7 +3493,6 @@ void main() {
       '1',
     );
   });
-
   testWidgets('loads more feed posts while scrolling', (tester) async {
     tester.view.physicalSize = const Size(430, 900);
     tester.view.devicePixelRatio = 1.0;

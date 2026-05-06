@@ -440,7 +440,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
 
     final theme = Theme.of(context);
     final controller = AppScope.controllerOf(context);
-    final colors = _statisticsCategoryColors(theme);
+    final colors = statisticsCategoryColors(theme);
     final styleString = _statisticsMapStyleString(
       brightness: theme.brightness,
       localeCode: controller.settings.localeCode,

@@ -8,6 +8,7 @@ import 'app_routes.dart';
 import 'backend_config.dart';
 import 'beer_with_me_import.dart';
 import 'birthday.dart';
+import 'friend_stats_profile.dart';
 import 'l10n_extensions.dart';
 import 'models.dart';
 import 'push_notification_service.dart';
@@ -965,6 +966,23 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  Future<FriendStatsProfile?> loadFriendStatsProfile(
+    String friendUserId,
+  ) async {
+    final user = _currentUser;
+    final normalizedFriendUserId = friendUserId.trim();
+    if (user == null || normalizedFriendUserId.isEmpty) {
+      return null;
+    }
+    return _loadFriendProfileFor(
+      AppBusyAction.loadFriendProfile,
+      () => _repository.loadFriendStatsProfile(
+        userId: user.id,
+        friendUserId: normalizedFriendUserId,
+      ),
+    );
+  }
+
   Future<FriendProfile?> resolveFriendProfileLink(String shareCode) async {
     final normalizedCode = shareCode.trim();
     if (normalizedCode.isEmpty) {
@@ -1273,6 +1291,8 @@ class AppController extends ChangeNotifier {
     }
 
     try {
+      late List<FriendConnection> friendConnections;
+      late FeedDrinkPostPage feedPostsPage;
       final friendConnectionsFuture = _repository.loadFriendConnections(
         user.id,
       );
@@ -1280,8 +1300,10 @@ class AppController extends ChangeNotifier {
         userId: user.id,
         limit: _feedPageSize,
       );
-      final friendConnections = await friendConnectionsFuture;
-      final feedPostsPage = await feedPostsFuture;
+      await Future.wait<void>(<Future<void>>[
+        friendConnectionsFuture.then((value) => friendConnections = value),
+        feedPostsFuture.then((value) => feedPostsPage = value),
+      ]);
       if (_currentUser?.id != user.id) {
         return true;
       }
@@ -1704,6 +1726,7 @@ class AppController extends ChangeNotifier {
       'The drink entry could not be updated.' => l10n.entryUpdateFailed,
       'The drink entry could not be deleted.' => l10n.entryDeleteFailed,
       'The profile link is invalid.' => l10n.friendProfileLinkInvalid,
+      'This friend profile is unavailable.' => l10n.friendStatsUnavailableBody,
       'You cannot add yourself as a friend.' => l10n.friendSelfRequestBlocked,
       'The friend request could not be accepted.' =>
         l10n.friendRequestAcceptFailed,

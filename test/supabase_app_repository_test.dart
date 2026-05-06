@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/supabase_app_repository.dart';
+import 'package:glasstrail/src/time_zone_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
@@ -204,6 +205,69 @@ void main() {
       expect(repository.loadNotificationsCallCount, 2);
     });
   });
+
+  group('SupabaseAppRepository.loadFriendStatsProfile', () {
+    late _MockSupabaseServer server;
+    late SupabaseClient client;
+
+    setUp(() async {
+      server = await _MockSupabaseServer.start();
+      client = SupabaseClient(
+        server.baseUrl,
+        'test-key',
+        accessToken: () async => 'test-token',
+        headers: const <String, String>{'X-Client-Info': 'glasstrail-test'},
+      );
+    });
+
+    tearDown(() async {
+      await client.dispose();
+      await server.close();
+    });
+
+    test('sends a timezone identifier with offset fallback', () async {
+      final repository = SupabaseAppRepository(
+        client,
+        timeZoneProvider: const _FakeTimeZoneProvider('Europe/Berlin'),
+      );
+      final expectedOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+
+      final profile = await repository.loadFriendStatsProfile(
+        userId: '11111111-1111-4111-8111-111111111111',
+        friendUserId: '22222222-2222-4222-8222-222222222222',
+      );
+
+      expect(profile.id, server.friendSharedProfileResponse['id']);
+      expect(server.lastFunctionBody?['friendUserId'], profile.id);
+      expect(server.lastFunctionBody?['timeZone'], 'Europe/Berlin');
+      expect(
+        server.lastFunctionBody?['utcOffsetMinutes'],
+        expectedOffsetMinutes,
+      );
+    });
+
+    test(
+      'falls back to the current offset when the timezone is unavailable',
+      () async {
+        final repository = SupabaseAppRepository(
+          client,
+          timeZoneProvider: const _FakeTimeZoneProvider(null),
+        );
+        final expectedOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+
+        await repository.loadFriendStatsProfile(
+          userId: '11111111-1111-4111-8111-111111111111',
+          friendUserId: '22222222-2222-4222-8222-222222222222',
+        );
+
+        expect(server.lastFunctionBody?['timeZone'], isNull);
+        expect(
+          server.lastFunctionBody?['utcOffsetMinutes'],
+          expectedOffsetMinutes,
+        );
+      },
+    );
+  });
 }
 
 class _MockSupabaseServer {
@@ -227,8 +291,16 @@ class _MockSupabaseServer {
       <String, Map<String, dynamic>>{};
   final List<Map<String, dynamic>> globalDrinks = <Map<String, dynamic>>[];
   final List<String> deletedPrefixes = <String>[];
+  final Map<String, dynamic> friendSharedProfileResponse = <String, dynamic>{
+    'id': '22222222-2222-4222-8222-222222222222',
+    'displayName': 'Shared Friend',
+    'profileImagePath': null,
+    'shareStatsWithFriends': true,
+    'statistics': null,
+  };
   Map<String, dynamic>? lastUpsertBody;
   Map<String, dynamic>? lastEntryInsertBody;
+  Map<String, dynamic>? lastFunctionBody;
 
   String get baseUrl => 'http://${_server.address.address}:${_server.port}';
 
@@ -272,6 +344,14 @@ class _MockSupabaseServer {
       final body = await _readJsonMap(request);
       lastEntryInsertBody = body;
       await _writeJson(request.response, body);
+      return;
+    }
+
+    if (request.method == 'POST' &&
+        path == '/functions/v1/friend-shared-profile') {
+      final body = await _readJsonMap(request);
+      lastFunctionBody = body;
+      await _writeJson(request.response, friendSharedProfileResponse);
       return;
     }
 
@@ -343,4 +423,13 @@ class _ControllableNotificationWatchRepository extends SupabaseAppRepository {
   Future<void> emitSubscribed() async {
     await _publishSnapshot?.call();
   }
+}
+
+class _FakeTimeZoneProvider implements TimeZoneProvider {
+  const _FakeTimeZoneProvider(this.identifier);
+
+  final String? identifier;
+
+  @override
+  Future<String?> getLocalTimeZoneIdentifier() async => identifier;
 }

@@ -262,7 +262,6 @@ void main() {
     );
     expect(migration, contains("'friend_removed'"));
   });
-
   test('adds the cheers table and cheers rpc in a new migration', () {
     final migration = File(_feedCheersMigrationPath).readAsStringSync();
 

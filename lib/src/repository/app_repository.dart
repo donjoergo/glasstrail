@@ -1,3 +1,4 @@
+import '../friend_stats_profile.dart';
 import '../models.dart';
 
 abstract class AppRepository {
@@ -23,6 +24,11 @@ abstract class AppRepository {
   Future<List<FriendConnection>> loadFriendConnections(String userId);
 
   Future<FriendProfile> getOwnFriendProfile(String userId);
+
+  Future<FriendStatsProfile> loadFriendStatsProfile({
+    required String userId,
+    required String friendUserId,
+  });
 
   Future<PublicFriendProfile> resolvePublicFriendProfileLink(String shareCode);
 
@@ -105,7 +111,6 @@ abstract class AppRepository {
     required String entryId,
     required bool shouldCheer,
   });
-
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,

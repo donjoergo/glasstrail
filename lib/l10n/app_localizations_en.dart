@@ -212,13 +212,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startLogging => 'Start by logging your first drink.';
 
   @override
-  String get weeklyTotal => 'Weekly';
+  String get weeklyTotal => 'This Week';
 
   @override
-  String get monthlyTotal => 'Monthly';
+  String get monthlyTotal => 'This Month';
 
   @override
-  String get yearlyTotal => 'Yearly';
+  String get yearlyTotal => 'This Year';
 
   @override
   String get currentStreak => 'Current streak';
@@ -359,6 +359,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get handedness => 'Handedness';
 
   @override
+  String get shareStatsWithFriends => 'Share stats with friends';
+
+  @override
+  String get shareStatsWithFriendsBody =>
+      'Accepted friends can open your shared statistics inside the app.';
+
+  @override
   String get logout => 'Log out';
 
   @override
@@ -428,6 +435,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get friendStatsNotSharedTitle => 'Statistics not shared';
+
+  @override
+  String friendStatsNotSharedBody(String name) {
+    return '$name is not sharing statistics with friends right now.';
+  }
+
+  @override
+  String get friendStatsUnavailableTitle => 'Friend profile unavailable';
+
+  @override
+  String get friendStatsUnavailableBody =>
+      'This friend\'s shared profile is unavailable or no longer shared with you.';
+
+  @override
   String get addAsFriend => 'Add as friend';
 
   @override
@@ -463,11 +485,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsTooltip => 'Notifications';
 
   @override
-  String get notificationsEmptyTitle => 'No notifications yet';
+  String get notificationsEmptyTitle => 'No notifications right now';
 
   @override
   String get notificationsEmptyBody =>
-      'Friend requests and updates will appear here.';
+      'When friends log drinks or send you friend requests, you\'ll see them here. Read notifications are deleted after 30 days, unread notifications after 90 days.';
 
   @override
   String notificationFriendRequestSentTitle(String name) {

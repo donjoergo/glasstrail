@@ -76,9 +76,9 @@
   "feedCheersAction": "Prost",
   "noEntries": "Noch keine Getränke erfasst.",
   "startLogging": "Starte mit deinem ersten Eintrag.",
-  "weeklyTotal": "Woche",
-  "monthlyTotal": "Monat",
-  "yearlyTotal": "Jahr",
+  "weeklyTotal": "Diese Woche",
+  "monthlyTotal": "Dieser Monat",
+  "yearlyTotal": "Dieses Jahr",
   "currentStreak": "Aktuelle Serie",
   "bestStreak": "Beste Serie",
   "thisWeek": "Diese Woche",
@@ -122,6 +122,8 @@
   "language": "Sprache",
   "units": "Einheiten",
   "handedness": "Bedienseite",
+  "shareStatsWithFriends": "Statistiken mit Freunden teilen",
+  "shareStatsWithFriendsBody": "Bestätigte Freunde können deine geteilten Statistiken direkt in der App öffnen.",
   "logout": "Abmelden",
   "editProfile": "Profil bearbeiten",
   "friends": "Freunde",
@@ -166,6 +168,17 @@
       }
     }
   },
+  "friendStatsNotSharedTitle": "Statistiken nicht geteilt",
+  "friendStatsNotSharedBody": "{name} teilt aktuell keine Statistiken mit Freunden.",
+  "@friendStatsNotSharedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendStatsUnavailableTitle": "Freundesprofil nicht verfügbar",
+  "friendStatsUnavailableBody": "Dieses geteilte Freundesprofil ist nicht verfügbar oder wird nicht mehr mit dir geteilt.",
   "addAsFriend": "Als Freund hinzufügen",
   "goToFeed": "Zum Feed",
   "withdrawFriendRequest": "Zurückziehen",
@@ -190,8 +203,8 @@
   "friendProfileLinkInvalidBody": "Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.",
   "notifications": "Mitteilungen",
   "notificationsTooltip": "Mitteilungen",
-  "notificationsEmptyTitle": "Noch keine Mitteilungen",
-  "notificationsEmptyBody": "Freundschaftsanfragen und Aktualisierungen erscheinen hier.",
+  "notificationsEmptyTitle": "Aktuell keine Benachrichtigungen",
+  "notificationsEmptyBody": "Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.",
   "notificationFriendRequestSentTitle": "{name} hat dir eine Freundschaftsanfrage gesendet",
   "@notificationFriendRequestSentTitle": {
     "placeholders": {
