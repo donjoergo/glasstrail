@@ -718,6 +718,34 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
+  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+    required String userId,
+    required String entryId,
+    required bool shouldCheer,
+  }) async {
+    try {
+      final rows = await _client.rpc(
+        'set_feed_entry_cheers',
+        params: <String, dynamic>{
+          'target_entry_id': entryId,
+          'should_cheer': shouldCheer,
+        },
+      );
+      final decoded = (rows as List<dynamic>)
+          .map((row) {
+            return Map<String, dynamic>.from(row as Map);
+          })
+          .toList(growable: false);
+      if (decoded.isEmpty) {
+        throw const AppException('The cheers could not be updated.');
+      }
+      return _feedEntryCheersUpdateFromRow(decoded.first);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,
@@ -1093,6 +1121,17 @@ class SupabaseAppRepository implements AppRepository {
       entry: _entryFromRow(row),
       authorProfile: authorProfile,
       isOwnEntry: row['is_own_entry'] == true,
+      cheersCount: (row['cheers_count'] as num?)?.toInt() ?? 0,
+      hasCurrentUserCheered: row['has_current_user_cheered'] == true,
+    );
+  }
+
+  FeedEntryCheersUpdate _feedEntryCheersUpdateFromRow(
+    Map<String, dynamic> row,
+  ) {
+    return FeedEntryCheersUpdate(
+      cheersCount: (row['cheers_count'] as num?)?.toInt() ?? 0,
+      hasCurrentUserCheered: row['has_current_user_cheered'] == true,
     );
   }
 

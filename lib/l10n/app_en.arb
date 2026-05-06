@@ -73,6 +73,7 @@
     }
   },
   "feedHeadline": "Your activity feed",
+  "feedCheersAction": "Cheers",
   "noEntries": "No drinks logged yet.",
   "startLogging": "Start by logging your first drink.",
   "weeklyTotal": "This Week",
@@ -240,6 +241,15 @@
     }
   },
   "notificationFriendRemovedBody": "Open your Friends section to review your connections.",
+  "notificationFriendDrinkCheeredTitle": "{name} sent you a cheers 🍻",
+  "@notificationFriendDrinkCheeredTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendDrinkCheeredBody": "",
   "notificationFriendDrinkLoggedTitle": "{name} drinks {drink}",
   "@notificationFriendDrinkLoggedTitle": {
     "placeholders": {

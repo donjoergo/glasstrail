@@ -155,7 +155,7 @@ void main() {
           type: AppNotificationTypes.friendRequestAccepted,
           fallbackImagePath: 'sender/profile.png',
         ),
-        AppNotificationImageUrls.cheers,
+        AppNotificationImageUrls.requestAccepted,
       );
       expect(
         AppNotificationImageUrls.imagePathForType(
@@ -180,10 +180,42 @@ void main() {
       );
       expect(
         AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendDrinkCheered,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.cheers,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
           type: AppNotificationTypes.friendDrinkLogged,
           fallbackImagePath: null,
         ),
         AppNotificationImageUrls.appIcon,
+      );
+    });
+
+    test('renders cheers notifications as title-only messages', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Friend User',
+        'type': AppNotificationTypes.friendDrinkCheered,
+        'templateArgs': const <String, dynamic>{
+          'senderDisplayName': 'Friend User',
+        },
+      });
+
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        'Friend User sent you a cheers 🍻',
+      );
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('de'))),
+        'Friend User prostet dir zu 🍻',
+      );
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        isNull,
       );
     });
 
@@ -215,18 +247,6 @@ void main() {
         notification.text(lookupAppLocalizations(const Locale('en'))),
         '🗨️ Cheers from the park\n📍 Park Street 1',
       );
-      for (final imageUrl in <String>[
-        AppNotificationImageUrls.cheers,
-        AppNotificationImageUrls.requestRejected,
-        AppNotificationImageUrls.friendRemoved,
-      ]) {
-        final assetName = Uri.parse(imageUrl).pathSegments.last;
-        expect(
-          File('web/notification-assets/$assetName').existsSync(),
-          isTrue,
-          reason: imageUrl,
-        );
-      }
     });
 
     test('omits empty drink logged notification body lines', () {
@@ -247,7 +267,11 @@ void main() {
         notification.text(lookupAppLocalizations(const Locale('en'))),
         '📍 Park Street 1',
       );
+    });
+
+    test('ships notification image assets for static notification art', () {
       for (final imageUrl in <String>[
+        AppNotificationImageUrls.requestAccepted,
         AppNotificationImageUrls.cheers,
         AppNotificationImageUrls.requestRejected,
         AppNotificationImageUrls.friendRemoved,

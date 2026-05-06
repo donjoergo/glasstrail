@@ -470,6 +470,12 @@ abstract class AppLocalizations {
   /// **'Your activity feed'**
   String get feedHeadline;
 
+  /// No description provided for @feedCheersAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheers'**
+  String get feedCheersAction;
+
   /// No description provided for @noEntries.
   ///
   /// In en, this message translates to:
@@ -1033,6 +1039,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open your Friends section to review your connections.'**
   String get notificationFriendRemovedBody;
+
+  /// No description provided for @notificationFriendDrinkCheeredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} sent you a cheers 🍻'**
+  String notificationFriendDrinkCheeredTitle(String name);
+
+  /// No description provided for @notificationFriendDrinkCheeredBody.
+  ///
+  /// In en, this message translates to:
+  /// **''**
+  String get notificationFriendDrinkCheeredBody;
 
   /// No description provided for @notificationFriendDrinkLoggedTitle.
   ///

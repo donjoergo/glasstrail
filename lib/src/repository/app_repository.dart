@@ -106,6 +106,11 @@ abstract class AppRepository {
     int limit = 20,
   });
 
+  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+    required String userId,
+    required String entryId,
+    required bool shouldCheer,
+  });
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,

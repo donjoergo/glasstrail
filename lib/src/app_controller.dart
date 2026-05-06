@@ -126,6 +126,7 @@ class AppController extends ChangeNotifier {
   List<DrinkDefinition> _customDrinks = const <DrinkDefinition>[];
   List<DrinkEntry> _entries = const <DrinkEntry>[];
   List<FeedDrinkPost> _feedPosts = const <FeedDrinkPost>[];
+  final Set<String> _pendingFeedEntryCheers = <String>{};
   FeedDrinkPostCursor? _feedCursor;
   bool _hasMoreFeedPosts = false;
   bool _isLoadingMoreFeedPosts = false;
@@ -213,6 +214,8 @@ class AppController extends ChangeNotifier {
   AppStatistics get statistics => StatsCalculator.fromEntries(_entries);
 
   bool isBusyFor(AppBusyAction action) => _busyAction == action;
+  bool isFeedEntryCheersPending(String entryId) =>
+      _pendingFeedEntryCheers.contains(entryId);
 
   @override
   void dispose() {
@@ -551,6 +554,7 @@ class AppController extends ChangeNotifier {
       _customDrinks = const <DrinkDefinition>[];
       _entries = const <DrinkEntry>[];
       _feedPosts = const <FeedDrinkPost>[];
+      _pendingFeedEntryCheers.clear();
       _feedCursor = null;
       _hasMoreFeedPosts = false;
       _friendConnections = const <FriendConnection>[];
@@ -675,6 +679,8 @@ class AppController extends ChangeNotifier {
           entry: entry,
           authorProfile: FriendProfile.fromUser(user),
           isOwnEntry: true,
+          cheersCount: 0,
+          hasCurrentUserCheered: false,
         ),
       );
       _flashMessage = _FlashMessage.drinkLogged(
@@ -919,11 +925,7 @@ class AppController extends ChangeNotifier {
           _feedPosts
               .map(
                 (post) => post.entry.id == updated.id
-                    ? FeedDrinkPost(
-                        entry: updated,
-                        authorProfile: post.authorProfile,
-                        isOwnEntry: post.isOwnEntry,
-                      )
+                    ? post.copyWith(entry: updated)
                     : post,
               )
               .toList(growable: false)
@@ -1209,6 +1211,58 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<bool> toggleFeedEntryCheers(FeedDrinkPost post) async {
+    final user = _currentUser;
+    final entryId = post.entry.id;
+    if (user == null ||
+        post.isOwnEntry ||
+        _pendingFeedEntryCheers.contains(entryId)) {
+      return false;
+    }
+
+    final currentPost = _feedPostByEntryId(entryId);
+    if (currentPost == null) {
+      return false;
+    }
+
+    final optimisticPost = currentPost.copyWith(
+      cheersCount: currentPost.hasCurrentUserCheered
+          ? currentPost.cheersCount > 0
+                ? currentPost.cheersCount - 1
+                : 0
+          : currentPost.cheersCount + 1,
+      hasCurrentUserCheered: !currentPost.hasCurrentUserCheered,
+    );
+
+    _pendingFeedEntryCheers.add(entryId);
+    _replaceFeedPost(optimisticPost);
+    notifyListeners();
+
+    try {
+      final update = await _repository.setFeedEntryCheers(
+        userId: user.id,
+        entryId: entryId,
+        shouldCheer: optimisticPost.hasCurrentUserCheered,
+      );
+      _replaceFeedPost(
+        optimisticPost.copyWith(
+          cheersCount: update.cheersCount,
+          hasCurrentUserCheered: update.hasCurrentUserCheered,
+        ),
+      );
+      return true;
+    } catch (_) {
+      _replaceFeedPost(currentPost);
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.genericError,
+      );
+      return false;
+    } finally {
+      _pendingFeedEntryCheers.remove(entryId);
+      notifyListeners();
+    }
+  }
+
   Future<bool> refreshFriendConnections() async {
     final user = _currentUser;
     if (user == null) {
@@ -1279,6 +1333,7 @@ class AppController extends ChangeNotifier {
     String? routeName,
   }) {
     return switch (type) {
+      AppNotificationTypes.friendDrinkCheered => refreshData(),
       AppNotificationTypes.friendDrinkLogged => refreshData(),
       AppNotificationTypes.friendRequestSent ||
       AppNotificationTypes.friendRequestAccepted ||
@@ -1338,6 +1393,7 @@ class AppController extends ChangeNotifier {
     if (user == null) {
       _notifications = const <AppNotification>[];
       _feedPosts = const <FeedDrinkPost>[];
+      _pendingFeedEntryCheers.clear();
       _feedCursor = null;
       _hasMoreFeedPosts = false;
       _notificationReadOverrides.clear();
@@ -1429,6 +1485,23 @@ class AppController extends ChangeNotifier {
       post,
       ..._feedPosts.where((candidate) => candidate.entry.id != post.entry.id),
     ]..sort(_compareFeedPosts);
+  }
+
+  FeedDrinkPost? _feedPostByEntryId(String entryId) {
+    for (final post in _feedPosts) {
+      if (post.entry.id == entryId) {
+        return post;
+      }
+    }
+    return null;
+  }
+
+  void _replaceFeedPost(FeedDrinkPost post) {
+    _feedPosts = _feedPosts
+        .map(
+          (candidate) => candidate.entry.id == post.entry.id ? post : candidate,
+        )
+        .toList(growable: false);
   }
 
   List<FeedDrinkPost> _mergeFeedPosts(
