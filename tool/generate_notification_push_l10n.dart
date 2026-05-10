@@ -23,6 +23,10 @@ const _notificationTemplateKeys = <String, Map<String, String>>{
     'title': 'notificationFriendRemovedTitle',
     'body': 'notificationFriendRemovedBody',
   },
+  'friend_drink_cheered': <String, String>{
+    'title': 'notificationFriendDrinkCheeredTitle',
+    'body': 'notificationFriendDrinkCheeredBody',
+  },
   'friend_drink_logged': <String, String>{
     'title': 'notificationFriendDrinkLoggedTitle',
     'body': 'notificationFriendDrinkLoggedBody',
@@ -48,7 +52,7 @@ void main() {
       final keys = entry.value;
       localeMessages[entry.key] = <String, String>{
         'title': _requiredString(arb, keys['title']!, arbFile.path),
-        'body': _requiredString(arb, keys['body']!, arbFile.path),
+        'body': _requiredStringAllowEmpty(arb, keys['body']!, arbFile.path),
       };
     }
 
@@ -83,6 +87,18 @@ String _requiredString(Map<String, dynamic> arb, String key, String path) {
     return value;
   }
   throw StateError('Missing non-empty "$key" in $path.');
+}
+
+String _requiredStringAllowEmpty(
+  Map<String, dynamic> arb,
+  String key,
+  String path,
+) {
+  final value = arb[key];
+  if (value is String) {
+    return value;
+  }
+  throw StateError('Missing string "$key" in $path.');
 }
 
 Map<String, Map<String, String>> _defaultDrinkNames() {

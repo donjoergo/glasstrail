@@ -35,6 +35,10 @@ const messages: Record<string, Record<string, NotificationMessage>> = {
       "title": "{name} hat dich als Freund entfernt",
       "body": "Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.",
     },
+    "friend_drink_cheered": {
+      "title": "{name} prostet dir zu 🍻",
+      "body": "",
+    },
     "friend_drink_logged": {
       "title": "{name} trinkt {drink}",
       "body": "{commentLine}\n{locationAddressLine}",
@@ -56,6 +60,10 @@ const messages: Record<string, Record<string, NotificationMessage>> = {
     "friend_removed": {
       "title": "{name} removed you as a friend",
       "body": "Open your Friends section to review your connections.",
+    },
+    "friend_drink_cheered": {
+      "title": "{name} sent you a cheers 🍻",
+      "body": "",
     },
     "friend_drink_logged": {
       "title": "{name} drinks {drink}",

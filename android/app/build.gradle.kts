@@ -71,6 +71,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Use the configured app-link keystore for local debug builds so
+            // verified links behave the same as release installs.
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+
         release {
             // Use the real release keystore when present and fall back to the
             // debug key for local release builds that do not provide one.

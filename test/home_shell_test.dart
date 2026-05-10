@@ -482,6 +482,95 @@ void main() {
   );
 
   testWidgets(
+    'opens friend drink notifications on feed and refreshes feed data',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final friend = await repository.signUp(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Friend',
+      );
+      final friendProfile = await repository.getOwnFriendProfile(friend.id);
+      await repository.signOut();
+      final logger = await repository.signUp(
+        email: 'widget-feed-logger@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Logger',
+      );
+      final friendConnections = await repository.sendFriendRequestToProfile(
+        userId: logger.id,
+        shareCode: friendProfile.profileShareCode!,
+      );
+      await repository.acceptFriendRequest(
+        userId: friend.id,
+        relationshipId: friendConnections.single.id,
+      );
+      await repository.signOut();
+      await repository.signIn(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await controller.updateSettings(
+        controller.settings.copyWith(localeCode: 'de'),
+      );
+      await tester.pumpAndSettle();
+
+      final drink = (await repository.loadDefaultCatalog()).firstWhere(
+        (candidate) => candidate.id == 'beer-classic',
+      );
+      final entry = await repository.addDrinkEntry(
+        user: logger,
+        drink: drink,
+        comment: 'Refresh me from notifications',
+        locationAddress: 'Park Street 1',
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final drinkNotification = controller.notifications.firstWhere(
+        (notification) =>
+            notification.type == AppNotificationTypes.friendDrinkLogged,
+      );
+
+      await tester.tap(find.byKey(const Key('home-notifications-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Widget Feed Logger trinkt Bier'), findsOneWidget);
+      expect(
+        find.text('🗨️ Refresh me from notifications\n📍 Park Street 1'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(Key('notification-${drinkNotification.id}')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('feed-list-view')), findsOneWidget);
+      expect(
+        controller.feedPosts.map((post) => post.entry.id),
+        contains(entry.id),
+      );
+      expect(find.text('Widget Feed Logger'), findsOneWidget);
+      expect(find.text('Bier'), findsOneWidget);
+      expect(find.text('Refresh me from notifications'), findsOneWidget);
+      expect(find.text('Park Street 1'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'marks all unread notifications read from the notifications screen',
     (tester) async {
       SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -3210,6 +3299,204 @@ void main() {
     );
   });
 
+  testWidgets(
+    'shows cheers controls on friend feed posts and toggles the count',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'friend-cheers-owner@example.com',
+        password: 'password123',
+        displayName: 'Friend Cheers Owner',
+      );
+      final owner = controller.currentUser!;
+      final preferences = await SharedPreferences.getInstance();
+      final externalRepository = LocalAppRepository(preferences);
+      await externalRepository.signOut();
+      final friend = await externalRepository.signUp(
+        email: 'friend-cheers-friend@example.com',
+        password: 'password123',
+        displayName: 'Friend Cheers Friend',
+      );
+      final friendProfile = await externalRepository.getOwnFriendProfile(
+        friend.id,
+      );
+      final ownerConnections = await externalRepository
+          .sendFriendRequestToProfile(
+            userId: owner.id,
+            shareCode: friendProfile.profileShareCode!,
+          );
+      await externalRepository.acceptFriendRequest(
+        userId: friend.id,
+        relationshipId: ownerConnections.single.id,
+      );
+      final drink = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final friendEntry = await externalRepository.addDrinkEntry(
+        user: friend,
+        drink: drink,
+        volumeMl: drink.volumeMl,
+      );
+      await controller.refreshData();
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final cheersButton = find.byKey(
+        Key('feed-entry-cheers-${friendEntry.id}'),
+      );
+      final cheersCount = find.byKey(
+        Key('feed-entry-cheers-count-${friendEntry.id}'),
+      );
+
+      expect(cheersButton, findsOneWidget);
+      expect(tester.widget<TextButton>(cheersButton).onPressed, isNotNull);
+      expect(tester.widget<Text>(cheersCount).data, '0');
+      expect(
+        tester.getTopLeft(cheersCount).dx - tester.getTopRight(cheersButton).dx,
+        lessThanOrEqualTo(12),
+      );
+
+      await tester.tap(cheersButton);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Text>(cheersCount).data, '1');
+
+      await tester.tap(cheersButton);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Text>(cheersCount).data, '0');
+    },
+  );
+
+  testWidgets('shows disabled cheers controls for own feed posts', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'own-cheers@example.com',
+      password: 'password123',
+      displayName: 'Own Cheers',
+    );
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl);
+    final entryId = controller.entries.single.id;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final cheersButton = find.byKey(Key('feed-entry-cheers-$entryId'));
+    final cheersCount = find.byKey(Key('feed-entry-cheers-count-$entryId'));
+
+    expect(cheersButton, findsOneWidget);
+    expect(tester.widget<TextButton>(cheersButton).onPressed, isNull);
+    expect(tester.widget<Text>(cheersCount).data, '0');
+  });
+
+  testWidgets('opens cheers notifications on feed and refreshes cheers state', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final owner = await repository.signUp(
+      email: 'widget-cheers-owner@example.com',
+      password: 'password123',
+      displayName: 'Widget Cheers Owner',
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final entry = await repository.addDrinkEntry(user: owner, drink: drink);
+    final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+    await repository.signOut();
+    final friend = await repository.signUp(
+      email: 'widget-cheers-friend@example.com',
+      password: 'password123',
+      displayName: 'Widget Cheers Friend',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: friend.id,
+      shareCode: ownerProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: owner.id,
+      relationshipId: connections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'widget-cheers-owner@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<Text>(find.byKey(Key('feed-entry-cheers-count-${entry.id}')))
+          .data,
+      '0',
+    );
+
+    await repository.setFeedEntryCheers(
+      userId: friend.id,
+      entryId: entry.id,
+      shouldCheer: true,
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final cheersNotification = controller.notifications.firstWhere(
+      (notification) =>
+          notification.type == AppNotificationTypes.friendDrinkCheered,
+    );
+
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Widget Cheers Friend sent you a cheers 🍻'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(Key('notification-${cheersNotification.id}')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-list-view')), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.byKey(Key('feed-entry-cheers-count-${entry.id}')))
+          .data,
+      '1',
+    );
+  });
   testWidgets('loads more feed posts while scrolling', (tester) async {
     tester.view.physicalSize = const Size(430, 900);
     tester.view.devicePixelRatio = 1.0;
@@ -3259,7 +3546,7 @@ void main() {
 
     await tester.drag(
       find.byKey(const Key('feed-list-view')),
-      const Offset(0, -1800),
+      const Offset(0, -2600),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
