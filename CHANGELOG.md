@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Feed cheers reactions with notifications
 
 ### Fixed
-- Show CARTO basemap in statistics map
+- Fix map under Android
 
 ## [1.2.1] - 2026-04-13
 ### Fixed
