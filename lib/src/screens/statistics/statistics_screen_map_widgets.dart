@@ -162,9 +162,9 @@ List<Widget> _statisticsMapAttributionChildren(ThemeData theme) {
 
   return <Widget>[
     buildButton(
-      keyValue: 'statistics-map-attribution-protomaps',
-      label: _statisticsMapAttributionProtomapsLabel,
-      url: _statisticsMapAttributionProtomapsUrl,
+      keyValue: 'statistics-map-attribution-carto',
+      label: _statisticsMapAttributionCartoLabel,
+      url: _statisticsMapAttributionCartoUrl,
     ),
     buildButton(
       keyValue: 'statistics-map-attribution-openstreetmap',
