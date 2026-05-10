@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added SonarQube analysis
 - Feed cheers reactions with notifications
 
+### Fixed
+- Fix map under Android
+
 ## [1.2.1] - 2026-04-13
 ### Fixed
 - Fix failing tests in CI pipeline

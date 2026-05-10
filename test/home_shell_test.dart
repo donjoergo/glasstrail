@@ -4270,6 +4270,60 @@ void main() {
     expect(_statisticsMapMarker(wineEntry.id), findsOneWidget);
   });
 
+  testWidgets('shows CARTO and OpenStreetMap attribution on fallback maps', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-attribution@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Attribution',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    expect(find.byKey(const Key('statistics-map-attribution')), findsOneWidget);
+    expect(
+      find.byKey(const Key('statistics-map-attribution-carto')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('statistics-map-attribution-openstreetmap')),
+      findsOneWidget,
+    );
+    expect(find.text('© CARTO'), findsOneWidget);
+    expect(find.text('© OpenStreetMap'), findsOneWidget);
+    expect(
+      find.byKey(const Key('statistics-map-attribution-protomaps')),
+      findsNothing,
+    );
+  });
+
   testWidgets('expands the statistics map card down to the navigation bar', (
     tester,
   ) async {
@@ -4618,6 +4672,27 @@ void main() {
       ),
       StatisticsMapTapResolution.openSheet,
     );
+  });
+
+  test('resolves statistics map styles to CARTO light and dark URLs', () {
+    expect(
+      statisticsMapStyleUrl(Brightness.light),
+      'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+    );
+    expect(
+      statisticsMapStyleUrl(Brightness.dark),
+      'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    );
+    expect(
+      statisticsMapStyleUrl(Brightness.light),
+      isNot(contains('protomaps')),
+    );
+    expect(
+      statisticsMapStyleUrl(Brightness.dark),
+      isNot(contains('protomaps')),
+    );
+    expect(statisticsMapStyleUrl(Brightness.light), isNot(contains('lang=')));
+    expect(statisticsMapStyleUrl(Brightness.dark), isNot(contains('lang=')));
   });
 
   test(
