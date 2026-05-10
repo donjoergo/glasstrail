@@ -48,6 +48,8 @@
   "copyLink": "Link kopieren",
   "whatsNew": "Was gibt's Neues",
   "editEntry": "Eintrag bearbeiten",
+  "drinkType": "Getränketyp",
+  "changeDrinkType": "Getränketyp ändern",
   "deleteEntry": "Eintrag löschen",
   "deleteEntryPrompt": "Diesen Getränkeeintrag löschen? Der gespeicherte Kommentar und das Foto werden ebenfalls entfernt.",
   "createCustomDrink": "Eigenes Getränk erstellen",

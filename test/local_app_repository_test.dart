@@ -988,7 +988,7 @@ void main() {
     });
 
     test(
-      'updates existing drink logged notifications when entry details change',
+      'updates drink snapshots and friend notifications when entry details change',
       () async {
         final friend = await repository.signUp(
           email: 'drink-update-friend@example.com',
@@ -1020,6 +1020,12 @@ void main() {
           drink: drink,
           comment: 'Original note',
         );
+        const replacementDrink = DrinkDefinition(
+          id: 'wine-red',
+          name: 'Red Wine',
+          category: DrinkCategory.wine,
+          volumeMl: 175,
+        );
         final initialNotification =
             (await repository.loadNotifications(friend.id)).firstWhere(
               (notification) =>
@@ -1030,12 +1036,24 @@ void main() {
           notificationIds: [initialNotification.id],
         );
 
-        await repository.updateDrinkEntry(
+        final updatedEntry = await repository.updateDrinkEntry(
           user: logger,
           entry: entry,
+          replacementDrink: replacementDrink,
+          volumeMl: replacementDrink.volumeMl,
           comment: 'Updated note',
           imagePath: '/tmp/updated-entry-photo.png',
         );
+        final restoredEntries = await repository.loadEntries(logger.id);
+
+        expect(updatedEntry.drinkId, replacementDrink.id);
+        expect(updatedEntry.drinkName, replacementDrink.name);
+        expect(updatedEntry.category, replacementDrink.category);
+        expect(updatedEntry.volumeMl, replacementDrink.volumeMl);
+        expect(restoredEntries.single.drinkId, replacementDrink.id);
+        expect(restoredEntries.single.drinkName, replacementDrink.name);
+        expect(restoredEntries.single.category, replacementDrink.category);
+        expect(restoredEntries.single.volumeMl, replacementDrink.volumeMl);
 
         final updatedNotification =
             (await repository.loadNotifications(friend.id)).firstWhere(
@@ -1045,15 +1063,15 @@ void main() {
 
         expect(updatedNotification.id, initialNotification.id);
         expect(updatedNotification.isRead, isTrue);
-        expect(updatedNotification.templateDrinkId, 'beer-pils');
-        expect(updatedNotification.templateDrinkName, 'Pils');
+        expect(updatedNotification.templateDrinkId, replacementDrink.id);
+        expect(updatedNotification.templateDrinkName, replacementDrink.name);
         expect(updatedNotification.templateComment, 'Updated note');
         expect(updatedNotification.imagePath, '/tmp/updated-entry-photo.png');
         expect(updatedNotification.metadata['entryId'], entry.id);
 
         await repository.updateDrinkEntry(
           user: logger,
-          entry: entry.copyWith(
+          entry: updatedEntry.copyWith(
             comment: 'Updated note',
             imagePath: '/tmp/updated-entry-photo.png',
           ),

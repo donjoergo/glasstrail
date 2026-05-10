@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Track alcohol-free beer separately in drink metadata and statistics.
 - Added SonarQube analysis
 - Feed cheers reactions with notifications
+- Feed: change drink type while editing entries
 
 ### Fixed
 - Fix map under Android

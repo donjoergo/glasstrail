@@ -292,6 +292,8 @@ class BlockingLocalAppRepository extends LocalAppRepository {
   Future<DrinkEntry> updateDrinkEntry({
     required AppUser user,
     required DrinkEntry entry,
+    DrinkDefinition? replacementDrink,
+    double? volumeMl,
     String? comment,
     String? imagePath,
   }) {
@@ -300,6 +302,8 @@ class BlockingLocalAppRepository extends LocalAppRepository {
       () => super.updateDrinkEntry(
         user: user,
         entry: entry,
+        replacementDrink: replacementDrink,
+        volumeMl: volumeMl,
         comment: comment,
         imagePath: imagePath,
       ),

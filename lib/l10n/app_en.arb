@@ -48,6 +48,8 @@
   "copyLink": "Copy link",
   "whatsNew": "What's new",
   "editEntry": "Edit entry",
+  "drinkType": "Drink type",
+  "changeDrinkType": "Change drink type",
   "deleteEntry": "Delete entry",
   "deleteEntryPrompt": "Delete this drink entry? The saved comment and photo will be removed too.",
   "createCustomDrink": "Create custom drink",

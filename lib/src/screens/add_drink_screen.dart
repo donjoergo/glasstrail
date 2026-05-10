@@ -11,6 +11,7 @@ import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../widgets/app_media.dart';
+import '../widgets/drink_picker_catalog.dart';
 import 'custom_drink_dialog.dart';
 
 class AddDrinkScreen extends StatefulWidget {
@@ -23,14 +24,11 @@ class AddDrinkScreen extends StatefulWidget {
 class _AddDrinkScreenState extends State<AddDrinkScreen>
     with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
-  final _searchController = TextEditingController();
   final _commentController = TextEditingController();
   final _volumeController = TextEditingController();
 
   DrinkDefinition? _selectedDrink;
-  DrinkCategory? _expandedCategory;
   String? _imagePath;
-  bool _autoExpandSearchResults = false;
   bool _volumeEditedManually = false;
   bool _isLocationEnabled = true;
   bool _isResolvingLocation = false;
@@ -60,7 +58,6 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _searchController.dispose();
     _commentController.dispose();
     _volumeController.dispose();
     super.dispose();
@@ -104,20 +101,10 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
     }
   }
 
-  void _clearSearch() {
-    setState(() {
-      _searchController.clear();
-      _expandedCategory = null;
-      _autoExpandSearchResults = false;
-    });
-  }
-
   void _selectDrink(DrinkDefinition drink) {
     final unit = AppScope.controllerOf(context).settings.unit;
     setState(() {
       _selectedDrink = drink;
-      _expandedCategory = null;
-      _autoExpandSearchResults = false;
       _volumeEditedManually = false;
       _volumeController.text = unit.formatVolumeInput(drink.volumeMl);
     });
@@ -233,22 +220,6 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
     final unit = controller.settings.unit;
     final isBusy = controller.isBusy;
     final isSavingDrink = controller.isBusyFor(AppBusyAction.addDrinkEntry);
-    final search = _searchController.text.trim().toLowerCase();
-    final isSearchActive = search.isNotEmpty;
-    final expandsFromSearch = isSearchActive && _autoExpandSearchResults;
-    final filteredDrinks = controller.availableDrinks.where((drink) {
-      if (search.isEmpty) {
-        return true;
-      }
-      return drink.displayName(localeCode).toLowerCase().contains(search);
-    }).toList();
-    final grouped = <DrinkCategory, List<DrinkDefinition>>{
-      for (final category in DrinkCategory.values)
-        category: <DrinkDefinition>[],
-    };
-    for (final drink in filteredDrinks) {
-      grouped[drink.category]!.add(drink);
-    }
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.addDrink)),
@@ -260,121 +231,16 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                TextFormField(
-                  key: const Key('drink-search-field'),
-                  controller: _searchController,
+                DrinkPickerCatalog(
+                  availableDrinks: controller.availableDrinks,
+                  recentDrinks: controller.recentDrinks,
+                  localeCode: localeCode,
+                  unit: unit,
+                  selectedDrink: _selectedDrink,
                   enabled: !isBusy,
-                  decoration: InputDecoration(
-                    labelText: l10n.searchDrinks,
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            key: const Key('drink-search-clear-button'),
-                            onPressed: isBusy ? null : _clearSearch,
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                  ),
-                  onChanged: isBusy
-                      ? null
-                      : (_) {
-                          setState(() {
-                            _expandedCategory = null;
-                            _autoExpandSearchResults = _searchController.text
-                                .trim()
-                                .isNotEmpty;
-                          });
-                        },
-                ),
-                const SizedBox(height: 20),
-                if (controller.recentDrinks.isNotEmpty) ...<Widget>[
-                  Text(
-                    l10n.recentDrinks,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: controller.recentDrinks
-                        .map(
-                          (drink) => ChoiceChip(
-                            selected: _selectedDrink?.id == drink.id,
-                            showCheckmark: false,
-                            avatar: Icon(
-                              drink.category.icon,
-                              key: Key('recent-drink-icon-${drink.id}'),
-                              size: 18,
-                            ),
-                            label: Text(
-                              drink.shouldShowAlcoholFreeMarker
-                                  ? '${drink.displayName(localeCode)} • ${l10n.alcoholFree}'
-                                  : drink.displayName(localeCode),
-                            ),
-                            onSelected: isBusy
-                                ? null
-                                : (_) => _selectDrink(drink),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final heading = Text(
-                      l10n.catalog,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    );
-                    final action = FilledButton.tonal(
-                      onPressed: isBusy ? null : _openCustomDrinkDialog,
-                      child: Text(l10n.createCustomDrink),
-                    );
-
-                    if (constraints.maxWidth < 480) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          heading,
-                          const SizedBox(height: 12),
-                          action,
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      children: <Widget>[
-                        Expanded(child: heading),
-                        action,
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                ...DrinkCategory.values.map(
-                  (category) => _DrinkCategorySection(
-                    category: category,
-                    label: l10n.categoryLabel(category),
-                    drinks: grouped[category]!,
-                    localeCode: localeCode,
-                    unit: unit,
-                    isExpanded: expandsFromSearch
-                        ? grouped[category]!.isNotEmpty
-                        : _expandedCategory == category,
-                    isInteractive: !expandsFromSearch,
-                    enabled: !isBusy,
-                    onExpansionChanged: (isExpanded) {
-                      setState(() {
-                        _expandedCategory = isExpanded ? category : null;
-                      });
-                    },
-                    selectedDrink: _selectedDrink,
-                    onSelect: _selectDrink,
-                  ),
+                  collapseAfterSelect: true,
+                  onCreateCustomDrink: _openCustomDrinkDialog,
+                  onSelect: _selectDrink,
                 ),
                 if (_selectedDrink != null) ...<Widget>[
                   const SizedBox(height: 24),
@@ -611,68 +477,5 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
         !_isResolvingLocation &&
         _locationAttempted &&
         _locationAccuracyStatus == LocationAccuracyStatus.reduced;
-  }
-}
-
-class _DrinkCategorySection extends StatelessWidget {
-  const _DrinkCategorySection({
-    required this.category,
-    required this.label,
-    required this.drinks,
-    required this.localeCode,
-    required this.unit,
-    required this.isExpanded,
-    required this.isInteractive,
-    required this.enabled,
-    required this.onExpansionChanged,
-    required this.selectedDrink,
-    required this.onSelect,
-  });
-
-  final DrinkCategory category;
-  final String label;
-  final List<DrinkDefinition> drinks;
-  final String localeCode;
-  final AppUnit unit;
-  final bool isExpanded;
-  final bool isInteractive;
-  final bool enabled;
-  final ValueChanged<bool> onExpansionChanged;
-  final DrinkDefinition? selectedDrink;
-  final ValueChanged<DrinkDefinition> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    if (drinks.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: ExpansionTile(
-        key: Key('drink-category-section-${category.name}-$isExpanded'),
-        initiallyExpanded: isExpanded,
-        enabled: enabled && isInteractive,
-        onExpansionChanged: enabled ? onExpansionChanged : null,
-        tilePadding: EdgeInsets.zero,
-        title: Text(label, key: Key('drink-category-title-${category.name}')),
-        children: drinks.map((drink) {
-          final metadata = <String>[
-            if (drink.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
-            if (drink.volumeMl != null) unit.formatVolume(drink.volumeMl),
-          ].join(' • ');
-          return ListTile(
-            dense: true,
-            leading: Icon(drink.category.icon),
-            title: Text(drink.displayName(localeCode)),
-            subtitle: metadata.isEmpty ? null : Text(metadata),
-            trailing: selectedDrink?.id == drink.id
-                ? const Icon(Icons.check_circle_rounded)
-                : null,
-            onTap: enabled ? () => onSelect(drink) : null,
-          );
-        }).toList(),
-      ),
-    );
   }
 }

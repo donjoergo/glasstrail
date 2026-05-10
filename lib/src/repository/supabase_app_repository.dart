@@ -812,6 +812,8 @@ class SupabaseAppRepository implements AppRepository {
   Future<DrinkEntry> updateDrinkEntry({
     required AppUser user,
     required DrinkEntry entry,
+    DrinkDefinition? replacementDrink,
+    double? volumeMl,
     String? comment,
     String? imagePath,
   }) async {
@@ -823,15 +825,26 @@ class SupabaseAppRepository implements AppRepository {
         imagePath: trimmedImagePath,
         folder: 'entries',
       );
+      final body = <String, dynamic>{
+        'comment': trimmedComment == null || trimmedComment.isEmpty
+            ? null
+            : trimmedComment,
+        'image_path': finalImagePath,
+      };
+      if (replacementDrink != null) {
+        body.addAll(<String, dynamic>{
+          'source_type': replacementDrink.isCustom ? 'custom' : 'global',
+          'source_drink_id': replacementDrink.id,
+          'drink_name': replacementDrink.name,
+          'category_slug': replacementDrink.category.storageValue,
+          'is_alcohol_free': replacementDrink.isEffectivelyAlcoholFree,
+          'volume_ml': volumeMl,
+        });
+      }
 
       final row = await _client
           .from('drink_entries')
-          .update(<String, dynamic>{
-            'comment': trimmedComment == null || trimmedComment.isEmpty
-                ? null
-                : trimmedComment,
-            'image_path': finalImagePath,
-          })
+          .update(body)
           .eq('id', entry.id)
           .eq('user_id', user.id)
           .select()

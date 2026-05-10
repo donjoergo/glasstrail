@@ -158,6 +158,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get editEntry => 'Eintrag bearbeiten';
 
   @override
+  String get drinkType => 'Getränketyp';
+
+  @override
+  String get changeDrinkType => 'Getränketyp ändern';
+
+  @override
   String get deleteEntry => 'Eintrag löschen';
 
   @override
