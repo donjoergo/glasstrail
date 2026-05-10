@@ -220,6 +220,7 @@ class BlockingLocalAppRepository extends LocalAppRepository {
     required String name,
     required DrinkCategory category,
     double? volumeMl,
+    bool isAlcoholFree = false,
     String? imagePath,
   }) {
     return _runBlocked(
@@ -230,6 +231,7 @@ class BlockingLocalAppRepository extends LocalAppRepository {
         name: name,
         category: category,
         volumeMl: volumeMl,
+        isAlcoholFree: isAlcoholFree,
         imagePath: imagePath,
       ),
     );
@@ -290,6 +292,8 @@ class BlockingLocalAppRepository extends LocalAppRepository {
   Future<DrinkEntry> updateDrinkEntry({
     required AppUser user,
     required DrinkEntry entry,
+    DrinkDefinition? replacementDrink,
+    double? volumeMl,
     String? comment,
     String? imagePath,
   }) {
@@ -298,6 +302,8 @@ class BlockingLocalAppRepository extends LocalAppRepository {
       () => super.updateDrinkEntry(
         user: user,
         entry: entry,
+        replacementDrink: replacementDrink,
+        volumeMl: volumeMl,
         comment: comment,
         imagePath: imagePath,
       ),

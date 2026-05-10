@@ -1,21 +1,32 @@
-import 'dart:typed_data';
+import 'dart:async';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../birthday.dart';
+import '../friend_stats_profile.dart';
 import '../models.dart';
+import '../time_zone_provider.dart';
 import 'app_repository.dart';
 
 class SupabaseAppRepository implements AppRepository {
-  SupabaseAppRepository(this._client, {Uuid? uuid})
-    : _uuid = uuid ?? const Uuid();
+  SupabaseAppRepository(
+    this._client, {
+    Uuid? uuid,
+    TimeZoneProvider? timeZoneProvider,
+  }) : _uuid = uuid ?? const Uuid(),
+       _timeZoneProvider = timeZoneProvider ?? const PlatformTimeZoneProvider();
 
   static const _mediaBucket = 'user-media';
 
   final SupabaseClient _client;
   final Uuid _uuid;
+  final TimeZoneProvider _timeZoneProvider;
+
+  @visibleForTesting
+  static const notificationSubscriptionErrorStackTrace = StackTrace.empty;
 
   @override
   String get backendLabel => 'Supabase';
@@ -188,6 +199,356 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
+  Future<List<FriendConnection>> loadFriendConnections(String userId) async {
+    try {
+      final rows = await _client.rpc('load_friend_connections');
+      return (rows as List<dynamic>)
+          .map(
+            (row) =>
+                _friendConnectionFromRow(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList();
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<FriendProfile> getOwnFriendProfile(String userId) async {
+    try {
+      final row = await _client
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .single();
+      return _profileRowToFriendProfile(Map<String, dynamic>.from(row));
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<FriendStatsProfile> loadFriendStatsProfile({
+    required String userId,
+    required String friendUserId,
+  }) async {
+    try {
+      final utcOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+      final timeZone = await _timeZoneProvider.getLocalTimeZoneIdentifier();
+      final response = await _client.functions.invoke(
+        'friend-shared-profile',
+        method: HttpMethod.post,
+        body: <String, dynamic>{
+          'friendUserId': friendUserId.trim(),
+          'utcOffsetMinutes': utcOffsetMinutes,
+          'timeZone': ?timeZone,
+        },
+      );
+      final data = response.data;
+      if (data is! Map) {
+        throw const AppException('This friend profile is unavailable.');
+      }
+      return FriendStatsProfile.fromJson(Map<String, dynamic>.from(data));
+    } on FunctionException catch (error) {
+      if (error.status == 404) {
+        throw const AppException('This friend profile is unavailable.');
+      }
+      if (error.status == 403) {
+        throw const AppException('This friend profile is unavailable.');
+      }
+      throw AppException(
+        error.reasonPhrase ?? 'This friend profile is unavailable.',
+      );
+    }
+  }
+
+  @override
+  Future<PublicFriendProfile> resolvePublicFriendProfileLink(
+    String shareCode,
+  ) async {
+    final normalizedCode = shareCode.trim();
+    if (normalizedCode.isEmpty) {
+      throw const AppException('The profile link is invalid.');
+    }
+
+    try {
+      final response = await _client.functions.invoke(
+        'friend-profile-preview/${Uri.encodeComponent(normalizedCode)}',
+        method: HttpMethod.get,
+        queryParameters: const <String, String>{'format': 'json'},
+      );
+      final data = response.data;
+      if (data is! Map) {
+        throw const AppException('The profile link is invalid.');
+      }
+      return PublicFriendProfile.fromJson(Map<String, dynamic>.from(data));
+    } on FunctionException catch (error) {
+      if (error.status == 404) {
+        throw const AppException('The profile link is invalid.');
+      }
+      throw AppException(error.reasonPhrase ?? 'The profile link is invalid.');
+    }
+  }
+
+  @override
+  Future<FriendProfile> resolveFriendProfileLink(String shareCode) async {
+    try {
+      final rows = await _client.rpc(
+        'resolve_friend_profile_link',
+        params: <String, dynamic>{'target_share_code': shareCode.trim()},
+      );
+      final list = List<dynamic>.from(rows as List);
+      if (list.isEmpty) {
+        throw const AppException('The profile link is invalid.');
+      }
+      return _profileRowToFriendProfile(
+        Map<String, dynamic>.from(list.single as Map),
+      );
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> sendFriendRequestToProfile({
+    required String userId,
+    required String shareCode,
+  }) async {
+    try {
+      await _client.rpc(
+        'send_friend_request_to_profile',
+        params: <String, dynamic>{'target_share_code': shareCode.trim()},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> acceptFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    try {
+      await _client.rpc(
+        'accept_friend_request',
+        params: <String, dynamic>{'target_relationship_id': relationshipId},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> rejectFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    try {
+      await _client.rpc(
+        'reject_friend_request',
+        params: <String, dynamic>{'target_relationship_id': relationshipId},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) async {
+    try {
+      await _client.rpc(
+        'cancel_friend_request',
+        params: <String, dynamic>{'target_relationship_id': relationshipId},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendConnection>> removeFriend({
+    required String userId,
+    required String friendUserId,
+  }) async {
+    try {
+      await _client.rpc(
+        'remove_friend',
+        params: <String, dynamic>{'target_friend_user_id': friendUserId},
+      );
+      return loadFriendConnections(userId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<AppNotification>> loadNotifications(String userId) async {
+    try {
+      final rows = await _client.rpc('load_notifications');
+      return (rows as List<dynamic>)
+          .map(
+            (row) =>
+                AppNotification.fromJson(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList();
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<AppNotification>> markNotificationsRead({
+    required String userId,
+    required List<String> notificationIds,
+  }) async {
+    if (notificationIds.isEmpty) {
+      return loadNotifications(userId);
+    }
+
+    try {
+      final rows = await _client.rpc(
+        'mark_notifications_read',
+        params: <String, dynamic>{'notification_ids': notificationIds},
+      );
+      return (rows as List<dynamic>)
+          .map(
+            (row) =>
+                AppNotification.fromJson(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList();
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Stream<List<AppNotification>> watchNotifications(String userId) {
+    late final StreamController<List<AppNotification>> controller;
+    Future<void> Function()? stopWatchingNotifications;
+    var isClosed = false;
+
+    Future<void> publishSnapshot() async {
+      if (isClosed) {
+        return;
+      }
+      try {
+        final notifications = await loadNotifications(userId);
+        if (!isClosed) {
+          controller.add(notifications);
+        }
+      } on Object catch (error, stackTrace) {
+        if (!isClosed) {
+          controller.addError(error, stackTrace);
+        }
+      }
+    }
+
+    controller = StreamController<List<AppNotification>>.broadcast(
+      onListen: () {
+        stopWatchingNotifications = startWatchingNotifications(
+          userId: userId,
+          publishSnapshot: publishSnapshot,
+          publishError: (error, stackTrace) {
+            if (!isClosed) {
+              controller.addError(error, stackTrace);
+            }
+          },
+        );
+      },
+      onCancel: () async {
+        isClosed = true;
+        final stopWatching = stopWatchingNotifications;
+        if (stopWatching != null) {
+          await stopWatching();
+        }
+      },
+    );
+    return controller.stream;
+  }
+
+  @visibleForTesting
+  Future<void> Function() startWatchingNotifications({
+    required String userId,
+    required Future<void> Function() publishSnapshot,
+    required void Function(Object error, StackTrace stackTrace) publishError,
+  }) {
+    final channel = _client
+        .channel('notifications:$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'recipient_user_id',
+            value: userId,
+          ),
+          callback: (_) => unawaited(publishSnapshot()),
+        );
+
+    channel.subscribe((status, [error]) {
+      switch (status) {
+        case RealtimeSubscribeStatus.subscribed:
+          unawaited(publishSnapshot());
+          break;
+        case RealtimeSubscribeStatus.channelError:
+        case RealtimeSubscribeStatus.timedOut:
+          publishError(
+            error ?? Exception('Notification realtime subscription failed.'),
+            notificationSubscriptionErrorStackTrace,
+          );
+          break;
+        case RealtimeSubscribeStatus.closed:
+          break;
+      }
+    });
+
+    return () => _client.removeChannel(channel);
+  }
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) async {
+    try {
+      await _client.rpc(
+        'register_notification_device_token',
+        params: <String, dynamic>{
+          'device_token': token.trim(),
+          'device_platform': platform.trim(),
+        },
+      );
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) async {
+    try {
+      await _client.rpc(
+        'unregister_notification_device_token',
+        params: <String, dynamic>{'device_token': token.trim()},
+      );
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
   Future<List<DrinkDefinition>> loadDefaultCatalog() async {
     try {
       final rows = await _client
@@ -239,6 +600,7 @@ class SupabaseAppRepository implements AppRepository {
     required String name,
     required DrinkCategory category,
     double? volumeMl,
+    bool isAlcoholFree = false,
     String? imagePath,
   }) async {
     try {
@@ -261,6 +623,10 @@ class SupabaseAppRepository implements AppRepository {
             'name': name.trim(),
             'category_slug': category.storageValue,
             'volume_ml': volumeMl,
+            'is_alcohol_free': _customDrinkAlcoholFreeValue(
+              category,
+              isAlcoholFree,
+            ),
             'image_path': finalImagePath,
           }, onConflict: 'id')
           .select()
@@ -321,6 +687,65 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
+  Future<FeedDrinkPostPage> loadFeedDrinkPosts({
+    required String userId,
+    FeedDrinkPostCursor? cursor,
+    int limit = 20,
+  }) async {
+    try {
+      final pageLimit = limit.clamp(1, 50).toInt();
+      final params = <String, dynamic>{
+        'page_limit': pageLimit,
+        if (cursor != null) ...<String, dynamic>{
+          'cursor_consumed_at': cursor.consumedAt.toUtc().toIso8601String(),
+          'cursor_id': cursor.entryId,
+        },
+      };
+      final rows = await _client.rpc('load_feed_drink_posts', params: params);
+      final posts = (rows as List<dynamic>)
+          .map((row) => _feedPostFromRow(Map<String, dynamic>.from(row as Map)))
+          .toList(growable: false);
+      final hasMore = posts.length > pageLimit;
+      final pagePosts = posts.take(pageLimit).toList(growable: false);
+      return FeedDrinkPostPage(
+        posts: pagePosts,
+        cursor: hasMore && pagePosts.isNotEmpty ? pagePosts.last.cursor : null,
+        hasMore: hasMore,
+      );
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+    required String userId,
+    required String entryId,
+    required bool shouldCheer,
+  }) async {
+    try {
+      final rows = await _client.rpc(
+        'set_feed_entry_cheers',
+        params: <String, dynamic>{
+          'target_entry_id': entryId,
+          'should_cheer': shouldCheer,
+        },
+      );
+      final decoded = (rows as List<dynamic>)
+          .map((row) {
+            return Map<String, dynamic>.from(row as Map);
+          })
+          .toList(growable: false);
+      if (decoded.isEmpty) {
+        throw const AppException('The cheers could not be updated.');
+      }
+      return _feedEntryCheersUpdateFromRow(decoded.first);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,
@@ -353,6 +778,7 @@ class SupabaseAppRepository implements AppRepository {
             'drink_name': drink.name,
             'category_slug': drink.category.storageValue,
             'volume_ml': volumeMl,
+            'is_alcohol_free': drink.isEffectivelyAlcoholFree,
             'comment': comment?.trim().isEmpty ?? true ? null : comment?.trim(),
             'image_path': finalImagePath,
             'location_latitude': locationLatitude,
@@ -386,6 +812,8 @@ class SupabaseAppRepository implements AppRepository {
   Future<DrinkEntry> updateDrinkEntry({
     required AppUser user,
     required DrinkEntry entry,
+    DrinkDefinition? replacementDrink,
+    double? volumeMl,
     String? comment,
     String? imagePath,
   }) async {
@@ -397,15 +825,26 @@ class SupabaseAppRepository implements AppRepository {
         imagePath: trimmedImagePath,
         folder: 'entries',
       );
+      final body = <String, dynamic>{
+        'comment': trimmedComment == null || trimmedComment.isEmpty
+            ? null
+            : trimmedComment,
+        'image_path': finalImagePath,
+      };
+      if (replacementDrink != null) {
+        body.addAll(<String, dynamic>{
+          'source_type': replacementDrink.isCustom ? 'custom' : 'global',
+          'source_drink_id': replacementDrink.id,
+          'drink_name': replacementDrink.name,
+          'category_slug': replacementDrink.category.storageValue,
+          'is_alcohol_free': replacementDrink.isEffectivelyAlcoholFree,
+          'volume_ml': volumeMl,
+        });
+      }
 
       final row = await _client
           .from('drink_entries')
-          .update(<String, dynamic>{
-            'comment': trimmedComment == null || trimmedComment.isEmpty
-                ? null
-                : trimmedComment,
-            'image_path': finalImagePath,
-          })
+          .update(body)
           .eq('id', entry.id)
           .eq('user_id', user.id)
           .select()
@@ -484,6 +923,7 @@ class SupabaseAppRepository implements AppRepository {
             'locale_code': settings.localeCode,
             'unit': settings.unit.storageValue,
             'handedness': settings.handedness.storageValue,
+            'share_stats_with_friends': settings.shareStatsWithFriends,
             'hidden_global_drink_ids': settings.hiddenGlobalDrinkIds,
             'hidden_global_drink_categories': settings
                 .hiddenGlobalDrinkCategories
@@ -565,6 +1005,7 @@ class SupabaseAppRepository implements AppRepository {
             'locale_code': 'en',
             'unit': AppUnit.ml.storageValue,
             'handedness': AppHandedness.right.storageValue,
+            'share_stats_with_friends': true,
             'hidden_global_drink_ids': const <String>[],
             'global_drink_order_overrides': const <String, List<String>>{},
           },
@@ -609,6 +1050,30 @@ class SupabaseAppRepository implements AppRepository {
       birthday: normalizeBirthdayOrNull(
         birthdayRaw == null ? null : DateTime.parse(birthdayRaw as String),
       ),
+      profileShareCode: row['profile_share_code'] as String?,
+    );
+  }
+
+  FriendConnection _friendConnectionFromRow(Map<String, dynamic> row) {
+    return FriendConnection(
+      id: row['relationship_id'] as String,
+      profile: _profileRowToFriendProfile(row),
+      status: FriendRequestStatusX.fromStorage(row['status'] as String),
+      direction: FriendRequestDirectionX.fromStorage(
+        row['direction'] as String?,
+      ),
+    );
+  }
+
+  FriendProfile _profileRowToFriendProfile(Map<String, dynamic> row) {
+    return FriendProfile(
+      id: (row['profile_id'] as String?) ?? (row['id'] as String),
+      email: row['email'] as String,
+      displayName:
+          (row['display_name'] as String?) ??
+          _fallbackDisplayName(row['email'] as String?),
+      profileImagePath: row['profile_image_path'] as String?,
+      profileShareCode: row['profile_share_code'] as String?,
     );
   }
 
@@ -619,6 +1084,7 @@ class SupabaseAppRepository implements AppRepository {
       localizedNameDe: row['name_de'] as String?,
       category: DrinkCategoryX.fromStorage(row['category_slug'] as String),
       volumeMl: (row['default_volume_ml'] as num?)?.toDouble(),
+      isAlcoholFree: row['is_alcohol_free'] == true,
     );
   }
 
@@ -628,6 +1094,7 @@ class SupabaseAppRepository implements AppRepository {
       name: row['name'] as String,
       category: DrinkCategoryX.fromStorage(row['category_slug'] as String),
       volumeMl: (row['volume_ml'] as num?)?.toDouble(),
+      isAlcoholFree: row['is_alcohol_free'] == true,
       imagePath: row['image_path'] as String?,
       ownerUserId: row['user_id'] as String?,
     );
@@ -642,6 +1109,7 @@ class SupabaseAppRepository implements AppRepository {
       category: DrinkCategoryX.fromStorage(row['category_slug'] as String),
       consumedAt: DateTime.parse(row['consumed_at'] as String).toLocal(),
       volumeMl: (row['volume_ml'] as num?)?.toDouble(),
+      isAlcoholFree: row['is_alcohol_free'] == true,
       comment: row['comment'] as String?,
       imagePath: row['image_path'] as String?,
       locationLatitude: (row['location_latitude'] as num?)?.toDouble(),
@@ -650,6 +1118,45 @@ class SupabaseAppRepository implements AppRepository {
       importSource: row['import_source'] as String?,
       importSourceId: row['import_source_id'] as String?,
     );
+  }
+
+  FeedDrinkPost _feedPostFromRow(Map<String, dynamic> row) {
+    final authorProfile = FriendProfile(
+      id: row['author_profile_id'] as String,
+      email: (row['author_email'] as String?) ?? '',
+      displayName:
+          (row['author_display_name'] as String?) ??
+          _fallbackDisplayName(row['author_email'] as String?),
+      profileImagePath: row['author_profile_image_path'] as String?,
+      profileShareCode: row['author_profile_share_code'] as String?,
+    );
+    return FeedDrinkPost(
+      entry: _entryFromRow(row),
+      authorProfile: authorProfile,
+      isOwnEntry: row['is_own_entry'] == true,
+      cheersCount: (row['cheers_count'] as num?)?.toInt() ?? 0,
+      hasCurrentUserCheered: row['has_current_user_cheered'] == true,
+    );
+  }
+
+  FeedEntryCheersUpdate _feedEntryCheersUpdateFromRow(
+    Map<String, dynamic> row,
+  ) {
+    return FeedEntryCheersUpdate(
+      cheersCount: (row['cheers_count'] as num?)?.toInt() ?? 0,
+      hasCurrentUserCheered: row['has_current_user_cheered'] == true,
+    );
+  }
+
+  bool _customDrinkAlcoholFreeValue(
+    DrinkCategory category,
+    bool isAlcoholFree,
+  ) {
+    return switch (category) {
+      DrinkCategory.nonAlcoholic => true,
+      DrinkCategory.beer => isAlcoholFree,
+      _ => false,
+    };
   }
 
   bool _isDuplicateImportConflict(

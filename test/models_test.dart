@@ -1,6 +1,12 @@
+import 'dart:io';
+
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:glasstrail/l10n/app_localizations.dart';
+import 'package:glasstrail/src/friend_stats_profile.dart';
 import 'package:glasstrail/src/models.dart';
+import 'package:glasstrail/src/stats_calculator.dart';
 
 void main() {
   group('AppUnit', () {
@@ -24,6 +30,7 @@ void main() {
         'locale_code': 'de',
         'unit': 'oz',
         'handedness': 'left',
+        'share_stats_with_friends': false,
         'hidden_global_drink_ids': <String>['beer-pils'],
         'hidden_global_drink_categories': <String>['beer'],
         'global_drink_order_overrides': <String, List<String>>{
@@ -35,6 +42,7 @@ void main() {
       expect(settings.localeCode, 'de');
       expect(settings.unit, AppUnit.oz);
       expect(settings.handedness, AppHandedness.left);
+      expect(settings.shareStatsWithFriends, isFalse);
       expect(settings.hiddenGlobalDrinkIds, <String>['beer-pils']);
       expect(settings.hiddenGlobalDrinkCategories, <DrinkCategory>[
         DrinkCategory.beer,
@@ -43,6 +51,17 @@ void main() {
         'beer-ipa',
         'beer-pils',
       ]);
+    });
+
+    test('defaults stats sharing to true when the field is missing', () {
+      final settings = UserSettings.fromJson(<String, dynamic>{
+        'theme_preference': 'system',
+        'locale_code': 'en',
+        'unit': 'ml',
+        'handedness': 'right',
+      });
+
+      expect(settings.shareStatsWithFriends, isTrue);
     });
   });
 
@@ -57,6 +76,255 @@ void main() {
 
       expect(user.birthday, DateTime(2000, 7, 16));
       expect(user.toJson()['birthday'], '2000-07-16T00:00:00.000');
+    });
+  });
+
+  group('AppNotification', () {
+    test('reads generalized snake_case notification rows', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'notification_id': 'notification-1',
+        'recipient_user_id': 'recipient-1',
+        'sender_user_id': 'sender-1',
+        'sender_display_name': 'Sender User',
+        'image_path': 'sender/profile.png',
+        'notification_type': 'friend_request_sent',
+        'template_args': <String, String>{'senderDisplayName': 'Sender User'},
+        'created_at': '2026-04-26T10:00:00Z',
+        'metadata': <String, dynamic>{'route': '/profile'},
+      });
+
+      expect(notification.senderUserId, 'sender-1');
+      expect(notification.senderDisplayName, 'Sender User');
+      expect(notification.imagePath, 'sender/profile.png');
+      expect(notification.type, AppNotificationTypes.friendRequestSent);
+      expect(notification.templateArgs['senderDisplayName'], 'Sender User');
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('de'))),
+        lookupAppLocalizations(
+          const Locale('de'),
+        ).notificationFriendRequestSentTitle('Sender User'),
+      );
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentBody,
+      );
+      expect(notification.metadata['route'], '/profile');
+    });
+
+    test('uses sender display name when template args omit sender', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Sender User',
+        'type': AppNotificationTypes.friendRequestSent,
+        'templateArgs': const <String, dynamic>{},
+      });
+
+      expect(notification.templateSenderDisplayName, 'Sender User');
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        lookupAppLocalizations(
+          const Locale('en'),
+        ).notificationFriendRequestSentTitle('Sender User'),
+      );
+    });
+
+    test('supports notifications without text', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Sender User',
+        'type': 'custom',
+      });
+
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        'Glass Trail',
+      );
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        isNull,
+      );
+    });
+
+    test('maps friend notification types to static image urls', () {
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRequestAccepted,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.requestAccepted,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRequestRejected,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.requestRejected,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRemoved,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.friendRemoved,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendRequestSent,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        'sender/profile.png',
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendDrinkCheered,
+          fallbackImagePath: 'sender/profile.png',
+        ),
+        AppNotificationImageUrls.cheers,
+      );
+      expect(
+        AppNotificationImageUrls.imagePathForType(
+          type: AppNotificationTypes.friendDrinkLogged,
+          fallbackImagePath: null,
+        ),
+        AppNotificationImageUrls.appIcon,
+      );
+    });
+
+    test('renders cheers notifications as title-only messages', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Friend User',
+        'type': AppNotificationTypes.friendDrinkCheered,
+        'templateArgs': const <String, dynamic>{
+          'senderDisplayName': 'Friend User',
+        },
+      });
+
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        'Friend User sent you a cheers 🍻',
+      );
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('de'))),
+        'Friend User prostet dir zu 🍻',
+      );
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        isNull,
+      );
+    });
+
+    test('formats drink logged notifications with compact body lines', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Friend User',
+        'type': AppNotificationTypes.friendDrinkLogged,
+        'templateArgs': const <String, dynamic>{
+          'senderDisplayName': 'Friend User',
+          'drinkId': 'beer-pils',
+          'drinkName': 'Pils',
+          'comment': 'Cheers from the park',
+          'locationAddress': 'Park Street 1',
+        },
+      });
+
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('en'))),
+        'Friend User drinks Pils',
+      );
+      expect(
+        notification.title(lookupAppLocalizations(const Locale('de'))),
+        'Friend User trinkt Pils',
+      );
+      expect(notification.templateDrinkId, 'beer-pils');
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        '🗨️ Cheers from the park\n📍 Park Street 1',
+      );
+    });
+
+    test('omits empty drink logged notification body lines', () {
+      final notification = AppNotification.fromJson(<String, dynamic>{
+        'id': 'notification-1',
+        'recipientUserId': 'recipient-1',
+        'senderDisplayName': 'Friend User',
+        'type': AppNotificationTypes.friendDrinkLogged,
+        'templateArgs': const <String, dynamic>{
+          'senderDisplayName': 'Friend User',
+          'drinkId': 'beer-pils',
+          'drinkName': 'Pils',
+          'locationAddress': 'Park Street 1',
+        },
+      });
+
+      expect(
+        notification.text(lookupAppLocalizations(const Locale('en'))),
+        '📍 Park Street 1',
+      );
+    });
+
+    test('ships notification image assets for static notification art', () {
+      for (final imageUrl in <String>[
+        AppNotificationImageUrls.requestAccepted,
+        AppNotificationImageUrls.cheers,
+        AppNotificationImageUrls.requestRejected,
+        AppNotificationImageUrls.friendRemoved,
+      ]) {
+        final assetName = Uri.parse(imageUrl).pathSegments.last;
+        expect(
+          File('web/notification-assets/$assetName').existsSync(),
+          isTrue,
+          reason: imageUrl,
+        );
+      }
+    });
+  });
+
+  group('PublicFriendProfile', () {
+    test('reads profile image urls from public preview json', () {
+      final profile = PublicFriendProfile.fromJson(<String, dynamic>{
+        'id': 'profile-1',
+        'displayName': 'Preview User',
+        'profileImageUrl': 'https://example.com/profile.jpg',
+        'profileShareCode': 'share-code',
+      });
+
+      expect(profile.profileImagePath, 'https://example.com/profile.jpg');
+      expect(profile.profileShareCode, 'share-code');
+    });
+
+    test('upgrades Supabase preview image urls to https', () {
+      final profile = PublicFriendProfile.fromJson(<String, dynamic>{
+        'id': 'profile-1',
+        'displayName': 'Preview User',
+        'profileImageUrl':
+            'http://project-ref.functions.supabase.co/friend-profile-preview/share-code/image',
+      });
+
+      expect(
+        profile.profileImagePath,
+        'https://project-ref.functions.supabase.co/friend-profile-preview/share-code/image',
+      );
+    });
+
+    test('adds the functions path to Supabase REST preview image urls', () {
+      final profile = PublicFriendProfile.fromJson(<String, dynamic>{
+        'id': 'profile-1',
+        'displayName': 'Preview User',
+        'profileImageUrl':
+            'https://project-ref.supabase.co/friend-profile-preview/share-code/image',
+      });
+
+      expect(
+        profile.profileImagePath,
+        'https://project-ref.supabase.co/functions/v1/friend-profile-preview/share-code/image',
+      );
     });
   });
 
@@ -102,6 +370,8 @@ void main() {
       expect(nonAlcoholicBeer.name, 'Non-alcoholic Beer');
       expect(nonAlcoholicBeer.localizedNameDe, 'Alkoholfreies Bier');
       expect(nonAlcoholicBeer.volumeMl, 500);
+      expect(nonAlcoholicBeer.isAlcoholFree, isTrue);
+      expect(nonAlcoholicBeer.shouldShowAlcoholFreeMarker, isTrue);
 
       final genericShot = catalog.firstWhere(
         (drink) => drink.id == 'shots-shot',
@@ -126,6 +396,8 @@ void main() {
       expect(mateTea.name, 'Mate Tea');
       expect(mateTea.localizedNameDe, 'Mate Tee');
       expect(mateTea.volumeMl, 300);
+      expect(mateTea.isEffectivelyAlcoholFree, isTrue);
+      expect(mateTea.shouldShowAlcoholFreeMarker, isFalse);
 
       final clubMate = catalog.firstWhere(
         (drink) => drink.id == 'nonAlcoholic-club-mate',
@@ -134,6 +406,28 @@ void main() {
       expect(clubMate.name, 'Club-Mate');
       expect(clubMate.localizedNameDe, 'Club-Mate');
       expect(clubMate.volumeMl, 500);
+      expect(clubMate.isAlcoholFree, isTrue);
+    });
+  });
+
+  group('DrinkDefinition', () {
+    test('reads camelCase and snake_case alcohol-free JSON keys', () {
+      final camel = DrinkDefinition.fromJson(<String, dynamic>{
+        'id': 'custom-beer',
+        'name': 'Custom Beer',
+        'category': 'beer',
+        'isAlcoholFree': true,
+      });
+      final snake = DrinkDefinition.fromJson(<String, dynamic>{
+        'id': 'custom-beer-2',
+        'name': 'Custom Beer 2',
+        'category': 'beer',
+        'is_alcohol_free': true,
+      });
+
+      expect(camel.isAlcoholFree, isTrue);
+      expect(snake.isAlcoholFree, isTrue);
+      expect(camel.toJson()['isAlcoholFree'], isTrue);
     });
   });
 
@@ -191,6 +485,7 @@ void main() {
         'category': 'nonAlcoholic',
         'consumedAt': '2026-03-19T12:00:00.000Z',
         'volume_ml': 250,
+        'is_alcohol_free': true,
         'location_latitude': 52.52,
         'location_longitude': 13.405,
         'location_address': 'Alexanderplatz 1, 10178 Berlin',
@@ -199,11 +494,86 @@ void main() {
       });
 
       expect(entry.volumeMl, 250);
+      expect(entry.isAlcoholFree, isTrue);
+      expect(entry.isEffectivelyAlcoholFree, isTrue);
       expect(entry.locationLatitude, 52.52);
       expect(entry.locationLongitude, 13.405);
       expect(entry.locationAddress, 'Alexanderplatz 1, 10178 Berlin');
       expect(entry.importSource, 'beer_with_me');
       expect(entry.importSourceId, '456');
+    });
+
+    test('serializes alcohol-free entry snapshots', () {
+      final entry = DrinkEntry(
+        id: 'entry-1',
+        userId: 'user-1',
+        drinkId: 'beer-non-alcoholic',
+        drinkName: 'Non-alcoholic Beer',
+        category: DrinkCategory.beer,
+        consumedAt: DateTime(2026, 3, 19, 12),
+        isAlcoholFree: true,
+      );
+
+      expect(entry.shouldShowAlcoholFreeMarker, isTrue);
+      expect(entry.toJson()['isAlcoholFree'], isTrue);
+      expect(DrinkEntry.fromJson(entry.toJson()).isAlcoholFree, isTrue);
+    });
+  });
+
+  group('FriendStatsProfile', () {
+    test('reads shared statistics payloads', () {
+      final profile = FriendStatsProfile.fromJson(<String, dynamic>{
+        'id': 'friend-1',
+        'displayName': 'Shared Friend',
+        'profileImagePath': 'friend-1/profiles/avatar.png',
+        'shareStatsWithFriends': true,
+        'statistics': <String, dynamic>{
+          'weeklyTotal': 1,
+          'monthlyTotal': 2,
+          'yearlyTotal': 3,
+          'currentStreak': 1,
+          'bestStreak': 2,
+          'bestStreakStart': '2026-05-01',
+          'bestStreakEnd': '2026-05-02',
+          'hasEntryToday': true,
+          'streakThroughYesterday': 1,
+          'streakMessageState': 'startedToday',
+          'weekProgress': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'date': '2026-05-05',
+              'weekday': 2,
+              'hasEntry': true,
+              'isToday': true,
+            },
+          ],
+          'categoryCounts': <String, int>{
+            'beer': 1,
+            'wine': 0,
+            'sparklingWines': 0,
+            'longdrinks': 0,
+            'spirits': 0,
+            'shots': 0,
+            'cocktails': 0,
+            'appleWines': 0,
+            'nonAlcoholic': 0,
+          },
+          'totalEntries': 1,
+          'beerTotalCount': 1,
+          'regularBeerCount': 1,
+          'alcoholFreeBeerCount': 0,
+        },
+      });
+
+      expect(profile.displayName, 'Shared Friend');
+      expect(profile.profileImagePath, 'friend-1/profiles/avatar.png');
+      expect(profile.shareStatsWithFriends, isTrue);
+      expect(profile.statistics, isNotNull);
+      expect(
+        profile.statistics!.streakMessageState,
+        StreakMessageState.startedToday,
+      );
+      expect(profile.statistics!.weekProgress.single.isToday, isTrue);
+      expect(profile.statistics!.categoryCounts[DrinkCategory.beer], 1);
     });
   });
 }

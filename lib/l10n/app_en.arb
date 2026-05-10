@@ -41,8 +41,15 @@
   "save": "Save",
   "cancel": "Cancel",
   "close": "Close",
+  "accept": "Accept",
+  "reject": "Reject",
+  "pending": "Pending",
+  "share": "Share",
+  "copyLink": "Copy link",
   "whatsNew": "What's new",
   "editEntry": "Edit entry",
+  "drinkType": "Drink type",
+  "changeDrinkType": "Change drink type",
   "deleteEntry": "Delete entry",
   "deleteEntryPrompt": "Delete this drink entry? The saved comment and photo will be removed too.",
   "createCustomDrink": "Create custom drink",
@@ -52,6 +59,8 @@
   "drinkName": "Drink name",
   "category": "Category",
   "volume": "Volume",
+  "alcoholFree": "Alcohol-free",
+  "customDrinkAlcoholFreeSwitch": "Alcohol-free",
   "appUpdatedTitle": "App updated",
   "appUpdatedBody": "{appName} was just updated to {version}. Would you like to read the changelog?",
   "@appUpdatedBody": {
@@ -66,12 +75,12 @@
     }
   },
   "feedHeadline": "Your activity feed",
-  "feedBody": "This V1 shows your personal history. Friends, comments, and cheers arrive later.",
+  "feedCheersAction": "Cheers",
   "noEntries": "No drinks logged yet.",
   "startLogging": "Start by logging your first drink.",
-  "weeklyTotal": "Weekly",
-  "monthlyTotal": "Monthly",
-  "yearlyTotal": "Yearly",
+  "weeklyTotal": "This Week",
+  "monthlyTotal": "This Month",
+  "yearlyTotal": "This Year",
   "currentStreak": "Current streak",
   "bestStreak": "Best streak",
   "thisWeek": "This week",
@@ -87,6 +96,9 @@
   "weekdaySaturdayShort": "S",
   "weekdaySundayShort": "S",
   "categoryBreakdown": "Category breakdown",
+  "beerBreakdown": "Beer breakdown",
+  "regularBeer": "Normal beer",
+  "alcoholFreeBeer": "Alcohol-free beer",
   "history": "History",
   "statisticsMapEmptyTitle": "No drinks with location yet",
   "statisticsMapEmptyBody": "Enable location while logging drinks so they can appear here on the map.",
@@ -112,8 +124,157 @@
   "language": "Language",
   "units": "Units",
   "handedness": "Handedness",
+  "shareStatsWithFriends": "Share stats with friends",
+  "shareStatsWithFriendsBody": "Accepted friends can open your shared statistics inside the app.",
   "logout": "Log out",
   "editProfile": "Edit profile",
+  "friends": "Friends",
+  "friendsSectionBody": "Share your profile link so others can send you a friend request.",
+  "friendsEmpty": "No friends or pending requests yet.",
+  "friendProfile": "Friend profile",
+  "friendProfileLinkAction": "Show my profile link",
+  "friendProfileLinkTitle": "Your friend profile",
+  "friendProfileLinkBody": "Friends can scan this code or open the link to send you a request.",
+  "friendProfileShareTitle": "Add me on Glass Trail",
+  "friendProfileShareText": "Hey! {profileName} has invited you to Glass Trail, the app to track drinks, analyze statistics, and toast with friends. Give it a try!\n\n{link}",
+  "@friendProfileShareText": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      },
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "friendProfileLinkCopied": "Profile link copied.",
+  "friendIncomingRequest": "Wants to be friends",
+  "friendAccepted": "Friend",
+  "friendRequestPending": "Waiting for response",
+  "friendAlreadyFriends": "You are already friends.",
+  "friendIncomingRequestFromProfile": "This user already sent you a request. Review it in your Friends section.",
+  "friendProfileSelf": "This is your own friend profile link.",
+  "friendProfileRequestPrompt": "{name} wants to be friends with you.",
+  "@friendProfileRequestPrompt": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendProfilePublicPrompt": "{name} wants to be your friend on Glass Trail.",
+  "@friendProfilePublicPrompt": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendStatsNotSharedTitle": "Statistics not shared",
+  "friendStatsNotSharedBody": "{name} is not sharing statistics with friends right now.",
+  "@friendStatsNotSharedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendStatsUnavailableTitle": "Friend profile unavailable",
+  "friendStatsUnavailableBody": "This friend's shared profile is unavailable or no longer shared with you.",
+  "addAsFriend": "Add as friend",
+  "goToFeed": "Go to feed",
+  "withdrawFriendRequest": "Withdraw",
+  "unfriend": "Unfriend",
+  "unfriendConfirmTitle": "Unfriend {name}?",
+  "@unfriendConfirmTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unfriendConfirmBody": "You and {name} will stop seeing each other's shared activity. You can send another friend request later.",
+  "@unfriendConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendProfileLinkInvalidTitle": "Profile link unavailable",
+  "friendProfileLinkInvalidBody": "This friend profile link is invalid or no longer available.",
+  "notifications": "Notifications",
+  "notificationsTooltip": "Notifications",
+  "notificationsEmptyTitle": "No notifications right now",
+  "notificationsEmptyBody": "When friends log drinks or send you friend requests, you'll see them here. Read notifications are deleted after 30 days, unread notifications after 90 days.",
+  "notificationFriendRequestSentTitle": "{name} sent you a friend request",
+  "@notificationFriendRequestSentTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRequestSentBody": "Review it in your Friends section.",
+  "notificationFriendRequestAcceptedTitle": "{name} accepted your friend request",
+  "@notificationFriendRequestAcceptedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRequestAcceptedBody": "You can now see each other's shared activity.",
+  "notificationFriendRequestRejectedTitle": "{name} declined your friend request",
+  "@notificationFriendRequestRejectedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRequestRejectedBody": "You can send another request later.",
+  "notificationFriendRemovedTitle": "{name} removed you as a friend",
+  "@notificationFriendRemovedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRemovedBody": "Open your Friends section to review your connections.",
+  "notificationFriendDrinkCheeredTitle": "{name} sent you a cheers 🍻",
+  "@notificationFriendDrinkCheeredTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendDrinkCheeredBody": "",
+  "notificationFriendDrinkLoggedTitle": "{name} drinks {drink}",
+  "@notificationFriendDrinkLoggedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "drink": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendDrinkLoggedBody": "{commentLine}\n{locationAddressLine}",
+  "@notificationFriendDrinkLoggedBody": {
+    "placeholders": {
+      "commentLine": {
+        "type": "String"
+      },
+      "locationAddressLine": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationsMarkAllRead": "Mark all as read",
   "customDrinks": "My custom drinks",
   "addCustomDrinkAction": "Add custom drink",
   "customDrinksEmptyTitle": "No custom drinks yet",
@@ -123,7 +284,7 @@
   "roadmap": "Planned next",
   "about": "About",
   "github": "GitHub",
-  "roadmapBody": "Friends, social feed, and achievements are part of the plan but intentionally not shipped in V1.",
+  "roadmapBody": "Cheers reactions and achievements are planned next.",
   "beerWithMeImport": "Beer With Me Import",
   "beerWithMeImportBody": "Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.",
   "beerWithMeImportAction": "Import Beer With Me export",
@@ -259,12 +420,23 @@
   },
   "entryUpdated": "Entry updated.",
   "entryDeleted": "Entry deleted.",
+  "friendRequestSent": "Friend request sent.",
+  "friendRequestAccepted": "Friend request accepted.",
+  "friendRequestRejected": "Friend request rejected.",
+  "friendRequestCanceled": "Friend request withdrawn.",
+  "friendRemoved": "Friend removed.",
   "somethingWentWrong": "Something went wrong. Please try again.",
   "accountAlreadyExists": "An account with that email already exists.",
   "invalidCredentials": "The email or password is incorrect.",
   "profileUpdateFailed": "The profile could not be updated.",
   "entryUpdateFailed": "The drink entry could not be updated.",
   "entryDeleteFailed": "The drink entry could not be deleted.",
+  "friendProfileLinkInvalid": "The profile link is invalid.",
+  "friendSelfRequestBlocked": "You cannot add yourself as a friend.",
+  "friendRequestAcceptFailed": "The friend request could not be accepted.",
+  "friendRequestRejectFailed": "The friend request could not be rejected.",
+  "friendRequestCancelFailed": "The friend request could not be withdrawn.",
+  "friendRemoveFailed": "The friend could not be removed.",
   "customDrinkDeleteFailed": "The custom drink could not be deleted.",
   "customDrinkAlreadyExists": "You already have a custom drink with that name.",
   "signUpMissingUser": "Sign-up did not return a user.",

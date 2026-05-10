@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-05-11
+### Added
+- Social & Friends
+  - Public profile page which can be shared with friends
+  - Public profile link has a nice messenger preview
+  - Accept/decline/withdraw friend requests
+  - Friend profile statistics screen
+  - Deep linking: profile links open the Glass Trail app when installed, otherwise they show the web version
+  - Feed: See drink entries from friends
+  - Feed: Cheers reactions on drinks
+- Notifications
+  - Added dedicated notifications screen
+  - Push notifications are now being created for the following events:
+    - friend logged a new drink
+    - friend cheered one of your drinks
+    - friend request sent
+    - friend request accepted
+    - friend request rejected
+    - friend removed
+- Track alcohol-free beer separately in drink metadata and statistics.
+- Added SonarQube analysis
+- Feed cheers reactions with notifications
+- Feed: change drink type while editing entries
+
+### Fixed
+- Fix map under Android
+
+## [1.2.1] - 2026-04-13
+### Fixed
+- Fix failing tests in CI pipeline
+- apk now correctly named glasstrail-vX.X.X-release.apk
+
 ## [1.2.0] - 2026-04-13
 ### Added
 - Language picker in auth page
@@ -65,6 +97,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - settings
   - login
 
+[2.0.0]: https://github.com/donjoergo/glasstrail/compare/1.2.1...2.0.0
+[1.2.1]: https://github.com/donjoergo/glasstrail/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/donjoergo/glasstrail/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/donjoergo/glasstrail/compare/1.0.1...1.1.0
 [1.0.1]: https://github.com/donjoergo/glasstrail/releases/tag/1.0.1

@@ -50,3 +50,5 @@ app.*.map.json
 
 /resources
 .codex
+supabase/.temp/cli-latest
+supabase/.temp/linked-project.json

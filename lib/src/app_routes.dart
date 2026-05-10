@@ -11,10 +11,20 @@ class AppRoutes {
   static const barSorting = '/bar/sorting';
   static const barCustom = '/bar/custom';
   static const profile = '/profile';
+  static const notifications = '/notifications';
+  static const friendProfilePrefix = '/friends/profile/';
+  static const friendStatsProfilePrefix = '/friends/view/';
   static const addDrink = '/add-drink';
   static const editProfile = '/profile/edit';
 
   static String normalize(String? routeName) {
+    final candidate = routeName == null || routeName.isEmpty
+        ? root
+        : routeName.split('?').first;
+    if (isFriendProfileRoute(candidate) ||
+        isFriendStatsProfileRoute(candidate)) {
+      return candidate;
+    }
     return switch (routeName) {
       null || '' => root,
       root ||
@@ -29,10 +39,57 @@ class AppRoutes {
       barSorting ||
       barCustom ||
       profile ||
+      notifications ||
       addDrink ||
       editProfile => routeName,
       _ => root,
     };
+  }
+
+  static String friendProfileRoute(String shareCode) {
+    return '$friendProfilePrefix${Uri.encodeComponent(shareCode)}';
+  }
+
+  static String friendStatsProfileRoute(String friendUserId) {
+    return '$friendStatsProfilePrefix${Uri.encodeComponent(friendUserId)}';
+  }
+
+  static bool isFriendProfileRoute(String? routeName) {
+    final normalized = routeName?.split('?').first ?? '';
+    return normalized.startsWith(friendProfilePrefix) &&
+        normalized.length > friendProfilePrefix.length;
+  }
+
+  static bool isFriendStatsProfileRoute(String? routeName) {
+    final normalized = routeName?.split('?').first ?? '';
+    return normalized.startsWith(friendStatsProfilePrefix) &&
+        normalized.length > friendStatsProfilePrefix.length;
+  }
+
+  static bool isExplicitPostAuthRedirectRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    return isFriendProfileRoute(normalized) ||
+        isFriendStatsProfileRoute(normalized);
+  }
+
+  static String? friendProfileShareCode(String? routeName) {
+    final normalized = normalize(routeName);
+    if (!isFriendProfileRoute(normalized)) {
+      return null;
+    }
+    return Uri.decodeComponent(
+      normalized.substring(friendProfilePrefix.length),
+    );
+  }
+
+  static String? friendStatsProfileUserId(String? routeName) {
+    final normalized = normalize(routeName);
+    if (!isFriendStatsProfileRoute(normalized)) {
+      return null;
+    }
+    return Uri.decodeComponent(
+      normalized.substring(friendStatsProfilePrefix.length),
+    );
   }
 
   static bool isStatisticsRoute(String? routeName) {
@@ -78,6 +135,10 @@ class AppRoutes {
 
   static String postAuthRoute(String? routeName) {
     final normalized = normalize(routeName);
+    if (isFriendProfileRoute(normalized) ||
+        isFriendStatsProfileRoute(normalized)) {
+      return normalized;
+    }
     return switch (normalized) {
       feed ||
       statistics ||
@@ -89,6 +150,7 @@ class AppRoutes {
       barSorting ||
       barCustom ||
       profile ||
+      notifications ||
       addDrink ||
       editProfile => normalized,
       _ => feed,
@@ -97,6 +159,31 @@ class AppRoutes {
 
   static bool isRestorable(String? routeName) {
     final normalized = normalize(routeName);
+    if (isFriendProfileRoute(normalized) ||
+        isFriendStatsProfileRoute(normalized)) {
+      return true;
+    }
+    return switch (normalized) {
+      feed ||
+      statistics ||
+      statisticsOverview ||
+      statisticsMap ||
+      statisticsGallery ||
+      statisticsHistory ||
+      bar ||
+      barSorting ||
+      barCustom ||
+      profile => true,
+      _ => false,
+    };
+  }
+
+  static bool isPostAuthRoute(String? routeName) {
+    final normalized = normalize(routeName);
+    if (isFriendProfileRoute(normalized) ||
+        isFriendStatsProfileRoute(normalized)) {
+      return true;
+    }
     return switch (normalized) {
       feed ||
       statistics ||
@@ -108,6 +195,7 @@ class AppRoutes {
       barSorting ||
       barCustom ||
       profile ||
+      notifications ||
       addDrink ||
       editProfile => true,
       _ => false,

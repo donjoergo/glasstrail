@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -17,9 +16,9 @@ import '../l10n_extensions.dart';
 import '../maplibre_web_registration.dart' as maplibre_web_registration;
 import '../models.dart';
 import '../runtime_platform.dart' as runtime_platform;
-import '../stats_calculator.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
+import '../widgets/statistics_overview_content.dart';
 
 part 'statistics/statistics_screen_overview.dart';
 part 'statistics/statistics_screen_map_logic.dart';
@@ -40,20 +39,6 @@ Future<void> _refreshStatistics(BuildContext context) async {
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
-}
-
-Map<DrinkCategory, Color> _statisticsCategoryColors(ThemeData theme) {
-  return <DrinkCategory, Color>{
-    DrinkCategory.beer: theme.colorScheme.primary,
-    DrinkCategory.wine: theme.colorScheme.secondary,
-    DrinkCategory.sparklingWines: theme.colorScheme.secondaryContainer,
-    DrinkCategory.longdrinks: theme.colorScheme.tertiaryContainer,
-    DrinkCategory.spirits: theme.colorScheme.tertiary,
-    DrinkCategory.shots: theme.colorScheme.errorContainer,
-    DrinkCategory.cocktails: theme.colorScheme.error,
-    DrinkCategory.appleWines: theme.colorScheme.surfaceContainerHighest,
-    DrinkCategory.nonAlcoholic: theme.colorScheme.primaryContainer,
-  };
 }
 
 bool _statisticsGalleryHasImage(DrinkEntry entry) {
@@ -198,48 +183,5 @@ class _StatisticsEmptyStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppEmptyStateCard(icon: icon, title: title, body: body);
-  }
-}
-
-class _StatisticsLegendChip extends StatelessWidget {
-  const _StatisticsLegendChip({
-    required this.iconKey,
-    required this.label,
-    required this.icon,
-    required this.accentColor,
-  });
-
-  final Key iconKey;
-  final String label;
-  final IconData icon;
-  final Color accentColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          accentColor.withValues(alpha: 0.1),
-          theme.colorScheme.surface,
-        ),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, key: iconKey, size: 18, color: accentColor),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

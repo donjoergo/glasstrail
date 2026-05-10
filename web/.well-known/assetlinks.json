@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.glasstrail.glasstrail",
+      "sha256_cert_fingerprints": [
+        "35:35:85:92:EB:7A:AC:68:C9:FE:CA:3C:FF:14:2B:C2:47:59:DC:56:6C:F6:E8:B1:E4:6F:89:CB:41:E2:68:57"
+      ]
+    }
+  }
+]

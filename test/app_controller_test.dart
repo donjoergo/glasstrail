@@ -6,7 +6,9 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/beer_with_me_import.dart';
+import 'package:glasstrail/src/friend_stats_profile.dart';
 import 'package:glasstrail/src/models.dart';
+import 'package:glasstrail/src/push_notification_service.dart';
 import 'package:glasstrail/src/repository/app_repository.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/stats_calculator.dart';
@@ -26,7 +28,10 @@ void main() {
     expect(repository.restoreSessionCalls, 1);
     expect(repository.loadCustomDrinksCalls, 0);
     expect(repository.loadEntriesCalls, 0);
+    expect(repository.loadFeedDrinkPostsCalls, 0);
     expect(repository.loadSettingsCalls, 0);
+    expect(repository.loadFriendConnectionsCalls, 0);
+    expect(repository.loadNotificationsCalls, 0);
 
     repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
     repository.restoreSessionCompleter.complete(
@@ -41,15 +46,28 @@ void main() {
 
     expect(repository.loadCustomDrinksCalls, 1);
     expect(repository.loadEntriesCalls, 1);
+    expect(repository.loadFeedDrinkPostsCalls, 1);
     expect(repository.loadSettingsCalls, 1);
+    expect(repository.loadFriendConnectionsCalls, 1);
+    expect(repository.loadNotificationsCalls, 1);
 
     repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
     repository.entriesCompleter.complete(const <DrinkEntry>[]);
+    repository.feedPostsCompleter.complete(
+      const FeedDrinkPostPage(
+        posts: <FeedDrinkPost>[],
+        cursor: null,
+        hasMore: false,
+      ),
+    );
     repository.settingsCompleter.complete(UserSettings.defaults());
+    repository.friendConnectionsCompleter.complete(const <FriendConnection>[]);
+    repository.notificationsCompleter.complete(const <AppNotification>[]);
 
     final controller = await bootstrapFuture;
     expect(controller.isAuthenticated, isTrue);
     expect(controller.availableDrinks, isNotEmpty);
+    expect(controller.notifications, isEmpty);
   });
 
   test('refreshes app data through the repository again', () async {
@@ -64,7 +82,16 @@ void main() {
     );
     repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
     repository.entriesCompleter.complete(const <DrinkEntry>[]);
+    repository.feedPostsCompleter.complete(
+      const FeedDrinkPostPage(
+        posts: <FeedDrinkPost>[],
+        cursor: null,
+        hasMore: false,
+      ),
+    );
     repository.settingsCompleter.complete(UserSettings.defaults());
+    repository.friendConnectionsCompleter.complete(const <FriendConnection>[]);
+    repository.notificationsCompleter.complete(const <AppNotification>[]);
 
     final controller = await AppController.bootstrapWithRepository(repository);
 
@@ -74,8 +101,489 @@ void main() {
     expect(repository.loadDefaultCatalogCalls, 2);
     expect(repository.loadCustomDrinksCalls, 2);
     expect(repository.loadEntriesCalls, 2);
+    expect(repository.loadFeedDrinkPostsCalls, 2);
     expect(repository.loadSettingsCalls, 2);
+    expect(repository.loadFriendConnectionsCalls, 2);
+    expect(repository.loadNotificationsCalls, 2);
   });
+
+  test('accepting a friend request refreshes feed posts', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final requester = await repository.signUp(
+      email: 'accept-refresh-requester@example.com',
+      password: 'password123',
+      displayName: 'Accept Refresh Requester',
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final requesterEntry = await repository.addDrinkEntry(
+      user: requester,
+      drink: drink,
+      comment: 'Visible after accept',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'accept-refresh-addressee@example.com',
+      password: 'password123',
+      displayName: 'Accept Refresh Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      isNot(contains(requesterEntry.id)),
+    );
+
+    final success = await controller.acceptFriendRequest(
+      controller.incomingFriendRequests.single,
+    );
+
+    expect(success, isTrue);
+    expect(controller.friends, hasLength(1));
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      contains(requesterEntry.id),
+    );
+  });
+
+  test('removing a friend drops their feed posts', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final friend = await repository.signUp(
+      email: 'remove-refresh-friend@example.com',
+      password: 'password123',
+      displayName: 'Remove Refresh Friend',
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final friendEntry = await repository.addDrinkEntry(
+      user: friend,
+      drink: drink,
+      comment: 'Should disappear after remove',
+    );
+    final friendProfile = await repository.getOwnFriendProfile(friend.id);
+    await repository.signOut();
+    final user = await repository.signUp(
+      email: 'remove-refresh-user@example.com',
+      password: 'password123',
+      displayName: 'Remove Refresh User',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: user.id,
+      shareCode: friendProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: friend.id,
+      relationshipId: connections.single.id,
+    );
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      contains(friendEntry.id),
+    );
+
+    final success = await controller.removeFriend(controller.friends.single);
+
+    expect(success, isTrue);
+    expect(controller.friends, isEmpty);
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      isNot(contains(friendEntry.id)),
+    );
+  });
+
+  test(
+    'refreshing an accepted friend notification reloads friends and feed',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final addressee = await repository.signUp(
+        email: 'accepted-notification-addressee@example.com',
+        password: 'password123',
+        displayName: 'Accepted Notification Addressee',
+      );
+      final drink = (await repository.loadDefaultCatalog()).firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final addresseeEntry = await repository.addDrinkEntry(
+        user: addressee,
+        drink: drink,
+        comment: 'Visible after notification refresh',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+      await repository.signOut();
+      final requester = await repository.signUp(
+        email: 'accepted-notification-requester@example.com',
+        password: 'password123',
+        displayName: 'Accepted Notification Requester',
+      );
+      final connections = await repository.sendFriendRequestToProfile(
+        userId: requester.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      expect(
+        controller.feedPosts.map((post) => post.entry.id),
+        isNot(contains(addresseeEntry.id)),
+      );
+
+      await repository.acceptFriendRequest(
+        userId: addressee.id,
+        relationshipId: connections.single.id,
+      );
+      final notification = (await repository.loadNotifications(requester.id))
+          .firstWhere(
+            (candidate) =>
+                candidate.type == AppNotificationTypes.friendRequestAccepted,
+          );
+
+      final success = await controller.refreshForNotification(notification);
+
+      expect(success, isTrue);
+      expect(controller.friends, hasLength(1));
+      expect(
+        controller.feedPosts.map((post) => post.entry.id),
+        contains(addresseeEntry.id),
+      );
+    },
+  );
+
+  test('refreshing a removed friend notification drops feed posts', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final friend = await repository.signUp(
+      email: 'removed-notification-friend@example.com',
+      password: 'password123',
+      displayName: 'Removed Notification Friend',
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final friendEntry = await repository.addDrinkEntry(
+      user: friend,
+      drink: drink,
+      comment: 'Removed after notification refresh',
+    );
+    final friendProfile = await repository.getOwnFriendProfile(friend.id);
+    await repository.signOut();
+    final user = await repository.signUp(
+      email: 'removed-notification-user@example.com',
+      password: 'password123',
+      displayName: 'Removed Notification User',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: user.id,
+      shareCode: friendProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: friend.id,
+      relationshipId: connections.single.id,
+    );
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      contains(friendEntry.id),
+    );
+
+    await repository.removeFriend(userId: friend.id, friendUserId: user.id);
+    final notification = (await repository.loadNotifications(user.id))
+        .firstWhere(
+          (candidate) => candidate.type == AppNotificationTypes.friendRemoved,
+        );
+
+    final success = await controller.refreshForNotification(notification);
+
+    expect(success, isTrue);
+    expect(controller.friends, isEmpty);
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      isNot(contains(friendEntry.id)),
+    );
+  });
+
+  test('optimistically toggles cheers with per-entry pending state', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _BlockingCheersLocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final logger = await repository.signUp(
+      email: 'controller-cheers-logger@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Logger',
+    );
+    final loggerProfile = await repository.getOwnFriendProfile(logger.id);
+    await repository.signOut();
+    final cheerer = await repository.signUp(
+      email: 'controller-cheers-cheerer@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Cheerer',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: cheerer.id,
+      shareCode: loggerProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: logger.id,
+      relationshipId: connections.single.id,
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final entry = await repository.addDrinkEntry(user: logger, drink: drink);
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final post = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+
+    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    await repository.setCheersStarted.future;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.isFeedEntryCheersPending(entry.id), isTrue);
+    final optimisticPost = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+    expect(optimisticPost.cheersCount, 1);
+    expect(optimisticPost.hasCurrentUserCheered, isTrue);
+
+    repository.unblockSetCheers();
+    final success = await toggleFuture;
+
+    expect(success, isTrue);
+    expect(controller.isFeedEntryCheersPending(entry.id), isFalse);
+    final confirmedPost = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+    expect(confirmedPost.cheersCount, 1);
+    expect(confirmedPost.hasCurrentUserCheered, isTrue);
+  });
+
+  test('rolls back optimistic cheers when the repository call fails', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _BlockingCheersLocalAppRepository(
+      await SharedPreferences.getInstance(),
+    )..failSetCheers = true;
+    final logger = await repository.signUp(
+      email: 'controller-cheers-fail-logger@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Fail Logger',
+    );
+    final loggerProfile = await repository.getOwnFriendProfile(logger.id);
+    await repository.signOut();
+    final cheerer = await repository.signUp(
+      email: 'controller-cheers-fail-cheerer@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Fail Cheerer',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: cheerer.id,
+      shareCode: loggerProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: logger.id,
+      relationshipId: connections.single.id,
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final entry = await repository.addDrinkEntry(user: logger, drink: drink);
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final post = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+
+    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    await repository.setCheersStarted.future;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.isFeedEntryCheersPending(entry.id), isTrue);
+
+    repository.unblockSetCheers();
+    final success = await toggleFuture;
+
+    expect(success, isFalse);
+    expect(controller.isFeedEntryCheersPending(entry.id), isFalse);
+    final rolledBackPost = controller.feedPosts.firstWhere(
+      (candidate) => candidate.entry.id == entry.id,
+    );
+    expect(rolledBackPost.cheersCount, 0);
+    expect(rolledBackPost.hasCurrentUserCheered, isFalse);
+    expect(
+      controller.takeFlashMessage(_l10n('en')),
+      _l10n('en').somethingWentWrong,
+    );
+  });
+
+  test('refreshing a cheers notification reloads feed cheers state', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final owner = await repository.signUp(
+      email: 'controller-cheers-owner@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Owner',
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final entry = await repository.addDrinkEntry(user: owner, drink: drink);
+    final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+    await repository.signOut();
+    final friend = await repository.signUp(
+      email: 'controller-cheers-owner-friend@example.com',
+      password: 'password123',
+      displayName: 'Controller Cheers Owner Friend',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: friend.id,
+      shareCode: ownerProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: owner.id,
+      relationshipId: connections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'controller-cheers-owner@example.com',
+      password: 'password123',
+    );
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+    expect(
+      controller.feedPosts
+          .firstWhere((post) => post.entry.id == entry.id)
+          .cheersCount,
+      0,
+    );
+
+    await repository.setFeedEntryCheers(
+      userId: friend.id,
+      entryId: entry.id,
+      shouldCheer: true,
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    final notification = controller.notifications.firstWhere(
+      (candidate) => candidate.type == AppNotificationTypes.friendDrinkCheered,
+    );
+    final success = await controller.refreshForNotification(notification);
+
+    expect(success, isTrue);
+    final refreshedPost = controller.feedPosts.firstWhere(
+      (post) => post.entry.id == entry.id,
+    );
+    expect(refreshedPost.cheersCount, 1);
+    expect(refreshedPost.hasCurrentUserCheered, isFalse);
+  });
+
+  test(
+    'refreshing a friend notification catches both refresh failures',
+    () async {
+      final repository = _BootstrapProbeRepository();
+      repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
+      repository.restoreSessionCompleter.complete(
+        const AppUser(
+          id: 'user-1',
+          email: 'user@example.com',
+          displayName: 'User Example',
+        ),
+      );
+      repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
+      repository.entriesCompleter.complete(const <DrinkEntry>[]);
+      repository.feedPostsCompleter.complete(
+        const FeedDrinkPostPage(
+          posts: <FeedDrinkPost>[],
+          cursor: null,
+          hasMore: false,
+        ),
+      );
+      repository.settingsCompleter.complete(UserSettings.defaults());
+      repository.friendConnectionsCompleter.complete(
+        const <FriendConnection>[],
+      );
+      repository.notificationsCompleter.complete(const <AppNotification>[]);
+
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      late Completer<List<FriendConnection>> friendConnectionsCompleter;
+      late Completer<FeedDrinkPostPage> feedPostsCompleter;
+      repository.onLoadFriendConnections = (_) {
+        friendConnectionsCompleter = Completer<List<FriendConnection>>();
+        return friendConnectionsCompleter.future;
+      };
+      repository.onLoadFeedDrinkPosts =
+          ({
+            required String userId,
+            FeedDrinkPostCursor? cursor,
+            int limit = 20,
+          }) {
+            feedPostsCompleter = Completer<FeedDrinkPostPage>();
+            return feedPostsCompleter.future;
+          };
+
+      final uncaughtErrors = <Object>[];
+      final success = await runZonedGuarded<Future<bool>>(
+        () async {
+          final refreshFuture = controller.refreshForNotification(
+            AppNotification(
+              id: 'notification-1',
+              recipientUserId: 'user-1',
+              senderUserId: 'friend-1',
+              senderDisplayName: 'Friend Example',
+              type: AppNotificationTypes.friendRequestAccepted,
+              createdAt: DateTime.utc(2026, 5, 6),
+            ),
+          );
+          friendConnectionsCompleter.completeError(
+            const AppException('friends failed'),
+          );
+          await Future<void>.delayed(Duration.zero);
+          feedPostsCompleter.completeError(const AppException('feed failed'));
+          final success = await refreshFuture;
+          await Future<void>.delayed(Duration.zero);
+          return success;
+        },
+        (error, stack) {
+          uncaughtErrors.add(error);
+        },
+      )!;
+
+      expect(success, isFalse);
+      expect(uncaughtErrors, isEmpty);
+    },
+  );
 
   test('tracks sign-up as the active busy action while pending', () async {
     final repository = await buildBlockingLocalRepository(
@@ -128,6 +636,285 @@ void main() {
     expect(controller.isBusy, isFalse);
     expect(controller.busyAction, isNull);
   });
+
+  test('counts unread notifications and marks them read', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final requester = await repository.signUp(
+      email: 'controller-notify-requester@example.com',
+      password: 'password123',
+      displayName: 'Controller Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'controller-notify-addressee@example.com',
+      password: 'password123',
+      displayName: 'Controller Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    expect(controller.notifications, hasLength(1));
+    expect(controller.unreadNotificationCount, 1);
+
+    final success = await controller.markAllNotificationsRead();
+
+    expect(success, isTrue);
+    expect(controller.unreadNotificationCount, 0);
+    expect(controller.notifications.single.isRead, isTrue);
+  });
+
+  test('keeps local notification reads over stale stream snapshots', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _ManualNotificationStreamLocalRepository(
+      await SharedPreferences.getInstance(),
+    );
+    addTearDown(repository.dispose);
+    final requester = await repository.signUp(
+      email: 'stale-notify-requester@example.com',
+      password: 'password123',
+      displayName: 'Stale Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'stale-notify-addressee@example.com',
+      password: 'password123',
+      displayName: 'Stale Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final staleNotification = (await repository.loadNotifications(
+      addressee.id,
+    )).single;
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    expect(controller.unreadNotificationCount, 1);
+
+    final success = await controller.markNotificationsRead(<String>[
+      staleNotification.id,
+    ]);
+    repository.emitNotifications(<AppNotification>[staleNotification]);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(success, isTrue);
+    expect(controller.unreadNotificationCount, 0);
+    expect(controller.notifications.single.isRead, isTrue);
+  });
+
+  test('rolls back only the failed optimistic notification read', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _ManualNotificationStreamLocalRepository(
+      await SharedPreferences.getInstance(),
+    );
+    addTearDown(repository.dispose);
+    final addressee = await repository.signUp(
+      email: 'partial-read-addressee@example.com',
+      password: 'password123',
+      displayName: 'Partial Read Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.signOut();
+    final requesterOne = await repository.signUp(
+      email: 'partial-read-requester-one@example.com',
+      password: 'password123',
+      displayName: 'Partial Read One',
+    );
+    await repository.sendFriendRequestToProfile(
+      userId: requesterOne.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    await repository.signOut();
+    final requesterTwo = await repository.signUp(
+      email: 'partial-read-requester-two@example.com',
+      password: 'password123',
+      displayName: 'Partial Read Two',
+    );
+    await repository.sendFriendRequestToProfile(
+      userId: requesterTwo.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'partial-read-addressee@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final firstNotification = controller.notifications.first;
+    final secondNotification = controller.notifications.last;
+
+    expect(
+      await controller.markNotificationsRead(<String>[firstNotification.id]),
+      isTrue,
+    );
+
+    repository.failNextMark = true;
+    final success = await controller.markNotificationsRead(<String>[
+      secondNotification.id,
+    ]);
+
+    expect(success, isFalse);
+    expect(
+      controller.notifications
+          .firstWhere((notification) => notification.id == firstNotification.id)
+          .isRead,
+      isTrue,
+    );
+    expect(
+      controller.notifications
+          .firstWhere(
+            (notification) => notification.id == secondNotification.id,
+          )
+          .isUnread,
+      isTrue,
+    );
+    expect(controller.unreadNotificationCount, 1);
+  });
+
+  test(
+    'keeps authentication successful when token registration fails',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = _FailingTokenLocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+        pushNotificationService: const _StaticPushNotificationService(
+          PushDeviceToken(token: 'fcm-token', platform: 'android'),
+        ),
+      );
+
+      final success = await controller.signUp(
+        email: 'push-best-effort@example.com',
+        password: 'password123',
+        displayName: 'Push Best Effort',
+      );
+
+      expect(success, isTrue);
+      expect(controller.isAuthenticated, isTrue);
+      expect(repository.registerCalls, 1);
+    },
+  );
+
+  test('unregisters push token when sign-out wins registration race', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = _DelayedTokenLocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final controller = await AppController.bootstrapWithRepository(
+      repository,
+      pushNotificationService: const _StaticPushNotificationService(
+        PushDeviceToken(token: 'race-token', platform: 'android'),
+      ),
+    );
+
+    final signUpFuture = controller.signUp(
+      email: 'push-race@example.com',
+      password: 'password123',
+      displayName: 'Push Race',
+    );
+    await repository.registerStarted.future;
+
+    final signOutSuccess = await controller.signOut();
+    expect(signOutSuccess, isTrue);
+    expect(controller.isAuthenticated, isFalse);
+
+    repository.completeRegistration();
+    expect(await signUpFuture, isTrue);
+
+    expect(repository.registeredTokens, hasLength(1));
+    expect(repository.unregisteredTokens, hasLength(1));
+    expect(
+      repository.unregisteredTokens.single.userId,
+      repository.registeredTokens.single.userId,
+    );
+    expect(repository.unregisteredTokens.single.token, 'race-token');
+    expect(controller.isAuthenticated, isFalse);
+  });
+
+  test(
+    'retries push token unregister after a transient sign-out failure',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = _FailingOnceTokenCleanupLocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+        pushNotificationService: const _StaticPushNotificationService(
+          PushDeviceToken(token: 'retry-token', platform: 'android'),
+        ),
+      );
+
+      expect(
+        await controller.signUp(
+          email: 'push-retry@example.com',
+          password: 'password123',
+          displayName: 'Push Retry',
+        ),
+        isTrue,
+      );
+
+      expect(await controller.signOut(), isTrue);
+      expect(controller.isAuthenticated, isFalse);
+      expect(repository.unregisterCalls, 1);
+
+      repository.failUnregister = false;
+      expect(await controller.signOut(), isTrue);
+      expect(repository.unregisterCalls, 2);
+      expect(repository.unregisteredTokens.single.token, 'retry-token');
+    },
+  );
+
+  test(
+    'awaits push token subscription cancellation before unregistering',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final tokenRefreshes = _ControlledPushTokenRefreshStream();
+      final repository = _OrderingTokenCleanupLocalAppRepository(
+        await SharedPreferences.getInstance(),
+        isCancellationComplete: () => tokenRefreshes.cancelCompleted,
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+        pushNotificationService: _ControlledPushNotificationService(
+          token: const PushDeviceToken(
+            token: 'ordered-token',
+            platform: 'android',
+          ),
+          refreshStream: tokenRefreshes,
+        ),
+      );
+
+      expect(
+        await controller.signUp(
+          email: 'push-order@example.com',
+          password: 'password123',
+          displayName: 'Push Order',
+        ),
+        isTrue,
+      );
+
+      final signOutFuture = controller.signOut();
+      await tokenRefreshes.cancelStarted.future;
+      expect(repository.unregisterSawPendingCancellation, isFalse);
+
+      tokenRefreshes.completeCancel();
+      expect(await signOutFuture, isTrue);
+      expect(repository.unregisterSawPendingCancellation, isFalse);
+      expect(repository.unregisterCalls, 1);
+    },
+  );
 
   test('localizes success flash messages and drink names', () async {
     final controller = await buildTestController();
@@ -638,6 +1425,82 @@ void main() {
   });
 
   test(
+    'updates drink snapshot fields and switches to the new default volume',
+    () async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'swap-entry-default@example.com',
+        password: 'password123',
+        displayName: 'Swap Entry Default',
+      );
+      controller.takeFlashMessage(_l10n('en'));
+
+      final water = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'nonAlcoholic-water',
+      );
+      final pils = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      await controller.addDrinkEntry(
+        drink: water,
+        volumeMl: water.volumeMl,
+        comment: 'Keep the note',
+      );
+
+      final success = await controller.updateDrinkEntry(
+        entry: controller.entries.single,
+        replacementDrink: pils,
+        comment: controller.entries.single.comment,
+      );
+
+      expect(success, isTrue);
+      final updated = controller.entries.single;
+      expect(updated.drinkId, pils.id);
+      expect(updated.drinkName, pils.name);
+      expect(updated.category, pils.category);
+      expect(updated.isAlcoholFree, pils.isEffectivelyAlcoholFree);
+      expect(updated.volumeMl, pils.volumeMl);
+      expect(updated.comment, 'Keep the note');
+    },
+  );
+
+  test('keeps a custom logged volume when changing the drink type', () async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'swap-entry-custom-volume@example.com',
+      password: 'password123',
+      displayName: 'Swap Entry Custom Volume',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    final water = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'nonAlcoholic-water',
+    );
+    final pils = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: water,
+      volumeMl: 300,
+      comment: 'Custom pour',
+    );
+
+    final success = await controller.updateDrinkEntry(
+      entry: controller.entries.single,
+      replacementDrink: pils,
+      comment: controller.entries.single.comment,
+    );
+
+    expect(success, isTrue);
+    final updated = controller.entries.single;
+    expect(updated.drinkId, pils.id);
+    expect(updated.drinkName, pils.name);
+    expect(updated.category, pils.category);
+    expect(updated.volumeMl, 300);
+    expect(updated.comment, 'Custom pour');
+  });
+
+  test(
     'deletes a custom drink and emits a localized success message',
     () async {
       final controller = await buildTestController();
@@ -761,18 +1624,309 @@ void main() {
   });
 }
 
+class _ManualNotificationStreamLocalRepository extends LocalAppRepository {
+  _ManualNotificationStreamLocalRepository(super.preferences);
+
+  final StreamController<List<AppNotification>> _notificationsController =
+      StreamController<List<AppNotification>>.broadcast();
+  bool failNextMark = false;
+
+  @override
+  Stream<List<AppNotification>> watchNotifications(String userId) {
+    return _notificationsController.stream;
+  }
+
+  @override
+  Future<List<AppNotification>> markNotificationsRead({
+    required String userId,
+    required List<String> notificationIds,
+  }) {
+    if (failNextMark) {
+      failNextMark = false;
+      throw const AppException('Notification read failed.');
+    }
+    return super.markNotificationsRead(
+      userId: userId,
+      notificationIds: notificationIds,
+    );
+  }
+
+  void emitNotifications(List<AppNotification> notifications) {
+    _notificationsController.add(notifications);
+  }
+
+  Future<void> dispose() => _notificationsController.close();
+}
+
+class _BlockingCheersLocalAppRepository extends LocalAppRepository {
+  _BlockingCheersLocalAppRepository(super.preferences);
+
+  final setCheersStarted = Completer<void>();
+  final _setCheersCompleter = Completer<void>();
+  bool failSetCheers = false;
+
+  void unblockSetCheers() {
+    if (!_setCheersCompleter.isCompleted) {
+      _setCheersCompleter.complete();
+    }
+  }
+
+  @override
+  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+    required String userId,
+    required String entryId,
+    required bool shouldCheer,
+  }) async {
+    if (!setCheersStarted.isCompleted) {
+      setCheersStarted.complete();
+    }
+    await _setCheersCompleter.future;
+    if (failSetCheers) {
+      throw const AppException('Cheers failed.');
+    }
+    return super.setFeedEntryCheers(
+      userId: userId,
+      entryId: entryId,
+      shouldCheer: shouldCheer,
+    );
+  }
+}
+
+class _StaticPushNotificationService extends PushNotificationService {
+  const _StaticPushNotificationService(this.token);
+
+  final PushDeviceToken token;
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() async => token;
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes =>
+      const Stream<PushDeviceToken>.empty();
+
+  @override
+  Future<PushNotificationOpen?> consumeInitialOpen() async => null;
+
+  @override
+  Stream<PushNotificationOpen> get openedNotifications =>
+      const Stream<PushNotificationOpen>.empty();
+}
+
+class _ControlledPushNotificationService extends PushNotificationService {
+  const _ControlledPushNotificationService({
+    required this.token,
+    required this.refreshStream,
+  });
+
+  final PushDeviceToken token;
+  final _ControlledPushTokenRefreshStream refreshStream;
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() async => token;
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes => refreshStream;
+
+  @override
+  Future<PushNotificationOpen?> consumeInitialOpen() async => null;
+
+  @override
+  Stream<PushNotificationOpen> get openedNotifications =>
+      const Stream<PushNotificationOpen>.empty();
+}
+
+class _ControlledPushTokenRefreshStream extends Stream<PushDeviceToken> {
+  final cancelStarted = Completer<void>();
+  final _cancelCompleter = Completer<void>();
+
+  bool get cancelCompleted => _cancelCompleter.isCompleted;
+
+  void completeCancel() {
+    if (!_cancelCompleter.isCompleted) {
+      _cancelCompleter.complete();
+    }
+  }
+
+  @override
+  StreamSubscription<PushDeviceToken> listen(
+    void Function(PushDeviceToken event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _ControlledPushTokenRefreshSubscription(
+      onCancel: () {
+        if (!cancelStarted.isCompleted) {
+          cancelStarted.complete();
+        }
+        return _cancelCompleter.future;
+      },
+    );
+  }
+}
+
+class _ControlledPushTokenRefreshSubscription
+    implements StreamSubscription<PushDeviceToken> {
+  _ControlledPushTokenRefreshSubscription({required this.onCancel});
+
+  final Future<void> Function() onCancel;
+
+  @override
+  Future<void> cancel() => onCancel();
+
+  @override
+  void onData(void Function(PushDeviceToken data)? handleData) {}
+
+  @override
+  void onError(Function? handleError) {}
+
+  @override
+  void onDone(void Function()? handleDone) {}
+
+  @override
+  void pause([Future<void>? resumeSignal]) {}
+
+  @override
+  void resume() {}
+
+  @override
+  bool get isPaused => false;
+
+  @override
+  Future<E> asFuture<E>([E? futureValue]) => Future<E>.value(futureValue);
+}
+
+class _FailingTokenLocalAppRepository extends LocalAppRepository {
+  _FailingTokenLocalAppRepository(super.preferences);
+
+  int registerCalls = 0;
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) async {
+    registerCalls++;
+    throw const AppException('Token registration failed.');
+  }
+}
+
+class _FailingOnceTokenCleanupLocalAppRepository extends LocalAppRepository {
+  _FailingOnceTokenCleanupLocalAppRepository(super.preferences);
+
+  bool failUnregister = true;
+  int unregisterCalls = 0;
+  final unregisteredTokens = <_TokenCall>[];
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) async {
+    unregisterCalls++;
+    if (failUnregister) {
+      throw const AppException('Token cleanup failed.');
+    }
+    unregisteredTokens.add(_TokenCall(userId: userId, token: token));
+  }
+}
+
+class _OrderingTokenCleanupLocalAppRepository extends LocalAppRepository {
+  _OrderingTokenCleanupLocalAppRepository(
+    super.preferences, {
+    required this.isCancellationComplete,
+  });
+
+  final bool Function() isCancellationComplete;
+  int unregisterCalls = 0;
+  bool unregisterSawPendingCancellation = false;
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) async {
+    unregisterCalls++;
+    if (!isCancellationComplete()) {
+      unregisterSawPendingCancellation = true;
+    }
+  }
+}
+
+class _DelayedTokenLocalAppRepository extends LocalAppRepository {
+  _DelayedTokenLocalAppRepository(super.preferences);
+
+  final registerStarted = Completer<void>();
+  final _registrationCompleter = Completer<void>();
+  final registeredTokens = <_TokenCall>[];
+  final unregisteredTokens = <_TokenCall>[];
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) {
+    registeredTokens.add(
+      _TokenCall(userId: userId, token: token, platform: platform),
+    );
+    if (!registerStarted.isCompleted) {
+      registerStarted.complete();
+    }
+    return _registrationCompleter.future;
+  }
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) async {
+    unregisteredTokens.add(_TokenCall(userId: userId, token: token));
+  }
+
+  void completeRegistration() {
+    if (!_registrationCompleter.isCompleted) {
+      _registrationCompleter.complete();
+    }
+  }
+}
+
+class _TokenCall {
+  const _TokenCall({required this.userId, required this.token, this.platform});
+
+  final String userId;
+  final String token;
+  final String? platform;
+}
+
 class _BootstrapProbeRepository implements AppRepository {
+  Future<FeedDrinkPostPage> Function({
+    required String userId,
+    FeedDrinkPostCursor? cursor,
+    int limit,
+  })?
+  onLoadFeedDrinkPosts;
+  Future<List<FriendConnection>> Function(String userId)?
+  onLoadFriendConnections;
+
   final defaultCatalogCompleter = Completer<List<DrinkDefinition>>();
   final restoreSessionCompleter = Completer<AppUser?>();
   final customDrinksCompleter = Completer<List<DrinkDefinition>>();
   final entriesCompleter = Completer<List<DrinkEntry>>();
+  final feedPostsCompleter = Completer<FeedDrinkPostPage>();
   final settingsCompleter = Completer<UserSettings>();
+  final friendConnectionsCompleter = Completer<List<FriendConnection>>();
+  final notificationsCompleter = Completer<List<AppNotification>>();
 
   int loadDefaultCatalogCalls = 0;
   int restoreSessionCalls = 0;
   int loadCustomDrinksCalls = 0;
   int loadEntriesCalls = 0;
+  int loadFeedDrinkPostsCalls = 0;
   int loadSettingsCalls = 0;
+  int loadFriendConnectionsCalls = 0;
+  int loadNotificationsCalls = 0;
 
   @override
   String get backendLabel => 'probe';
@@ -805,9 +1959,69 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
+  Future<FeedDrinkPostPage> loadFeedDrinkPosts({
+    required String userId,
+    FeedDrinkPostCursor? cursor,
+    int limit = 20,
+  }) {
+    loadFeedDrinkPostsCalls++;
+    final handler = onLoadFeedDrinkPosts;
+    if (handler != null) {
+      return handler(userId: userId, cursor: cursor, limit: limit);
+    }
+    return feedPostsCompleter.future;
+  }
+
+  @override
   Future<UserSettings> loadSettings(String userId) {
     loadSettingsCalls++;
     return settingsCompleter.future;
+  }
+
+  @override
+  Future<List<FriendConnection>> loadFriendConnections(String userId) {
+    loadFriendConnectionsCalls++;
+    final handler = onLoadFriendConnections;
+    if (handler != null) {
+      return handler(userId);
+    }
+    return friendConnectionsCompleter.future;
+  }
+
+  @override
+  Future<List<AppNotification>> loadNotifications(String userId) {
+    loadNotificationsCalls++;
+    return notificationsCompleter.future;
+  }
+
+  @override
+  Future<List<AppNotification>> markNotificationsRead({
+    required String userId,
+    required List<String> notificationIds,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<List<AppNotification>> watchNotifications(String userId) {
+    return const Stream<List<AppNotification>>.empty();
+  }
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  }) {
+    throw UnimplementedError();
   }
 
   @override
@@ -823,6 +2037,15 @@ class _BootstrapProbeRepository implements AppRepository {
     DateTime? consumedAt,
     String? importSource,
     String? importSourceId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+    required String userId,
+    required String entryId,
+    required bool shouldCheer,
   }) {
     throw UnimplementedError();
   }
@@ -844,12 +2067,76 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
+  Future<List<FriendConnection>> acceptFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<FriendProfile> getOwnFriendProfile(String userId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<FriendStatsProfile> loadFriendStatsProfile({
+    required String userId,
+    required String friendUserId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendConnection>> rejectFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendConnection>> removeFriend({
+    required String userId,
+    required String friendUserId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<FriendProfile> resolveFriendProfileLink(String shareCode) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<PublicFriendProfile> resolvePublicFriendProfileLink(String shareCode) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendConnection>> sendFriendRequestToProfile({
+    required String userId,
+    required String shareCode,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<DrinkDefinition> saveCustomDrink({
     required String userId,
     String? drinkId,
     required String name,
     required DrinkCategory category,
     double? volumeMl,
+    bool isAlcoholFree = false,
     String? imagePath,
   }) {
     throw UnimplementedError();
@@ -890,6 +2177,8 @@ class _BootstrapProbeRepository implements AppRepository {
   Future<DrinkEntry> updateDrinkEntry({
     required AppUser user,
     required DrinkEntry entry,
+    DrinkDefinition? replacementDrink,
+    double? volumeMl,
     String? comment,
     String? imagePath,
   }) {

@@ -1,0 +1,551 @@
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  notificationPushBody,
+  type NotificationPushInput,
+  notificationPushTitle,
+} from "../_shared/notification_l10n.ts";
+
+type NotificationRow = {
+  id: string;
+  recipient_user_id: string;
+  sender_user_id: string | null;
+  sender_display_name: string;
+  image_path: string | null;
+  type: string;
+  template_args: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+};
+
+type UserSettingsRow = {
+  user_id: string;
+  locale_code: string;
+};
+
+type DeviceTokenRow = {
+  token: string;
+  platform: string;
+};
+
+type DeviceTokenTableRow = DeviceTokenRow & {
+  user_id: string;
+};
+
+type FcmConfig = {
+  projectId: string;
+  clientEmail: string;
+  privateKey: string;
+};
+
+type FunctionDatabase = {
+  public: {
+    Tables: {
+      notifications: {
+        Row: NotificationRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      notification_device_tokens: {
+        Row: DeviceTokenTableRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      user_settings: {
+        Row: UserSettingsRow;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+  };
+};
+
+type AppSupabaseClient = SupabaseClient<FunctionDatabase>;
+
+const mediaBucket = "user-media";
+const androidNotificationChannelId = "glass_trail_notifications";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+let cachedAccessToken: { token: string; expiresAt: number } | null = null;
+
+Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "method_not_allowed" }, 405);
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ??
+    "";
+  if (supabaseUrl.length === 0 || serviceRoleKey.length === 0) {
+    return jsonResponse({ ok: true, pushEnabled: false }, 202);
+  }
+
+  if (!isServiceRoleRequest(request, serviceRoleKey)) {
+    return jsonResponse({ error: "unauthorized" }, 401);
+  }
+
+  const notificationId = await notificationIdFromRequest(request);
+  if (notificationId == null) {
+    return jsonResponse({ error: "invalid_notification_id" }, 400);
+  }
+
+  const fcmConfig = fcmConfigFromEnvironment();
+  if (fcmConfig == null) {
+    return jsonResponse({ ok: true, pushEnabled: false }, 202);
+  }
+
+  const client = createClient<FunctionDatabase>(supabaseUrl, serviceRoleKey);
+  const notification = await loadNotification(client, notificationId);
+  if (notification == null) {
+    return jsonResponse({ ok: true, sent: 0 }, 202);
+  }
+
+  const tokens = await loadAndroidTokens(
+    client,
+    notification.recipient_user_id,
+  );
+  if (tokens.length === 0) {
+    return jsonResponse({ ok: true, sent: 0 }, 202);
+  }
+
+  try {
+    const recipientLocale = await loadRecipientLocale(
+      client,
+      notification.recipient_user_id,
+    );
+    const imageUrl = await notificationImageUrl(
+      client,
+      notification.image_path,
+    );
+    const accessToken = await fcmAccessToken(fcmConfig);
+    let sent = 0;
+    let failed = 0;
+
+    for (const token of tokens) {
+      const result = await sendFcmMessage(fcmConfig, accessToken, {
+        notification,
+        token: token.token,
+        recipientLocale,
+        imageUrl,
+      });
+      if (result.ok) {
+        sent++;
+      } else {
+        failed++;
+        await deleteInvalidToken(client, token.token, result.responseText);
+      }
+    }
+
+    return jsonResponse({ ok: true, sent, failed }, 202);
+  } catch (error) {
+    console.error(error);
+    return jsonResponse({ ok: true, sent: 0, failed: tokens.length }, 202);
+  }
+});
+
+async function notificationIdFromRequest(
+  request: Request,
+): Promise<string | null> {
+  try {
+    const body = await request.json();
+    const notificationId = stringValue(body?.notificationId);
+    if (isUuid(notificationId)) {
+      return notificationId;
+    }
+
+    const webhookTable = stringValue(body?.table);
+    const recordId = stringValue(body?.record?.id);
+    if (
+      isUuid(recordId) &&
+      (webhookTable.length === 0 || webhookTable === "notifications")
+    ) {
+      return recordId;
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function isServiceRoleRequest(
+  request: Request,
+  serviceRoleKey: string,
+): boolean {
+  const authorization = request.headers.get("authorization")?.trim() ?? "";
+  return authorization === `Bearer ${serviceRoleKey}`;
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+async function loadNotification(
+  client: AppSupabaseClient,
+  notificationId: string,
+): Promise<NotificationRow | null> {
+  const { data, error } = await client
+    .from("notifications")
+    .select(
+      "id, recipient_user_id, sender_user_id, sender_display_name, image_path, type, template_args, metadata",
+    )
+    .eq("id", notificationId)
+    .maybeSingle();
+
+  if (error != null) {
+    throw error;
+  }
+  return data as NotificationRow | null;
+}
+
+async function loadRecipientLocale(
+  client: AppSupabaseClient,
+  userId: string,
+): Promise<string> {
+  const { data, error } = await client
+    .from("user_settings")
+    .select("locale_code")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error != null) {
+    console.error("Failed to load recipient locale", error);
+    return "en";
+  }
+  return normalizeLocale(data?.locale_code);
+}
+
+async function loadAndroidTokens(
+  client: AppSupabaseClient,
+  userId: string,
+): Promise<DeviceTokenRow[]> {
+  const { data, error } = await client
+    .from("notification_device_tokens")
+    .select("token, platform")
+    .eq("user_id", userId)
+    .eq("platform", "android");
+
+  if (error != null) {
+    throw error;
+  }
+  return (data ?? []) as DeviceTokenRow[];
+}
+
+async function sendFcmMessage(
+  config: FcmConfig,
+  accessToken: string,
+  input: {
+    notification: NotificationRow;
+    token: string;
+    recipientLocale: string;
+    imageUrl: string | null;
+  },
+): Promise<{ ok: boolean; responseText: string }> {
+  const notificationPayload: Record<string, string> = {
+    title: pushTitle(input.notification, input.recipientLocale),
+  };
+  const text = pushText(input.notification, input.recipientLocale);
+  if (text != null) {
+    notificationPayload.body = text;
+  }
+  if (input.imageUrl != null) {
+    notificationPayload.image = input.imageUrl;
+  }
+
+  const androidNotification: Record<string, unknown> = {
+    channel_id: androidNotificationChannelId,
+    default_sound: true,
+    default_vibrate_timings: true,
+    click_action: "FLUTTER_NOTIFICATION_CLICK",
+    notification_priority: "PRIORITY_HIGH",
+  };
+  if (input.imageUrl != null) {
+    androidNotification.image = input.imageUrl;
+  }
+
+  const response = await fetch(
+    `https://fcm.googleapis.com/v1/projects/${config.projectId}/messages:send`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({
+        message: {
+          token: input.token,
+          notification: notificationPayload,
+          data: {
+            notification_id: input.notification.id,
+            notification_type: input.notification.type,
+            sender_user_id: input.notification.sender_user_id ?? "",
+            route: routeForNotification(input.notification),
+          },
+          android: {
+            priority: "HIGH",
+            notification: androidNotification,
+          },
+        },
+      }),
+    },
+  );
+
+  const responseText = await response.text();
+  if (!response.ok) {
+    console.error("FCM send failed", response.status, responseText);
+  }
+  return { ok: response.ok, responseText };
+}
+
+async function deleteInvalidToken(
+  client: AppSupabaseClient,
+  token: string,
+  responseText: string,
+): Promise<void> {
+  if (
+    !responseText.includes("UNREGISTERED") &&
+    !responseText.includes("registration-token-not-registered")
+  ) {
+    return;
+  }
+
+  const { error } = await client
+    .from("notification_device_tokens")
+    .delete()
+    .eq("token", token);
+  if (error != null) {
+    console.error("Failed to delete invalid FCM token", error);
+  }
+}
+
+async function notificationImageUrl(
+  client: AppSupabaseClient,
+  imagePath: string | null,
+): Promise<string | null> {
+  const normalized = imagePath?.trim() ?? "";
+  if (normalized.length === 0) {
+    return null;
+  }
+  const remoteUrl = remoteNotificationImageUrl(normalized);
+  if (remoteUrl != null) {
+    return remoteUrl;
+  }
+
+  const { data, error } = await client.storage
+    .from(mediaBucket)
+    .createSignedUrl(normalized, 60 * 60);
+
+  if (error != null || data?.signedUrl == null) {
+    console.error("Failed to sign notification image", error);
+    return null;
+  }
+  return data.signedUrl;
+}
+
+function remoteNotificationImageUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function fcmAccessToken(config: FcmConfig): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedAccessToken != null && cachedAccessToken.expiresAt > now + 60) {
+    return cachedAccessToken.token;
+  }
+
+  const assertion = await serviceAccountJwt(config, now);
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion,
+    }),
+  });
+
+  const body = await response.json();
+  if (!response.ok || typeof body.access_token !== "string") {
+    throw new Error("Unable to fetch FCM access token.");
+  }
+
+  cachedAccessToken = {
+    token: body.access_token,
+    expiresAt: now + Number(body.expires_in ?? 3600),
+  };
+  return cachedAccessToken.token;
+}
+
+async function serviceAccountJwt(
+  config: FcmConfig,
+  issuedAt: number,
+): Promise<string> {
+  const header = base64UrlEncodeJson({ alg: "RS256", typ: "JWT" });
+  const payload = base64UrlEncodeJson({
+    iss: config.clientEmail,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: issuedAt,
+    exp: issuedAt + 3600,
+  });
+  const signingInput = `${header}.${payload}`;
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    pemToArrayBuffer(config.privateKey),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    key,
+    new TextEncoder().encode(signingInput),
+  );
+  return `${signingInput}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
+}
+
+function fcmConfigFromEnvironment(): FcmConfig | null {
+  const rawJson = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON")?.trim() ?? "";
+  if (rawJson.length === 0) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawJson) as Record<string, unknown>;
+    return normalizeFcmConfig({
+      projectId: parsed.project_id,
+      clientEmail: parsed.client_email,
+      privateKey: parsed.private_key,
+    });
+  } catch (error) {
+    console.error("Invalid FCM_SERVICE_ACCOUNT_JSON", error);
+    return null;
+  }
+}
+
+function normalizeFcmConfig(input: {
+  projectId: unknown;
+  clientEmail: unknown;
+  privateKey: unknown;
+}): FcmConfig | null {
+  const projectId = typeof input.projectId === "string"
+    ? input.projectId.trim()
+    : "";
+  const clientEmail = typeof input.clientEmail === "string"
+    ? input.clientEmail.trim()
+    : "";
+  const privateKey = typeof input.privateKey === "string"
+    ? input.privateKey.replaceAll("\\n", "\n").trim()
+    : "";
+
+  if (
+    projectId.length === 0 || clientEmail.length === 0 ||
+    privateKey.length === 0
+  ) {
+    return null;
+  }
+  return { projectId, clientEmail, privateKey };
+}
+
+function pushTitle(notification: NotificationRow, locale: string): string {
+  return notificationPushTitle(notificationPushInput(notification, locale));
+}
+
+function pushText(
+  notification: NotificationRow,
+  locale: string,
+): string | null {
+  return notificationPushBody(notificationPushInput(notification, locale));
+}
+
+function notificationPushInput(
+  notification: NotificationRow,
+  locale: string,
+): NotificationPushInput {
+  return {
+    type: notification.type,
+    locale,
+    templateArgs: notification.template_args,
+    senderDisplayName: notification.sender_display_name,
+  };
+}
+
+function normalizeLocale(value: unknown): string {
+  const locale = stringValue(value);
+  return locale.length > 0 ? locale : "en";
+}
+
+function routeForNotification(notification: NotificationRow): string {
+  const metadataRoute = notification.metadata?.route;
+  if (typeof metadataRoute === "string" && metadataRoute.startsWith("/")) {
+    return metadataRoute;
+  }
+
+  switch (notification.type) {
+    case "friend_request_sent":
+    case "friend_request_accepted":
+    case "friend_request_rejected":
+    case "friend_removed":
+      return "/profile";
+    default:
+      return "/feed";
+  }
+}
+
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  const base64 = pem
+    .replace("-----BEGIN PRIVATE KEY-----", "")
+    .replace("-----END PRIVATE KEY-----", "")
+    .replace(/\s/g, "");
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes.buffer;
+}
+
+function base64UrlEncodeJson(value: unknown): string {
+  return base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(value)));
+}
+
+function base64UrlEncodeBytes(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    .test(value);
+}
+
+function jsonResponse(body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}

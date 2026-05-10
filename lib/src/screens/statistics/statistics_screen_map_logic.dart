@@ -1,7 +1,5 @@
 part of '../statistics_screen.dart';
 
-const String _statisticsMapProtomapsBasemapsVersion = '5.7.2';
-const String _statisticsMapProtomapsTilesBuild = '20260325';
 const String _statisticsMapCartoLightStyleUrl =
     'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 const String _statisticsMapCartoDarkStyleUrl =
@@ -9,8 +7,9 @@ const String _statisticsMapCartoDarkStyleUrl =
 const String _statisticsMapAttributionOpenStreetMapLabel = '© OpenStreetMap';
 const String _statisticsMapAttributionOpenStreetMapUrl =
     'https://www.openstreetmap.org/copyright';
-const String _statisticsMapAttributionProtomapsLabel = '© Protomaps';
-const String _statisticsMapAttributionProtomapsUrl = 'https://protomaps.com';
+const String _statisticsMapAttributionCartoLabel = '© CARTO';
+const String _statisticsMapAttributionCartoUrl =
+    'https://carto.com/attributions';
 const String _statisticsMapClusterSourceId = 'statistics-map-cluster-source';
 const String _statisticsMapClusterCircleLayerId =
     'statistics-map-cluster-circle-layer';
@@ -36,23 +35,11 @@ _statisticsMapGestureRecognizers = <Factory<OneSequenceGestureRecognizer>>{
   Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
 };
 
-String _statisticsMapStyleString({
-  required Brightness brightness,
-  required String localeCode,
-}) {
-  if (kIsWeb) {
-    return brightness == Brightness.dark
-        ? _statisticsMapCartoDarkStyleUrl
-        : _statisticsMapCartoLightStyleUrl;
-  }
-
-  final theme = brightness == Brightness.dark ? 'dark' : 'light';
-  return 'https://npm-style.protomaps.dev/style.json'
-      '?version=$_statisticsMapProtomapsBasemapsVersion'
-      '&theme=$theme'
-      '&tiles=$_statisticsMapProtomapsTilesBuild'
-      '&lang=$localeCode';
-}
+@visibleForTesting
+String statisticsMapStyleUrl(Brightness brightness) =>
+    brightness == Brightness.dark
+    ? _statisticsMapCartoDarkStyleUrl
+    : _statisticsMapCartoLightStyleUrl;
 
 enum StatisticsMapTapResolution { openSheet, zoomIn }
 

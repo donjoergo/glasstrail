@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1004578022338",
+    "project_id": "glasstrail-42",
+    "storage_bucket": "glasstrail-42.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1004578022338:android:9c77de78cf5b53d91eac5b",
+        "android_client_info": {
+          "package_name": "dev.glasstrail.glasstrail"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCf9hdvTVGPrI4WqWkWF33V4AhCthxQN_0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

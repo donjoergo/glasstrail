@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'birthday.dart';
 
@@ -146,6 +147,7 @@ class AppUser {
     required this.displayName,
     this.profileImagePath,
     this.birthday,
+    this.profileShareCode,
   });
 
   final String id;
@@ -154,6 +156,7 @@ class AppUser {
   final String displayName;
   final String? profileImagePath;
   final DateTime? birthday;
+  final String? profileShareCode;
 
   String get initials {
     final trimmed = displayName.trim();
@@ -174,6 +177,7 @@ class AppUser {
     bool clearProfileImage = false,
     DateTime? birthday,
     bool clearBirthday = false,
+    String? profileShareCode,
   }) {
     return AppUser(
       id: id,
@@ -186,6 +190,7 @@ class AppUser {
       birthday: clearBirthday
           ? null
           : normalizeBirthdayOrNull(birthday ?? this.birthday),
+      profileShareCode: profileShareCode ?? this.profileShareCode,
     );
   }
 
@@ -197,6 +202,7 @@ class AppUser {
       'displayName': displayName,
       'profileImagePath': profileImagePath,
       'birthday': normalizeBirthdayOrNull(birthday)?.toIso8601String(),
+      'profileShareCode': profileShareCode,
     };
   }
 
@@ -212,6 +218,9 @@ class AppUser {
             ? null
             : DateTime.parse(json['birthday'] as String),
       ),
+      profileShareCode:
+          (json['profileShareCode'] as String?) ??
+          (json['profile_share_code'] as String?),
     );
   }
 }
@@ -233,6 +242,582 @@ String _displayNameFromJson(Map<String, dynamic> json) {
   return localPart.isEmpty ? 'Glass Trail User' : localPart;
 }
 
+enum FriendRequestStatus { pending, accepted, rejected }
+
+extension FriendRequestStatusX on FriendRequestStatus {
+  String get storageValue => name;
+
+  static FriendRequestStatus fromStorage(String value) {
+    return FriendRequestStatus.values.firstWhere(
+      (candidate) => candidate.name == value,
+      orElse: () => FriendRequestStatus.pending,
+    );
+  }
+}
+
+enum FriendRequestDirection { incoming, outgoing, none }
+
+extension FriendRequestDirectionX on FriendRequestDirection {
+  String get storageValue => name;
+
+  static FriendRequestDirection fromStorage(String? value) {
+    return FriendRequestDirection.values.firstWhere(
+      (candidate) => candidate.name == value,
+      orElse: () => FriendRequestDirection.none,
+    );
+  }
+}
+
+class FriendProfile {
+  const FriendProfile({
+    required this.id,
+    required this.email,
+    required this.displayName,
+    this.profileImagePath,
+    this.profileShareCode,
+  });
+
+  factory FriendProfile.fromUser(AppUser user) {
+    return FriendProfile(
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      profileImagePath: user.profileImagePath,
+      profileShareCode: user.profileShareCode,
+    );
+  }
+
+  final String id;
+  final String email;
+  final String displayName;
+  final String? profileImagePath;
+  final String? profileShareCode;
+
+  String get initials {
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) {
+      return 'GT';
+    }
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final first = parts.first.characters.first.toUpperCase();
+    final second = parts.length > 1
+        ? parts[1].characters.first.toUpperCase()
+        : '';
+    return '$first$second';
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'email': email,
+      'displayName': displayName,
+      'profileImagePath': profileImagePath,
+      'profileShareCode': profileShareCode,
+    };
+  }
+
+  factory FriendProfile.fromJson(Map<String, dynamic> json) {
+    return FriendProfile(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      displayName: _displayNameFromJson(json),
+      profileImagePath:
+          (json['profileImagePath'] as String?) ??
+          (json['profile_image_path'] as String?),
+      profileShareCode:
+          (json['profileShareCode'] as String?) ??
+          (json['profile_share_code'] as String?),
+    );
+  }
+}
+
+class PublicFriendProfile {
+  const PublicFriendProfile({
+    required this.id,
+    required this.displayName,
+    this.profileImagePath,
+    this.profileShareCode,
+  });
+
+  factory PublicFriendProfile.fromUser(AppUser user) {
+    return PublicFriendProfile(
+      id: user.id,
+      displayName: user.displayName,
+      profileImagePath: user.profileImagePath,
+      profileShareCode: user.profileShareCode,
+    );
+  }
+
+  final String id;
+  final String displayName;
+  final String? profileImagePath;
+  final String? profileShareCode;
+
+  String get initials {
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) {
+      return 'GT';
+    }
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final first = parts.first.characters.first.toUpperCase();
+    final second = parts.length > 1
+        ? parts[1].characters.first.toUpperCase()
+        : '';
+    return '$first$second';
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'displayName': displayName,
+      'profileImagePath': profileImagePath,
+      'profileShareCode': profileShareCode,
+    };
+  }
+
+  factory PublicFriendProfile.fromJson(Map<String, dynamic> json) {
+    final profileImagePath =
+        (json['profileImageUrl'] as String?) ??
+        (json['profile_image_url'] as String?) ??
+        (json['profileImagePath'] as String?) ??
+        (json['profile_image_path'] as String?);
+    return PublicFriendProfile(
+      id: (json['id'] as String?) ?? (json['profile_id'] as String),
+      displayName: _displayNameFromJson(json),
+      profileImagePath: _normalizePublicProfileImageUrl(profileImagePath),
+      profileShareCode:
+          (json['profileShareCode'] as String?) ??
+          (json['profile_share_code'] as String?),
+    );
+  }
+}
+
+String? _normalizePublicProfileImageUrl(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return trimmed;
+  }
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || !_isSupabaseHost(uri.host)) {
+    return trimmed;
+  }
+  return uri
+      .replace(
+        scheme: uri.scheme == 'http' ? 'https' : uri.scheme,
+        path: _normalizeSupabaseFunctionImagePath(uri),
+      )
+      .toString();
+}
+
+bool _isSupabaseHost(String host) {
+  return host == 'supabase.co' || host.endsWith('.supabase.co');
+}
+
+String _normalizeSupabaseFunctionImagePath(Uri uri) {
+  if (_isSupabaseFunctionsHost(uri.host)) {
+    return uri.path;
+  }
+  if (uri.path == '/friend-profile-preview' ||
+      uri.path.startsWith('/friend-profile-preview/')) {
+    return '/functions/v1${uri.path}';
+  }
+  return uri.path;
+}
+
+bool _isSupabaseFunctionsHost(String host) {
+  return host == 'functions.supabase.co' ||
+      host.endsWith('.functions.supabase.co');
+}
+
+class FriendConnection {
+  const FriendConnection({
+    required this.id,
+    required this.profile,
+    required this.status,
+    required this.direction,
+  });
+
+  final String id;
+  final FriendProfile profile;
+  final FriendRequestStatus status;
+  final FriendRequestDirection direction;
+
+  bool get isPending => status == FriendRequestStatus.pending;
+  bool get isAccepted => status == FriendRequestStatus.accepted;
+  bool get isIncoming => direction == FriendRequestDirection.incoming;
+  bool get isOutgoing => direction == FriendRequestDirection.outgoing;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'profile': profile.toJson(),
+      'status': status.storageValue,
+      'direction': direction.storageValue,
+    };
+  }
+
+  factory FriendConnection.fromJson(Map<String, dynamic> json) {
+    return FriendConnection(
+      id: json['id'] as String,
+      profile: FriendProfile.fromJson(
+        Map<String, dynamic>.from(json['profile'] as Map),
+      ),
+      status: FriendRequestStatusX.fromStorage(json['status'] as String),
+      direction: FriendRequestDirectionX.fromStorage(
+        json['direction'] as String?,
+      ),
+    );
+  }
+}
+
+class AppNotificationTypes {
+  const AppNotificationTypes._();
+
+  static const friendRequestSent = 'friend_request_sent';
+  static const friendRequestAccepted = 'friend_request_accepted';
+  static const friendRequestRejected = 'friend_request_rejected';
+  static const friendRemoved = 'friend_removed';
+  static const friendDrinkLogged = 'friend_drink_logged';
+  static const friendDrinkCheered = 'friend_drink_cheered';
+}
+
+class AppNotificationImageUrls {
+  const AppNotificationImageUrls._();
+
+  static const baseUrl = 'https://glasstrail.vercel.app/notification-assets';
+  static const requestAccepted = '$baseUrl/request_accepted.png';
+  static const cheers = '$baseUrl/cheers.png';
+  static const requestRejected = '$baseUrl/request_rejected.png';
+  static const friendRemoved = '$baseUrl/friend_removed.png';
+  static const appIcon = '$baseUrl/app-icon.png';
+
+  static String? imagePathForType({
+    required String type,
+    String? fallbackImagePath,
+  }) {
+    final normalizedType = type.trim();
+    return switch (normalizedType) {
+      AppNotificationTypes.friendRequestAccepted => requestAccepted,
+      AppNotificationTypes.friendRequestRejected => requestRejected,
+      AppNotificationTypes.friendRemoved => friendRemoved,
+      AppNotificationTypes.friendDrinkCheered => cheers,
+      AppNotificationTypes.friendDrinkLogged =>
+        _normalizedFallback(fallbackImagePath) ?? appIcon,
+      _ => _normalizedFallback(fallbackImagePath),
+    };
+  }
+
+  static String? _normalizedFallback(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
+}
+
+String appNotificationTitle({
+  required AppLocalizations l10n,
+  required String type,
+  required String senderDisplayName,
+  String? drinkName,
+}) {
+  return switch (type) {
+    AppNotificationTypes.friendRequestSent =>
+      l10n.notificationFriendRequestSentTitle(senderDisplayName),
+    AppNotificationTypes.friendRequestAccepted =>
+      l10n.notificationFriendRequestAcceptedTitle(senderDisplayName),
+    AppNotificationTypes.friendRequestRejected =>
+      l10n.notificationFriendRequestRejectedTitle(senderDisplayName),
+    AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedTitle(
+      senderDisplayName,
+    ),
+    AppNotificationTypes.friendDrinkCheered =>
+      l10n.notificationFriendDrinkCheeredTitle(senderDisplayName),
+    AppNotificationTypes.friendDrinkLogged =>
+      l10n.notificationFriendDrinkLoggedTitle(
+        senderDisplayName,
+        _notificationDrinkName(drinkName),
+      ),
+    _ => 'Glass Trail',
+  };
+}
+
+String? appNotificationText({
+  required AppLocalizations l10n,
+  required String type,
+  String? comment,
+  String? locationAddress,
+}) {
+  return _nonEmptyString(switch (type) {
+    AppNotificationTypes.friendRequestSent =>
+      l10n.notificationFriendRequestSentBody,
+    AppNotificationTypes.friendRequestAccepted =>
+      l10n.notificationFriendRequestAcceptedBody,
+    AppNotificationTypes.friendRequestRejected =>
+      l10n.notificationFriendRequestRejectedBody,
+    AppNotificationTypes.friendRemoved => l10n.notificationFriendRemovedBody,
+    AppNotificationTypes.friendDrinkCheered =>
+      l10n.notificationFriendDrinkCheeredBody,
+    AppNotificationTypes.friendDrinkLogged => _friendDrinkLoggedText(
+      comment: comment,
+      locationAddress: locationAddress,
+    ),
+    _ => null,
+  });
+}
+
+String _notificationDrinkName(String? value) {
+  final normalized = value?.trim();
+  return normalized == null || normalized.isEmpty ? 'a drink' : normalized;
+}
+
+String? _friendDrinkLoggedText({
+  required String? comment,
+  required String? locationAddress,
+}) {
+  final lines = <String>[
+    ?_prefixedNotificationLine('🗨️', comment),
+    ?_prefixedNotificationLine('📍', locationAddress),
+  ];
+  return lines.isEmpty ? null : lines.join('\n');
+}
+
+String? _prefixedNotificationLine(String prefix, String? value) {
+  final normalized = _nonEmptyString(value);
+  if (normalized == null) {
+    return null;
+  }
+  return '$prefix $normalized';
+}
+
+String? _nonEmptyString(String? value) {
+  final normalized = value?.trim();
+  return normalized == null || normalized.isEmpty ? null : normalized;
+}
+
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.recipientUserId,
+    required this.senderUserId,
+    required this.senderDisplayName,
+    this.imagePath,
+    required this.type,
+    this.templateArgs = const <String, dynamic>{},
+    required this.createdAt,
+    this.readAt,
+    this.metadata = const <String, dynamic>{},
+  });
+
+  final String id;
+  final String recipientUserId;
+  final String? senderUserId;
+  final String senderDisplayName;
+  final String? imagePath;
+  final String type;
+  final Map<String, dynamic> templateArgs;
+  final DateTime createdAt;
+  final DateTime? readAt;
+  final Map<String, dynamic> metadata;
+
+  bool get isRead => readAt != null;
+  bool get isUnread => !isRead;
+
+  String get senderInitials {
+    final trimmed = senderDisplayName.trim();
+    if (trimmed.isEmpty) {
+      return 'GT';
+    }
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final first = parts.first.characters.first.toUpperCase();
+    final second = parts.length > 1
+        ? parts[1].characters.first.toUpperCase()
+        : '';
+    return '$first$second';
+  }
+
+  String get templateSenderDisplayName {
+    return _templateArgString('senderDisplayName', 'sender_display_name') ??
+        senderDisplayName;
+  }
+
+  String? get templateDrinkName {
+    return _templateArgString('drinkName', 'drink_name');
+  }
+
+  String? get templateDrinkId {
+    return _templateArgString('drinkId', 'drink_id');
+  }
+
+  String? get templateComment {
+    return _templateArgString('comment');
+  }
+
+  String? get templateLocationAddress {
+    return _templateArgString('locationAddress', 'location_address');
+  }
+
+  String title(AppLocalizations l10n) {
+    return appNotificationTitle(
+      l10n: l10n,
+      type: type,
+      senderDisplayName: templateSenderDisplayName,
+      drinkName: templateDrinkName,
+    );
+  }
+
+  String? text(AppLocalizations l10n) {
+    return appNotificationText(
+      l10n: l10n,
+      type: type,
+      comment: templateComment,
+      locationAddress: templateLocationAddress,
+    );
+  }
+
+  AppNotification copyWith({
+    String? senderDisplayName,
+    String? imagePath,
+    String? type,
+    Map<String, dynamic>? templateArgs,
+    DateTime? readAt,
+    bool clearReadAt = false,
+    Map<String, dynamic>? metadata,
+  }) {
+    return AppNotification(
+      id: id,
+      recipientUserId: recipientUserId,
+      senderUserId: senderUserId,
+      senderDisplayName: senderDisplayName ?? this.senderDisplayName,
+      imagePath: imagePath ?? this.imagePath,
+      type: type ?? this.type,
+      templateArgs: templateArgs ?? this.templateArgs,
+      createdAt: createdAt,
+      readAt: clearReadAt ? null : readAt ?? this.readAt,
+      metadata: metadata ?? this.metadata,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'recipientUserId': recipientUserId,
+      'senderUserId': senderUserId,
+      'senderDisplayName': senderDisplayName,
+      'imagePath': imagePath,
+      'type': type,
+      'templateArgs': templateArgs,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+      'readAt': readAt?.toUtc().toIso8601String(),
+      'metadata': metadata,
+    };
+  }
+
+  String? _templateArgString(String primary, [String? fallback]) {
+    final value =
+        templateArgs[primary] ??
+        (fallback == null ? null : templateArgs[fallback]);
+    if (value is! String) {
+      return null;
+    }
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    final typeValue = _normalizeNotificationType(
+      (json['type'] as String?) ?? (json['notification_type'] as String?),
+    );
+    final senderDisplayName =
+        (json['senderDisplayName'] as String?) ??
+        (json['sender_display_name'] as String?) ??
+        (json['actorDisplayName'] as String?) ??
+        (json['actor_display_name'] as String?) ??
+        'Glass Trail User';
+    final templateArgs = _templateArgsFromJson(
+      json['templateArgs'] ?? json['template_args'],
+      senderDisplayName: senderDisplayName,
+    );
+    return AppNotification(
+      id:
+          (json['id'] as String?) ??
+          (json['notificationId'] as String?) ??
+          (json['notification_id'] as String),
+      recipientUserId:
+          (json['recipientUserId'] as String?) ??
+          (json['recipient_user_id'] as String),
+      senderUserId:
+          (json['senderUserId'] as String?) ??
+          (json['sender_user_id'] as String?) ??
+          (json['actorUserId'] as String?) ??
+          (json['actor_user_id'] as String?),
+      senderDisplayName: senderDisplayName,
+      imagePath:
+          (json['imagePath'] as String?) ??
+          (json['image_path'] as String?) ??
+          (json['actorProfileImagePath'] as String?) ??
+          (json['actor_profile_image_path'] as String?),
+      type: typeValue,
+      templateArgs: templateArgs,
+      createdAt: _dateTimeFromJson(
+        json['createdAt'] ?? json['created_at'],
+        fallback: DateTime.now(),
+      ),
+      readAt: _nullableDateTimeFromJson(json['readAt'] ?? json['read_at']),
+      metadata: _metadataFromJson(json['metadata']),
+    );
+  }
+}
+
+String _normalizeNotificationType(String? value) {
+  return switch (value) {
+    'friendRequestSent' => AppNotificationTypes.friendRequestSent,
+    'friendRequestAccepted' => AppNotificationTypes.friendRequestAccepted,
+    'friendRequestRejected' => AppNotificationTypes.friendRequestRejected,
+    'friendRemoved' => AppNotificationTypes.friendRemoved,
+    'friendDrinkCheered' => AppNotificationTypes.friendDrinkCheered,
+    'friendDrinkLogged' => AppNotificationTypes.friendDrinkLogged,
+    final text? when text.trim().isNotEmpty => text.trim(),
+    _ => 'notification',
+  };
+}
+
+Map<String, dynamic> _templateArgsFromJson(
+  Object? value, {
+  required String senderDisplayName,
+}) {
+  final args = value is Map
+      ? Map<String, dynamic>.from(value)
+      : <String, dynamic>{};
+  if (!args.containsKey('senderDisplayName') &&
+      !args.containsKey('sender_display_name')) {
+    args['senderDisplayName'] = senderDisplayName;
+  }
+  return args;
+}
+
+DateTime _dateTimeFromJson(Object? value, {required DateTime fallback}) {
+  if (value is DateTime) {
+    return value.toLocal();
+  }
+  if (value is String && value.trim().isNotEmpty) {
+    return DateTime.parse(value).toLocal();
+  }
+  return fallback;
+}
+
+DateTime? _nullableDateTimeFromJson(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  return _dateTimeFromJson(value, fallback: DateTime.now());
+}
+
+Map<String, dynamic> _metadataFromJson(Object? value) {
+  if (value is Map) {
+    return Map<String, dynamic>.from(value);
+  }
+  return const <String, dynamic>{};
+}
+
 class DrinkDefinition {
   const DrinkDefinition({
     required this.id,
@@ -240,6 +825,7 @@ class DrinkDefinition {
     required this.category,
     this.localizedNameDe,
     this.volumeMl,
+    this.isAlcoholFree = false,
     this.imagePath,
     this.ownerUserId,
   });
@@ -249,10 +835,15 @@ class DrinkDefinition {
   final DrinkCategory category;
   final String? localizedNameDe;
   final double? volumeMl;
+  final bool isAlcoholFree;
   final String? imagePath;
   final String? ownerUserId;
 
   bool get isCustom => ownerUserId != null;
+  bool get isEffectivelyAlcoholFree =>
+      category == DrinkCategory.nonAlcoholic || isAlcoholFree;
+  bool get shouldShowAlcoholFreeMarker =>
+      category != DrinkCategory.nonAlcoholic && isEffectivelyAlcoholFree;
 
   String displayName(String localeCode) {
     if (localeCode == 'de') {
@@ -271,6 +862,7 @@ class DrinkDefinition {
       'category': category.storageValue,
       'localizedNameDe': localizedNameDe,
       'volumeMl': volumeMl,
+      'isAlcoholFree': isAlcoholFree,
       'imagePath': imagePath,
       'ownerUserId': ownerUserId,
     };
@@ -285,6 +877,7 @@ class DrinkDefinition {
           (json['localizedNameDe'] as String?) ??
           (json['localized_name_de'] as String?),
       volumeMl: (json['volumeMl'] as num?)?.toDouble(),
+      isAlcoholFree: _readBool(json, 'isAlcoholFree', 'is_alcohol_free'),
       imagePath: json['imagePath'] as String?,
       ownerUserId: json['ownerUserId'] as String?,
     );
@@ -300,6 +893,7 @@ class DrinkEntry {
     required this.category,
     required this.consumedAt,
     this.volumeMl,
+    this.isAlcoholFree = false,
     this.comment,
     this.imagePath,
     this.locationLatitude,
@@ -316,6 +910,7 @@ class DrinkEntry {
   final DrinkCategory category;
   final DateTime consumedAt;
   final double? volumeMl;
+  final bool isAlcoholFree;
   final String? comment;
   final String? imagePath;
   final double? locationLatitude;
@@ -330,6 +925,8 @@ class DrinkEntry {
     DrinkCategory? category,
     DateTime? consumedAt,
     double? volumeMl,
+    bool clearVolumeMl = false,
+    bool? isAlcoholFree,
     String? comment,
     bool clearComment = false,
     String? imagePath,
@@ -348,7 +945,8 @@ class DrinkEntry {
       drinkName: drinkName ?? this.drinkName,
       category: category ?? this.category,
       consumedAt: consumedAt ?? this.consumedAt,
-      volumeMl: volumeMl ?? this.volumeMl,
+      volumeMl: clearVolumeMl ? null : volumeMl ?? this.volumeMl,
+      isAlcoholFree: isAlcoholFree ?? this.isAlcoholFree,
       comment: clearComment ? null : comment ?? this.comment,
       imagePath: clearImagePath ? null : imagePath ?? this.imagePath,
       locationLatitude: clearLocation
@@ -374,6 +972,7 @@ class DrinkEntry {
       'category': category.storageValue,
       'consumedAt': consumedAt.toIso8601String(),
       'volumeMl': volumeMl,
+      'isAlcoholFree': isAlcoholFree,
       'comment': comment,
       'imagePath': imagePath,
       'locationLatitude': locationLatitude,
@@ -393,6 +992,7 @@ class DrinkEntry {
       category: DrinkCategoryX.fromStorage(json['category'] as String),
       consumedAt: DateTime.parse(json['consumedAt'] as String),
       volumeMl: _readDouble(json, 'volumeMl', 'volume_ml'),
+      isAlcoholFree: _readBool(json, 'isAlcoholFree', 'is_alcohol_free'),
       comment: json['comment'] as String?,
       imagePath: json['imagePath'] as String?,
       locationLatitude: _readDouble(
@@ -410,6 +1010,81 @@ class DrinkEntry {
       importSourceId: _readString(json, 'importSourceId', 'import_source_id'),
     );
   }
+
+  bool get isEffectivelyAlcoholFree =>
+      category == DrinkCategory.nonAlcoholic || isAlcoholFree;
+  bool get shouldShowAlcoholFreeMarker =>
+      category != DrinkCategory.nonAlcoholic && isEffectivelyAlcoholFree;
+}
+
+class FeedDrinkPostCursor {
+  const FeedDrinkPostCursor({required this.consumedAt, required this.entryId});
+
+  final DateTime consumedAt;
+  final String entryId;
+}
+
+class FeedEntryCheersUpdate {
+  const FeedEntryCheersUpdate({
+    required this.cheersCount,
+    required this.hasCurrentUserCheered,
+  });
+
+  final int cheersCount;
+  final bool hasCurrentUserCheered;
+}
+
+class FeedDrinkPost {
+  const FeedDrinkPost({
+    required this.entry,
+    required this.authorProfile,
+    required this.isOwnEntry,
+    this.cheersCount = 0,
+    this.hasCurrentUserCheered = false,
+  });
+
+  final DrinkEntry entry;
+  final FriendProfile authorProfile;
+  final bool isOwnEntry;
+  final int cheersCount;
+  final bool hasCurrentUserCheered;
+
+  FeedDrinkPost copyWith({
+    DrinkEntry? entry,
+    FriendProfile? authorProfile,
+    bool? isOwnEntry,
+    int? cheersCount,
+    bool? hasCurrentUserCheered,
+  }) {
+    return FeedDrinkPost(
+      entry: entry ?? this.entry,
+      authorProfile: authorProfile ?? this.authorProfile,
+      isOwnEntry: isOwnEntry ?? this.isOwnEntry,
+      cheersCount: cheersCount ?? this.cheersCount,
+      hasCurrentUserCheered:
+          hasCurrentUserCheered ?? this.hasCurrentUserCheered,
+    );
+  }
+
+  FeedDrinkPostCursor get cursor {
+    return FeedDrinkPostCursor(consumedAt: entry.consumedAt, entryId: entry.id);
+  }
+
+  String get authorDisplayName => authorProfile.displayName;
+  String? get authorImagePath => authorProfile.profileImagePath;
+  String get authorInitials => authorProfile.initials;
+}
+
+class FeedDrinkPostPage {
+  const FeedDrinkPostPage({
+    required this.posts,
+    required this.cursor,
+    required this.hasMore,
+  });
+
+  final List<FeedDrinkPost> posts;
+  final FeedDrinkPostCursor? cursor;
+  final bool hasMore;
 }
 
 class UserSettings {
@@ -418,6 +1093,7 @@ class UserSettings {
     required this.localeCode,
     required this.unit,
     required this.handedness,
+    required this.shareStatsWithFriends,
     this.hiddenGlobalDrinkIds = const <String>[],
     this.hiddenGlobalDrinkCategories = const <DrinkCategory>[],
     this.globalDrinkOrderOverrides = const <DrinkCategory, List<String>>{},
@@ -429,6 +1105,7 @@ class UserSettings {
       localeCode: 'en',
       unit: AppUnit.ml,
       handedness: AppHandedness.right,
+      shareStatsWithFriends: true,
       hiddenGlobalDrinkIds: <String>[],
       hiddenGlobalDrinkCategories: <DrinkCategory>[],
       globalDrinkOrderOverrides: <DrinkCategory, List<String>>{},
@@ -439,6 +1116,7 @@ class UserSettings {
   final String localeCode;
   final AppUnit unit;
   final AppHandedness handedness;
+  final bool shareStatsWithFriends;
   final List<String> hiddenGlobalDrinkIds;
   final List<DrinkCategory> hiddenGlobalDrinkCategories;
   final Map<DrinkCategory, List<String>> globalDrinkOrderOverrides;
@@ -448,6 +1126,7 @@ class UserSettings {
     String? localeCode,
     AppUnit? unit,
     AppHandedness? handedness,
+    bool? shareStatsWithFriends,
     List<String>? hiddenGlobalDrinkIds,
     List<DrinkCategory>? hiddenGlobalDrinkCategories,
     Map<DrinkCategory, List<String>>? globalDrinkOrderOverrides,
@@ -457,6 +1136,8 @@ class UserSettings {
       localeCode: localeCode ?? this.localeCode,
       unit: unit ?? this.unit,
       handedness: handedness ?? this.handedness,
+      shareStatsWithFriends:
+          shareStatsWithFriends ?? this.shareStatsWithFriends,
       hiddenGlobalDrinkIds: hiddenGlobalDrinkIds ?? this.hiddenGlobalDrinkIds,
       hiddenGlobalDrinkCategories:
           hiddenGlobalDrinkCategories ?? this.hiddenGlobalDrinkCategories,
@@ -471,6 +1152,7 @@ class UserSettings {
       'localeCode': localeCode,
       'unit': unit.storageValue,
       'handedness': handedness.storageValue,
+      'shareStatsWithFriends': shareStatsWithFriends,
       'hiddenGlobalDrinkIds': hiddenGlobalDrinkIds.toList(growable: false),
       'hiddenGlobalDrinkCategories': hiddenGlobalDrinkCategories
           .map((category) => category.storageValue)
@@ -490,6 +1172,11 @@ class UserSettings {
       localeCode: _readString(json, 'localeCode', 'locale_code') ?? 'en',
       unit: AppUnitX.fromStorage(_readString(json, 'unit')),
       handedness: AppHandednessX.fromStorage(_readString(json, 'handedness')),
+      shareStatsWithFriends:
+          json.containsKey('shareStatsWithFriends') ||
+              json.containsKey('share_stats_with_friends')
+          ? _readBool(json, 'shareStatsWithFriends', 'share_stats_with_friends')
+          : true,
       hiddenGlobalDrinkIds: _readStringList(
         json,
         'hiddenGlobalDrinkIds',
@@ -555,6 +1242,11 @@ double? _readDouble(
   }
   final fallbackValue = json[fallback] as num?;
   return fallbackValue?.toDouble();
+}
+
+bool _readBool(Map<String, dynamic> json, String primary, [String? fallback]) {
+  final value = json[primary] ?? (fallback == null ? null : json[fallback]);
+  return value == true;
 }
 
 List<String> _readStringList(
@@ -838,6 +1530,9 @@ List<DrinkDefinition> buildDefaultDrinkCatalog() {
           name: item.$3,
           localizedNameDe: item.$4,
           volumeMl: item.$5,
+          isAlcoholFree:
+              item.$2 == DrinkCategory.nonAlcoholic ||
+              item.$1 == 'beer-non-alcoholic',
         ),
       )
       .toList(growable: false);

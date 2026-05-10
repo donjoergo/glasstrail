@@ -137,10 +137,31 @@ class AppLocalizationsDe extends AppLocalizations {
   String get close => 'Schließen';
 
   @override
+  String get accept => 'Annehmen';
+
+  @override
+  String get reject => 'Ablehnen';
+
+  @override
+  String get pending => 'Ausstehend';
+
+  @override
+  String get share => 'Teilen';
+
+  @override
+  String get copyLink => 'Link kopieren';
+
+  @override
   String get whatsNew => 'Was gibt\'s Neues';
 
   @override
   String get editEntry => 'Eintrag bearbeiten';
+
+  @override
+  String get drinkType => 'Getränketyp';
+
+  @override
+  String get changeDrinkType => 'Getränketyp ändern';
 
   @override
   String get deleteEntry => 'Eintrag löschen';
@@ -172,6 +193,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get volume => 'Volumen';
 
   @override
+  String get alcoholFree => 'Alkoholfrei';
+
+  @override
+  String get customDrinkAlcoholFreeSwitch => 'Alkoholfrei';
+
+  @override
   String get appUpdatedTitle => 'App aktualisiert';
 
   @override
@@ -183,8 +210,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get feedHeadline => 'Dein Aktivitätsfeed';
 
   @override
-  String get feedBody =>
-      'V1 zeigt deine persönliche Historie. Freunde, Kommentare und Cheers folgen später.';
+  String get feedCheersAction => 'Prost';
 
   @override
   String get noEntries => 'Noch keine Getränke erfasst.';
@@ -193,13 +219,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get startLogging => 'Starte mit deinem ersten Eintrag.';
 
   @override
-  String get weeklyTotal => 'Woche';
+  String get weeklyTotal => 'Diese Woche';
 
   @override
-  String get monthlyTotal => 'Monat';
+  String get monthlyTotal => 'Dieser Monat';
 
   @override
-  String get yearlyTotal => 'Jahr';
+  String get yearlyTotal => 'Dieses Jahr';
 
   @override
   String get currentStreak => 'Aktuelle Serie';
@@ -249,6 +275,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get categoryBreakdown => 'Kategorien';
+
+  @override
+  String get beerBreakdown => 'Bier-Aufteilung';
+
+  @override
+  String get regularBeer => 'Normales Bier';
+
+  @override
+  String get alcoholFreeBeer => 'Alkoholfreies Bier';
 
   @override
   String get history => 'Historie';
@@ -333,10 +368,197 @@ class AppLocalizationsDe extends AppLocalizations {
   String get handedness => 'Bedienseite';
 
   @override
+  String get shareStatsWithFriends => 'Statistiken mit Freunden teilen';
+
+  @override
+  String get shareStatsWithFriendsBody =>
+      'Bestätigte Freunde können deine geteilten Statistiken direkt in der App öffnen.';
+
+  @override
   String get logout => 'Abmelden';
 
   @override
   String get editProfile => 'Profil bearbeiten';
+
+  @override
+  String get friends => 'Freunde';
+
+  @override
+  String get friendsSectionBody =>
+      'Teile deinen Profillink, damit andere dir eine Freundschaftsanfrage senden können.';
+
+  @override
+  String get friendsEmpty => 'Noch keine Freunde oder ausstehenden Anfragen.';
+
+  @override
+  String get friendProfile => 'Freundesprofil';
+
+  @override
+  String get friendProfileLinkAction => 'Mein Profil zeigen';
+
+  @override
+  String get friendProfileLinkTitle => 'Dein Freundesprofil';
+
+  @override
+  String get friendProfileLinkBody =>
+      'Freunde können diesen Code scannen oder den Link öffnen, um dir eine Anfrage zu senden.';
+
+  @override
+  String get friendProfileShareTitle => 'Füge mich auf Glass Trail hinzu';
+
+  @override
+  String friendProfileShareText(String profileName, String link) {
+    return 'Hey! $profileName hat dich zu Glass Trail eingeladen, der App um Getränke aufzuzeichnen, Statistiken auszuwerten und mit Freunden anzustoßen. Probier’s doch mal aus!\n\n$link';
+  }
+
+  @override
+  String get friendProfileLinkCopied => 'Profillink kopiert.';
+
+  @override
+  String get friendIncomingRequest => 'Möchte befreundet sein';
+
+  @override
+  String get friendAccepted => 'Freund';
+
+  @override
+  String get friendRequestPending => 'Wartet auf Antwort';
+
+  @override
+  String get friendAlreadyFriends => 'Ihr seid bereits befreundet.';
+
+  @override
+  String get friendIncomingRequestFromProfile =>
+      'Diese Person hat dir bereits eine Anfrage gesendet. Prüfe sie im Freunde-Bereich.';
+
+  @override
+  String get friendProfileSelf => 'Das ist dein eigener Freundes-Profillink.';
+
+  @override
+  String friendProfileRequestPrompt(String name) {
+    return '$name möchte mit dir befreundet sein.';
+  }
+
+  @override
+  String friendProfilePublicPrompt(String name) {
+    return '$name möchte dein Freund in Glass Trail sein.';
+  }
+
+  @override
+  String get friendStatsNotSharedTitle => 'Statistiken nicht geteilt';
+
+  @override
+  String friendStatsNotSharedBody(String name) {
+    return '$name teilt aktuell keine Statistiken mit Freunden.';
+  }
+
+  @override
+  String get friendStatsUnavailableTitle => 'Freundesprofil nicht verfügbar';
+
+  @override
+  String get friendStatsUnavailableBody =>
+      'Dieses geteilte Freundesprofil ist nicht verfügbar oder wird nicht mehr mit dir geteilt.';
+
+  @override
+  String get addAsFriend => 'Als Freund hinzufügen';
+
+  @override
+  String get goToFeed => 'Zum Feed';
+
+  @override
+  String get withdrawFriendRequest => 'Zurückziehen';
+
+  @override
+  String get unfriend => 'Entfreunden';
+
+  @override
+  String unfriendConfirmTitle(String name) {
+    return '$name entfreunden?';
+  }
+
+  @override
+  String unfriendConfirmBody(String name) {
+    return 'Du und $name seht dann die geteilten Aktivitäten des jeweils anderen nicht mehr. Du kannst später erneut eine Freundschaftsanfrage senden.';
+  }
+
+  @override
+  String get friendProfileLinkInvalidTitle => 'Profillink nicht verfügbar';
+
+  @override
+  String get friendProfileLinkInvalidBody =>
+      'Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.';
+
+  @override
+  String get notifications => 'Mitteilungen';
+
+  @override
+  String get notificationsTooltip => 'Mitteilungen';
+
+  @override
+  String get notificationsEmptyTitle => 'Aktuell keine Benachrichtigungen';
+
+  @override
+  String get notificationsEmptyBody =>
+      'Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.';
+
+  @override
+  String notificationFriendRequestSentTitle(String name) {
+    return '$name hat dir eine Freundschaftsanfrage gesendet';
+  }
+
+  @override
+  String get notificationFriendRequestSentBody =>
+      'Prüfe sie in deinem Freunde-Bereich.';
+
+  @override
+  String notificationFriendRequestAcceptedTitle(String name) {
+    return '$name hat deine Freundschaftsanfrage angenommen';
+  }
+
+  @override
+  String get notificationFriendRequestAcceptedBody =>
+      'Ihr könnt jetzt gegenseitig geteilte Aktivitäten sehen.';
+
+  @override
+  String notificationFriendRequestRejectedTitle(String name) {
+    return '$name hat deine Freundschaftsanfrage abgelehnt';
+  }
+
+  @override
+  String get notificationFriendRequestRejectedBody =>
+      'Du kannst später eine neue Anfrage senden.';
+
+  @override
+  String notificationFriendRemovedTitle(String name) {
+    return '$name hat dich als Freund entfernt';
+  }
+
+  @override
+  String get notificationFriendRemovedBody =>
+      'Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.';
+
+  @override
+  String notificationFriendDrinkCheeredTitle(String name) {
+    return '$name prostet dir zu 🍻';
+  }
+
+  @override
+  String get notificationFriendDrinkCheeredBody => '';
+
+  @override
+  String notificationFriendDrinkLoggedTitle(String name, String drink) {
+    return '$name trinkt $drink';
+  }
+
+  @override
+  String notificationFriendDrinkLoggedBody(
+    String commentLine,
+    String locationAddressLine,
+  ) {
+    return '$commentLine\n$locationAddressLine';
+  }
+
+  @override
+  String get notificationsMarkAllRead => 'Alle als gelesen markieren';
 
   @override
   String get customDrinks => 'Meine eigenen Getränke';
@@ -369,7 +591,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get roadmapBody =>
-      'Freunde, Social Feed und Erfolge sind im Plan, aber bewusst nicht Teil von V1.';
+      'Als Nächstes kommen Cheers-Reaktionen und Erfolge.';
 
   @override
   String get beerWithMeImport => 'Beer With Me-Import';
@@ -541,6 +763,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get entryDeleted => 'Eintrag gelöscht.';
 
   @override
+  String get friendRequestSent => 'Freundschaftsanfrage gesendet.';
+
+  @override
+  String get friendRequestAccepted => 'Freundschaftsanfrage angenommen.';
+
+  @override
+  String get friendRequestRejected => 'Freundschaftsanfrage abgelehnt.';
+
+  @override
+  String get friendRequestCanceled => 'Freundschaftsanfrage zurückgezogen.';
+
+  @override
+  String get friendRemoved => 'Freund entfernt.';
+
+  @override
   String get somethingWentWrong =>
       'Etwas ist schiefgelaufen. Bitte versuche es erneut.';
 
@@ -562,6 +799,28 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get entryDeleteFailed =>
       'Der Getränkeeintrag konnte nicht gelöscht werden.';
+
+  @override
+  String get friendProfileLinkInvalid => 'Der Profillink ist ungültig.';
+
+  @override
+  String get friendSelfRequestBlocked =>
+      'Du kannst dich nicht selbst als Freund hinzufügen.';
+
+  @override
+  String get friendRequestAcceptFailed =>
+      'Die Freundschaftsanfrage konnte nicht angenommen werden.';
+
+  @override
+  String get friendRequestRejectFailed =>
+      'Die Freundschaftsanfrage konnte nicht abgelehnt werden.';
+
+  @override
+  String get friendRequestCancelFailed =>
+      'Die Freundschaftsanfrage konnte nicht zurückgezogen werden.';
+
+  @override
+  String get friendRemoveFailed => 'Der Freund konnte nicht entfernt werden.';
 
   @override
   String get customDrinkDeleteFailed =>

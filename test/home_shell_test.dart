@@ -24,6 +24,7 @@ import 'package:glasstrail/src/screens/feed_screen.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
+import 'package:glasstrail/src/widgets/app_empty_state_card.dart';
 
 import 'support/test_harness.dart';
 
@@ -281,6 +282,378 @@ void main() {
     );
     expect(find.byKey(const Key('edit-profile-save-button')), findsOneWidget);
   });
+
+  testWidgets('keeps notification unread until it is tapped', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final requester = await repository.signUp(
+      email: 'widget-notify-requester@example.com',
+      password: 'password123',
+      displayName: 'Widget Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'widget-notify-addressee@example.com',
+      password: 'password123',
+      displayName: 'Widget Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.unreadNotificationCount, 1);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('home-notifications-badge')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('notifications-list')), findsOneWidget);
+    expect(
+      find.text(
+        _l10n('en').notificationFriendRequestSentTitle('Widget Requester'),
+      ),
+      findsOneWidget,
+    );
+    expect(controller.unreadNotificationCount, 1);
+    expect(
+      find.byKey(
+        Key('notification-unread-${controller.notifications.single.id}'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(Key('notification-${controller.notifications.single.id}')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.unreadNotificationCount, 0);
+  });
+
+  testWidgets('shows the localized empty state on the notifications screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'empty-notifications@example.com',
+      password: 'password123',
+      displayName: 'Empty Notifications',
+    );
+    await controller.updateSettings(
+      controller.settings.copyWith(localeCode: 'de'),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+
+    final emptyStateCard = find.byType(AppEmptyStateCard);
+
+    expect(find.text('Aktuell keine Benachrichtigungen'), findsOneWidget);
+    expect(
+      find.text(
+        'Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.getTopLeft(emptyStateCard).dy, lessThan(140));
+  });
+
+  testWidgets(
+    'opens friend drink notifications on feed and refreshes feed data',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final friend = await repository.signUp(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Friend',
+      );
+      final friendProfile = await repository.getOwnFriendProfile(friend.id);
+      await repository.signOut();
+      final logger = await repository.signUp(
+        email: 'widget-feed-logger@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Logger',
+      );
+      final friendConnections = await repository.sendFriendRequestToProfile(
+        userId: logger.id,
+        shareCode: friendProfile.profileShareCode!,
+      );
+      await repository.acceptFriendRequest(
+        userId: friend.id,
+        relationshipId: friendConnections.single.id,
+      );
+      await repository.signOut();
+      await repository.signIn(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await controller.updateSettings(
+        controller.settings.copyWith(localeCode: 'de'),
+      );
+      await tester.pumpAndSettle();
+
+      final drink = (await repository.loadDefaultCatalog()).firstWhere(
+        (candidate) => candidate.id == 'beer-classic',
+      );
+      final entry = await repository.addDrinkEntry(
+        user: logger,
+        drink: drink,
+        comment: 'Refresh me from notifications',
+        locationAddress: 'Park Street 1',
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final drinkNotification = controller.notifications.firstWhere(
+        (notification) =>
+            notification.type == AppNotificationTypes.friendDrinkLogged,
+      );
+
+      await tester.tap(find.byKey(const Key('home-notifications-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Widget Feed Logger trinkt Bier'), findsOneWidget);
+      expect(
+        find.text('🗨️ Refresh me from notifications\n📍 Park Street 1'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(Key('notification-${drinkNotification.id}')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('feed-list-view')), findsOneWidget);
+      expect(
+        controller.feedPosts.map((post) => post.entry.id),
+        contains(entry.id),
+      );
+      expect(find.text('Widget Feed Logger'), findsOneWidget);
+      expect(find.text('Bier'), findsOneWidget);
+      expect(find.text('Refresh me from notifications'), findsOneWidget);
+      expect(find.text('Park Street 1'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'opens friend drink notifications on feed and refreshes feed data',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final friend = await repository.signUp(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Friend',
+      );
+      final friendProfile = await repository.getOwnFriendProfile(friend.id);
+      await repository.signOut();
+      final logger = await repository.signUp(
+        email: 'widget-feed-logger@example.com',
+        password: 'password123',
+        displayName: 'Widget Feed Logger',
+      );
+      final friendConnections = await repository.sendFriendRequestToProfile(
+        userId: logger.id,
+        shareCode: friendProfile.profileShareCode!,
+      );
+      await repository.acceptFriendRequest(
+        userId: friend.id,
+        relationshipId: friendConnections.single.id,
+      );
+      await repository.signOut();
+      await repository.signIn(
+        email: 'widget-feed-friend@example.com',
+        password: 'password123',
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await controller.updateSettings(
+        controller.settings.copyWith(localeCode: 'de'),
+      );
+      await tester.pumpAndSettle();
+
+      final drink = (await repository.loadDefaultCatalog()).firstWhere(
+        (candidate) => candidate.id == 'beer-classic',
+      );
+      final entry = await repository.addDrinkEntry(
+        user: logger,
+        drink: drink,
+        comment: 'Refresh me from notifications',
+        locationAddress: 'Park Street 1',
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final drinkNotification = controller.notifications.firstWhere(
+        (notification) =>
+            notification.type == AppNotificationTypes.friendDrinkLogged,
+      );
+
+      await tester.tap(find.byKey(const Key('home-notifications-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Widget Feed Logger trinkt Bier'), findsOneWidget);
+      expect(
+        find.text('🗨️ Refresh me from notifications\n📍 Park Street 1'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(Key('notification-${drinkNotification.id}')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('feed-list-view')), findsOneWidget);
+      expect(
+        controller.feedPosts.map((post) => post.entry.id),
+        contains(entry.id),
+      );
+      expect(find.text('Widget Feed Logger'), findsOneWidget);
+      expect(find.text('Bier'), findsOneWidget);
+      expect(find.text('Refresh me from notifications'), findsOneWidget);
+      expect(find.text('Park Street 1'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'marks all unread notifications read from the notifications screen',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final addressee = await repository.signUp(
+        email: 'bulk-notify-addressee@example.com',
+        password: 'password123',
+        displayName: 'Bulk Notify Addressee',
+      );
+      final addresseeProfile = await repository.getOwnFriendProfile(
+        addressee.id,
+      );
+      await repository.signOut();
+      final requesterOne = await repository.signUp(
+        email: 'bulk-notify-requester-one@example.com',
+        password: 'password123',
+        displayName: 'Bulk Notify One',
+      );
+      await repository.sendFriendRequestToProfile(
+        userId: requesterOne.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      await repository.signOut();
+      final requesterTwo = await repository.signUp(
+        email: 'bulk-notify-requester-two@example.com',
+        password: 'password123',
+        displayName: 'Bulk Notify Two',
+      );
+      await repository.sendFriendRequestToProfile(
+        userId: requesterTwo.id,
+        shareCode: addresseeProfile.profileShareCode!,
+      );
+      await repository.signOut();
+      await repository.signIn(
+        email: 'bulk-notify-addressee@example.com',
+        password: 'password123',
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.unreadNotificationCount, 2);
+
+      await tester.tap(find.byKey(const Key('home-notifications-button')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('notifications-mark-all-read-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const Key('notifications-mark-all-read-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.unreadNotificationCount, 0);
+      expect(
+        controller.notifications.every((notification) => notification.isRead),
+        isTrue,
+      );
+      expect(
+        find.byKey(const Key('notifications-mark-all-read-button')),
+        findsOneWidget,
+      );
+      for (final notification in controller.notifications) {
+        expect(
+          find.byKey(Key('notification-unread-${notification.id}')),
+          findsNothing,
+        );
+      }
+    },
+  );
 
   testWidgets('shows a spinner while saving the profile', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.updateProfile);
@@ -1744,6 +2117,92 @@ void main() {
     expect(controller.customDrinks.single.category, DrinkCategory.beer);
   });
 
+  testWidgets('creates alcohol-free custom beer from the beer-only switch', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'custom-alcohol-free-beer@example.com',
+      password: 'password123',
+      displayName: 'Custom Alcohol Free Beer',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+    final addCustomDrinkButton = find.byKey(
+      const Key('bar-add-custom-drink-button'),
+    );
+    await _scrollBarTargetIntoView(tester, addCustomDrinkButton);
+    await tester.tap(addCustomDrinkButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('custom-drink-alcohol-free-switch')),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextFormField).first, 'Free Lager');
+    await tester.tap(find.byKey(const Key('custom-drink-alcohol-free-switch')));
+    await tester.tap(find.byKey(const Key('custom-drink-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(controller.customDrinks.single.category, DrinkCategory.beer);
+    expect(controller.customDrinks.single.isAlcoholFree, isTrue);
+    expect(find.textContaining('Alcohol-free'), findsWidgets);
+  });
+
+  testWidgets('hides the alcohol-free switch for non-alcoholic custom drinks', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'custom-non-alcoholic@example.com',
+      password: 'password123',
+      displayName: 'Custom Non Alcoholic',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openBarCustomDrinksTab(tester);
+    final addCustomDrinkButton = find.byKey(
+      const Key('bar-add-custom-drink-button'),
+    );
+    await _scrollBarTargetIntoView(tester, addCustomDrinkButton);
+    await tester.tap(addCustomDrinkButton);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).first, 'House Water');
+    await tester.tap(find.byType(DropdownButtonFormField<DrinkCategory>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Non-alcoholic').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('custom-drink-alcohol-free-switch')),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const Key('custom-drink-save-button')));
+    await tester.pumpAndSettle();
+
+    expect(controller.customDrinks.single.category, DrinkCategory.nonAlcoholic);
+    expect(controller.customDrinks.single.isAlcoholFree, isTrue);
+    expect(find.textContaining('Alcohol-free'), findsNothing);
+  });
+
   testWidgets('shows a spinner while saving a custom drink', (tester) async {
     final harness = await _buildBlockedHarness(AppBusyAction.saveCustomDrink);
     final controller = harness.controller;
@@ -2767,6 +3226,340 @@ void main() {
     expect(find.text('Pils'), findsOneWidget);
   });
 
+  testWidgets('shows friend feed posts without edit or delete controls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'friend-feed-owner@example.com',
+      password: 'password123',
+      displayName: 'Feed Owner',
+    );
+    final owner = controller.currentUser!;
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    await externalRepository.signOut();
+    final friend = await externalRepository.signUp(
+      email: 'friend-feed-friend@example.com',
+      password: 'password123',
+      displayName: 'Feed Friend',
+    );
+    final friendProfile = await externalRepository.getOwnFriendProfile(
+      friend.id,
+    );
+    final ownerConnections = await externalRepository
+        .sendFriendRequestToProfile(
+          userId: owner.id,
+          shareCode: friendProfile.profileShareCode!,
+        );
+    await externalRepository.acceptFriendRequest(
+      userId: friend.id,
+      relationshipId: ownerConnections.single.id,
+    );
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final friendEntry = await externalRepository.addDrinkEntry(
+      user: friend,
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      comment: 'Park cheers',
+      locationAddress: 'Park Street 1',
+    );
+    await controller.refreshData();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(Key('feed-post-${friendEntry.id}')), findsOneWidget);
+    expect(find.text('Feed Friend'), findsOneWidget);
+    expect(find.text('Pils'), findsOneWidget);
+    expect(find.text('Park cheers'), findsOneWidget);
+    expect(find.text('Park Street 1'), findsOneWidget);
+    expect(
+      find.byKey(Key('feed-entry-actions-${friendEntry.id}')),
+      findsNothing,
+    );
+    expect(find.byKey(Key('feed-entry-edit-${friendEntry.id}')), findsNothing);
+    expect(
+      find.byKey(Key('feed-entry-delete-${friendEntry.id}')),
+      findsNothing,
+    );
+  });
+
+  testWidgets(
+    'shows cheers controls on friend feed posts and toggles the count',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'friend-cheers-owner@example.com',
+        password: 'password123',
+        displayName: 'Friend Cheers Owner',
+      );
+      final owner = controller.currentUser!;
+      final preferences = await SharedPreferences.getInstance();
+      final externalRepository = LocalAppRepository(preferences);
+      await externalRepository.signOut();
+      final friend = await externalRepository.signUp(
+        email: 'friend-cheers-friend@example.com',
+        password: 'password123',
+        displayName: 'Friend Cheers Friend',
+      );
+      final friendProfile = await externalRepository.getOwnFriendProfile(
+        friend.id,
+      );
+      final ownerConnections = await externalRepository
+          .sendFriendRequestToProfile(
+            userId: owner.id,
+            shareCode: friendProfile.profileShareCode!,
+          );
+      await externalRepository.acceptFriendRequest(
+        userId: friend.id,
+        relationshipId: ownerConnections.single.id,
+      );
+      final drink = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final friendEntry = await externalRepository.addDrinkEntry(
+        user: friend,
+        drink: drink,
+        volumeMl: drink.volumeMl,
+      );
+      await controller.refreshData();
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final cheersButton = find.byKey(
+        Key('feed-entry-cheers-${friendEntry.id}'),
+      );
+      final cheersCount = find.byKey(
+        Key('feed-entry-cheers-count-${friendEntry.id}'),
+      );
+
+      expect(cheersButton, findsOneWidget);
+      expect(tester.widget<TextButton>(cheersButton).onPressed, isNotNull);
+      expect(tester.widget<Text>(cheersCount).data, '0');
+      expect(
+        tester.getTopLeft(cheersCount).dx - tester.getTopRight(cheersButton).dx,
+        lessThanOrEqualTo(12),
+      );
+
+      await tester.tap(cheersButton);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Text>(cheersCount).data, '1');
+
+      await tester.tap(cheersButton);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Text>(cheersCount).data, '0');
+    },
+  );
+
+  testWidgets('shows disabled cheers controls for own feed posts', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'own-cheers@example.com',
+      password: 'password123',
+      displayName: 'Own Cheers',
+    );
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl);
+    final entryId = controller.entries.single.id;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final cheersButton = find.byKey(Key('feed-entry-cheers-$entryId'));
+    final cheersCount = find.byKey(Key('feed-entry-cheers-count-$entryId'));
+
+    expect(cheersButton, findsOneWidget);
+    expect(tester.widget<TextButton>(cheersButton).onPressed, isNull);
+    expect(tester.widget<Text>(cheersCount).data, '0');
+  });
+
+  testWidgets('opens cheers notifications on feed and refreshes cheers state', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final repository = LocalAppRepository(
+      await SharedPreferences.getInstance(),
+    );
+    final owner = await repository.signUp(
+      email: 'widget-cheers-owner@example.com',
+      password: 'password123',
+      displayName: 'Widget Cheers Owner',
+    );
+    final drink = (await repository.loadDefaultCatalog()).firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final entry = await repository.addDrinkEntry(user: owner, drink: drink);
+    final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+    await repository.signOut();
+    final friend = await repository.signUp(
+      email: 'widget-cheers-friend@example.com',
+      password: 'password123',
+      displayName: 'Widget Cheers Friend',
+    );
+    final connections = await repository.sendFriendRequestToProfile(
+      userId: friend.id,
+      shareCode: ownerProfile.profileShareCode!,
+    );
+    await repository.acceptFriendRequest(
+      userId: owner.id,
+      relationshipId: connections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'widget-cheers-owner@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<Text>(find.byKey(Key('feed-entry-cheers-count-${entry.id}')))
+          .data,
+      '0',
+    );
+
+    await repository.setFeedEntryCheers(
+      userId: friend.id,
+      entryId: entry.id,
+      shouldCheer: true,
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final cheersNotification = controller.notifications.firstWhere(
+      (notification) =>
+          notification.type == AppNotificationTypes.friendDrinkCheered,
+    );
+
+    await tester.tap(find.byKey(const Key('home-notifications-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Widget Cheers Friend sent you a cheers 🍻'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(Key('notification-${cheersNotification.id}')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-list-view')), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.byKey(Key('feed-entry-cheers-count-${entry.id}')))
+          .data,
+      '1',
+    );
+  });
+  testWidgets('loads more feed posts while scrolling', (tester) async {
+    tester.view.physicalSize = const Size(430, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'feed-scroll@example.com',
+      password: 'password123',
+      displayName: 'Feed Scroll',
+    );
+    final user = controller.currentUser!;
+    final preferences = await SharedPreferences.getInstance();
+    final externalRepository = LocalAppRepository(preferences);
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final baseTime = DateTime(2026, 4, 29, 20);
+    DrinkEntry? oldestEntry;
+    for (var index = 0; index < 25; index++) {
+      final entry = await externalRepository.addDrinkEntry(
+        user: user,
+        drink: drink,
+        consumedAt: baseTime.subtract(Duration(minutes: index)),
+      );
+      oldestEntry = entry;
+    }
+    await controller.refreshData();
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.feedPosts, hasLength(20));
+    expect(controller.hasMoreFeedPosts, isTrue);
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      isNot(contains(oldestEntry!.id)),
+    );
+
+    await tester.drag(
+      find.byKey(const Key('feed-list-view')),
+      const Offset(0, -2600),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+
+    expect(controller.feedPosts, hasLength(25));
+    expect(controller.hasMoreFeedPosts, isFalse);
+    expect(
+      controller.feedPosts.map((post) => post.entry.id),
+      contains(oldestEntry.id),
+    );
+  });
+
   testWidgets('refreshes the statistics with pull to refresh', (tester) async {
     tester.view.physicalSize = const Size(430, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -3477,6 +4270,60 @@ void main() {
     expect(_statisticsMapMarker(wineEntry.id), findsOneWidget);
   });
 
+  testWidgets('shows CARTO and OpenStreetMap attribution on fallback maps', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-attribution@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Attribution',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    expect(find.byKey(const Key('statistics-map-attribution')), findsOneWidget);
+    expect(
+      find.byKey(const Key('statistics-map-attribution-carto')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('statistics-map-attribution-openstreetmap')),
+      findsOneWidget,
+    );
+    expect(find.text('© CARTO'), findsOneWidget);
+    expect(find.text('© OpenStreetMap'), findsOneWidget);
+    expect(
+      find.byKey(const Key('statistics-map-attribution-protomaps')),
+      findsNothing,
+    );
+  });
+
   testWidgets('expands the statistics map card down to the navigation bar', (
     tester,
   ) async {
@@ -3825,6 +4672,27 @@ void main() {
       ),
       StatisticsMapTapResolution.openSheet,
     );
+  });
+
+  test('resolves statistics map styles to CARTO light and dark URLs', () {
+    expect(
+      statisticsMapStyleUrl(Brightness.light),
+      'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+    );
+    expect(
+      statisticsMapStyleUrl(Brightness.dark),
+      'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    );
+    expect(
+      statisticsMapStyleUrl(Brightness.light),
+      isNot(contains('protomaps')),
+    );
+    expect(
+      statisticsMapStyleUrl(Brightness.dark),
+      isNot(contains('protomaps')),
+    );
+    expect(statisticsMapStyleUrl(Brightness.light), isNot(contains('lang=')));
+    expect(statisticsMapStyleUrl(Brightness.dark), isNot(contains('lang=')));
   });
 
   test(
@@ -4201,91 +5069,135 @@ void main() {
     },
   );
 
-  testWidgets(
-    'edits entry comment and image from history without exposing drink controls',
-    (tester) async {
-      tester.view.physicalSize = const Size(430, 1000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
+  testWidgets('changes the drink type while editing an entry from history', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
 
-      final controller = await buildTestController();
-      await controller.signUp(
-        email: 'history-edit@example.com',
-        password: 'password123',
-        displayName: 'History Edit Example',
-      );
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'history-edit@example.com',
+      password: 'password123',
+      displayName: 'History Edit Example',
+    );
 
-      final drink = controller.availableDrinks.firstWhere(
-        (candidate) => candidate.id == 'nonAlcoholic-water',
-      );
-      await controller.addDrinkEntry(
-        drink: drink,
-        volumeMl: drink.volumeMl,
-        comment: 'Before edit',
-        imagePath: '/tmp/before-edit.png',
-      );
-      final entryId = controller.entries.single.id;
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'nonAlcoholic-water',
+    );
+    final replacementDrink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      comment: 'Before edit',
+      imagePath: '/tmp/before-edit.png',
+    );
+    final entryId = controller.entries.single.id;
 
-      await tester.pumpWidget(
-        GlassTrailApp(
-          controller: controller,
-          photoService: const TestPhotoService(path: '/tmp/updated-image.png'),
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(path: '/tmp/updated-image.png'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(Key('feed-entry-image-$entryId')), findsOneWidget);
+    expect(find.text('before-edit.png'), findsNothing);
+
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
+    await tester.pumpAndSettle();
+
+    final commentField = tester.widget<TextFormField>(
+      find.byKey(const Key('edit-entry-comment-field')),
+    );
+    expect(commentField.controller?.text, 'Before edit');
+    expect(find.byKey(const Key('edit-entry-image-preview')), findsOneWidget);
+    expect(find.text('before-edit.png'), findsNothing);
+    expect(find.byKey(const Key('drink-search-field')), findsNothing);
+    expect(find.byKey(const Key('drink-volume-field')), findsNothing);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('edit-entry-drink-summary-name')))
+          .data,
+      'Water',
+    );
+    final editDialogTheme = Theme.of(
+      tester.element(find.byKey(const Key('edit-entry-remove-photo-button'))),
+    );
+    final removePhotoButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('edit-entry-remove-photo-button')),
+    );
+    expect(
+      _foregroundColor(removePhotoButton.style),
+      editDialogTheme.colorScheme.error,
+    );
+    expect(
+      _borderSide(removePhotoButton.style),
+      BorderSide(
+        color: editDialogTheme.colorScheme.error.withValues(alpha: 0.72),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('edit-entry-change-drink-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('drink-search-field')), 'Pils');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pils').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('edit-entry-drink-summary-name')))
+          .data,
+      replacementDrink.displayName(controller.settings.localeCode),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('edit-entry-drink-summary-volume')),
+        matching: find.text(
+          controller.settings.unit.formatVolume(replacementDrink.volumeMl),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+      findsOneWidget,
+    );
 
-      expect(find.byKey(Key('feed-entry-image-$entryId')), findsOneWidget);
-      expect(find.text('before-edit.png'), findsNothing);
+    await tester.enterText(
+      find.byKey(const Key('edit-entry-comment-field')),
+      'After edit',
+    );
+    await tester.tap(find.byKey(const Key('edit-entry-remove-photo-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('edit-entry-save-button')));
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
-      await tester.pumpAndSettle();
-
-      final commentField = tester.widget<TextFormField>(
-        find.byKey(const Key('edit-entry-comment-field')),
-      );
-      expect(commentField.controller?.text, 'Before edit');
-      expect(find.byKey(const Key('edit-entry-image-preview')), findsOneWidget);
-      expect(find.text('before-edit.png'), findsNothing);
-      expect(find.byKey(const Key('drink-search-field')), findsNothing);
-      expect(find.byKey(const Key('drink-volume-field')), findsNothing);
-      final editDialogTheme = Theme.of(
-        tester.element(find.byKey(const Key('edit-entry-remove-photo-button'))),
-      );
-      final removePhotoButton = tester.widget<OutlinedButton>(
-        find.byKey(const Key('edit-entry-remove-photo-button')),
-      );
-      expect(
-        _foregroundColor(removePhotoButton.style),
-        editDialogTheme.colorScheme.error,
-      );
-      expect(
-        _borderSide(removePhotoButton.style),
-        BorderSide(
-          color: editDialogTheme.colorScheme.error.withValues(alpha: 0.72),
-        ),
-      );
-
-      await tester.enterText(
-        find.byKey(const Key('edit-entry-comment-field')),
-        'After edit',
-      );
-      await tester.tap(find.byKey(const Key('edit-entry-remove-photo-button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('edit-entry-save-button')));
-      await tester.pumpAndSettle();
-
-      expect(controller.entries.single.comment, 'After edit');
-      expect(controller.entries.single.imagePath, isNull);
-      expect(find.text('After edit'), findsOneWidget);
-      expect(find.text('Before edit'), findsNothing);
-      expect(find.text('before-edit.png'), findsNothing);
-    },
-  );
+    expect(controller.entries.single.drinkId, replacementDrink.id);
+    expect(controller.entries.single.drinkName, replacementDrink.name);
+    expect(controller.entries.single.category, replacementDrink.category);
+    expect(controller.entries.single.volumeMl, replacementDrink.volumeMl);
+    expect(controller.entries.single.comment, 'After edit');
+    expect(controller.entries.single.imagePath, isNull);
+    expect(find.text('Pils'), findsOneWidget);
+    expect(find.textContaining('Beer'), findsOneWidget);
+    expect(
+      find.text(
+        controller.settings.unit.formatVolume(replacementDrink.volumeMl),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('After edit'), findsOneWidget);
+    expect(find.text('Before edit'), findsNothing);
+    expect(find.text('before-edit.png'), findsNothing);
+    expect(find.text('Water'), findsNothing);
+  });
 
   testWidgets('uses the feed preset when picking a history entry photo', (
     tester,
@@ -4537,8 +5449,5 @@ void main() {
     );
 
     repository.unblock();
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
   });
 }

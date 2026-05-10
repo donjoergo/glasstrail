@@ -63,6 +63,9 @@ void main() {
       expect(stats.streakThroughYesterday, 2);
       expect(stats.streakMessageState, StreakMessageState.continuedToday);
       expect(stats.totalEntries, 5);
+      expect(stats.beerTotalCount, 1);
+      expect(stats.regularBeerCount, 1);
+      expect(stats.alcoholFreeBeerCount, 0);
       expect(stats.categoryCounts[DrinkCategory.nonAlcoholic], 3);
       expect(stats.categoryCounts[DrinkCategory.beer], 1);
       expect(stats.categoryCounts[DrinkCategory.wine], 1);
@@ -81,6 +84,49 @@ void main() {
       expect(stats.weekProgress[2].hasEntry, isFalse);
       expect(stats.weekProgress[6].hasEntry, isFalse);
     });
+
+    test(
+      'splits beer counts without counting non-alcoholic category drinks',
+      () {
+        final now = DateTime(2026, 3, 17, 12);
+        final entries = <DrinkEntry>[
+          DrinkEntry(
+            id: '1',
+            userId: 'u1',
+            drinkId: 'beer-classic',
+            drinkName: 'Beer',
+            category: DrinkCategory.beer,
+            consumedAt: DateTime(2026, 3, 17, 9),
+          ),
+          DrinkEntry(
+            id: '2',
+            userId: 'u1',
+            drinkId: 'beer-non-alcoholic',
+            drinkName: 'Non-alcoholic Beer',
+            category: DrinkCategory.beer,
+            consumedAt: DateTime(2026, 3, 17, 10),
+            isAlcoholFree: true,
+          ),
+          DrinkEntry(
+            id: '3',
+            userId: 'u1',
+            drinkId: 'water',
+            drinkName: 'Water',
+            category: DrinkCategory.nonAlcoholic,
+            consumedAt: DateTime(2026, 3, 17, 11),
+            isAlcoholFree: true,
+          ),
+        ];
+
+        final stats = StatsCalculator.fromEntries(entries, now: now);
+
+        expect(stats.beerTotalCount, 2);
+        expect(stats.regularBeerCount, 1);
+        expect(stats.alcoholFreeBeerCount, 1);
+        expect(stats.categoryCounts[DrinkCategory.beer], 2);
+        expect(stats.categoryCounts[DrinkCategory.nonAlcoholic], 1);
+      },
+    );
 
     test('returns zero current streak when today is missing', () {
       final now = DateTime(2026, 3, 17, 12);

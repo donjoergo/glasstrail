@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/supabase_app_repository.dart';
+import 'package:glasstrail/src/time_zone_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
@@ -88,6 +89,277 @@ void main() {
         expect(server.deletedPrefixes, isEmpty);
       },
     );
+
+    test('writes alcohol-free flags for custom drinks', () async {
+      const userId = 'user-123';
+
+      final updated = await repository.saveCustomDrink(
+        userId: userId,
+        drinkId: 'drink-123',
+        name: 'Free Pils',
+        category: DrinkCategory.beer,
+        volumeMl: 500,
+        isAlcoholFree: true,
+      );
+
+      expect(updated.isAlcoholFree, isTrue);
+      expect(server.lastUpsertBody?['is_alcohol_free'], isTrue);
+    });
+
+    test('loads global catalog alcohol-free flags', () async {
+      server.globalDrinks.addAll(<Map<String, dynamic>>[
+        <String, dynamic>{
+          'id': 'beer-non-alcoholic',
+          'category_slug': DrinkCategory.beer.storageValue,
+          'name_en': 'Non-alcoholic Beer',
+          'name_de': 'Alkoholfreies Bier',
+          'default_volume_ml': 500,
+          'is_alcohol_free': true,
+        },
+      ]);
+
+      final catalog = await repository.loadDefaultCatalog();
+
+      expect(catalog.single.id, 'beer-non-alcoholic');
+      expect(catalog.single.isAlcoholFree, isTrue);
+    });
+
+    test('snapshots alcohol-free flag when creating an entry', () async {
+      const user = AppUser(
+        id: 'user-123',
+        email: 'user@example.com',
+        password: 'secret',
+        displayName: 'Test User',
+      );
+
+      final entry = await repository.addDrinkEntry(
+        user: user,
+        drink: const DrinkDefinition(
+          id: 'beer-non-alcoholic',
+          name: 'Non-alcoholic Beer',
+          category: DrinkCategory.beer,
+          isAlcoholFree: true,
+        ),
+      );
+
+      expect(entry.isAlcoholFree, isTrue);
+      expect(server.lastEntryInsertBody?['is_alcohol_free'], isTrue);
+    });
+  });
+
+  group('SupabaseAppRepository.updateDrinkEntry', () {
+    late _MockSupabaseServer server;
+    late SupabaseClient client;
+    late SupabaseAppRepository repository;
+
+    setUp(() async {
+      server = await _MockSupabaseServer.start();
+      client = SupabaseClient(
+        server.baseUrl,
+        'test-key',
+        accessToken: () async => 'test-token',
+        headers: const <String, String>{'X-Client-Info': 'glasstrail-test'},
+      );
+      repository = SupabaseAppRepository(client);
+    });
+
+    tearDown(() async {
+      await client.dispose();
+      await server.close();
+    });
+
+    test(
+      'writes replacement drink snapshot fields in the patch body',
+      () async {
+        const user = AppUser(
+          id: 'user-123',
+          email: 'user@example.com',
+          password: 'secret',
+          displayName: 'Test User',
+        );
+        const entryId = 'entry-123';
+        server.entryRowsById[entryId] = <String, dynamic>{
+          'id': entryId,
+          'user_id': user.id,
+          'source_type': 'global',
+          'source_drink_id': 'beer-pils',
+          'drink_name': 'Pils',
+          'category_slug': DrinkCategory.beer.storageValue,
+          'volume_ml': 500,
+          'is_alcohol_free': false,
+          'comment': 'Original note',
+          'image_path': 'user-123/entries/original-entry.png',
+          'consumed_at': DateTime.utc(2026, 5, 11, 10).toIso8601String(),
+        };
+        final replacementDrink = DrinkDefinition(
+          id: 'custom-negroni',
+          name: 'House Negroni',
+          category: DrinkCategory.cocktails,
+          volumeMl: 180,
+          ownerUserId: user.id,
+        );
+
+        final updated = await repository.updateDrinkEntry(
+          user: user,
+          entry: DrinkEntry(
+            id: entryId,
+            userId: user.id,
+            drinkId: 'beer-pils',
+            drinkName: 'Pils',
+            category: DrinkCategory.beer,
+            consumedAt: DateTime(2026, 5, 11, 12),
+            volumeMl: 500,
+            comment: 'Original note',
+            imagePath: 'user-123/entries/original-entry.png',
+          ),
+          replacementDrink: replacementDrink,
+          volumeMl: replacementDrink.volumeMl,
+          comment: 'Updated note',
+          imagePath: 'user-123/entries/original-entry.png',
+        );
+
+        expect(server.lastEntryUpdateBody?['source_type'], 'custom');
+        expect(
+          server.lastEntryUpdateBody?['source_drink_id'],
+          'custom-negroni',
+        );
+        expect(server.lastEntryUpdateBody?['drink_name'], 'House Negroni');
+        expect(
+          server.lastEntryUpdateBody?['category_slug'],
+          DrinkCategory.cocktails.storageValue,
+        );
+        expect(server.lastEntryUpdateBody?['is_alcohol_free'], isFalse);
+        expect(server.lastEntryUpdateBody?['volume_ml'], 180);
+        expect(updated.drinkId, 'custom-negroni');
+        expect(updated.drinkName, 'House Negroni');
+        expect(updated.category, DrinkCategory.cocktails);
+        expect(updated.volumeMl, 180);
+        expect(updated.comment, 'Updated note');
+        expect(updated.imagePath, 'user-123/entries/original-entry.png');
+      },
+    );
+  });
+
+  group('SupabaseAppRepository.watchNotifications', () {
+    test(
+      'waits for subscription confirmation before loading snapshot',
+      () async {
+        final repository = _ControllableNotificationWatchRepository();
+        final notifications = <AppNotification>[
+          AppNotification(
+            id: 'notification-1',
+            recipientUserId: 'user-123',
+            senderUserId: 'friend-456',
+            senderDisplayName: 'Test Friend',
+            type: AppNotificationTypes.friendRequestSent,
+            createdAt: DateTime.utc(2026, 5, 2, 12),
+          ),
+        ];
+        repository.notificationsToReturn = notifications;
+        final emitted = <List<AppNotification>>[];
+
+        final subscription = repository
+            .watchNotifications('user-123')
+            .listen(emitted.add);
+        addTearDown(subscription.cancel);
+
+        expect(repository.loadNotificationsCallCount, 0);
+        expect(emitted, isEmpty);
+
+        await repository.emitSubscribed();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(repository.loadNotificationsCallCount, 1);
+        expect(emitted.single, same(notifications));
+      },
+    );
+
+    test('reloads snapshot when subscription is confirmed again', () async {
+      final repository = _ControllableNotificationWatchRepository();
+      repository.notificationsToReturn = <AppNotification>[
+        AppNotification(
+          id: 'notification-1',
+          recipientUserId: 'user-123',
+          senderUserId: 'friend-456',
+          senderDisplayName: 'Test Friend',
+          type: AppNotificationTypes.friendRequestSent,
+          createdAt: DateTime.utc(2026, 5, 2, 12),
+        ),
+      ];
+
+      final subscription = repository
+          .watchNotifications('user-123')
+          .listen((_) {});
+      addTearDown(subscription.cancel);
+
+      await repository.emitSubscribed();
+      await repository.emitSubscribed();
+
+      expect(repository.loadNotificationsCallCount, 2);
+    });
+  });
+
+  group('SupabaseAppRepository.loadFriendStatsProfile', () {
+    late _MockSupabaseServer server;
+    late SupabaseClient client;
+
+    setUp(() async {
+      server = await _MockSupabaseServer.start();
+      client = SupabaseClient(
+        server.baseUrl,
+        'test-key',
+        accessToken: () async => 'test-token',
+        headers: const <String, String>{'X-Client-Info': 'glasstrail-test'},
+      );
+    });
+
+    tearDown(() async {
+      await client.dispose();
+      await server.close();
+    });
+
+    test('sends a timezone identifier with offset fallback', () async {
+      final repository = SupabaseAppRepository(
+        client,
+        timeZoneProvider: const _FakeTimeZoneProvider('Europe/Berlin'),
+      );
+      final expectedOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+
+      final profile = await repository.loadFriendStatsProfile(
+        userId: '11111111-1111-4111-8111-111111111111',
+        friendUserId: '22222222-2222-4222-8222-222222222222',
+      );
+
+      expect(profile.id, server.friendSharedProfileResponse['id']);
+      expect(server.lastFunctionBody?['friendUserId'], profile.id);
+      expect(server.lastFunctionBody?['timeZone'], 'Europe/Berlin');
+      expect(
+        server.lastFunctionBody?['utcOffsetMinutes'],
+        expectedOffsetMinutes,
+      );
+    });
+
+    test(
+      'falls back to the current offset when the timezone is unavailable',
+      () async {
+        final repository = SupabaseAppRepository(
+          client,
+          timeZoneProvider: const _FakeTimeZoneProvider(null),
+        );
+        final expectedOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+
+        await repository.loadFriendStatsProfile(
+          userId: '11111111-1111-4111-8111-111111111111',
+          friendUserId: '22222222-2222-4222-8222-222222222222',
+        );
+
+        expect(server.lastFunctionBody?['timeZone'], isNull);
+        expect(
+          server.lastFunctionBody?['utcOffsetMinutes'],
+          expectedOffsetMinutes,
+        );
+      },
+    );
   });
 }
 
@@ -110,8 +382,21 @@ class _MockSupabaseServer {
   final HttpServer _server;
   final Map<String, Map<String, dynamic>> userDrinksById =
       <String, Map<String, dynamic>>{};
+  final List<Map<String, dynamic>> globalDrinks = <Map<String, dynamic>>[];
+  final Map<String, Map<String, dynamic>> entryRowsById =
+      <String, Map<String, dynamic>>{};
   final List<String> deletedPrefixes = <String>[];
+  final Map<String, dynamic> friendSharedProfileResponse = <String, dynamic>{
+    'id': '22222222-2222-4222-8222-222222222222',
+    'displayName': 'Shared Friend',
+    'profileImagePath': null,
+    'shareStatsWithFriends': true,
+    'statistics': null,
+  };
   Map<String, dynamic>? lastUpsertBody;
+  Map<String, dynamic>? lastEntryInsertBody;
+  Map<String, dynamic>? lastEntryUpdateBody;
+  Map<String, dynamic>? lastFunctionBody;
 
   String get baseUrl => 'http://${_server.address.address}:${_server.port}';
 
@@ -138,11 +423,52 @@ class _MockSupabaseServer {
       return;
     }
 
+    if (request.method == 'GET' && path == '/rest/v1/global_drinks') {
+      await _writeJson(request.response, globalDrinks);
+      return;
+    }
+
     if (request.method == 'POST' && path == '/rest/v1/user_drinks') {
       final body = await _readJsonMap(request);
       lastUpsertBody = body;
       userDrinksById[body['id'] as String] = Map<String, dynamic>.from(body);
       await _writeJson(request.response, body);
+      return;
+    }
+
+    if (request.method == 'POST' && path == '/rest/v1/drink_entries') {
+      final body = await _readJsonMap(request);
+      lastEntryInsertBody = body;
+      entryRowsById[body['id'] as String] = Map<String, dynamic>.from(body);
+      await _writeJson(request.response, body);
+      return;
+    }
+
+    if (request.method == 'PATCH' && path == '/rest/v1/drink_entries') {
+      final entryId = _stripEqPrefix(request.uri.queryParameters['id']);
+      final userId = _stripEqPrefix(request.uri.queryParameters['user_id']);
+      final existingRow = entryRowsById[entryId];
+      if (entryId == null ||
+          userId == null ||
+          existingRow == null ||
+          existingRow['user_id'] != userId) {
+        await _writeJson(request.response, null);
+        return;
+      }
+
+      final body = await _readJsonMap(request);
+      lastEntryUpdateBody = body;
+      final updatedRow = Map<String, dynamic>.from(existingRow)..addAll(body);
+      entryRowsById[entryId] = updatedRow;
+      await _writeJson(request.response, updatedRow);
+      return;
+    }
+
+    if (request.method == 'POST' &&
+        path == '/functions/v1/friend-shared-profile') {
+      final body = await _readJsonMap(request);
+      lastFunctionBody = body;
+      await _writeJson(request.response, friendSharedProfileResponse);
       return;
     }
 
@@ -173,7 +499,7 @@ class _MockSupabaseServer {
     return Map<String, dynamic>.from(jsonDecode(body) as Map);
   }
 
-  Future<void> _writeJson(HttpResponse response, Object body) async {
+  Future<void> _writeJson(HttpResponse response, Object? body) async {
     response.headers.contentType = ContentType.json;
     response.write(jsonEncode(body));
     await response.close();
@@ -185,4 +511,42 @@ class _MockSupabaseServer {
     }
     return value.startsWith('eq.') ? value.substring(3) : value;
   }
+}
+
+class _ControllableNotificationWatchRepository extends SupabaseAppRepository {
+  _ControllableNotificationWatchRepository()
+    : super(SupabaseClient('http://127.0.0.1:54321', 'test-key'));
+
+  List<AppNotification> notificationsToReturn = const <AppNotification>[];
+  int loadNotificationsCallCount = 0;
+  Future<void> Function()? _publishSnapshot;
+
+  @override
+  Future<List<AppNotification>> loadNotifications(String userId) async {
+    loadNotificationsCallCount++;
+    return notificationsToReturn;
+  }
+
+  @override
+  Future<void> Function() startWatchingNotifications({
+    required String userId,
+    required Future<void> Function() publishSnapshot,
+    required void Function(Object error, StackTrace stackTrace) publishError,
+  }) {
+    _publishSnapshot = publishSnapshot;
+    return () async {};
+  }
+
+  Future<void> emitSubscribed() async {
+    await _publishSnapshot?.call();
+  }
+}
+
+class _FakeTimeZoneProvider implements TimeZoneProvider {
+  const _FakeTimeZoneProvider(this.identifier);
+
+  final String? identifier;
+
+  @override
+  Future<String?> getLocalTimeZoneIdentifier() async => identifier;
 }

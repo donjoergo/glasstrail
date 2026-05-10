@@ -1,3 +1,4 @@
+import '../friend_stats_profile.dart';
 import '../models.dart';
 
 abstract class AppRepository {
@@ -20,6 +21,64 @@ abstract class AppRepository {
 
   Future<AppUser> updateProfile(AppUser user);
 
+  Future<List<FriendConnection>> loadFriendConnections(String userId);
+
+  Future<FriendProfile> getOwnFriendProfile(String userId);
+
+  Future<FriendStatsProfile> loadFriendStatsProfile({
+    required String userId,
+    required String friendUserId,
+  });
+
+  Future<PublicFriendProfile> resolvePublicFriendProfileLink(String shareCode);
+
+  Future<FriendProfile> resolveFriendProfileLink(String shareCode);
+
+  Future<List<FriendConnection>> sendFriendRequestToProfile({
+    required String userId,
+    required String shareCode,
+  });
+
+  Future<List<FriendConnection>> acceptFriendRequest({
+    required String userId,
+    required String relationshipId,
+  });
+
+  Future<List<FriendConnection>> rejectFriendRequest({
+    required String userId,
+    required String relationshipId,
+  });
+
+  Future<List<FriendConnection>> cancelFriendRequest({
+    required String userId,
+    required String relationshipId,
+  });
+
+  Future<List<FriendConnection>> removeFriend({
+    required String userId,
+    required String friendUserId,
+  });
+
+  Future<List<AppNotification>> loadNotifications(String userId);
+
+  Future<List<AppNotification>> markNotificationsRead({
+    required String userId,
+    required List<String> notificationIds,
+  });
+
+  Stream<List<AppNotification>> watchNotifications(String userId);
+
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  });
+
+  Future<void> unregisterNotificationDeviceToken({
+    required String userId,
+    required String token,
+  });
+
   Future<List<DrinkDefinition>> loadDefaultCatalog();
 
   Future<List<DrinkDefinition>> loadCustomDrinks(String userId);
@@ -30,6 +89,7 @@ abstract class AppRepository {
     required String name,
     required DrinkCategory category,
     double? volumeMl,
+    bool isAlcoholFree = false,
     String? imagePath,
   });
 
@@ -40,6 +100,17 @@ abstract class AppRepository {
 
   Future<List<DrinkEntry>> loadEntries(String userId);
 
+  Future<FeedDrinkPostPage> loadFeedDrinkPosts({
+    required String userId,
+    FeedDrinkPostCursor? cursor,
+    int limit = 20,
+  });
+
+  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+    required String userId,
+    required String entryId,
+    required bool shouldCheer,
+  });
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,
     required DrinkDefinition drink,
@@ -57,6 +128,8 @@ abstract class AppRepository {
   Future<DrinkEntry> updateDrinkEntry({
     required AppUser user,
     required DrinkEntry entry,
+    DrinkDefinition? replacementDrink,
+    double? volumeMl,
     String? comment,
     String? imagePath,
   });

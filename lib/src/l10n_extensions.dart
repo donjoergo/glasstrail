@@ -18,6 +18,22 @@ extension AppLocalizationsX on AppLocalizations {
     DrinkCategory.nonAlcoholic => nonAlcoholic,
   };
 
+  String drinkDefinitionMetadata(DrinkDefinition drink, AppUnit unit) {
+    return <String>[
+      categoryLabel(drink.category),
+      if (drink.shouldShowAlcoholFreeMarker) alcoholFree,
+      if (drink.volumeMl != null) unit.formatVolume(drink.volumeMl),
+    ].join(' • ');
+  }
+
+  String drinkEntryMetadata(DrinkEntry entry, AppUnit unit) {
+    return <String>[
+      categoryLabel(entry.category),
+      if (entry.shouldShowAlcoholFreeMarker) alcoholFree,
+      if (entry.volumeMl != null) unit.formatVolume(entry.volumeMl),
+    ].join(' • ');
+  }
+
   String themeLabel(AppThemePreference preference) => switch (preference) {
     AppThemePreference.system => themeSystem,
     AppThemePreference.light => themeLight,

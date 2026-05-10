@@ -41,8 +41,15 @@
   "save": "Speichern",
   "cancel": "Abbrechen",
   "close": "Schließen",
+  "accept": "Annehmen",
+  "reject": "Ablehnen",
+  "pending": "Ausstehend",
+  "share": "Teilen",
+  "copyLink": "Link kopieren",
   "whatsNew": "Was gibt's Neues",
   "editEntry": "Eintrag bearbeiten",
+  "drinkType": "Getränketyp",
+  "changeDrinkType": "Getränketyp ändern",
   "deleteEntry": "Eintrag löschen",
   "deleteEntryPrompt": "Diesen Getränkeeintrag löschen? Der gespeicherte Kommentar und das Foto werden ebenfalls entfernt.",
   "createCustomDrink": "Eigenes Getränk erstellen",
@@ -52,6 +59,8 @@
   "drinkName": "Getränkename",
   "category": "Kategorie",
   "volume": "Volumen",
+  "alcoholFree": "Alkoholfrei",
+  "customDrinkAlcoholFreeSwitch": "Alkoholfrei",
   "appUpdatedTitle": "App aktualisiert",
   "appUpdatedBody": "{appName} wurde gerade auf {version} aktualisiert. Möchtest du dir die Änderungsnotizen ansehen?",
   "@appUpdatedBody": {
@@ -66,12 +75,12 @@
     }
   },
   "feedHeadline": "Dein Aktivitätsfeed",
-  "feedBody": "V1 zeigt deine persönliche Historie. Freunde, Kommentare und Cheers folgen später.",
+  "feedCheersAction": "Prost",
   "noEntries": "Noch keine Getränke erfasst.",
   "startLogging": "Starte mit deinem ersten Eintrag.",
-  "weeklyTotal": "Woche",
-  "monthlyTotal": "Monat",
-  "yearlyTotal": "Jahr",
+  "weeklyTotal": "Diese Woche",
+  "monthlyTotal": "Dieser Monat",
+  "yearlyTotal": "Dieses Jahr",
   "currentStreak": "Aktuelle Serie",
   "bestStreak": "Beste Serie",
   "thisWeek": "Diese Woche",
@@ -87,6 +96,9 @@
   "weekdaySaturdayShort": "Sa",
   "weekdaySundayShort": "So",
   "categoryBreakdown": "Kategorien",
+  "beerBreakdown": "Bier-Aufteilung",
+  "regularBeer": "Normales Bier",
+  "alcoholFreeBeer": "Alkoholfreies Bier",
   "history": "Historie",
   "statisticsMapEmptyTitle": "Noch keine Drinks mit Standort",
   "statisticsMapEmptyBody": "Aktiviere beim Loggen den Standort, damit Drinks hier auf der Karte erscheinen.",
@@ -112,8 +124,157 @@
   "language": "Sprache",
   "units": "Einheiten",
   "handedness": "Bedienseite",
+  "shareStatsWithFriends": "Statistiken mit Freunden teilen",
+  "shareStatsWithFriendsBody": "Bestätigte Freunde können deine geteilten Statistiken direkt in der App öffnen.",
   "logout": "Abmelden",
   "editProfile": "Profil bearbeiten",
+  "friends": "Freunde",
+  "friendsSectionBody": "Teile deinen Profillink, damit andere dir eine Freundschaftsanfrage senden können.",
+  "friendsEmpty": "Noch keine Freunde oder ausstehenden Anfragen.",
+  "friendProfile": "Freundesprofil",
+  "friendProfileLinkAction": "Mein Profil zeigen",
+  "friendProfileLinkTitle": "Dein Freundesprofil",
+  "friendProfileLinkBody": "Freunde können diesen Code scannen oder den Link öffnen, um dir eine Anfrage zu senden.",
+  "friendProfileShareTitle": "Füge mich auf Glass Trail hinzu",
+  "friendProfileShareText": "Hey! {profileName} hat dich zu Glass Trail eingeladen, der App um Getränke aufzuzeichnen, Statistiken auszuwerten und mit Freunden anzustoßen. Probier’s doch mal aus!\n\n{link}",
+  "@friendProfileShareText": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      },
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "friendProfileLinkCopied": "Profillink kopiert.",
+  "friendIncomingRequest": "Möchte befreundet sein",
+  "friendAccepted": "Freund",
+  "friendRequestPending": "Wartet auf Antwort",
+  "friendAlreadyFriends": "Ihr seid bereits befreundet.",
+  "friendIncomingRequestFromProfile": "Diese Person hat dir bereits eine Anfrage gesendet. Prüfe sie im Freunde-Bereich.",
+  "friendProfileSelf": "Das ist dein eigener Freundes-Profillink.",
+  "friendProfileRequestPrompt": "{name} möchte mit dir befreundet sein.",
+  "@friendProfileRequestPrompt": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendProfilePublicPrompt": "{name} möchte dein Freund in Glass Trail sein.",
+  "@friendProfilePublicPrompt": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendStatsNotSharedTitle": "Statistiken nicht geteilt",
+  "friendStatsNotSharedBody": "{name} teilt aktuell keine Statistiken mit Freunden.",
+  "@friendStatsNotSharedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendStatsUnavailableTitle": "Freundesprofil nicht verfügbar",
+  "friendStatsUnavailableBody": "Dieses geteilte Freundesprofil ist nicht verfügbar oder wird nicht mehr mit dir geteilt.",
+  "addAsFriend": "Als Freund hinzufügen",
+  "goToFeed": "Zum Feed",
+  "withdrawFriendRequest": "Zurückziehen",
+  "unfriend": "Entfreunden",
+  "unfriendConfirmTitle": "{name} entfreunden?",
+  "@unfriendConfirmTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unfriendConfirmBody": "Du und {name} seht dann die geteilten Aktivitäten des jeweils anderen nicht mehr. Du kannst später erneut eine Freundschaftsanfrage senden.",
+  "@unfriendConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "friendProfileLinkInvalidTitle": "Profillink nicht verfügbar",
+  "friendProfileLinkInvalidBody": "Dieser Freundes-Profillink ist ungültig oder nicht mehr verfügbar.",
+  "notifications": "Mitteilungen",
+  "notificationsTooltip": "Mitteilungen",
+  "notificationsEmptyTitle": "Aktuell keine Benachrichtigungen",
+  "notificationsEmptyBody": "Sobald Freunde Getränke erfassen oder dir Freundschaftsanfragen senden, siehst du diese hier. Gelesene Benachrichtigungen werden nach 30 Tagen gelöscht, ungelesene nach 90 Tagen.",
+  "notificationFriendRequestSentTitle": "{name} hat dir eine Freundschaftsanfrage gesendet",
+  "@notificationFriendRequestSentTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRequestSentBody": "Prüfe sie in deinem Freunde-Bereich.",
+  "notificationFriendRequestAcceptedTitle": "{name} hat deine Freundschaftsanfrage angenommen",
+  "@notificationFriendRequestAcceptedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRequestAcceptedBody": "Ihr könnt jetzt gegenseitig geteilte Aktivitäten sehen.",
+  "notificationFriendRequestRejectedTitle": "{name} hat deine Freundschaftsanfrage abgelehnt",
+  "@notificationFriendRequestRejectedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRequestRejectedBody": "Du kannst später eine neue Anfrage senden.",
+  "notificationFriendRemovedTitle": "{name} hat dich als Freund entfernt",
+  "@notificationFriendRemovedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendRemovedBody": "Öffne deinen Freunde-Bereich, um deine Verbindungen zu prüfen.",
+  "notificationFriendDrinkCheeredTitle": "{name} prostet dir zu 🍻",
+  "@notificationFriendDrinkCheeredTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendDrinkCheeredBody": "",
+  "notificationFriendDrinkLoggedTitle": "{name} trinkt {drink}",
+  "@notificationFriendDrinkLoggedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "drink": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationFriendDrinkLoggedBody": "{commentLine}\n{locationAddressLine}",
+  "@notificationFriendDrinkLoggedBody": {
+    "placeholders": {
+      "commentLine": {
+        "type": "String"
+      },
+      "locationAddressLine": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationsMarkAllRead": "Alle als gelesen markieren",
   "customDrinks": "Meine eigenen Getränke",
   "addCustomDrinkAction": "Eigenes Getränk hinzufügen",
   "customDrinksEmptyTitle": "Noch keine eigenen Getränke",
@@ -123,7 +284,7 @@
   "roadmap": "Als Nächstes geplant",
   "about": "Über die App",
   "github": "GitHub",
-  "roadmapBody": "Freunde, Social Feed und Erfolge sind im Plan, aber bewusst nicht Teil von V1.",
+  "roadmapBody": "Als Nächstes kommen Cheers-Reaktionen und Erfolge.",
   "beerWithMeImport": "Beer With Me-Import",
   "beerWithMeImportBody": "Importiere einen Beer With Me-Export in deine GlassTrail-Historie. Bereits importierte Beer With Me-Einträge werden automatisch erkannt und übersprungen.",
   "beerWithMeImportAction": "Beer With Me-Export importieren",
@@ -259,12 +420,23 @@
   },
   "entryUpdated": "Eintrag aktualisiert.",
   "entryDeleted": "Eintrag gelöscht.",
+  "friendRequestSent": "Freundschaftsanfrage gesendet.",
+  "friendRequestAccepted": "Freundschaftsanfrage angenommen.",
+  "friendRequestRejected": "Freundschaftsanfrage abgelehnt.",
+  "friendRequestCanceled": "Freundschaftsanfrage zurückgezogen.",
+  "friendRemoved": "Freund entfernt.",
   "somethingWentWrong": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
   "accountAlreadyExists": "Es gibt bereits ein Konto mit dieser E-Mail-Adresse.",
   "invalidCredentials": "Die E-Mail oder das Passwort ist falsch.",
   "profileUpdateFailed": "Das Profil konnte nicht aktualisiert werden.",
   "entryUpdateFailed": "Der Getränkeeintrag konnte nicht aktualisiert werden.",
   "entryDeleteFailed": "Der Getränkeeintrag konnte nicht gelöscht werden.",
+  "friendProfileLinkInvalid": "Der Profillink ist ungültig.",
+  "friendSelfRequestBlocked": "Du kannst dich nicht selbst als Freund hinzufügen.",
+  "friendRequestAcceptFailed": "Die Freundschaftsanfrage konnte nicht angenommen werden.",
+  "friendRequestRejectFailed": "Die Freundschaftsanfrage konnte nicht abgelehnt werden.",
+  "friendRequestCancelFailed": "Die Freundschaftsanfrage konnte nicht zurückgezogen werden.",
+  "friendRemoveFailed": "Der Freund konnte nicht entfernt werden.",
   "customDrinkDeleteFailed": "Das eigene Getränk konnte nicht gelöscht werden.",
   "customDrinkAlreadyExists": "Du hast bereits ein eigenes Getränk mit diesem Namen.",
   "signUpMissingUser": "Die Registrierung hat keinen Benutzer zurückgegeben.",

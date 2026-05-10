@@ -105,5 +105,5 @@ jobs:
               --notes-file "$RUNNER_TEMP/release-notes.md"
 
           gh release upload "$GITHUB_REF_NAME" \
-            "build/app/outputs/flutter-apk/app-release.apk#glasstrail-$GITHUB_REF_NAME.apk" \
+            "build/app/outputs/apk/release/glasstrail-v$GITHUB_REF_NAME-release.apk" \
             --clobber
