@@ -386,6 +386,18 @@ abstract class AppLocalizations {
   /// **'Edit entry'**
   String get editEntry;
 
+  /// No description provided for @drinkType.
+  ///
+  /// In en, this message translates to:
+  /// **'Drink type'**
+  String get drinkType;
+
+  /// No description provided for @changeDrinkType.
+  ///
+  /// In en, this message translates to:
+  /// **'Change drink type'**
+  String get changeDrinkType;
+
   /// No description provided for @deleteEntry.
   ///
   /// In en, this message translates to:

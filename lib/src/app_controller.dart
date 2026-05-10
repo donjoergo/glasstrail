@@ -54,6 +54,16 @@ enum AppBusyAction {
   removeFriend,
 }
 
+const double _drinkEntryDefaultVolumeToleranceMl = 0.01;
+
+bool _matchesDrinkDefaultVolume(double? volumeMl, double? defaultVolumeMl) {
+  if (volumeMl == null || defaultVolumeMl == null) {
+    return volumeMl == null && defaultVolumeMl == null;
+  }
+  return (volumeMl - defaultVolumeMl).abs() <=
+      _drinkEntryDefaultVolumeToleranceMl;
+}
+
 class _FlashMessage {
   const _FlashMessage.simple(this.kind)
     : rawMessage = null,
@@ -483,6 +493,26 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  double? resolveUpdatedDrinkEntryVolume({
+    required DrinkEntry entry,
+    required DrinkDefinition replacementDrink,
+  }) {
+    DrinkDefinition? originalDrink;
+    for (final drink in allDrinks) {
+      if (drink.id == entry.drinkId) {
+        originalDrink = drink;
+        break;
+      }
+    }
+    if (originalDrink == null) {
+      return entry.volumeMl;
+    }
+    if (_matchesDrinkDefaultVolume(entry.volumeMl, originalDrink.volumeMl)) {
+      return replacementDrink.volumeMl;
+    }
+    return entry.volumeMl;
+  }
+
   String localizedFeedPostDrinkName(FeedDrinkPost post, {String? localeCode}) {
     return localizedEntryDrinkName(post.entry, localeCode: localeCode);
   }
@@ -898,6 +928,7 @@ class AppController extends ChangeNotifier {
 
   Future<bool> updateDrinkEntry({
     required DrinkEntry entry,
+    DrinkDefinition? replacementDrink,
     String? comment,
     String? imagePath,
   }) async {
@@ -905,10 +936,18 @@ class AppController extends ChangeNotifier {
     if (user == null) {
       return false;
     }
+    final volumeMl = replacementDrink == null
+        ? entry.volumeMl
+        : resolveUpdatedDrinkEntryVolume(
+            entry: entry,
+            replacementDrink: replacementDrink,
+          );
     return _guardFor(AppBusyAction.updateDrinkEntry, () async {
       final updated = await _repository.updateDrinkEntry(
         user: user,
         entry: entry,
+        replacementDrink: replacementDrink,
+        volumeMl: volumeMl,
         comment: comment,
         imagePath: imagePath,
       );

@@ -4994,91 +4994,135 @@ void main() {
     },
   );
 
-  testWidgets(
-    'edits entry comment and image from history without exposing drink controls',
-    (tester) async {
-      tester.view.physicalSize = const Size(430, 1000);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
+  testWidgets('changes the drink type while editing an entry from history', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
 
-      final controller = await buildTestController();
-      await controller.signUp(
-        email: 'history-edit@example.com',
-        password: 'password123',
-        displayName: 'History Edit Example',
-      );
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'history-edit@example.com',
+      password: 'password123',
+      displayName: 'History Edit Example',
+    );
 
-      final drink = controller.availableDrinks.firstWhere(
-        (candidate) => candidate.id == 'nonAlcoholic-water',
-      );
-      await controller.addDrinkEntry(
-        drink: drink,
-        volumeMl: drink.volumeMl,
-        comment: 'Before edit',
-        imagePath: '/tmp/before-edit.png',
-      );
-      final entryId = controller.entries.single.id;
+    final drink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'nonAlcoholic-water',
+    );
+    final replacementDrink = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: drink,
+      volumeMl: drink.volumeMl,
+      comment: 'Before edit',
+      imagePath: '/tmp/before-edit.png',
+    );
+    final entryId = controller.entries.single.id;
 
-      await tester.pumpWidget(
-        GlassTrailApp(
-          controller: controller,
-          photoService: const TestPhotoService(path: '/tmp/updated-image.png'),
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(path: '/tmp/updated-image.png'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(Key('feed-entry-image-$entryId')), findsOneWidget);
+    expect(find.text('before-edit.png'), findsNothing);
+
+    await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
+    await tester.pumpAndSettle();
+
+    final commentField = tester.widget<TextFormField>(
+      find.byKey(const Key('edit-entry-comment-field')),
+    );
+    expect(commentField.controller?.text, 'Before edit');
+    expect(find.byKey(const Key('edit-entry-image-preview')), findsOneWidget);
+    expect(find.text('before-edit.png'), findsNothing);
+    expect(find.byKey(const Key('drink-search-field')), findsNothing);
+    expect(find.byKey(const Key('drink-volume-field')), findsNothing);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('edit-entry-drink-summary-name')))
+          .data,
+      'Water',
+    );
+    final editDialogTheme = Theme.of(
+      tester.element(find.byKey(const Key('edit-entry-remove-photo-button'))),
+    );
+    final removePhotoButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('edit-entry-remove-photo-button')),
+    );
+    expect(
+      _foregroundColor(removePhotoButton.style),
+      editDialogTheme.colorScheme.error,
+    );
+    expect(
+      _borderSide(removePhotoButton.style),
+      BorderSide(
+        color: editDialogTheme.colorScheme.error.withValues(alpha: 0.72),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('edit-entry-change-drink-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('drink-search-field')), 'Pils');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pils').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('edit-entry-drink-summary-name')))
+          .data,
+      replacementDrink.displayName(controller.settings.localeCode),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('edit-entry-drink-summary-volume')),
+        matching: find.text(
+          controller.settings.unit.formatVolume(replacementDrink.volumeMl),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+      findsOneWidget,
+    );
 
-      expect(find.byKey(Key('feed-entry-image-$entryId')), findsOneWidget);
-      expect(find.text('before-edit.png'), findsNothing);
+    await tester.enterText(
+      find.byKey(const Key('edit-entry-comment-field')),
+      'After edit',
+    );
+    await tester.tap(find.byKey(const Key('edit-entry-remove-photo-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('edit-entry-save-button')));
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(Key('feed-entry-actions-$entryId')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(Key('feed-entry-edit-$entryId')));
-      await tester.pumpAndSettle();
-
-      final commentField = tester.widget<TextFormField>(
-        find.byKey(const Key('edit-entry-comment-field')),
-      );
-      expect(commentField.controller?.text, 'Before edit');
-      expect(find.byKey(const Key('edit-entry-image-preview')), findsOneWidget);
-      expect(find.text('before-edit.png'), findsNothing);
-      expect(find.byKey(const Key('drink-search-field')), findsNothing);
-      expect(find.byKey(const Key('drink-volume-field')), findsNothing);
-      final editDialogTheme = Theme.of(
-        tester.element(find.byKey(const Key('edit-entry-remove-photo-button'))),
-      );
-      final removePhotoButton = tester.widget<OutlinedButton>(
-        find.byKey(const Key('edit-entry-remove-photo-button')),
-      );
-      expect(
-        _foregroundColor(removePhotoButton.style),
-        editDialogTheme.colorScheme.error,
-      );
-      expect(
-        _borderSide(removePhotoButton.style),
-        BorderSide(
-          color: editDialogTheme.colorScheme.error.withValues(alpha: 0.72),
-        ),
-      );
-
-      await tester.enterText(
-        find.byKey(const Key('edit-entry-comment-field')),
-        'After edit',
-      );
-      await tester.tap(find.byKey(const Key('edit-entry-remove-photo-button')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('edit-entry-save-button')));
-      await tester.pumpAndSettle();
-
-      expect(controller.entries.single.comment, 'After edit');
-      expect(controller.entries.single.imagePath, isNull);
-      expect(find.text('After edit'), findsOneWidget);
-      expect(find.text('Before edit'), findsNothing);
-      expect(find.text('before-edit.png'), findsNothing);
-    },
-  );
+    expect(controller.entries.single.drinkId, replacementDrink.id);
+    expect(controller.entries.single.drinkName, replacementDrink.name);
+    expect(controller.entries.single.category, replacementDrink.category);
+    expect(controller.entries.single.volumeMl, replacementDrink.volumeMl);
+    expect(controller.entries.single.comment, 'After edit');
+    expect(controller.entries.single.imagePath, isNull);
+    expect(find.text('Pils'), findsOneWidget);
+    expect(find.textContaining('Beer'), findsOneWidget);
+    expect(
+      find.text(
+        controller.settings.unit.formatVolume(replacementDrink.volumeMl),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('After edit'), findsOneWidget);
+    expect(find.text('Before edit'), findsNothing);
+    expect(find.text('before-edit.png'), findsNothing);
+    expect(find.text('Water'), findsNothing);
+  });
 
   testWidgets('uses the feed preset when picking a history entry photo', (
     tester,

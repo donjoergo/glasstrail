@@ -698,6 +698,8 @@ class LocalAppRepository implements AppRepository {
   Future<DrinkEntry> updateDrinkEntry({
     required AppUser user,
     required DrinkEntry entry,
+    DrinkDefinition? replacementDrink,
+    double? volumeMl,
     String? comment,
     String? imagePath,
   }) async {
@@ -713,6 +715,12 @@ class LocalAppRepository implements AppRepository {
     final trimmedComment = comment?.trim();
     final trimmedImagePath = imagePath?.trim();
     final updated = entry.copyWith(
+      drinkId: replacementDrink?.id,
+      drinkName: replacementDrink?.name,
+      category: replacementDrink?.category,
+      volumeMl: replacementDrink == null ? null : volumeMl,
+      clearVolumeMl: replacementDrink != null && volumeMl == null,
+      isAlcoholFree: replacementDrink?.isEffectivelyAlcoholFree,
       comment: trimmedComment,
       clearComment: trimmedComment == null || trimmedComment.isEmpty,
       imagePath: trimmedImagePath,

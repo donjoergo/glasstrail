@@ -18,6 +18,7 @@ import '../photo_service.dart';
 import '../stats_calculator.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
+import '../widgets/drink_picker_catalog.dart';
 
 @visibleForTesting
 bool debugForceUpdateNotice = const bool.fromEnvironment(
@@ -865,6 +866,7 @@ class _EditDrinkEntryDialog extends StatefulWidget {
 class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
   late final TextEditingController _commentController;
   String? _imagePath;
+  DrinkDefinition? _replacementDrink;
 
   @override
   void initState() {
@@ -899,6 +901,7 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
     final controller = AppScope.controllerOf(context);
     final success = await controller.updateDrinkEntry(
       entry: widget.entry,
+      replacementDrink: _replacementDrink,
       comment: _commentController.text,
       imagePath: _imagePath,
     );
@@ -916,6 +919,64 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
     }
   }
 
+  Future<void> _changeDrinkType() async {
+    final controller = AppScope.controllerOf(context);
+    final selectedDrink = await showDrinkPickerSheet(
+      context: context,
+      title: AppLocalizations.of(context).changeDrinkType,
+      availableDrinks: controller.availableDrinks,
+      recentDrinks: controller.recentDrinks,
+      localeCode: widget.locale,
+      unit: widget.unit,
+      selectedDrink: _pickerSelection(controller),
+      enabled: !controller.isBusy,
+    );
+    if (!mounted || selectedDrink == null) {
+      return;
+    }
+    setState(() {
+      _replacementDrink = selectedDrink.id == widget.entry.drinkId
+          ? null
+          : selectedDrink;
+    });
+  }
+
+  DrinkDefinition? _pickerSelection(AppController controller) {
+    if (_replacementDrink != null) {
+      return _replacementDrink;
+    }
+    for (final drink in controller.availableDrinks) {
+      if (drink.id == widget.entry.drinkId) {
+        return drink;
+      }
+    }
+    return null;
+  }
+
+  String _effectiveDrinkName() {
+    return _replacementDrink?.displayName(widget.locale) ?? widget.drinkName;
+  }
+
+  String _effectiveCategoryLabel(AppLocalizations l10n) {
+    return _replacementDrink == null
+        ? widget.categoryLabel
+        : l10n.categoryLabel(_replacementDrink!.category);
+  }
+
+  bool _effectiveAlcoholFreeMarker() {
+    return _replacementDrink?.shouldShowAlcoholFreeMarker ??
+        widget.entry.shouldShowAlcoholFreeMarker;
+  }
+
+  double? _effectiveVolumeMl(AppController controller) {
+    return _replacementDrink == null
+        ? widget.entry.volumeMl
+        : controller.resolveUpdatedDrinkEntryVolume(
+            entry: widget.entry,
+            replacementDrink: _replacementDrink!,
+          );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -926,6 +987,7 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
     final timeLabel = DateFormat.yMMMd(
       widget.locale,
     ).add_Hm().format(widget.entry.consumedAt);
+    final effectiveVolumeMl = _effectiveVolumeMl(controller);
 
     return AlertDialog(
       title: Text(l10n.editEntry),
@@ -936,7 +998,15 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              Text(
+                l10n.drinkType,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
               Container(
+                key: const Key('edit-entry-drink-summary'),
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -947,7 +1017,8 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      widget.drinkName,
+                      _effectiveDrinkName(),
+                      key: const Key('edit-entry-drink-summary-name'),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -955,18 +1026,18 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                     const SizedBox(height: 4),
                     Text(
                       <String>[
-                        widget.categoryLabel,
-                        if (widget.entry.shouldShowAlcoholFreeMarker)
-                          AppLocalizations.of(context).alcoholFree,
+                        _effectiveCategoryLabel(l10n),
+                        if (_effectiveAlcoholFreeMarker()) l10n.alcoholFree,
                         timeLabel,
                       ].join(' • '),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    if (widget.entry.volumeMl != null) ...<Widget>[
+                    if (effectiveVolumeMl != null) ...<Widget>[
                       const SizedBox(height: 10),
                       Container(
+                        key: const Key('edit-entry-drink-summary-volume'),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
@@ -976,12 +1047,19 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          widget.unit.formatVolume(widget.entry.volumeMl),
+                          widget.unit.formatVolume(effectiveVolumeMl),
                         ),
                       ),
                     ],
                   ],
                 ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonalIcon(
+                key: const Key('edit-entry-change-drink-button'),
+                onPressed: isBusy ? null : _changeDrinkType,
+                icon: const Icon(Icons.swap_horiz_rounded),
+                label: Text(l10n.changeDrinkType),
               ),
               const SizedBox(height: 16),
               TextFormField(

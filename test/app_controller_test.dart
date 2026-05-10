@@ -1425,6 +1425,82 @@ void main() {
   });
 
   test(
+    'updates drink snapshot fields and switches to the new default volume',
+    () async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'swap-entry-default@example.com',
+        password: 'password123',
+        displayName: 'Swap Entry Default',
+      );
+      controller.takeFlashMessage(_l10n('en'));
+
+      final water = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'nonAlcoholic-water',
+      );
+      final pils = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      await controller.addDrinkEntry(
+        drink: water,
+        volumeMl: water.volumeMl,
+        comment: 'Keep the note',
+      );
+
+      final success = await controller.updateDrinkEntry(
+        entry: controller.entries.single,
+        replacementDrink: pils,
+        comment: controller.entries.single.comment,
+      );
+
+      expect(success, isTrue);
+      final updated = controller.entries.single;
+      expect(updated.drinkId, pils.id);
+      expect(updated.drinkName, pils.name);
+      expect(updated.category, pils.category);
+      expect(updated.isAlcoholFree, pils.isEffectivelyAlcoholFree);
+      expect(updated.volumeMl, pils.volumeMl);
+      expect(updated.comment, 'Keep the note');
+    },
+  );
+
+  test('keeps a custom logged volume when changing the drink type', () async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'swap-entry-custom-volume@example.com',
+      password: 'password123',
+      displayName: 'Swap Entry Custom Volume',
+    );
+    controller.takeFlashMessage(_l10n('en'));
+
+    final water = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'nonAlcoholic-water',
+    );
+    final pils = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: water,
+      volumeMl: 300,
+      comment: 'Custom pour',
+    );
+
+    final success = await controller.updateDrinkEntry(
+      entry: controller.entries.single,
+      replacementDrink: pils,
+      comment: controller.entries.single.comment,
+    );
+
+    expect(success, isTrue);
+    final updated = controller.entries.single;
+    expect(updated.drinkId, pils.id);
+    expect(updated.drinkName, pils.name);
+    expect(updated.category, pils.category);
+    expect(updated.volumeMl, 300);
+    expect(updated.comment, 'Custom pour');
+  });
+
+  test(
     'deletes a custom drink and emits a localized success message',
     () async {
       final controller = await buildTestController();
@@ -2101,6 +2177,8 @@ class _BootstrapProbeRepository implements AppRepository {
   Future<DrinkEntry> updateDrinkEntry({
     required AppUser user,
     required DrinkEntry entry,
+    DrinkDefinition? replacementDrink,
+    double? volumeMl,
     String? comment,
     String? imagePath,
   }) {
