@@ -1142,7 +1142,7 @@ abstract class AppLocalizations {
   /// No description provided for @roadmapBody.
   ///
   /// In en, this message translates to:
-  /// **'Cheers reactions and achievements are planned next.'**
+  /// **'Achievements are planned next.'**
   String get roadmapBody;
 
   /// No description provided for @beerWithMeImport.

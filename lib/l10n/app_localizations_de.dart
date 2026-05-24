@@ -590,8 +590,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get github => 'GitHub';
 
   @override
-  String get roadmapBody =>
-      'Als Nächstes kommen Cheers-Reaktionen und Erfolge.';
+  String get roadmapBody => 'Als Nächstes kommen Erfolge.';
 
   @override
   String get beerWithMeImport => 'Beer With Me-Import';
