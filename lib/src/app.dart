@@ -10,6 +10,7 @@ import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';
 import 'backend_config.dart';
+import 'browser_theme_color.dart';
 import 'deep_link_service.dart';
 import 'import_file_service.dart';
 import 'locale_memory.dart';
@@ -321,6 +322,11 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            builder: (context, child) => _buildBrowserThemeColorSync(
+              context,
+              child,
+              widget.controller.settings.themePreference.themeMode,
+            ),
             onGenerateInitialRoutes: (initialRouteName) {
               final routeName = widget.routeMemory.resolveInitialRoute(
                 widget.initialRoute ?? initialRouteName,
@@ -390,6 +396,8 @@ class _BootstrapShell extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      builder: (context, child) =>
+          _buildBrowserThemeColorSync(context, child, ThemeMode.system),
       onGenerateInitialRoutes: (initialRouteName) {
         final routeName = AppRoutes.normalize(initialRoute ?? initialRouteName);
         return <Route<dynamic>>[buildRoute(RouteSettings(name: routeName))];
@@ -488,6 +496,28 @@ class _BootstrapScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _buildBrowserThemeColorSync(
+  BuildContext context,
+  Widget? child,
+  ThemeMode themeMode,
+) {
+  return BrowserThemeColorSync(
+    brightness: _effectiveThemeBrightness(context, themeMode),
+    child: child ?? const SizedBox.shrink(),
+  );
+}
+
+Brightness _effectiveThemeBrightness(
+  BuildContext context,
+  ThemeMode themeMode,
+) {
+  return switch (themeMode) {
+    ThemeMode.light => Brightness.light,
+    ThemeMode.dark => Brightness.dark,
+    ThemeMode.system => MediaQuery.platformBrightnessOf(context),
+  };
 }
 
 class _BootstrapData {

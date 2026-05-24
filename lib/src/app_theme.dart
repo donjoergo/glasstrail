@@ -8,6 +8,10 @@ class AppTheme {
   static const _primary = Color(0xFF2D6A4F);
   static const _secondary = Color(0xFF4D908E);
   static const _tertiary = Color(0xFFE9C46A);
+  static const _lightSurface = Color(0xFFFFFCF8);
+  static const _darkSurface = Color(0xFF151B18);
+  static const _lightScaffoldBackground = Color(0xFFF6F7F4);
+  static const _darkScaffoldBackground = Color(0xFF0D1210);
 
   static ButtonStyle destructiveTextButtonStyle(ColorScheme scheme) =>
       TextButton.styleFrom(foregroundColor: scheme.error);
@@ -31,6 +35,9 @@ class AppTheme {
       theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error) ??
       TextStyle(color: theme.colorScheme.error);
 
+  static Color browserThemeColorForBrightness(Brightness brightness) =>
+      brightness == Brightness.dark ? _darkSurface : _primary;
+
   static ThemeData get lightTheme {
     final scheme =
         ColorScheme.fromSeed(
@@ -40,7 +47,7 @@ class AppTheme {
           primary: _primary,
           secondary: _secondary,
           tertiary: _tertiary,
-          surface: const Color(0xFFFFFCF8),
+          surface: _lightSurface,
           surfaceContainerHighest: const Color(0xFFE7ECE8),
           onSurface: const Color(0xFF17201A),
           onSurfaceVariant: const Color(0xFF4F5C56),
@@ -51,7 +58,7 @@ class AppTheme {
         );
     return _buildTheme(
       scheme,
-    ).copyWith(scaffoldBackgroundColor: const Color(0xFFF6F7F4));
+    ).copyWith(scaffoldBackgroundColor: _lightScaffoldBackground);
   }
 
   static ThemeData get darkTheme {
@@ -63,7 +70,7 @@ class AppTheme {
           primary: const Color(0xFF82CCA5),
           secondary: const Color(0xFF91D6CF),
           tertiary: _tertiary,
-          surface: const Color(0xFF151B18),
+          surface: _darkSurface,
           surfaceContainerHighest: const Color(0xFF25302B),
           onSurface: const Color(0xFFF4FBF6),
           onSurfaceVariant: const Color(0xFFD6E2DB),
@@ -74,7 +81,7 @@ class AppTheme {
         );
     return _buildTheme(
       scheme,
-    ).copyWith(scaffoldBackgroundColor: const Color(0xFF0D1210));
+    ).copyWith(scaffoldBackgroundColor: _darkScaffoldBackground);
   }
 
   static ThemeData _buildTheme(ColorScheme scheme) {

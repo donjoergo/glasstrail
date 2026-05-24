@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Feed was sometimes stuck on scrolling
+- Chrome Mobile: Keep web theme color after sign-in
 
 ## [2.0.0] - 2026-05-11
 ### Added
