@@ -134,6 +134,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cancel => 'Abbrechen';
 
   @override
+  String get maybeLater => 'Vielleicht später';
+
+  @override
   String get close => 'Schließen';
 
   @override
@@ -598,6 +601,17 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get beerWithMeImportBody =>
       'Importiere einen Beer With Me-Export in deine GlassTrail-Historie. Bereits importierte Beer With Me-Einträge werden automatisch erkannt und übersprungen.';
+
+  @override
+  String get beerWithMePostSignUpTitle => 'Beer With Me-Verlauf importieren?';
+
+  @override
+  String get beerWithMePostSignUpBody =>
+      'Wenn du bereits Getränke in Beer With Me erfasst hast, kannst du den Export jetzt importieren und deinen Verlauf in GlassTrail übernehmen.';
+
+  @override
+  String get beerWithMePostSignUpHint =>
+      'Du kannst den Import später auch im Profil starten.';
 
   @override
   String get beerWithMeImportAction => 'Beer With Me-Export importieren';
