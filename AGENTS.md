@@ -1,13 +1,10 @@
 # Repository Guidelines
 
 ## Agent Quick Reference
-Work on implementation tasks in a separate Git worktree under
-`codex/<item-name>` from the repository root. Keep the item name short and
-descriptive, for example `codex/profile-photo-fix`.
+Work on implementation tasks in a meaningful task-specific Git worktree when possible, typically under `codex/<item-name>` from the repository root. Keep the item name short and descriptive, for example `codex/profile-photo-fix`.
 
 Before changing code, check the current worktree status and preserve unrelated
-user changes. Keep changelog updates short and only add or adjust entries when
-they add useful release context.
+user changes. If the agent is already running in a meaningful task-specific worktree, it should keep using that worktree. If not, it should ask the user for approval before creating or switching to one with `wt switch`. Keep changelog updates short and only add or adjust entries when they add useful release context.
 
 Use Conventional Commit messages when asked to commit. Keep the subject short,
 around seven words or fewer, such as `fix(profile): save avatar`.
@@ -49,9 +46,8 @@ Review row-level-security implications whenever you add or modify Supabase migra
 For Dart and Flutter work in this repository, prefer Dart MCP tools over shell
 commands whenever possible.
 
-Start implementation work by creating or switching to a separate worktree under
-`codex/<item-name>`. Do not make feature or fix edits directly in the primary
-checkout unless the user explicitly asks for that.
+Start implementation work by checking whether the current checkout is already a meaningful task-specific worktree, usually named like `codex/<item-name>`. If it is, keep using it. Do not create a new worktree automatically. If the
+current checkout is not a meaningful task worktree, ask the user for approval before creating or switching to one with `wt switch <item-name>`. Do not make feature or fix edits directly in the primary checkout unless the user explicitly asks for that.
 
 Call `mcp__dart__add_roots` for this repository before other Dart MCP calls when needed. Prefer `mcp__dart__analyze_files` over `flutter analyze`, `mcp__dart__run_tests` over `flutter test`, and `mcp__dart__dart_format` over `dart format`. Use shell `dart` or `flutter` commands only when the Dart MCP cannot perform the task or when the user explicitly asks for shell commands.
 
