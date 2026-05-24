@@ -35,6 +35,7 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
 | Web hosting        | Vercel                                         | Production/test web deployments and the friend profile preview Serverless Function           |
 | Localization       | Flutter gen-l10n, Crowdin                      | ARB source files in `lib/l10n/`, Crowdin translation sync, and generated Dart localizations  |
 | Quality checks     | flutter_lints, Flutter analyze/test, SonarQube | Lints, static analysis, tests, coverage, and the Sonar scan configured in CI                 |
+| Git workflow       | Git worktree, Worktrunk                        | Parallel feature worktrees and local branch workflow automation                              |
 | Release notes      | cider                                          | Changelog entries, release sections, and GitHub tag/diff links                               |
 | CI/CD              | GitHub Actions                                 | Formatting, analysis, tests, web builds, Sonar scans, and Android release APK publishing     |
 | Maps and media     | MapLibre, Image Picker, Geolocator             | Statistics maps, entry/profile media, and optional location capture                          |
