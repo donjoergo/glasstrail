@@ -3,6 +3,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+final Map<String, double> _appPhotoPreviewAspectRatioCache = <String, double>{};
+
+@visibleForTesting
+void debugResetAppPhotoPreviewAspectRatioCache() {
+  _appPhotoPreviewAspectRatioCache.clear();
+}
+
+String? _normalizeAppPhotoPreviewImagePath(String? imagePath) {
+  final normalized = imagePath?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  if (AppMediaResolver._looksLikeLocalFile(normalized)) {
+    return AppMediaResolver._normalizeLocalPath(normalized);
+  }
+  return normalized;
+}
+
+double? _cachedAppPhotoPreviewAspectRatio(String? imagePath) {
+  final normalized = _normalizeAppPhotoPreviewImagePath(imagePath);
+  if (normalized == null) {
+    return null;
+  }
+  return _appPhotoPreviewAspectRatioCache[normalized];
+}
+
+void _cacheAppPhotoPreviewAspectRatio(String? imagePath, double aspectRatio) {
+  final normalized = _normalizeAppPhotoPreviewImagePath(imagePath);
+  if (normalized == null) {
+    return;
+  }
+  _appPhotoPreviewAspectRatioCache[normalized] = aspectRatio;
+}
+
 class AppAvatar extends StatefulWidget {
   const AppAvatar({
     super.key,
@@ -131,6 +165,10 @@ Future<void> showAppGalleryViewerDialog(
 
 class _AppPhotoPreviewState extends State<AppPhotoPreview> {
   late Future<ImageProvider<Object>?> _imageFuture;
+  String? _normalizedImagePath;
+
+  double? get _cachedAspectRatio =>
+      _cachedAppPhotoPreviewAspectRatio(_normalizedImagePath);
 
   @override
   void initState() {
@@ -147,6 +185,7 @@ class _AppPhotoPreviewState extends State<AppPhotoPreview> {
   }
 
   void _updateImageFuture() {
+    _normalizedImagePath = _normalizeAppPhotoPreviewImagePath(widget.imagePath);
     _imageFuture = AppMediaResolver.resolveImageProvider(widget.imagePath);
   }
 
@@ -158,6 +197,7 @@ class _AppPhotoPreviewState extends State<AppPhotoPreview> {
         final imageProvider = snapshot.data;
         if (imageProvider == null) {
           return _PhotoPlaceholder(
+            aspectRatio: _cachedAspectRatio,
             cropPortraitToSquare: widget.cropPortraitToSquare,
             borderRadius: widget.borderRadius,
             placeholderIcon: widget.placeholderIcon,
@@ -166,6 +206,7 @@ class _AppPhotoPreviewState extends State<AppPhotoPreview> {
         }
         return _ResolvedPhotoPreview(
           imageProvider: imageProvider,
+          normalizedImagePath: _normalizedImagePath,
           cropPortraitToSquare: widget.cropPortraitToSquare,
           borderRadius: widget.borderRadius,
           placeholderIcon: widget.placeholderIcon,
@@ -180,6 +221,7 @@ class _AppPhotoPreviewState extends State<AppPhotoPreview> {
 class _ResolvedPhotoPreview extends StatefulWidget {
   const _ResolvedPhotoPreview({
     required this.imageProvider,
+    required this.normalizedImagePath,
     required this.cropPortraitToSquare,
     required this.borderRadius,
     required this.placeholderIcon,
@@ -188,6 +230,7 @@ class _ResolvedPhotoPreview extends StatefulWidget {
   });
 
   final ImageProvider<Object> imageProvider;
+  final String? normalizedImagePath;
   final bool cropPortraitToSquare;
   final BorderRadius borderRadius;
   final IconData placeholderIcon;
@@ -204,10 +247,20 @@ class _ResolvedPhotoPreviewState extends State<_ResolvedPhotoPreview> {
   double? _aspectRatio;
 
   @override
+  void initState() {
+    super.initState();
+    _aspectRatio = _cachedAspectRatio;
+  }
+
+  double? get _cachedAspectRatio =>
+      _cachedAppPhotoPreviewAspectRatio(widget.normalizedImagePath);
+
+  @override
   void didUpdateWidget(covariant _ResolvedPhotoPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageProvider != widget.imageProvider) {
-      _aspectRatio = null;
+    if (oldWidget.imageProvider != widget.imageProvider ||
+        oldWidget.normalizedImagePath != widget.normalizedImagePath) {
+      _aspectRatio = _cachedAspectRatio;
       _resolveImage();
     }
   }
@@ -237,6 +290,10 @@ class _ResolvedPhotoPreviewState extends State<_ResolvedPhotoPreview> {
     _imageListener = ImageStreamListener(
       (image, _) {
         final nextAspectRatio = image.image.width / image.image.height;
+        _cacheAppPhotoPreviewAspectRatio(
+          widget.normalizedImagePath,
+          nextAspectRatio,
+        );
         if (!mounted || _aspectRatio == nextAspectRatio) {
           return;
         }
@@ -245,7 +302,7 @@ class _ResolvedPhotoPreviewState extends State<_ResolvedPhotoPreview> {
         });
       },
       onError: (_, _) {
-        if (!mounted || _aspectRatio == 1) {
+        if (!mounted || _aspectRatio != null) {
           return;
         }
         setState(() {
@@ -811,12 +868,14 @@ class _GalleryViewerInfoSheet extends StatelessWidget {
 
 class _PhotoPlaceholder extends StatelessWidget {
   const _PhotoPlaceholder({
+    this.aspectRatio,
     required this.cropPortraitToSquare,
     required this.borderRadius,
     required this.placeholderIcon,
     this.backgroundColor,
   });
 
+  final double? aspectRatio;
   final bool cropPortraitToSquare;
   final BorderRadius borderRadius;
   final IconData placeholderIcon;
@@ -824,8 +883,11 @@ class _PhotoPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveAspectRatio = aspectRatio == null
+        ? (cropPortraitToSquare ? 1.0 : 4 / 3)
+        : (cropPortraitToSquare && aspectRatio! < 1 ? 1.0 : aspectRatio!);
     return AspectRatio(
-      aspectRatio: cropPortraitToSquare ? 1 : 4 / 3,
+      aspectRatio: effectiveAspectRatio,
       child: ClipRRect(
         borderRadius: borderRadius,
         child: ColoredBox(
@@ -865,10 +927,18 @@ class AppMediaResolver {
       <String, _SignedUrlCacheEntry>{};
   static final Map<String, Future<String?>> _signedUrlRequests =
       <String, Future<String?>>{};
+  @visibleForTesting
+  static Future<ImageProvider<Object>?> Function(String? imagePath)?
+  debugImageProviderResolverOverride;
 
   static Future<ImageProvider<Object>?> resolveImageProvider(
     String? imagePath,
   ) async {
+    final debugOverride = debugImageProviderResolverOverride;
+    if (debugOverride != null) {
+      return debugOverride(imagePath);
+    }
+
     final normalized = imagePath?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;

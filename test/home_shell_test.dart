@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
@@ -25,6 +27,7 @@ import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
 import 'package:glasstrail/src/widgets/app_empty_state_card.dart';
+import 'package:glasstrail/src/widgets/app_media.dart';
 
 import 'support/test_harness.dart';
 
@@ -34,6 +37,48 @@ const _lastAcknowledgedReleaseKey = 'glasstrail.last_acknowledged_release';
 const _currentReleaseId = '1.0.0+1';
 const _changelogUrl =
     'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md';
+
+class _TestFeedImageProvider extends ImageProvider<_TestFeedImageProvider> {
+  const _TestFeedImageProvider({required this.width, required this.height});
+
+  final int width;
+  final int height;
+
+  @override
+  Future<_TestFeedImageProvider> obtainKey(ImageConfiguration configuration) {
+    return SynchronousFuture<_TestFeedImageProvider>(this);
+  }
+
+  @override
+  ImageStreamCompleter loadImage(
+    _TestFeedImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
+    return OneFrameImageStreamCompleter(_load());
+  }
+
+  Future<ImageInfo> _load() async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final paint = Paint()..color = const Color(0xFF4A6572);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+      paint,
+    );
+    final image = await recorder.endRecording().toImage(width, height);
+    return ImageInfo(image: image);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _TestFeedImageProvider &&
+        width == other.width &&
+        height == other.height;
+  }
+
+  @override
+  int get hashCode => Object.hash(width, height);
+}
 
 AppLocalizations _l10n(String languageCode) =>
     lookupAppLocalizations(Locale(languageCode));
@@ -252,6 +297,9 @@ void main() {
     urlLauncherPlatform = _RecordingUrlLauncherPlatform();
     UrlLauncherPlatform.instance = urlLauncherPlatform;
     debugForceUpdateNotice = false;
+    AppMediaResolver.debugImageProviderResolverOverride = null;
+    debugResetAppPhotoPreviewAspectRatioCache();
+    PaintingBinding.instance.imageCache.clear();
   });
 
   testWidgets('opens profile editing on a separate screen', (tester) async {
@@ -434,7 +482,9 @@ void main() {
           photoService: const TestPhotoService(),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
       await controller.updateSettings(
         controller.settings.copyWith(localeCode: 'de'),
       );
@@ -3559,6 +3609,86 @@ void main() {
       contains(oldestEntry.id),
     );
   });
+
+  testWidgets(
+    'allows dragging back to the streak card after paging in an image-heavy feed',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'feed-drag-return@example.com',
+        password: 'password123',
+        displayName: 'Feed Drag Return',
+      );
+      const wideImagePath = 'debug-feed-wide-image';
+      AppMediaResolver.debugImageProviderResolverOverride =
+          (String? imagePath) async {
+            if (imagePath?.trim() != wideImagePath) {
+              return null;
+            }
+            return const _TestFeedImageProvider(width: 2, height: 1);
+          };
+      final user = controller.currentUser!;
+      final preferences = await SharedPreferences.getInstance();
+      final externalRepository = LocalAppRepository(preferences);
+      final drink = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final baseTime = DateTime(2026, 4, 29, 20);
+      for (var index = 0; index < 25; index++) {
+        await externalRepository.addDrinkEntry(
+          user: user,
+          drink: drink,
+          consumedAt: baseTime.subtract(Duration(minutes: index)),
+          imagePath: wideImagePath,
+        );
+      }
+      await controller.refreshData();
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.feedPosts, hasLength(20));
+      expect(controller.hasMoreFeedPosts, isTrue);
+
+      final feedList = find.byKey(const Key('feed-list-view'));
+      final streakCard = find.byKey(const Key('feed-streak-card'));
+
+      for (
+        var index = 0;
+        index < 5 && controller.feedPosts.length < 25;
+        index++
+      ) {
+        await tester.drag(feedList, const Offset(0, -1400));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 180));
+      }
+
+      expect(controller.feedPosts, hasLength(25));
+      expect(controller.hasMoreFeedPosts, isFalse);
+
+      await tester.dragUntilVisible(streakCard, feedList, const Offset(0, 700));
+      await tester.pump();
+
+      final feedTop = tester.getTopLeft(feedList).dy;
+      final feedBottom = tester.getBottomRight(feedList).dy;
+      final streakTop = tester.getTopLeft(streakCard).dy;
+      final streakBottom = tester.getBottomRight(streakCard).dy;
+
+      expect(streakTop, greaterThanOrEqualTo(feedTop));
+      expect(streakBottom, lessThanOrEqualTo(feedBottom));
+    },
+  );
 
   testWidgets('refreshes the statistics with pull to refresh', (tester) async {
     tester.view.physicalSize = const Size(430, 1000);
