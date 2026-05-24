@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -81,12 +82,15 @@ class AppTheme {
       ThemeData(
         brightness: scheme.brightness,
         colorScheme: scheme,
+        platform: defaultTargetPlatform,
         useMaterial3: true,
       ).textTheme,
     ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+      platform: defaultTargetPlatform,
+      splashFactory: InkRipple.splashFactory,
       textTheme: textTheme,
       iconTheme: IconThemeData(color: scheme.onSurface),
       appBarTheme: AppBarTheme(

@@ -1094,11 +1094,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 FutureBuilder<String?>(
                   future: _appVersionFuture,
                   builder: (context, snapshot) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
+                    return Material(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(18),
+                      clipBehavior: Clip.antiAlias,
                       child: ListTile(
                         key: const Key('profile-about-version-button'),
                         onTap: _openChangelog,
@@ -1127,11 +1126,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
+                Material(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(18),
+                  clipBehavior: Clip.antiAlias,
                   child: ListTile(
                     key: const Key('profile-about-github-button'),
                     onTap: _openGitHubRepository,
