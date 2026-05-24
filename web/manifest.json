@@ -4,7 +4,7 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F8FAFC",
-    "theme_color": "#1F7A8C",
+    "theme_color": "#2D6A4F",
     "description": "Glass Trail - Track every sip",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
