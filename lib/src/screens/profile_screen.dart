@@ -77,6 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ) async {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
+    final localeMemory = AppScope.localeMemoryOf(context);
     setState(() {
       _pendingSetting = pendingSetting;
     });
@@ -93,6 +94,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     if (!success) {
       return;
+    }
+    if (pendingSetting == _ProfilePendingSetting.language) {
+      await localeMemory.rememberLocale(settings.localeCode);
+      if (!mounted) {
+        return;
+      }
     }
   }
 

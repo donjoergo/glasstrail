@@ -159,6 +159,10 @@ class _FakePushNotificationService extends PushNotificationService {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+  });
+
   testWidgets('shows a bootstrap screen until the controller is ready', (
     tester,
   ) async {
@@ -182,6 +186,31 @@ void main() {
     expect(find.text('Track every glass'), findsOneWidget);
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
   });
+
+  testWidgets(
+    'shows the remembered locale while the bootstrap shell is active',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final localeMemory = await LocaleMemory.create();
+      await localeMemory.rememberLocale('de');
+      final controllerCompleter = Completer<AppController>();
+
+      await tester.pumpWidget(
+        GlassTrailBootstrapApp(
+          controllerFuture: controllerCompleter.future,
+          photoService: const TestPhotoService(),
+          localeMemoryFuture: Future<LocaleMemory>.value(localeMemory),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.text('Getränke und Einstellungen werden geladen.'),
+        findsOneWidget,
+      );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'accepts the browser initial route while the bootstrap shell is active',
@@ -463,6 +492,45 @@ void main() {
     expect(controller.settings.localeCode, 'de');
     expect(localeMemory.localeCode, 'de');
     expect(find.text('Jedes Glas festhalten'), findsOneWidget);
+  });
+
+  testWidgets('remembers signed-in language changes for bootstrap', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final localeMemory = await LocaleMemory.create();
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-language@example.com',
+      password: 'password123',
+      displayName: 'Profile Language',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        localeMemory: localeMemory,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    await _scrollProfileTargetIntoView(
+      tester,
+      find.byKey(const Key('language-segmented-control')),
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('language-segmented-control')),
+        matching: find.text('German'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.settings.localeCode, 'de');
+    expect(localeMemory.localeCode, 'de');
   });
 
   testWidgets('configures browser autofill hints for auth fields', (

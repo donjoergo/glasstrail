@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'app_controller.dart';
+import 'app_locale_catalog.dart';
 import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';
@@ -61,7 +62,9 @@ class GlassTrailBootstrapApp extends StatefulWidget {
 }
 
 class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
+  late final Future<LocaleMemory> _localeMemoryFuture;
   late Future<_BootstrapData> _bootstrapFuture;
+  String _bootstrapLocaleCode = AppLocaleCatalog.fallbackCode;
 
   @override
   void initState() {
@@ -72,7 +75,12 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
           backendConfig: widget.backendConfig,
           pushNotificationService: widget.pushNotificationService,
         );
-    _bootstrapFuture = _loadBootstrapData(controllerFuture);
+    _localeMemoryFuture = widget.localeMemoryFuture ?? LocaleMemory.create();
+    _primeBootstrapLocale();
+    _bootstrapFuture = _loadBootstrapData(
+      controllerFuture,
+      _localeMemoryFuture,
+    );
   }
 
   @override
@@ -97,14 +105,33 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
         return _BootstrapShell(
           hasError: snapshot.hasError,
           initialRoute: widget.initialRoute ?? _routeFromLaunchUri(),
-          localeCode: snapshot.data?.localeCode ?? 'en',
+          localeCode: _bootstrapLocaleCode,
         );
       },
     );
   }
 
+  void _primeBootstrapLocale() {
+    unawaited(() async {
+      try {
+        final localeMemory = await _localeMemoryFuture;
+        _updateBootstrapLocale(localeMemory.localeCode);
+      } catch (_) {}
+    }());
+  }
+
+  void _updateBootstrapLocale(String localeCode) {
+    if (!mounted || _bootstrapLocaleCode == localeCode) {
+      return;
+    }
+    setState(() {
+      _bootstrapLocaleCode = localeCode;
+    });
+  }
+
   Future<_BootstrapData> _loadBootstrapData(
     Future<AppController> controllerFuture,
+    Future<LocaleMemory> localeMemoryFuture,
   ) async {
     final controller = await controllerFuture;
     final launchRoute = widget.initialRoute ?? _routeFromLaunchUri();
@@ -121,8 +148,6 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
         (kIsWeb
             ? RouteMemory.create()
             : Future<RouteMemory>.value(RouteMemory.disabled()));
-    final Future<LocaleMemory> localeMemoryFuture =
-        widget.localeMemoryFuture ?? LocaleMemory.create();
     final routeMemory = await routeMemoryFuture;
     final localeMemory = await localeMemoryFuture;
     var bootstrapLocaleCode = localeMemory.localeCode;
@@ -134,6 +159,7 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
         controller.settings.copyWith(localeCode: bootstrapLocaleCode),
       );
     }
+    _updateBootstrapLocale(bootstrapLocaleCode);
     return _BootstrapData(
       controller: controller,
       routeMemory: routeMemory,
