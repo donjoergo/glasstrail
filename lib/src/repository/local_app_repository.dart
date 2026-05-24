@@ -142,9 +142,18 @@ class LocalAppRepository implements AppRepository {
     if (index == -1) {
       throw const AppException('The profile could not be updated.');
     }
-    users[index] = user;
+    final storedUser = users[index];
+    users[index] = AppUser(
+      id: user.id,
+      email: user.email,
+      password: storedUser.password,
+      displayName: user.displayName,
+      profileImagePath: user.profileImagePath,
+      birthday: user.birthday,
+      profileShareCode: user.profileShareCode,
+    );
     await _saveUsers(users);
-    return user;
+    return users[index];
   }
 
   @override

@@ -1788,7 +1788,7 @@ void main() {
     });
 
     test(
-      'changes the stored password and invalidates the old password',
+      'changes the stored password and preserves it across profile updates',
       () async {
         final user = await repository.signUp(
           email: 'password-change@example.com',
@@ -1800,6 +1800,9 @@ void main() {
           user: user,
           currentPassword: 'secret',
           newPassword: 'new-secret',
+        );
+        await repository.updateProfile(
+          user.copyWith(displayName: 'Updated Password Change User'),
         );
         await repository.signOut();
 
@@ -1816,6 +1819,7 @@ void main() {
           password: 'new-secret',
         );
         expect(restored.id, user.id);
+        expect(restored.displayName, 'Updated Password Change User');
       },
     );
 

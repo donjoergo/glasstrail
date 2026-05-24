@@ -230,13 +230,18 @@ class SupabaseAppRepository implements AppRepository {
   Future<void> deleteAccount(AppUser user) async {
     try {
       await _client.functions.invoke('delete-account', method: HttpMethod.post);
-      await _client.auth.signOut();
     } on FunctionException catch (error) {
       throw AppException(
         error.reasonPhrase ?? 'The account could not be deleted.',
       );
+    }
+
+    try {
+      await _client.auth.signOut();
     } on AuthException catch (error) {
-      throw AppException(error.message);
+      if (_client.auth.currentSession != null) {
+        throw AppException(error.message);
+      }
     }
   }
 

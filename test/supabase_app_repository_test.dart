@@ -113,6 +113,28 @@ void main() {
       expect(server.deleteAccountFunctionCalls, 1);
       expect(server.logoutCalls, 1);
     });
+
+    test(
+      'treats logout cleanup as best effort after the account was deleted',
+      () async {
+        const user = AppUser(
+          id: 'user-123',
+          email: 'user@example.com',
+          displayName: 'Delete User',
+        );
+        server.failLogout = true;
+        await client.auth.signInWithPassword(
+          email: 'user@example.com',
+          password: 'secret',
+        );
+
+        await repository.deleteAccount(user);
+
+        expect(server.deleteAccountFunctionCalls, 1);
+        expect(server.logoutCalls, 1);
+        expect(client.auth.currentSession, isNull);
+      },
+    );
   });
 
   group('SupabaseAppRepository.saveCustomDrink', () {
@@ -494,6 +516,7 @@ class _MockSupabaseServer {
       <String, Map<String, dynamic>>{};
   final List<String> deletedPrefixes = <String>[];
   bool failPasswordReauth = false;
+  bool failLogout = false;
   final Map<String, dynamic> friendSharedProfileResponse = <String, dynamic>{
     'id': '22222222-2222-4222-8222-222222222222',
     'displayName': 'Shared Friend',
@@ -563,6 +586,14 @@ class _MockSupabaseServer {
 
     if (request.method == 'POST' && path == '/auth/v1/logout') {
       logoutCalls++;
+      if (failLogout) {
+        await _writeAuthError(
+          request.response,
+          HttpStatus.internalServerError,
+          'Logout failed',
+        );
+        return;
+      }
       await _writeJson(request.response, <String, dynamic>{});
       return;
     }

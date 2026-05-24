@@ -172,6 +172,7 @@ class AppUser {
   }
 
   AppUser copyWith({
+    String? password,
     String? displayName,
     String? profileImagePath,
     bool clearProfileImage = false,
@@ -182,7 +183,7 @@ class AppUser {
     return AppUser(
       id: id,
       email: email,
-      password: password,
+      password: password ?? this.password,
       displayName: displayName ?? this.displayName,
       profileImagePath: clearProfileImage
           ? null

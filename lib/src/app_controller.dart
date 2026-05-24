@@ -612,6 +612,7 @@ class AppController extends ChangeNotifier {
         currentPassword: currentPassword,
         newPassword: newPassword,
       );
+      _currentUser = user.copyWith(password: newPassword);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.passwordChanged,
       );
@@ -624,9 +625,9 @@ class AppController extends ChangeNotifier {
       return false;
     }
     return _guardFor(AppBusyAction.deleteAccount, () async {
-      await _unregisterPushTokenBestEffort();
-      _cancelNotificationSubscription();
       await _repository.deleteAccount(user);
+      _cancelPushTokenSubscription();
+      _cancelNotificationSubscription();
       _flashMessage = null;
       _clearAuthenticatedState(
         clearRegisteredPushToken: true,
@@ -1692,6 +1693,12 @@ class AppController extends ChangeNotifier {
     final notificationSubscription = _notificationSubscription;
     _notificationSubscription = null;
     unawaited(notificationSubscription?.cancel());
+  }
+
+  void _cancelPushTokenSubscription() {
+    final pushTokenSubscription = _pushTokenSubscription;
+    _pushTokenSubscription = null;
+    unawaited(pushTokenSubscription?.cancel());
   }
 
   void _clearAuthenticatedState({
