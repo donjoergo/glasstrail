@@ -11,6 +11,7 @@ import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';
 import 'backend_config.dart';
+import 'beer_with_me_import_flow.dart';
 import 'browser_theme_color.dart';
 import 'deep_link_service.dart';
 import 'import_file_service.dart';
@@ -224,10 +225,12 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<Uri>? _deepLinkSubscription;
   StreamSubscription<PushNotificationOpen>? _notificationOpenSubscription;
+  bool _postSignUpPromptEligible = false;
 
   @override
   void initState() {
     super.initState();
+    _postSignUpPromptEligible = !widget.controller.isAuthenticated;
     _subscribeToDeepLinks();
     _subscribeToNotificationRoutes();
   }
@@ -312,7 +315,14 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
       child: AnimatedBuilder(
         animation: widget.controller,
         builder: (context, _) {
-          Route<dynamic> buildRoute(RouteSettings settings) {
+          if (!widget.controller.isAuthenticated) {
+            _postSignUpPromptEligible = true;
+          }
+
+          Route<dynamic> buildRoute(
+            RouteSettings settings, {
+            required bool allowPostSignUpPrompt,
+          }) {
             final routeName = AppRoutes.normalize(settings.name);
             unawaited(widget.routeMemory.rememberRoute(routeName));
             final routeSettings = RouteSettings(
@@ -324,12 +334,22 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
                 settings: routeSettings,
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
-                pageBuilder: (_, _, _) => _AppRouteScreen(routeName: routeName),
+                pageBuilder: (_, _, _) => _AppRouteScreen(
+                  controller: widget.controller,
+                  routeName: routeName,
+                  allowPostSignUpPrompt:
+                      allowPostSignUpPrompt && _postSignUpPromptEligible,
+                ),
               );
             }
             return MaterialPageRoute<void>(
               settings: routeSettings,
-              builder: (_) => _AppRouteScreen(routeName: routeName),
+              builder: (_) => _AppRouteScreen(
+                controller: widget.controller,
+                routeName: routeName,
+                allowPostSignUpPrompt:
+                    allowPostSignUpPrompt && _postSignUpPromptEligible,
+              ),
             );
           }
 
@@ -358,16 +378,21 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
                 widget.initialRoute ?? initialRouteName,
               );
               return <Route<dynamic>>[
-                buildRoute(RouteSettings(name: routeName)),
+                buildRoute(
+                  RouteSettings(name: routeName),
+                  allowPostSignUpPrompt: false,
+                ),
               ];
             },
-            onGenerateRoute: buildRoute,
+            onGenerateRoute: (settings) =>
+                buildRoute(settings, allowPostSignUpPrompt: true),
             onUnknownRoute: (_) => buildRoute(
               RouteSettings(
                 name: widget.controller.isAuthenticated
                     ? AppRoutes.feed
                     : AppRoutes.auth,
               ),
+              allowPostSignUpPrompt: true,
             ),
           );
         },
@@ -563,13 +588,18 @@ class _BootstrapData {
 }
 
 class _AppRouteScreen extends StatelessWidget {
-  const _AppRouteScreen({required this.routeName});
+  const _AppRouteScreen({
+    required this.controller,
+    required this.routeName,
+    required this.allowPostSignUpPrompt,
+  });
 
+  final AppController controller;
   final String routeName;
+  final bool allowPostSignUpPrompt;
 
   @override
   Widget build(BuildContext context) {
-    final controller = AppScope.controllerOf(context);
     final normalizedRoute = AppRoutes.normalize(routeName);
 
     if (normalizedRoute == AppRoutes.root) {
@@ -577,9 +607,13 @@ class _AppRouteScreen extends StatelessWidget {
     }
 
     if (AppRoutes.isFriendProfileRoute(normalizedRoute)) {
-      return FriendProfileScreen(
+      final child = FriendProfileScreen(
         shareCode: AppRoutes.friendProfileShareCode(normalizedRoute)!,
       );
+      if (!controller.isAuthenticated) {
+        return child;
+      }
+      return _wrapAuthenticatedScreen(child, routeName: normalizedRoute);
     }
 
     if (!controller.isAuthenticated) {
@@ -593,8 +627,11 @@ class _AppRouteScreen extends StatelessWidget {
     }
 
     if (AppRoutes.isFriendStatsProfileRoute(normalizedRoute)) {
-      return FriendStatsProfileScreen(
-        friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
+      return _wrapAuthenticatedScreen(
+        FriendStatsProfileScreen(
+          friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
+        ),
+        routeName: normalizedRoute,
       );
     }
 
@@ -602,16 +639,30 @@ class _AppRouteScreen extends StatelessWidget {
         AppRoutes.isStatisticsRoute(normalizedRoute) ||
         AppRoutes.isBarRoute(normalizedRoute) ||
         normalizedRoute == AppRoutes.profile) {
-      return HomeShell(routeName: normalizedRoute);
+      return _wrapAuthenticatedScreen(
+        HomeShell(routeName: normalizedRoute),
+        routeName: normalizedRoute,
+      );
     }
 
-    return switch (normalizedRoute) {
+    return _wrapAuthenticatedScreen(switch (normalizedRoute) {
       AppRoutes.addDrink => const AddDrinkScreen(),
       AppRoutes.editProfile => const EditProfileScreen(),
       AppRoutes.notifications => const NotificationsScreen(),
       AppRoutes.auth => const HomeShell(routeName: AppRoutes.feed),
       _ => const HomeShell(routeName: AppRoutes.feed),
-    };
+    }, routeName: normalizedRoute);
+  }
+
+  Widget _wrapAuthenticatedScreen(Widget child, {required String routeName}) {
+    if (!allowPostSignUpPrompt) {
+      return child;
+    }
+    return _AuthenticatedRoutePromptGate(
+      controller: controller,
+      routeName: routeName,
+      child: child,
+    );
   }
 }
 
@@ -642,5 +693,60 @@ class _RouteRedirectScreenState extends State<_RouteRedirectScreen> {
   @override
   Widget build(BuildContext context) {
     return const SizedBox.shrink();
+  }
+}
+
+class _AuthenticatedRoutePromptGate extends StatefulWidget {
+  const _AuthenticatedRoutePromptGate({
+    required this.controller,
+    required this.routeName,
+    required this.child,
+  });
+
+  final AppController controller;
+  final String routeName;
+  final Widget child;
+
+  @override
+  State<_AuthenticatedRoutePromptGate> createState() =>
+      _AuthenticatedRoutePromptGateState();
+}
+
+class _AuthenticatedRoutePromptGateState
+    extends State<_AuthenticatedRoutePromptGate> {
+  bool _checkedPendingPrompt = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_showPendingPromptIfNeeded());
+    });
+  }
+
+  Future<void> _showPendingPromptIfNeeded() async {
+    if (!mounted || _checkedPendingPrompt) {
+      return;
+    }
+    _checkedPendingPrompt = true;
+    if (widget.routeName == AppRoutes.auth ||
+        AppRoutes.isExplicitPostAuthRedirectRoute(widget.routeName)) {
+      return;
+    }
+    if (!widget.controller.consumePendingPostSignUpBeerWithMePrompt()) {
+      return;
+    }
+
+    final action = await showBeerWithMePostSignUpPrompt(context);
+    if (!mounted || action != BeerWithMePostSignUpPromptAction.importExport) {
+      return;
+    }
+
+    await startBeerWithMeImportFlow(context, showProgressDialog: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }

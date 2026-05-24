@@ -338,6 +338,12 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get cancel;
 
+  /// No description provided for @maybeLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Maybe later'**
+  String get maybeLater;
+
   /// No description provided for @close.
   ///
   /// In en, this message translates to:
@@ -1252,6 +1258,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.'**
   String get beerWithMeImportBody;
+
+  /// No description provided for @beerWithMePostSignUpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import your Beer With Me history?'**
+  String get beerWithMePostSignUpTitle;
+
+  /// No description provided for @beerWithMePostSignUpBody.
+  ///
+  /// In en, this message translates to:
+  /// **'If you already tracked drinks in Beer With Me, you can import that export now and keep your history in GlassTrail.'**
+  String get beerWithMePostSignUpBody;
+
+  /// No description provided for @beerWithMePostSignUpHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also import it later from the profile screen.'**
+  String get beerWithMePostSignUpHint;
 
   /// No description provided for @beerWithMeImportAction.
   ///

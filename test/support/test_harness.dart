@@ -126,11 +126,13 @@ Future<GlassTrailApp> buildTestApp({
   Map<String, Object> initialValues = const <String, Object>{},
   String? initialRoute,
   LocationService locationService = const TestLocationService(),
+  ImportFileService importFileService = const TestImportFileService(),
 }) async {
   final controller = await buildTestController(initialValues: initialValues);
   return GlassTrailApp(
     controller: controller,
     photoService: const TestPhotoService(),
+    importFileService: importFileService,
     locationService: locationService,
     initialRoute: initialRoute,
   );
