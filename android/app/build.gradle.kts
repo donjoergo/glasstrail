@@ -1,3 +1,4 @@
+import com.android.build.VariantOutput
 import com.android.build.gradle.api.ApkVariantOutput
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
@@ -103,8 +104,12 @@ android.applicationVariants.all {
     val resolvedVersionName = versionName ?: "0.0.0"
 
     outputs.all {
-        (this as ApkVariantOutput).outputFileName =
-            "glasstrail-v${resolvedVersionName}-${buildTypeName}.apk"
+        val apkOutput = this as ApkVariantOutput
+        val abiName = apkOutput.getFilter(VariantOutput.FilterType.ABI)
+        val abiSuffix = abiName?.let { "-$it" }.orEmpty()
+
+        apkOutput.outputFileName =
+            "glasstrail-v${resolvedVersionName}-${buildTypeName}${abiSuffix}.apk"
     }
 }
 

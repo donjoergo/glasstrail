@@ -338,7 +338,7 @@ git tag 1.0.0
 git push origin 1.0.0
 ```
 
-When the tag reaches GitHub, the workflow builds `app-release.apk` and attaches it to the matching release as `glasstrail-v1.0.0.apk`.
+When the tag reaches GitHub, the workflow builds an arm64-only release APK and attaches it to the matching release as `glasstrail-v1.0.0-release-arm64-v8a.apk`.
 
 ### Vercel
 
@@ -351,6 +351,14 @@ GlassTrail is connected to Vercel for web deployment.
 ### Android Releases
 
 On every newly created tag, a CD workflow builds an APK and creates a release on GitHub.
+
+For smaller sideload downloads, the Android release workflow now builds an arm64-only APK:
+
+```bash
+flutter build apk --release --target-platform android-arm64 --split-per-abi
+```
+
+The generated artifact is written to `build/app/outputs/apk/release/glasstrail-v<version>-release-arm64-v8a.apk`.
 
 #### Keystore
 
