@@ -15,6 +15,16 @@
 [post-start]
 copy_untracked = "wt step copy-ignored"
 
+[[pre-merge]]
+pub_get = "flutter pub get"
+
+[[pre-merge]]
+format = "dart format --output=none --set-exit-if-changed ."
+analyze = "flutter analyze"
+test = "flutter test"
+#build_web = "flutter build web"
+#build_apk = "flutter build apk --release"
+
 #
 # ## Dev server URL
 #
