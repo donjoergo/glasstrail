@@ -592,7 +592,7 @@ class AppController extends ChangeNotifier {
   Future<bool> signOut() async {
     return _guardFor(AppBusyAction.signOut, () async {
       await _unregisterPushTokenBestEffort();
-      await _cancelNotificationSubscription();
+      _cancelNotificationSubscription();
       await _repository.signOut();
       _clearAuthenticatedState();
     });
@@ -625,7 +625,7 @@ class AppController extends ChangeNotifier {
     }
     return _guardFor(AppBusyAction.deleteAccount, () async {
       await _unregisterPushTokenBestEffort();
-      await _cancelNotificationSubscription();
+      _cancelNotificationSubscription();
       await _repository.deleteAccount(user);
       _flashMessage = null;
       _clearAuthenticatedState(
@@ -1688,9 +1688,10 @@ class AppController extends ChangeNotifier {
     );
   }
 
-  Future<void> _cancelNotificationSubscription() async {
-    await _notificationSubscription?.cancel();
+  void _cancelNotificationSubscription() {
+    final notificationSubscription = _notificationSubscription;
     _notificationSubscription = null;
+    unawaited(notificationSubscription?.cancel());
   }
 
   void _clearAuthenticatedState({

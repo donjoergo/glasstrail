@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -393,7 +395,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final theme = Theme.of(context);
     final settings = controller.settings;
     final routeMemory = AppScope.routeMemoryOf(context);
-    final navigator = Navigator.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
     final isBusy = controller.isBusy;
     final isSigningOut = controller.isBusyFor(AppBusyAction.signOut);
     final isImporting = controller.isBusyFor(AppBusyAction.importBeerWithMe);
@@ -432,11 +434,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!success) {
                 return;
               }
-              await routeMemory.markLoggedOut();
-              if (!mounted) {
-                return;
-              }
-              navigator.pushReplacementNamed(AppRoutes.auth);
+              unawaited(routeMemory.markLoggedOut());
+              navigator.pushNamedAndRemoveUntil(AppRoutes.auth, (_) => false);
             },
       icon: isSigningOut
           ? const SizedBox.square(
