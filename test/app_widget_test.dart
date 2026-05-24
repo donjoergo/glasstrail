@@ -1685,6 +1685,81 @@ void main() {
     },
   );
 
+  testWidgets(
+    'defers the Beer With Me prompt when sign-up returns to a public friend profile',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final preferences = await SharedPreferences.getInstance();
+      final repository = LocalAppRepository(preferences);
+      final owner = await repository.signUp(
+        email: 'friend-owner-signup@example.com',
+        password: 'password123',
+        displayName: 'Friend Owner Signup',
+      );
+      final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+      await repository.signOut();
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+      final routeMemory = await RouteMemory.create();
+      await routeMemory.markLoggedOut();
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          routeMemory: routeMemory,
+          initialRoute: AppRoutes.friendProfileRoute(
+            ownerProfile.profileShareCode!,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('friend-profile-sign-in-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('friend-profile-sign-in-button')));
+      await tester.pumpAndSettle();
+
+      await _submitSignUp(
+        tester,
+        email: 'friend-viewer-signup@example.com',
+        password: 'password123',
+        displayName: 'Friend Viewer Signup',
+      );
+
+      expect(
+        find.byKey(const Key('friend-profile-link-screen')),
+        findsOneWidget,
+      );
+      expect(find.text('Friend Owner Signup'), findsOneWidget);
+      expect(
+        find.byKey(const Key('post-signup-beer-with-me-dialog')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('friend-profile-add-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('friend-profile-feed-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('friend-profile-feed-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+      expect(
+        find.byKey(const Key('post-signup-beer-with-me-dialog')),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('uses public profile image on authenticated friend links', (
     tester,
   ) async {

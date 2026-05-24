@@ -607,9 +607,13 @@ class _AppRouteScreen extends StatelessWidget {
     }
 
     if (AppRoutes.isFriendProfileRoute(normalizedRoute)) {
-      return FriendProfileScreen(
+      final child = FriendProfileScreen(
         shareCode: AppRoutes.friendProfileShareCode(normalizedRoute)!,
       );
+      if (!controller.isAuthenticated) {
+        return child;
+      }
+      return _wrapAuthenticatedScreen(child, routeName: normalizedRoute);
     }
 
     if (!controller.isAuthenticated) {
@@ -627,6 +631,7 @@ class _AppRouteScreen extends StatelessWidget {
         FriendStatsProfileScreen(
           friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
         ),
+        routeName: normalizedRoute,
       );
     }
 
@@ -634,7 +639,10 @@ class _AppRouteScreen extends StatelessWidget {
         AppRoutes.isStatisticsRoute(normalizedRoute) ||
         AppRoutes.isBarRoute(normalizedRoute) ||
         normalizedRoute == AppRoutes.profile) {
-      return _wrapAuthenticatedScreen(HomeShell(routeName: normalizedRoute));
+      return _wrapAuthenticatedScreen(
+        HomeShell(routeName: normalizedRoute),
+        routeName: normalizedRoute,
+      );
     }
 
     return _wrapAuthenticatedScreen(switch (normalizedRoute) {
@@ -643,14 +651,18 @@ class _AppRouteScreen extends StatelessWidget {
       AppRoutes.notifications => const NotificationsScreen(),
       AppRoutes.auth => const HomeShell(routeName: AppRoutes.feed),
       _ => const HomeShell(routeName: AppRoutes.feed),
-    });
+    }, routeName: normalizedRoute);
   }
 
-  Widget _wrapAuthenticatedScreen(Widget child) {
+  Widget _wrapAuthenticatedScreen(Widget child, {required String routeName}) {
     if (!allowPostSignUpPrompt) {
       return child;
     }
-    return _AuthenticatedRoutePromptGate(controller: controller, child: child);
+    return _AuthenticatedRoutePromptGate(
+      controller: controller,
+      routeName: routeName,
+      child: child,
+    );
   }
 }
 
@@ -687,10 +699,12 @@ class _RouteRedirectScreenState extends State<_RouteRedirectScreen> {
 class _AuthenticatedRoutePromptGate extends StatefulWidget {
   const _AuthenticatedRoutePromptGate({
     required this.controller,
+    required this.routeName,
     required this.child,
   });
 
   final AppController controller;
+  final String routeName;
   final Widget child;
 
   @override
@@ -715,6 +729,10 @@ class _AuthenticatedRoutePromptGateState
       return;
     }
     _checkedPendingPrompt = true;
+    if (widget.routeName == AppRoutes.auth ||
+        AppRoutes.isExplicitPostAuthRedirectRoute(widget.routeName)) {
+      return;
+    }
     if (!widget.controller.consumePendingPostSignUpBeerWithMePrompt()) {
       return;
     }
