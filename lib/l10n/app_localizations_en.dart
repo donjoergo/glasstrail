@@ -133,6 +133,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancel => 'Cancel';
 
   @override
+  String get maybeLater => 'Maybe later';
+
+  @override
   String get close => 'Close';
 
   @override
@@ -595,6 +598,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get beerWithMeImportBody =>
       'Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.';
+
+  @override
+  String get beerWithMePostSignUpTitle => 'Import your Beer With Me history?';
+
+  @override
+  String get beerWithMePostSignUpBody =>
+      'If you already tracked drinks in Beer With Me, you can import that export now and keep your history in GlassTrail.';
+
+  @override
+  String get beerWithMePostSignUpHint =>
+      'You can also import it later from the profile screen.';
 
   @override
   String get beerWithMeImportAction => 'Import Beer With Me export';

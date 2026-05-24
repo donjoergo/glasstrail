@@ -637,6 +637,32 @@ void main() {
     expect(controller.busyAction, isNull);
   });
 
+  test(
+    'only sign-up sets the pending Beer With Me prompt and it can be consumed once',
+    () async {
+      final controller = await buildTestController();
+
+      expect(controller.consumePendingPostSignUpBeerWithMePrompt(), isFalse);
+
+      await controller.signUp(
+        email: 'signup-prompt@example.com',
+        password: 'password123',
+        displayName: 'Signup Prompt',
+      );
+
+      expect(controller.consumePendingPostSignUpBeerWithMePrompt(), isTrue);
+      expect(controller.consumePendingPostSignUpBeerWithMePrompt(), isFalse);
+
+      await controller.signOut();
+      await controller.signIn(
+        email: 'signup-prompt@example.com',
+        password: 'password123',
+      );
+
+      expect(controller.consumePendingPostSignUpBeerWithMePrompt(), isFalse);
+    },
+  );
+
   test('counts unread notifications and marks them read', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final repository = LocalAppRepository(

@@ -147,6 +147,7 @@ class AppController extends ChangeNotifier {
   AppBusyAction? _busyAction;
   BeerWithMeImportProgress? _beerWithMeImportProgress;
   bool _cancelBeerWithMeImportRequested = false;
+  bool _pendingPostSignUpBeerWithMePrompt = false;
   _FlashMessage? _flashMessage;
   StreamSubscription<List<AppNotification>>? _notificationSubscription;
   StreamSubscription<PushDeviceToken>? _pushTokenSubscription;
@@ -241,6 +242,14 @@ class AppController extends ChangeNotifier {
     }
     _cancelBeerWithMeImportRequested = true;
     notifyListeners();
+    return true;
+  }
+
+  bool consumePendingPostSignUpBeerWithMePrompt() {
+    if (!_pendingPostSignUpBeerWithMePrompt) {
+      return false;
+    }
+    _pendingPostSignUpBeerWithMePrompt = false;
     return true;
   }
 
@@ -556,6 +565,7 @@ class AppController extends ChangeNotifier {
       await _reloadUserScope();
       _subscribeToNotifications();
       await _registerPushTokenBestEffort();
+      _pendingPostSignUpBeerWithMePrompt = true;
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.welcomeToGlassTrail,
       );
@@ -570,6 +580,7 @@ class AppController extends ChangeNotifier {
       await _reloadUserScope();
       _subscribeToNotifications();
       await _registerPushTokenBestEffort();
+      _pendingPostSignUpBeerWithMePrompt = false;
       _flashMessage = const _FlashMessage.simple(_FlashMessageKind.welcomeBack);
     });
   }
@@ -590,6 +601,7 @@ class AppController extends ChangeNotifier {
       _friendConnections = const <FriendConnection>[];
       _notifications = const <AppNotification>[];
       _notificationReadOverrides.clear();
+      _pendingPostSignUpBeerWithMePrompt = false;
     });
   }
 
