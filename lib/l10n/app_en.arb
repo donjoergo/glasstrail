@@ -57,6 +57,26 @@
   "editCustomDrink": "Edit custom drink",
   "deleteCustomDrink": "Delete custom drink",
   "deleteCustomDrinkPrompt": "Delete this custom drink? Existing history entries will remain available.",
+  "deleteAccount": "Delete account",
+  "deleteAccountTitle": "Delete account?",
+  "deleteAccountBody": "This permanently deletes your account, profile, history, friends, and notifications. Type \"{phrase}\" to enable account deletion.",
+  "@deleteAccountBody": {
+    "placeholders": {
+      "phrase": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteAccountVerificationLabel": "Type \"{phrase}\" to confirm",
+  "@deleteAccountVerificationLabel": {
+    "placeholders": {
+      "phrase": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteAccountVerificationPhrase": "DELETE ACCOUNT",
+  "deleteAccountAction": "Delete account",
   "drinkName": "Drink name",
   "category": "Category",
   "volume": "Volume",
@@ -129,6 +149,16 @@
   "shareStatsWithFriendsBody": "Accepted friends can open your shared statistics inside the app.",
   "logout": "Log out",
   "editProfile": "Edit profile",
+  "accountSectionTitle": "Account",
+  "accountSectionBody": "Change your password or permanently delete this account.",
+  "changePassword": "Change password",
+  "changePasswordBody": "Confirm your current password and choose a new one.",
+  "currentPassword": "Current password",
+  "newPassword": "New password",
+  "repeatNewPassword": "Repeat new password",
+  "changePasswordAction": "Update password",
+  "changePasswordConfirmationMismatch": "The new passwords do not match.",
+  "changePasswordSameAsCurrent": "The new password must be different from the current password.",
   "friends": "Friends",
   "friendsSectionBody": "Share your profile link so others can send you a friend request.",
   "friendsEmpty": "No friends or pending requests yet.",
@@ -411,6 +441,7 @@
   "welcomeToGlassTrail": "Welcome to Glass Trail.",
   "welcomeBack": "Welcome back.",
   "profileUpdated": "Profile updated.",
+  "changePasswordSuccess": "Password changed.",
   "customDrinkSaved": "Custom drink saved.",
   "customDrinkDeleted": "Custom drink deleted.",
   "drinkLogged": "{drink} logged.",
@@ -432,7 +463,11 @@
   "somethingWentWrong": "Something went wrong. Please try again.",
   "accountAlreadyExists": "An account with that email already exists.",
   "invalidCredentials": "The email or password is incorrect.",
+  "changePasswordCurrentPasswordIncorrect": "The current password is incorrect.",
   "profileUpdateFailed": "The profile could not be updated.",
+  "changePasswordFailed": "The password could not be changed.",
+  "deleteAccountSuccess": "Account deleted.",
+  "deleteAccountFailed": "The account could not be deleted.",
   "entryUpdateFailed": "The drink entry could not be updated.",
   "entryDeleteFailed": "The drink entry could not be deleted.",
   "friendProfileLinkInvalid": "The profile link is invalid.",

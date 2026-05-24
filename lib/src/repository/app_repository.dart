@@ -19,6 +19,14 @@ abstract class AppRepository {
 
   Future<void> signOut();
 
+  Future<void> changePassword({
+    required AppUser user,
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  Future<void> deleteAccount(AppUser user);
+
   Future<AppUser> updateProfile(AppUser user);
 
   Future<List<FriendConnection>> loadFriendConnections(String userId);

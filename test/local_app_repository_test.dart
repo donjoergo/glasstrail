@@ -1786,5 +1786,181 @@ void main() {
       expect(restored, hasLength(1));
       expect(restored.single.id, isNot(first.id));
     });
+
+    test(
+      'changes the stored password and preserves it across profile updates',
+      () async {
+        final user = await repository.signUp(
+          email: 'password-change@example.com',
+          password: 'secret',
+          displayName: 'Password Change User',
+        );
+
+        await repository.changePassword(
+          user: user,
+          currentPassword: 'secret',
+          newPassword: 'new-secret',
+        );
+        await repository.updateProfile(
+          user.copyWith(displayName: 'Updated Password Change User'),
+        );
+        await repository.signOut();
+
+        expect(
+          () => repository.signIn(
+            email: 'password-change@example.com',
+            password: 'secret',
+          ),
+          throwsA(isA<AppException>()),
+        );
+
+        final restored = await repository.signIn(
+          email: 'password-change@example.com',
+          password: 'new-secret',
+        );
+        expect(restored.id, user.id);
+        expect(restored.displayName, 'Updated Password Change User');
+      },
+    );
+
+    test(
+      'deletes user-scoped data, friend links, cheers, and notifications',
+      () async {
+        final drink = const DrinkDefinition(
+          id: 'beer-pils',
+          name: 'Pils',
+          category: DrinkCategory.beer,
+        );
+
+        final firstUser = await repository.signUp(
+          email: 'delete-first@example.com',
+          password: 'secret',
+          displayName: 'Delete First User',
+        );
+        await repository.saveCustomDrink(
+          userId: firstUser.id,
+          name: 'House Soda',
+          category: DrinkCategory.nonAlcoholic,
+        );
+        await repository.saveSettings(
+          firstUser.id,
+          const UserSettings(
+            themePreference: AppThemePreference.dark,
+            localeCode: 'de',
+            unit: AppUnit.oz,
+            handedness: AppHandedness.left,
+            shareStatsWithFriends: false,
+          ),
+        );
+        final firstProfile = await repository.getOwnFriendProfile(firstUser.id);
+        await repository.signOut();
+
+        final secondUser = await repository.signUp(
+          email: 'delete-second@example.com',
+          password: 'secret',
+          displayName: 'Delete Second User',
+        );
+        final secondProfile = await repository.getOwnFriendProfile(
+          secondUser.id,
+        );
+        final secondEntry = await repository.addDrinkEntry(
+          user: secondUser,
+          drink: drink,
+          comment: 'Second entry',
+        );
+        await repository.signOut();
+
+        await repository.signIn(
+          email: 'delete-first@example.com',
+          password: 'secret',
+        );
+        await repository.sendFriendRequestToProfile(
+          userId: firstUser.id,
+          shareCode: secondProfile.profileShareCode!,
+        );
+        await repository.signOut();
+
+        await repository.signIn(
+          email: 'delete-second@example.com',
+          password: 'secret',
+        );
+        final relationship = (await repository.loadFriendConnections(
+          secondUser.id,
+        )).single;
+        await repository.acceptFriendRequest(
+          userId: secondUser.id,
+          relationshipId: relationship.id,
+        );
+        await repository.signOut();
+
+        await repository.signIn(
+          email: 'delete-first@example.com',
+          password: 'secret',
+        );
+        final firstEntry = await repository.addDrinkEntry(
+          user: firstUser,
+          drink: drink,
+          comment: 'First entry',
+        );
+        await repository.setFeedEntryCheers(
+          userId: firstUser.id,
+          entryId: secondEntry.id,
+          shouldCheer: true,
+        );
+        await repository.signOut();
+
+        await repository.signIn(
+          email: 'delete-second@example.com',
+          password: 'secret',
+        );
+        await repository.setFeedEntryCheers(
+          userId: secondUser.id,
+          entryId: firstEntry.id,
+          shouldCheer: true,
+        );
+        await repository.signOut();
+
+        await repository.signIn(
+          email: 'delete-first@example.com',
+          password: 'secret',
+        );
+
+        final secondNotificationsBeforeDelete = await repository
+            .loadNotifications(secondUser.id);
+        expect(secondNotificationsBeforeDelete, isNotEmpty);
+
+        await repository.deleteAccount(firstUser);
+
+        expect(await repository.restoreSession(), isNull);
+        expect(await repository.loadCustomDrinks(firstUser.id), isEmpty);
+        expect(await repository.loadEntries(firstUser.id), isEmpty);
+        expect(
+          (await repository.loadSettings(firstUser.id)).toJson(),
+          UserSettings.defaults().toJson(),
+        );
+        expect(await repository.loadNotifications(secondUser.id), isEmpty);
+        expect(await repository.loadFriendConnections(secondUser.id), isEmpty);
+
+        final secondFeed = await repository.loadFeedDrinkPosts(
+          userId: secondUser.id,
+        );
+        expect(secondFeed.posts, hasLength(1));
+        expect(secondFeed.posts.single.entry.id, secondEntry.id);
+        expect(secondFeed.posts.single.cheersCount, 0);
+        expect(secondFeed.posts.single.hasCurrentUserCheered, isFalse);
+
+        final remainingUser = await repository.signIn(
+          email: 'delete-second@example.com',
+          password: 'secret',
+        );
+        expect(remainingUser.id, secondUser.id);
+        expect(
+          () => repository.resolvePublicFriendProfileLink(
+            firstProfile.profileShareCode!,
+          ),
+          throwsA(isA<AppException>()),
+        );
+      },
+    );
   });
 }

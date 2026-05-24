@@ -139,6 +139,34 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
+  Future<void> changePassword({
+    required AppUser user,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _client.auth.signInWithPassword(
+        email: user.email.trim(),
+        password: currentPassword,
+      );
+      if (response.user == null) {
+        throw const AppException('The current password is incorrect.');
+      }
+    } on AuthException catch (error) {
+      if (_isInvalidLoginCredentials(error)) {
+        throw const AppException('The current password is incorrect.');
+      }
+      throw AppException(error.message);
+    }
+
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
   Future<AppUser> updateProfile(AppUser user) async {
     try {
       final previousProfile = await _loadProfile(
@@ -195,6 +223,25 @@ class SupabaseAppRepository implements AppRepository {
       throw AppException(error.message);
     } on PostgrestException catch (error) {
       throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<void> deleteAccount(AppUser user) async {
+    try {
+      await _client.functions.invoke('delete-account', method: HttpMethod.post);
+    } on FunctionException catch (error) {
+      throw AppException(
+        error.reasonPhrase ?? 'The account could not be deleted.',
+      );
+    }
+
+    try {
+      await _client.auth.signOut();
+    } on AuthException catch (error) {
+      if (_client.auth.currentSession != null) {
+        throw AppException(error.message);
+      }
     }
   }
 
@@ -1178,6 +1225,12 @@ class SupabaseAppRepository implements AppRepository {
     return error.code == '23505' &&
         (message.contains('import_source') ||
             details.contains('import_source'));
+  }
+
+  bool _isInvalidLoginCredentials(AuthException error) {
+    final message = error.message.toLowerCase();
+    return message.contains('invalid login credentials') ||
+        message.contains('invalid credentials');
   }
 
   Future<String?> _loadCustomDrinkImagePath({

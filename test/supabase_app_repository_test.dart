@@ -8,6 +8,135 @@ import 'package:glasstrail/src/time_zone_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
+  group('SupabaseAppRepository.changePassword', () {
+    late _MockSupabaseServer server;
+    late SupabaseClient client;
+    late SupabaseAppRepository repository;
+
+    setUp(() async {
+      server = await _MockSupabaseServer.start();
+      client = SupabaseClient(
+        server.baseUrl,
+        'test-key',
+        headers: const <String, String>{'X-Client-Info': 'glasstrail-test'},
+      );
+      repository = SupabaseAppRepository(client);
+    });
+
+    tearDown(() async {
+      await client.dispose();
+      await server.close();
+    });
+
+    test('reauthenticates before updating the password', () async {
+      const user = AppUser(
+        id: 'user-123',
+        email: 'user@example.com',
+        displayName: 'Password User',
+      );
+
+      await repository.changePassword(
+        user: user,
+        currentPassword: 'secret',
+        newPassword: 'new-secret',
+      );
+
+      expect(server.signInWithPasswordCalls, 1);
+      expect(server.lastSignInBody?['email'], 'user@example.com');
+      expect(server.lastSignInBody?['password'], 'secret');
+      expect(server.updateUserCalls, 1);
+      expect(server.lastUpdateUserBody?['password'], 'new-secret');
+    });
+
+    test(
+      'maps invalid current password failures to a dedicated app error',
+      () async {
+        const user = AppUser(
+          id: 'user-123',
+          email: 'user@example.com',
+          displayName: 'Password User',
+        );
+        server.failPasswordReauth = true;
+
+        expect(
+          () => repository.changePassword(
+            user: user,
+            currentPassword: 'wrong-secret',
+            newPassword: 'new-secret',
+          ),
+          throwsA(
+            isA<AppException>().having(
+              (error) => error.message,
+              'message',
+              'The current password is incorrect.',
+            ),
+          ),
+        );
+        expect(server.updateUserCalls, 0);
+      },
+    );
+  });
+
+  group('SupabaseAppRepository.deleteAccount', () {
+    late _MockSupabaseServer server;
+    late SupabaseClient client;
+    late SupabaseAppRepository repository;
+
+    setUp(() async {
+      server = await _MockSupabaseServer.start();
+      client = SupabaseClient(
+        server.baseUrl,
+        'test-key',
+        headers: const <String, String>{'X-Client-Info': 'glasstrail-test'},
+      );
+      repository = SupabaseAppRepository(client);
+    });
+
+    tearDown(() async {
+      await client.dispose();
+      await server.close();
+    });
+
+    test('calls the delete-account function and signs out locally', () async {
+      const user = AppUser(
+        id: 'user-123',
+        email: 'user@example.com',
+        displayName: 'Delete User',
+      );
+      await client.auth.signInWithPassword(
+        email: 'user@example.com',
+        password: 'secret',
+      );
+
+      await repository.deleteAccount(user);
+
+      expect(server.deleteAccountFunctionCalls, 1);
+      expect(server.logoutCalls, 1);
+    });
+
+    test(
+      'treats logout cleanup as best effort after the account was deleted',
+      () async {
+        const user = AppUser(
+          id: 'user-123',
+          email: 'user@example.com',
+          displayName: 'Delete User',
+        );
+        server.failLogout = true;
+        await client.auth.signInWithPassword(
+          email: 'user@example.com',
+          password: 'secret',
+        );
+
+        await repository.deleteAccount(user);
+
+        expect(server.deleteAccountFunctionCalls, 1);
+        expect(server.logoutCalls, 1);
+        expect(client.auth.currentSession, isNull);
+      },
+    );
+  });
+
   group('SupabaseAppRepository.saveCustomDrink', () {
     late _MockSupabaseServer server;
     late SupabaseClient client;
@@ -386,6 +515,8 @@ class _MockSupabaseServer {
   final Map<String, Map<String, dynamic>> entryRowsById =
       <String, Map<String, dynamic>>{};
   final List<String> deletedPrefixes = <String>[];
+  bool failPasswordReauth = false;
+  bool failLogout = false;
   final Map<String, dynamic> friendSharedProfileResponse = <String, dynamic>{
     'id': '22222222-2222-4222-8222-222222222222',
     'displayName': 'Shared Friend',
@@ -393,6 +524,12 @@ class _MockSupabaseServer {
     'shareStatsWithFriends': true,
     'statistics': null,
   };
+  int signInWithPasswordCalls = 0;
+  int updateUserCalls = 0;
+  int logoutCalls = 0;
+  int deleteAccountFunctionCalls = 0;
+  Map<String, dynamic>? lastSignInBody;
+  Map<String, dynamic>? lastUpdateUserBody;
   Map<String, dynamic>? lastUpsertBody;
   Map<String, dynamic>? lastEntryInsertBody;
   Map<String, dynamic>? lastEntryUpdateBody;
@@ -409,6 +546,57 @@ class _MockSupabaseServer {
 
   Future<void> _handle(HttpRequest request) async {
     final path = request.uri.path;
+
+    if (request.method == 'POST' &&
+        path == '/auth/v1/token' &&
+        request.uri.queryParameters['grant_type'] == 'password') {
+      signInWithPasswordCalls++;
+      lastSignInBody = await _readJsonMap(request);
+      if (failPasswordReauth) {
+        await _writeAuthError(
+          request.response,
+          HttpStatus.badRequest,
+          'Invalid login credentials',
+        );
+        return;
+      }
+      await _writeJson(request.response, <String, dynamic>{
+        'access_token': 'reauth-token',
+        'refresh_token': 'reauth-refresh-token',
+        'token_type': 'bearer',
+        'expires_in': 3600,
+        'expires_at': 1_893_456_000,
+        'user': <String, dynamic>{
+          'id': 'user-123',
+          'email': lastSignInBody?['email'],
+        },
+      });
+      return;
+    }
+
+    if (request.method == 'PUT' && path == '/auth/v1/user') {
+      updateUserCalls++;
+      lastUpdateUserBody = await _readJsonMap(request);
+      await _writeJson(request.response, <String, dynamic>{
+        'id': 'user-123',
+        'email': 'user@example.com',
+      });
+      return;
+    }
+
+    if (request.method == 'POST' && path == '/auth/v1/logout') {
+      logoutCalls++;
+      if (failLogout) {
+        await _writeAuthError(
+          request.response,
+          HttpStatus.internalServerError,
+          'Logout failed',
+        );
+        return;
+      }
+      await _writeJson(request.response, <String, dynamic>{});
+      return;
+    }
 
     if (request.method == 'GET' && path == '/rest/v1/user_drinks') {
       final drinkId = _stripEqPrefix(request.uri.queryParameters['id']);
@@ -472,6 +660,12 @@ class _MockSupabaseServer {
       return;
     }
 
+    if (request.method == 'POST' && path == '/functions/v1/delete-account') {
+      deleteAccountFunctionCalls++;
+      await _writeJson(request.response, <String, dynamic>{'success': true});
+      return;
+    }
+
     if (request.method == 'DELETE' && path == '/storage/v1/object/user-media') {
       final body = await _readJsonMap(request);
       final prefixes = List<String>.from(body['prefixes'] as List<dynamic>);
@@ -496,12 +690,32 @@ class _MockSupabaseServer {
 
   Future<Map<String, dynamic>> _readJsonMap(HttpRequest request) async {
     final body = await utf8.decoder.bind(request).join();
+    if (body.trim().isEmpty) {
+      return <String, dynamic>{};
+    }
     return Map<String, dynamic>.from(jsonDecode(body) as Map);
   }
 
   Future<void> _writeJson(HttpResponse response, Object? body) async {
     response.headers.contentType = ContentType.json;
     response.write(jsonEncode(body));
+    await response.close();
+  }
+
+  Future<void> _writeAuthError(
+    HttpResponse response,
+    int statusCode,
+    String message,
+  ) async {
+    response.statusCode = statusCode;
+    response.headers.contentType = ContentType.json;
+    response.write(
+      jsonEncode(<String, dynamic>{
+        'error': 'invalid_grant',
+        'error_description': message,
+        'msg': message,
+      }),
+    );
     await response.close();
   }
 

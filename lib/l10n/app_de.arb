@@ -57,6 +57,26 @@
   "editCustomDrink": "Eigenes Getränk bearbeiten",
   "deleteCustomDrink": "Eigenes Getränk löschen",
   "deleteCustomDrinkPrompt": "Dieses eigene Getränk löschen? Bereits erfasste Einträge bleiben erhalten.",
+  "deleteAccount": "Konto löschen",
+  "deleteAccountTitle": "Konto löschen?",
+  "deleteAccountBody": "Dadurch werden dein Konto, Profil, Verlauf, Freunde und Benachrichtigungen dauerhaft gelöscht. Gib \"{phrase}\" ein, um das Löschen zu aktivieren.",
+  "@deleteAccountBody": {
+    "placeholders": {
+      "phrase": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteAccountVerificationLabel": "\"{phrase}\" zum Bestätigen eingeben",
+  "@deleteAccountVerificationLabel": {
+    "placeholders": {
+      "phrase": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteAccountVerificationPhrase": "KONTO LÖSCHEN",
+  "deleteAccountAction": "Konto löschen",
   "drinkName": "Getränkename",
   "category": "Kategorie",
   "volume": "Volumen",
@@ -129,6 +149,16 @@
   "shareStatsWithFriendsBody": "Bestätigte Freunde können deine geteilten Statistiken direkt in der App öffnen.",
   "logout": "Abmelden",
   "editProfile": "Profil bearbeiten",
+  "accountSectionTitle": "Konto",
+  "accountSectionBody": "Ändere dein Passwort oder lösche dieses Konto dauerhaft.",
+  "changePassword": "Passwort ändern",
+  "changePasswordBody": "Bestätige dein aktuelles Passwort und wähle ein neues.",
+  "currentPassword": "Aktuelles Passwort",
+  "newPassword": "Neues Passwort",
+  "repeatNewPassword": "Neues Passwort wiederholen",
+  "changePasswordAction": "Passwort aktualisieren",
+  "changePasswordConfirmationMismatch": "Die neuen Passwörter stimmen nicht überein.",
+  "changePasswordSameAsCurrent": "Das neue Passwort muss sich vom aktuellen Passwort unterscheiden.",
   "friends": "Freunde",
   "friendsSectionBody": "Teile deinen Profillink, damit andere dir eine Freundschaftsanfrage senden können.",
   "friendsEmpty": "Noch keine Freunde oder ausstehenden Anfragen.",
@@ -411,6 +441,7 @@
   "welcomeToGlassTrail": "Willkommen bei Glass Trail.",
   "welcomeBack": "Willkommen zurück.",
   "profileUpdated": "Profil aktualisiert.",
+  "changePasswordSuccess": "Passwort geändert.",
   "customDrinkSaved": "Eigenes Getränk gespeichert.",
   "customDrinkDeleted": "Eigenes Getränk gelöscht.",
   "drinkLogged": "{drink} erfasst.",
@@ -432,7 +463,11 @@
   "somethingWentWrong": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
   "accountAlreadyExists": "Es gibt bereits ein Konto mit dieser E-Mail-Adresse.",
   "invalidCredentials": "Die E-Mail oder das Passwort ist falsch.",
+  "changePasswordCurrentPasswordIncorrect": "Das aktuelle Passwort ist nicht korrekt.",
   "profileUpdateFailed": "Das Profil konnte nicht aktualisiert werden.",
+  "changePasswordFailed": "Das Passwort konnte nicht geändert werden.",
+  "deleteAccountSuccess": "Konto gelöscht.",
+  "deleteAccountFailed": "Das Konto konnte nicht gelöscht werden.",
   "entryUpdateFailed": "Der Getränkeeintrag konnte nicht aktualisiert werden.",
   "entryDeleteFailed": "Der Getränkeeintrag konnte nicht gelöscht werden.",
   "friendProfileLinkInvalid": "Der Profillink ist ungültig.",

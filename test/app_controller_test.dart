@@ -942,6 +942,183 @@ void main() {
     },
   );
 
+  test(
+    'changing password updates the current user and survives a later profile save',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      expect(
+        await controller.signUp(
+          email: 'controller-password@example.com',
+          password: 'password123',
+          displayName: 'Controller Password',
+        ),
+        isTrue,
+      );
+
+      expect(
+        await controller.changePassword(
+          currentPassword: 'password123',
+          newPassword: 'new-password456',
+        ),
+        isTrue,
+      );
+      expect(controller.currentUser?.password, 'new-password456');
+
+      expect(
+        await controller.updateProfile(
+          displayName: 'Updated Controller Password',
+        ),
+        isTrue,
+      );
+      expect(await controller.signOut(), isTrue);
+
+      expect(
+        () => repository.signIn(
+          email: 'controller-password@example.com',
+          password: 'password123',
+        ),
+        throwsA(isA<AppException>()),
+      );
+
+      final restored = await repository.signIn(
+        email: 'controller-password@example.com',
+        password: 'new-password456',
+      );
+      expect(restored.displayName, 'Updated Controller Password');
+    },
+  );
+
+  test(
+    'deleting an account clears auth-scoped state and keeps the locale on default settings',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final user = await repository.signUp(
+        email: 'delete-controller@example.com',
+        password: 'password123',
+        displayName: 'Delete Controller',
+      );
+      await repository.saveSettings(
+        user.id,
+        const UserSettings(
+          themePreference: AppThemePreference.dark,
+          localeCode: 'de',
+          unit: AppUnit.oz,
+          handedness: AppHandedness.left,
+          shareStatsWithFriends: false,
+        ),
+      );
+
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      expect(
+        await controller.saveCustomDrink(
+          name: 'Controller Soda',
+          category: DrinkCategory.nonAlcoholic,
+        ),
+        isTrue,
+      );
+      final drink = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      expect(
+        await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl),
+        isTrue,
+      );
+
+      expect(controller.customDrinks, isNotEmpty);
+      expect(controller.entries, isNotEmpty);
+      expect(controller.feedPosts, isNotEmpty);
+      expect(controller.settings.localeCode, 'de');
+      expect(controller.settings.themePreference, AppThemePreference.dark);
+
+      final success = await controller.deleteAccount();
+
+      expect(success, isTrue);
+      expect(controller.isAuthenticated, isFalse);
+      expect(controller.currentUser, isNull);
+      expect(controller.customDrinks, isEmpty);
+      expect(controller.entries, isEmpty);
+      expect(controller.feedPosts, isEmpty);
+      expect(controller.friendConnections, isEmpty);
+      expect(controller.notifications, isEmpty);
+      expect(controller.settings.localeCode, 'de');
+      expect(controller.settings.themePreference, AppThemePreference.system);
+      expect(controller.settings.unit, AppUnit.ml);
+      expect(controller.settings.handedness, AppHandedness.right);
+      expect(controller.settings.shareStatsWithFriends, isTrue);
+      expect(await repository.restoreSession(), isNull);
+    },
+  );
+
+  test(
+    'failed account deletion keeps notification and push listeners active',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = _FailingDeleteAccountLocalRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final pushNotificationService = _ManualPushNotificationService(
+        initialToken: const PushDeviceToken(
+          token: 'initial-token',
+          platform: 'android',
+        ),
+      );
+      addTearDown(pushNotificationService.dispose);
+      addTearDown(repository.dispose);
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+        pushNotificationService: pushNotificationService,
+      );
+
+      expect(
+        await controller.signUp(
+          email: 'failed-delete@example.com',
+          password: 'password123',
+          displayName: 'Failed Delete',
+        ),
+        isTrue,
+      );
+      expect(repository.registeredTokens.single.token, 'initial-token');
+
+      final deleteSuccess = await controller.deleteAccount();
+      expect(deleteSuccess, isFalse);
+      expect(controller.isAuthenticated, isTrue);
+
+      final notification = AppNotification(
+        id: 'notification-1',
+        recipientUserId: controller.currentUser!.id,
+        senderUserId: 'friend-1',
+        senderDisplayName: 'Friend One',
+        type: AppNotificationTypes.friendRequestSent,
+        createdAt: DateTime(2026, 5, 25),
+      );
+      repository.emitNotifications(<AppNotification>[notification]);
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.notifications, <AppNotification>[notification]);
+
+      pushNotificationService.emitToken(
+        const PushDeviceToken(token: 'refreshed-token', platform: 'android'),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        repository.registeredTokens.map((call) => call.token),
+        contains('refreshed-token'),
+      );
+    },
+  );
+
   test('localizes success flash messages and drink names', () async {
     final controller = await buildTestController();
     final german = _l10n('de');
@@ -1684,6 +1861,29 @@ class _ManualNotificationStreamLocalRepository extends LocalAppRepository {
   Future<void> dispose() => _notificationsController.close();
 }
 
+class _FailingDeleteAccountLocalRepository
+    extends _ManualNotificationStreamLocalRepository {
+  _FailingDeleteAccountLocalRepository(super.preferences);
+
+  final registeredTokens = <_TokenCall>[];
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) async {
+    registeredTokens.add(
+      _TokenCall(userId: userId, token: token, platform: platform),
+    );
+  }
+
+  @override
+  Future<void> deleteAccount(AppUser user) async {
+    throw const AppException('The account could not be deleted.');
+  }
+}
+
 class _BlockingCheersLocalAppRepository extends LocalAppRepository {
   _BlockingCheersLocalAppRepository(super.preferences);
 
@@ -1759,6 +1959,33 @@ class _ControlledPushNotificationService extends PushNotificationService {
   @override
   Stream<PushNotificationOpen> get openedNotifications =>
       const Stream<PushNotificationOpen>.empty();
+}
+
+class _ManualPushNotificationService extends PushNotificationService {
+  _ManualPushNotificationService({this.initialToken});
+
+  final PushDeviceToken? initialToken;
+  final StreamController<PushDeviceToken> _tokenRefreshes =
+      StreamController<PushDeviceToken>.broadcast();
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() async => initialToken;
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes => _tokenRefreshes.stream;
+
+  @override
+  Future<PushNotificationOpen?> consumeInitialOpen() async => null;
+
+  @override
+  Stream<PushNotificationOpen> get openedNotifications =>
+      const Stream<PushNotificationOpen>.empty();
+
+  void emitToken(PushDeviceToken token) {
+    _tokenRefreshes.add(token);
+  }
+
+  Future<void> dispose() => _tokenRefreshes.close();
 }
 
 class _ControlledPushTokenRefreshStream extends Stream<PushDeviceToken> {
@@ -2175,6 +2402,20 @@ class _BootstrapProbeRepository implements AppRepository {
 
   @override
   Future<AppUser> signIn({required String email, required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> changePassword({
+    required AppUser user,
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteAccount(AppUser user) {
     throw UnimplementedError();
   }
 

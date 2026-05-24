@@ -187,6 +187,28 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dieses eigene Getränk löschen? Bereits erfasste Einträge bleiben erhalten.';
 
   @override
+  String get deleteAccount => 'Konto löschen';
+
+  @override
+  String get deleteAccountTitle => 'Konto löschen?';
+
+  @override
+  String deleteAccountBody(String phrase) {
+    return 'Dadurch werden dein Konto, Profil, Verlauf, Freunde und Benachrichtigungen dauerhaft gelöscht. Gib \"$phrase\" ein, um das Löschen zu aktivieren.';
+  }
+
+  @override
+  String deleteAccountVerificationLabel(String phrase) {
+    return '\"$phrase\" zum Bestätigen eingeben';
+  }
+
+  @override
+  String get deleteAccountVerificationPhrase => 'KONTO LÖSCHEN';
+
+  @override
+  String get deleteAccountAction => 'Konto löschen';
+
+  @override
   String get drinkName => 'Getränkename';
 
   @override
@@ -382,6 +404,40 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get editProfile => 'Profil bearbeiten';
+
+  @override
+  String get accountSectionTitle => 'Konto';
+
+  @override
+  String get accountSectionBody =>
+      'Ändere dein Passwort oder lösche dieses Konto dauerhaft.';
+
+  @override
+  String get changePassword => 'Passwort ändern';
+
+  @override
+  String get changePasswordBody =>
+      'Bestätige dein aktuelles Passwort und wähle ein neues.';
+
+  @override
+  String get currentPassword => 'Aktuelles Passwort';
+
+  @override
+  String get newPassword => 'Neues Passwort';
+
+  @override
+  String get repeatNewPassword => 'Neues Passwort wiederholen';
+
+  @override
+  String get changePasswordAction => 'Passwort aktualisieren';
+
+  @override
+  String get changePasswordConfirmationMismatch =>
+      'Die neuen Passwörter stimmen nicht überein.';
+
+  @override
+  String get changePasswordSameAsCurrent =>
+      'Das neue Passwort muss sich vom aktuellen Passwort unterscheiden.';
 
   @override
   String get friends => 'Freunde';
@@ -759,6 +815,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get profileUpdated => 'Profil aktualisiert.';
 
   @override
+  String get changePasswordSuccess => 'Passwort geändert.';
+
+  @override
   String get customDrinkSaved => 'Eigenes Getränk gespeichert.';
 
   @override
@@ -802,8 +861,22 @@ class AppLocalizationsDe extends AppLocalizations {
   String get invalidCredentials => 'Die E-Mail oder das Passwort ist falsch.';
 
   @override
+  String get changePasswordCurrentPasswordIncorrect =>
+      'Das aktuelle Passwort ist nicht korrekt.';
+
+  @override
   String get profileUpdateFailed =>
       'Das Profil konnte nicht aktualisiert werden.';
+
+  @override
+  String get changePasswordFailed =>
+      'Das Passwort konnte nicht geändert werden.';
+
+  @override
+  String get deleteAccountSuccess => 'Konto gelöscht.';
+
+  @override
+  String get deleteAccountFailed => 'Das Konto konnte nicht gelöscht werden.';
 
   @override
   String get entryUpdateFailed =>
