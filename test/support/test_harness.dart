@@ -214,6 +214,30 @@ class BlockingLocalAppRepository extends LocalAppRepository {
   }
 
   @override
+  Future<void> changePassword({
+    required AppUser user,
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _runBlocked(
+      AppBusyAction.changePassword,
+      () => super.changePassword(
+        user: user,
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteAccount(AppUser user) {
+    return _runBlocked(
+      AppBusyAction.deleteAccount,
+      () => super.deleteAccount(user),
+    );
+  }
+
+  @override
   Future<DrinkDefinition> saveCustomDrink({
     required String userId,
     String? drinkId,

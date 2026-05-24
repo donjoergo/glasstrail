@@ -20,6 +20,7 @@ enum _FlashMessageKind {
   welcomeToGlassTrail,
   welcomeBack,
   profileUpdated,
+  passwordChanged,
   customDrinkSaved,
   customDrinkDeleted,
   drinkLogged,
@@ -39,6 +40,8 @@ enum AppBusyAction {
   signUp,
   signOut,
   updateProfile,
+  changePassword,
+  deleteAccount,
   saveCustomDrink,
   deleteCustomDrink,
   addDrinkEntry,
@@ -451,6 +454,7 @@ class AppController extends ChangeNotifier {
       _FlashMessageKind.welcomeToGlassTrail => l10n.welcomeToGlassTrail,
       _FlashMessageKind.welcomeBack => l10n.welcomeBack,
       _FlashMessageKind.profileUpdated => l10n.profileUpdated,
+      _FlashMessageKind.passwordChanged => l10n.changePasswordSuccess,
       _FlashMessageKind.customDrinkSaved => l10n.customDrinkSaved,
       _FlashMessageKind.customDrinkDeleted => l10n.customDrinkDeleted,
       _FlashMessageKind.drinkLogged => l10n.drinkLogged(
@@ -577,19 +581,46 @@ class AppController extends ChangeNotifier {
   Future<bool> signOut() async {
     return _guardFor(AppBusyAction.signOut, () async {
       await _unregisterPushTokenBestEffort();
-      unawaited(_notificationSubscription?.cancel());
-      _notificationSubscription = null;
+      await _cancelNotificationSubscription();
       await _repository.signOut();
-      _currentUser = null;
-      _customDrinks = const <DrinkDefinition>[];
-      _entries = const <DrinkEntry>[];
-      _feedPosts = const <FeedDrinkPost>[];
-      _pendingFeedEntryCheers.clear();
-      _feedCursor = null;
-      _hasMoreFeedPosts = false;
-      _friendConnections = const <FriendConnection>[];
-      _notifications = const <AppNotification>[];
-      _notificationReadOverrides.clear();
+      _clearAuthenticatedState();
+    });
+  }
+
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.changePassword, () async {
+      await _repository.changePassword(
+        user: user,
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      _flashMessage = const _FlashMessage.simple(
+        _FlashMessageKind.passwordChanged,
+      );
+    });
+  }
+
+  Future<bool> deleteAccount() async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.deleteAccount, () async {
+      await _unregisterPushTokenBestEffort();
+      await _cancelNotificationSubscription();
+      await _repository.deleteAccount(user);
+      _flashMessage = null;
+      _clearAuthenticatedState(
+        clearRegisteredPushToken: true,
+        resetSettingsToDefaultsPreservingLocale: true,
+      );
     });
   }
 
@@ -1645,6 +1676,38 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  Future<void> _cancelNotificationSubscription() async {
+    await _notificationSubscription?.cancel();
+    _notificationSubscription = null;
+  }
+
+  void _clearAuthenticatedState({
+    bool clearRegisteredPushToken = false,
+    bool resetSettingsToDefaultsPreservingLocale = false,
+  }) {
+    final localeCode = _settings.localeCode;
+    _currentUser = null;
+    _customDrinks = const <DrinkDefinition>[];
+    _entries = const <DrinkEntry>[];
+    _feedPosts = const <FeedDrinkPost>[];
+    _pendingFeedEntryCheers.clear();
+    _feedCursor = null;
+    _hasMoreFeedPosts = false;
+    _isLoadingMoreFeedPosts = false;
+    _friendConnections = const <FriendConnection>[];
+    _notifications = const <AppNotification>[];
+    _notificationReadOverrides.clear();
+    _beerWithMeImportProgress = null;
+    _cancelBeerWithMeImportRequested = false;
+    if (clearRegisteredPushToken) {
+      _registeredPushToken = null;
+      _registeredPushTokenUserId = null;
+    }
+    if (resetSettingsToDefaultsPreservingLocale) {
+      _settings = UserSettings.defaults().copyWith(localeCode: localeCode);
+    }
+  }
+
   Set<String> _hiddenGlobalDrinkIdSet() =>
       _settings.hiddenGlobalDrinkIds.toSet();
 
@@ -1753,7 +1816,11 @@ class AppController extends ChangeNotifier {
     return switch (message) {
       'An account with that email already exists.' => l10n.accountAlreadyExists,
       'The email or password is incorrect.' => l10n.invalidCredentials,
+      'The current password is incorrect.' =>
+        l10n.changePasswordCurrentPasswordIncorrect,
       'The profile could not be updated.' => l10n.profileUpdateFailed,
+      'The password could not be changed.' => l10n.changePasswordFailed,
+      'The account could not be deleted.' => l10n.deleteAccountFailed,
       'You already have a custom drink with that name.' =>
         l10n.customDrinkAlreadyExists,
       'The custom drink could not be deleted.' => l10n.customDrinkDeleteFailed,

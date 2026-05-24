@@ -916,6 +916,73 @@ void main() {
     },
   );
 
+  test(
+    'deleting an account clears auth-scoped state and keeps the locale on default settings',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final user = await repository.signUp(
+        email: 'delete-controller@example.com',
+        password: 'password123',
+        displayName: 'Delete Controller',
+      );
+      await repository.saveSettings(
+        user.id,
+        const UserSettings(
+          themePreference: AppThemePreference.dark,
+          localeCode: 'de',
+          unit: AppUnit.oz,
+          handedness: AppHandedness.left,
+          shareStatsWithFriends: false,
+        ),
+      );
+
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+
+      expect(
+        await controller.saveCustomDrink(
+          name: 'Controller Soda',
+          category: DrinkCategory.nonAlcoholic,
+        ),
+        isTrue,
+      );
+      final drink = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      expect(
+        await controller.addDrinkEntry(drink: drink, volumeMl: drink.volumeMl),
+        isTrue,
+      );
+
+      expect(controller.customDrinks, isNotEmpty);
+      expect(controller.entries, isNotEmpty);
+      expect(controller.feedPosts, isNotEmpty);
+      expect(controller.settings.localeCode, 'de');
+      expect(controller.settings.themePreference, AppThemePreference.dark);
+
+      final success = await controller.deleteAccount();
+
+      expect(success, isTrue);
+      expect(controller.isAuthenticated, isFalse);
+      expect(controller.currentUser, isNull);
+      expect(controller.customDrinks, isEmpty);
+      expect(controller.entries, isEmpty);
+      expect(controller.feedPosts, isEmpty);
+      expect(controller.friendConnections, isEmpty);
+      expect(controller.notifications, isEmpty);
+      expect(controller.settings.localeCode, 'de');
+      expect(controller.settings.themePreference, AppThemePreference.system);
+      expect(controller.settings.unit, AppUnit.ml);
+      expect(controller.settings.handedness, AppHandedness.right);
+      expect(controller.settings.shareStatsWithFriends, isTrue);
+      expect(await repository.restoreSession(), isNull);
+    },
+  );
+
   test('localizes success flash messages and drink names', () async {
     final controller = await buildTestController();
     final german = _l10n('de');
@@ -2149,6 +2216,20 @@ class _BootstrapProbeRepository implements AppRepository {
 
   @override
   Future<AppUser> signIn({required String email, required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> changePassword({
+    required AppUser user,
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteAccount(AppUser user) {
     throw UnimplementedError();
   }
 

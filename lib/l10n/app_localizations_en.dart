@@ -183,6 +183,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'Delete this custom drink? Existing history entries will remain available.';
 
   @override
+  String get deleteAccount => 'Delete account';
+
+  @override
+  String get deleteAccountTitle => 'Delete account?';
+
+  @override
+  String deleteAccountBody(String phrase) {
+    return 'This permanently deletes your account, profile, history, friends, and notifications. Type \"$phrase\" to enable account deletion.';
+  }
+
+  @override
+  String deleteAccountVerificationLabel(String phrase) {
+    return 'Type \"$phrase\" to confirm';
+  }
+
+  @override
+  String get deleteAccountVerificationPhrase => 'DELETE ACCOUNT';
+
+  @override
+  String get deleteAccountAction => 'Delete account';
+
+  @override
   String get drinkName => 'Drink name';
 
   @override
@@ -376,6 +398,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editProfile => 'Edit profile';
+
+  @override
+  String get accountSectionTitle => 'Account';
+
+  @override
+  String get accountSectionBody =>
+      'Change your password or permanently delete this account.';
+
+  @override
+  String get changePassword => 'Change password';
+
+  @override
+  String get changePasswordBody =>
+      'Confirm your current password and choose a new one.';
+
+  @override
+  String get currentPassword => 'Current password';
+
+  @override
+  String get newPassword => 'New password';
+
+  @override
+  String get repeatNewPassword => 'Repeat new password';
+
+  @override
+  String get changePasswordAction => 'Update password';
+
+  @override
+  String get changePasswordConfirmationMismatch =>
+      'The new passwords do not match.';
+
+  @override
+  String get changePasswordSameAsCurrent =>
+      'The new password must be different from the current password.';
 
   @override
   String get friends => 'Friends';
@@ -742,6 +798,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileUpdated => 'Profile updated.';
 
   @override
+  String get changePasswordSuccess => 'Password changed.';
+
+  @override
   String get customDrinkSaved => 'Custom drink saved.';
 
   @override
@@ -784,7 +843,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invalidCredentials => 'The email or password is incorrect.';
 
   @override
+  String get changePasswordCurrentPasswordIncorrect =>
+      'The current password is incorrect.';
+
+  @override
   String get profileUpdateFailed => 'The profile could not be updated.';
+
+  @override
+  String get changePasswordFailed => 'The password could not be changed.';
+
+  @override
+  String get deleteAccountSuccess => 'Account deleted.';
+
+  @override
+  String get deleteAccountFailed => 'The account could not be deleted.';
 
   @override
   String get entryUpdateFailed => 'The drink entry could not be updated.';

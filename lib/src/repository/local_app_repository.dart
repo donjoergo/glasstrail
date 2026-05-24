@@ -107,6 +107,35 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
+  Future<void> changePassword({
+    required AppUser user,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final users = _loadUsers();
+    final index = users.indexWhere((candidate) => candidate.id == user.id);
+    if (index == -1) {
+      throw const AppException('The password could not be changed.');
+    }
+
+    final storedUser = users[index];
+    if (storedUser.password != currentPassword) {
+      throw const AppException('The current password is incorrect.');
+    }
+
+    users[index] = AppUser(
+      id: storedUser.id,
+      email: storedUser.email,
+      password: newPassword,
+      displayName: storedUser.displayName,
+      profileImagePath: storedUser.profileImagePath,
+      birthday: storedUser.birthday,
+      profileShareCode: storedUser.profileShareCode,
+    );
+    await _saveUsers(users);
+  }
+
+  @override
   Future<AppUser> updateProfile(AppUser user) async {
     final users = _loadUsers();
     final index = users.indexWhere((candidate) => candidate.id == user.id);
@@ -116,6 +145,89 @@ class LocalAppRepository implements AppRepository {
     users[index] = user;
     await _saveUsers(users);
     return user;
+  }
+
+  @override
+  Future<void> deleteAccount(AppUser user) async {
+    final userId = user.id;
+    final users = _loadUsers();
+    final updatedUsers = users
+        .where((candidate) => candidate.id != userId)
+        .toList(growable: false);
+    if (updatedUsers.length == users.length) {
+      throw const AppException('The account could not be deleted.');
+    }
+
+    final customDrinks = _readJsonMap(_customDrinksKey);
+    customDrinks.remove(userId);
+
+    final entries = _readJsonMap(_entriesKey);
+    final deletedEntryIds = ((entries[userId] as List?) ?? const <dynamic>[])
+        .map(
+          (item) => (Map<String, dynamic>.from(item as Map))['id'] as String?,
+        )
+        .whereType<String>()
+        .toSet();
+    entries.remove(userId);
+
+    final settings = _readJsonMap(_settingsKey);
+    settings.remove(userId);
+
+    final relationships = _loadFriendRelationships()
+      ..removeWhere((relationship) {
+        final requesterId = relationship['requesterId'] as String;
+        final addresseeId = relationship['addresseeId'] as String;
+        return requesterId == userId || addresseeId == userId;
+      });
+
+    final cheersByEntryId = _loadFeedEntryCheers();
+    var cheersChanged = false;
+    for (final entryId in cheersByEntryId.keys.toList(growable: false)) {
+      if (deletedEntryIds.contains(entryId)) {
+        cheersByEntryId.remove(entryId);
+        cheersChanged = true;
+        continue;
+      }
+
+      final cheerUserIds = cheersByEntryId[entryId];
+      if (cheerUserIds == null || !cheerUserIds.remove(userId)) {
+        continue;
+      }
+      cheersChanged = true;
+      if (cheerUserIds.isEmpty) {
+        cheersByEntryId.remove(entryId);
+      }
+    }
+
+    final notifications = _loadNotifications();
+    final affectedNotificationUserIds = <String>{};
+    notifications.removeWhere((item) {
+      final notification = AppNotification.fromJson(item);
+      final matches =
+          notification.senderUserId == userId ||
+          notification.recipientUserId == userId;
+      if (matches) {
+        affectedNotificationUserIds.add(notification.recipientUserId);
+      }
+      return matches;
+    });
+
+    await _saveUsers(updatedUsers);
+    await _writeJsonMap(_customDrinksKey, customDrinks);
+    await _writeJsonMap(_entriesKey, entries);
+    await _writeJsonMap(_settingsKey, settings);
+    await _saveFriendRelationships(relationships);
+    await _saveNotifications(notifications);
+    if (cheersChanged) {
+      await _saveFeedEntryCheers(cheersByEntryId);
+    }
+    if (_preferences.getString(_sessionUserIdKey) == userId) {
+      await _preferences.remove(_sessionUserIdKey);
+    }
+
+    for (final affectedUserId in affectedNotificationUserIds) {
+      _publishNotifications(affectedUserId);
+    }
   }
 
   @override

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -287,6 +288,7 @@ void main() {
   });
 
   setUp(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
     PackageInfo.setMockInitialValues(
       appName: 'Glass Trail',
       packageName: 'dev.glasstrail.glasstrail',
@@ -329,6 +331,208 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('edit-profile-save-button')), findsOneWidget);
+  });
+
+  testWidgets('shows both account management actions on edit profile', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-account-actions@example.com',
+      password: 'password123',
+      displayName: 'Profile Account Actions',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.tap(find.byKey(const Key('profile-edit-button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-profile-delete-account-button')),
+    );
+
+    expect(
+      find.byKey(const Key('edit-profile-change-password-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('edit-profile-delete-account-button')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('validates the change-password dialog fields', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-password-dialog@example.com',
+      password: 'password123',
+      displayName: 'Profile Password Dialog',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.tap(find.byKey(const Key('profile-edit-button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-profile-change-password-button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('edit-profile-change-password-button')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('change-password-submit-button')));
+    await tester.pump();
+    expect(find.text('Please fill in all required fields.'), findsWidgets);
+
+    await tester.enterText(
+      find.byKey(const Key('change-password-current-field')),
+      'password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('change-password-new-field')),
+      'password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('change-password-repeat-field')),
+      'password123',
+    );
+    await tester.tap(find.byKey(const Key('change-password-submit-button')));
+    await tester.pump();
+    expect(
+      find.text(
+        'The new password must be different from the current password.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('change-password-new-field')),
+      'new-password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('change-password-repeat-field')),
+      'different-password',
+    );
+    await tester.tap(find.byKey(const Key('change-password-submit-button')));
+    await tester.pump();
+    expect(find.text('The new passwords do not match.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'keeps account deletion disabled until the exact phrase is entered',
+    (tester) async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'profile-delete-phrase@example.com',
+        password: 'password123',
+        displayName: 'Profile Delete Phrase',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openProfileTab(tester);
+      await tester.tap(find.byKey(const Key('profile-edit-button')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const Key('edit-profile-delete-account-button')),
+      );
+      await tester.tap(
+        find.byKey(const Key('edit-profile-delete-account-button')),
+      );
+      await tester.pumpAndSettle();
+
+      FilledButton submitButton() => tester.widget<FilledButton>(
+        find.byKey(const Key('delete-account-submit-button')),
+      );
+
+      expect(submitButton().onPressed, isNull);
+
+      await tester.enterText(
+        find.byKey(const Key('delete-account-confirmation-field')),
+        'delete account',
+      );
+      await tester.pump();
+      expect(submitButton().onPressed, isNull);
+
+      await tester.enterText(
+        find.byKey(const Key('delete-account-confirmation-field')),
+        ' DELETE ACCOUNT ',
+      );
+      await tester.pump();
+      expect(submitButton().onPressed, isNotNull);
+    },
+  );
+
+  testWidgets('redirects to auth after deleting the account', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-delete-success@example.com',
+      password: 'password123',
+      displayName: 'Profile Delete Success',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.tap(find.byKey(const Key('profile-edit-button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-profile-delete-account-button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('edit-profile-delete-account-button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('delete-account-confirmation-field')),
+      'DELETE ACCOUNT',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('delete-account-submit-button')));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    for (
+      var attempt = 0;
+      attempt < 40 &&
+          find.byKey(const Key('auth-submit-button')).evaluate().isEmpty;
+      attempt++
+    ) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('edit-profile-display-name-field')),
+      findsNothing,
+    );
   });
 
   testWidgets('keeps notification unread until it is tapped', (tester) async {
