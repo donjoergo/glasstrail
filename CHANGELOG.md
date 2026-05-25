@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.0] - 2026-05-25
 ### Added
 - Prompt BeerWithMe import after sign-up
-- Profile account management
+- Profile account management: Delete account and change password
 
 ### Changed
 - Build only arm64 apk to reduce app size from 100mb to \~ 35mb
