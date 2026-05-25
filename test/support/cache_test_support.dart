@@ -14,6 +14,7 @@ import 'package:glasstrail/src/repository/local_app_repository.dart';
 
 class TestCacheStoreBackend implements CacheStoreBackend {
   final Map<String, Uint8List> _files = <String, Uint8List>{};
+  final List<String> deletedPaths = <String>[];
   String? failWritePath;
 
   @override
@@ -23,6 +24,7 @@ class TestCacheStoreBackend implements CacheStoreBackend {
 
   @override
   Future<void> deleteFile(String relativePath) async {
+    deletedPaths.add(relativePath);
     _files.remove(relativePath);
   }
 

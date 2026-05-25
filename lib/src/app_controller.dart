@@ -589,7 +589,7 @@ class AppController extends ChangeNotifier {
       await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signIn(email: email, password: password);
       _notificationReadOverrides.clear();
-      await _reloadUserScope();
+      await _reloadUserScope(forceRefresh: true);
       _subscribeToNotifications();
       await _registerPushTokenBestEffort();
       _pendingPostSignUpBeerWithMePrompt = false;
@@ -1316,7 +1316,13 @@ class AppController extends ChangeNotifier {
         await _handleReconciliationSessionLoss(authSessionEpoch);
         return;
       }
-      _currentUser = refreshedUser;
+      final reboundLiveBindings = await _activateReconciledUser(
+        refreshedUser,
+        authSessionEpoch,
+      );
+      if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
+        return;
+      }
 
       final staleDomains = await _staleDomains(
         includeHotResumeDomainsOnly: false,
@@ -1334,10 +1340,12 @@ class AppController extends ChangeNotifier {
       if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
         return;
       }
-      _subscribeToNotifications();
-      await _registerPushTokenBestEffort();
-      if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
-        return;
+      if (!reboundLiveBindings) {
+        _subscribeToNotifications();
+        await _registerPushTokenBestEffort();
+        if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
+          return;
+        }
       }
       notifyListeners();
     } catch (_) {}
@@ -1766,6 +1774,36 @@ class AppController extends ChangeNotifier {
     _settings = await settingsFuture;
     _friendConnections = await friendsFuture;
     _notifications = _mergeNotificationReadOverrides(await notificationsFuture);
+  }
+
+  Future<bool> _activateReconciledUser(
+    AppUser refreshedUser,
+    int authSessionEpoch,
+  ) async {
+    final previousUserId = _currentUser?.id;
+    final changedUser = previousUserId != refreshedUser.id;
+    if (changedUser) {
+      _cancelNotificationSubscription();
+      await _unregisterPushTokenBestEffort();
+      if (!_isAuthSessionCurrent(authSessionEpoch)) {
+        return false;
+      }
+      _clearUserScopeState();
+    }
+
+    _currentUser = refreshedUser;
+
+    if (!changedUser) {
+      return false;
+    }
+
+    _subscribeToNotifications();
+    await _registerPushTokenBestEffort();
+    if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
+      return false;
+    }
+    notifyListeners();
+    return true;
   }
 
   void _subscribeToNotifications() {

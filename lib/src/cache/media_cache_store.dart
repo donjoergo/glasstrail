@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -61,16 +62,32 @@ class MediaCacheStore {
     );
   }
 
-  Future<void> _updateManifest(
-    Future<MediaCacheManifest> Function(MediaCacheManifest manifest) transform,
-  ) {
+  Future<T> _serializeWrite<T>(Future<T> Function() operation) {
     final nextWrite = _writeQueue.then((_) async {
+      return operation();
+    });
+    _writeQueue = nextWrite.then<void>((_) {}, onError: (_, _) {});
+    return nextWrite;
+  }
+
+  Future<void> _updateManifest(
+    FutureOr<MediaCacheManifest> Function(MediaCacheManifest manifest)
+    transform,
+  ) {
+    return _serializeWrite(() async {
       final manifest = await _readManifest();
       final nextManifest = await transform(manifest);
       await _writeManifest(nextManifest);
     });
-    _writeQueue = nextWrite.catchError((_) {});
-    return nextWrite;
+  }
+
+  Future<void> _updateManifestBestEffort(
+    FutureOr<MediaCacheManifest> Function(MediaCacheManifest manifest)
+    transform,
+  ) async {
+    try {
+      await _updateManifest(transform);
+    } catch (_) {}
   }
 
   Future<Uint8List?> read(String cacheKey) async {
@@ -81,14 +98,14 @@ class MediaCacheStore {
     }
     final bytes = await _backend.readBytes(entry.relativePath);
     if (bytes == null) {
-      await _updateManifest((current) async {
+      await _updateManifestBestEffort((current) {
         final nextEntries = Map<String, MediaCacheEntry>.from(current.entries);
         nextEntries.remove(cacheKey);
         return current.copyWith(entries: nextEntries);
       });
       return null;
     }
-    await _updateManifest((current) async {
+    await _updateManifestBestEffort((current) {
       final nextEntries = Map<String, MediaCacheEntry>.from(current.entries);
       final currentEntry = nextEntries[cacheKey];
       if (currentEntry != null) {
@@ -107,7 +124,8 @@ class MediaCacheStore {
     String? scopeUserId,
     String? contentType,
   }) async {
-    await _updateManifest((manifest) async {
+    await _serializeWrite(() async {
+      final manifest = await _readManifest();
       final now = DateTime.now();
       final fileName = _fileNameFor(cacheKey, contentType: contentType);
       final relativePath = 'media/files/$fileName';
@@ -115,9 +133,6 @@ class MediaCacheStore {
 
       final nextEntries = Map<String, MediaCacheEntry>.from(manifest.entries);
       final previousEntry = nextEntries[cacheKey];
-      if (previousEntry != null && previousEntry.relativePath != relativePath) {
-        await _backend.deleteFile(previousEntry.relativePath);
-      }
       nextEntries[cacheKey] = MediaCacheEntry(
         cacheKey: cacheKey,
         relativePath: relativePath,
@@ -126,23 +141,43 @@ class MediaCacheStore {
         lastAccessedAt: now,
         scopeUserId: scopeUserId,
       );
-      var nextManifest = manifest.copyWith(entries: nextEntries);
-      nextManifest = await _evictIfNeeded(nextManifest);
-      return nextManifest;
+      final evictionPlan = _planEvictions(
+        manifest.copyWith(entries: nextEntries),
+      );
+      final filesToDelete = <String>{
+        ...evictionPlan.filesToDelete,
+        if (previousEntry != null && previousEntry.relativePath != relativePath)
+          previousEntry.relativePath,
+      };
+
+      try {
+        await _writeManifest(evictionPlan.manifest);
+      } catch (_) {
+        if (previousEntry == null ||
+            previousEntry.relativePath != relativePath) {
+          await _deleteFileBestEffort(relativePath);
+        }
+        rethrow;
+      }
+
+      await _deleteFilesBestEffort(filesToDelete);
     });
   }
 
   Future<void> purgeScope(String userId) {
-    return _updateManifest((manifest) async {
+    return _serializeWrite(() async {
+      final manifest = await _readManifest();
       final nextEntries = <String, MediaCacheEntry>{};
+      final filesToDelete = <String>{};
       for (final entry in manifest.entries.entries) {
         if (entry.value.scopeUserId == userId) {
-          await _backend.deleteFile(entry.value.relativePath);
+          filesToDelete.add(entry.value.relativePath);
           continue;
         }
         nextEntries[entry.key] = entry.value;
       }
-      return manifest.copyWith(entries: nextEntries);
+      await _writeManifest(manifest.copyWith(entries: nextEntries));
+      await _deleteFilesBestEffort(filesToDelete);
     });
   }
 
@@ -160,8 +195,9 @@ class MediaCacheStore {
     );
   }
 
-  Future<MediaCacheManifest> _evictIfNeeded(MediaCacheManifest manifest) async {
+  _MediaEvictionPlan _planEvictions(MediaCacheManifest manifest) {
     var nextManifest = manifest;
+    final filesToDelete = <String>{};
     while (nextManifest.totalBytes > nextManifest.sizeLimitBytes &&
         nextManifest.entries.isNotEmpty) {
       final oldest = nextManifest.entries.values.reduce((left, right) {
@@ -169,7 +205,7 @@ class MediaCacheStore {
             ? left
             : right;
       });
-      await _backend.deleteFile(oldest.relativePath);
+      filesToDelete.add(oldest.relativePath);
       final nextEntries = Map<String, MediaCacheEntry>.from(
         nextManifest.entries,
       );
@@ -179,7 +215,22 @@ class MediaCacheStore {
         evictionCount: nextManifest.evictionCount + 1,
       );
     }
-    return nextManifest;
+    return _MediaEvictionPlan(
+      manifest: nextManifest,
+      filesToDelete: filesToDelete,
+    );
+  }
+
+  Future<void> _deleteFilesBestEffort(Iterable<String> relativePaths) async {
+    for (final relativePath in relativePaths) {
+      await _deleteFileBestEffort(relativePath);
+    }
+  }
+
+  Future<void> _deleteFileBestEffort(String relativePath) async {
+    try {
+      await _backend.deleteFile(relativePath);
+    } catch (_) {}
   }
 
   String _fileNameFor(String cacheKey, {String? contentType}) {
@@ -191,4 +242,14 @@ class MediaCacheStore {
     };
     return '$encoded$extension';
   }
+}
+
+class _MediaEvictionPlan {
+  const _MediaEvictionPlan({
+    required this.manifest,
+    required this.filesToDelete,
+  });
+
+  final MediaCacheManifest manifest;
+  final Set<String> filesToDelete;
 }

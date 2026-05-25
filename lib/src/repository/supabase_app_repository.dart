@@ -36,13 +36,16 @@ class SupabaseAppRepository implements AppRepository {
 
   @override
   Future<AppUser?> restoreSession({bool forceRefresh = false}) async {
-    final authUser = _client.auth.currentUser;
-    if (authUser == null) {
-      return null;
-    }
     try {
-      return _ensureProfile(authUser);
+      final authUser = await _restoreAuthUser(forceRefresh: forceRefresh);
+      if (authUser == null) {
+        return null;
+      }
+      return await _ensureProfile(authUser);
     } on AuthException catch (error) {
+      if (forceRefresh && _isMissingOrInvalidSession(error)) {
+        return null;
+      }
       throw AppException(error.message);
     } on StorageException catch (error) {
       throw AppException(error.message);
@@ -1249,6 +1252,34 @@ class SupabaseAppRepository implements AppRepository {
     final message = error.message.toLowerCase();
     return message.contains('invalid login credentials') ||
         message.contains('invalid credentials');
+  }
+
+  Future<User?> _restoreAuthUser({required bool forceRefresh}) async {
+    if (!forceRefresh) {
+      return _client.auth.currentUser;
+    }
+    if (_client.auth.currentSession == null) {
+      return null;
+    }
+    final response = await _client.auth.refreshSession();
+    return response.user ?? response.session?.user ?? _client.auth.currentUser;
+  }
+
+  bool _isMissingOrInvalidSession(AuthException error) {
+    if (error is AuthSessionMissingException ||
+        error is AuthInvalidJwtException) {
+      return true;
+    }
+    if (error is AuthRetryableFetchException) {
+      return false;
+    }
+    final message = error.message.toLowerCase();
+    return error.code == 'invalid_grant' ||
+        error.code == 'session_not_found' ||
+        message.contains('refresh token') ||
+        message.contains('invalid grant') ||
+        message.contains('session expired') ||
+        message.contains('invalid jwt');
   }
 
   Future<String?> _loadCustomDrinkImagePath({

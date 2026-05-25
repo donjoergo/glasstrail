@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -32,6 +33,65 @@ void main() {
 
     expect(bytes, isNotNull);
     expect(bytes, orderedEquals(<int>[1, 2, 3, 4]));
+  });
+
+  test('returns cached bytes when manifest touch updates fail', () async {
+    final backend = TestCacheStoreBackend();
+    final store = await MediaCacheStore.create(backend: backend);
+
+    await store.write(
+      'viewer-1/entries/photo.jpg',
+      Uint8List.fromList(<int>[1, 2, 3, 4]),
+      scopeUserId: 'viewer-1',
+    );
+    backend.failWritePath = 'media/manifest.json';
+
+    final bytes = await store.read('viewer-1/entries/photo.jpg');
+
+    expect(bytes, isNotNull);
+    expect(bytes, orderedEquals(<int>[1, 2, 3, 4]));
+  });
+
+  test('keeps the previous file when manifest persistence fails', () async {
+    const cacheKey = 'viewer-1/entries/photo.jpg';
+    final backend = TestCacheStoreBackend();
+    final store = await MediaCacheStore.create(backend: backend);
+
+    await store.write(
+      cacheKey,
+      Uint8List.fromList(<int>[1, 2, 3]),
+      scopeUserId: 'viewer-1',
+      contentType: 'image/jpeg',
+    );
+    final manifestBeforeFailure =
+        jsonDecode((await backend.readText('media/manifest.json'))!)
+            as Map<String, dynamic>;
+    final oldPath =
+        Map<String, dynamic>.from(
+              manifestBeforeFailure['entries'] as Map,
+            )[cacheKey]
+            as Map<String, dynamic>;
+    final previousRelativePath = oldPath['relativePath'] as String;
+    final replacementRelativePath = _relativePathFor(
+      cacheKey,
+      extension: '.png',
+    );
+
+    backend.failWritePath = 'media/manifest.json';
+
+    await expectLater(
+      store.write(
+        cacheKey,
+        Uint8List.fromList(<int>[4, 5, 6]),
+        scopeUserId: 'viewer-1',
+        contentType: 'image/png',
+      ),
+      throwsA(isA<Exception>()),
+    );
+
+    expect(await backend.fileLength(previousRelativePath), 3);
+    expect(await backend.fileLength(replacementRelativePath), isNull);
+    expect(backend.deletedPaths, isNot(contains(previousRelativePath)));
   });
 
   test('evicts least recently used items when over the size budget', () async {
@@ -94,4 +154,9 @@ void main() {
     expect(debug.itemCount, 0);
     expect(await backend.readText('media/manifest.json'), isNull);
   });
+}
+
+String _relativePathFor(String cacheKey, {required String extension}) {
+  final encoded = base64Url.encode(utf8.encode(cacheKey)).replaceAll('=', '');
+  return 'media/files/$encoded$extension';
 }

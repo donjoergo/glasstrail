@@ -246,6 +246,161 @@ void main() {
       expect(state.snapshot.firstFeedPage, isNull);
     },
   );
+
+  test(
+    'account-switch reconciliation clears stale state and rebinds live subscriptions before refresh work',
+    () async {
+      final delegate = await _buildReconciliationProbeRepository();
+      addTearDown(delegate.dispose);
+      final cachedUser = await delegate.signUp(
+        email: 'cached-account-a@example.com',
+        password: 'password123',
+        displayName: 'Cached Account A',
+      );
+      final defaultCatalog = await delegate.loadDefaultCatalog(
+        forceRefresh: true,
+      );
+      final cachedEntry = await delegate.addDrinkEntry(
+        user: cachedUser,
+        drink: defaultCatalog.first,
+        comment: 'Cached stale entry',
+      );
+      final cachedFeed = await delegate.loadFeedDrinkPosts(
+        userId: cachedUser.id,
+        limit: 20,
+        forceRefresh: true,
+      );
+      await delegate.signOut();
+
+      final refreshedUser = await delegate.signUp(
+        email: 'cached-account-b@example.com',
+        password: 'password123',
+        displayName: 'Cached Account B',
+      );
+      delegate.useManualNotificationsStream = true;
+      delegate.forceLoadCustomDrinksError = Exception('forced refresh failure');
+
+      final cacheStore = await BootstrapCacheStore.create(
+        backend: TestCacheStoreBackend(),
+      );
+      await seedBootstrapCache(
+        store: cacheStore,
+        currentUser: cachedUser,
+        defaultCatalog: defaultCatalog,
+        entries: <DrinkEntry>[cachedEntry],
+        firstFeedPage: cachedFeed,
+        updatedAt: DateTime(2025, 1, 1),
+      );
+
+      delegate.activeSession = LocalAuthSession(
+        id: cachedUser.id,
+        email: cachedUser.email,
+      );
+      final repository = CachedAppRepository(
+        delegate: delegate,
+        cacheStore: cacheStore,
+        mediaCacheStore: await MediaCacheStore.create(
+          backend: TestCacheStoreBackend(),
+        ),
+        loadLocalAuthSession: () => delegate.activeSession,
+      );
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+        pushNotificationService: const _StaticPushNotificationService(
+          PushDeviceToken(token: 'switch-token', platform: 'android'),
+        ),
+      );
+      addTearDown(controller.dispose);
+
+      expect(controller.currentUser?.id, cachedUser.id);
+      expect(controller.entries.single.id, cachedEntry.id);
+      expect(delegate.notificationListenCount, 1);
+      expect(delegate.registeredTokenCalls.single.userId, cachedUser.id);
+
+      delegate.activeSession = LocalAuthSession(
+        id: refreshedUser.id,
+        email: refreshedUser.email,
+      );
+
+      await controller.startBootstrapReconciliation();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.currentUser?.id, refreshedUser.id);
+      expect(controller.entries, isEmpty);
+      expect(controller.feedPosts, isEmpty);
+      expect(delegate.notificationCancelCount, 1);
+      expect(delegate.notificationListenCount, 2);
+      expect(delegate.unregisteredTokenCalls, hasLength(1));
+      expect(delegate.unregisteredTokenCalls.single.userId, cachedUser.id);
+      expect(delegate.registeredTokenCalls, hasLength(2));
+      expect(delegate.registeredTokenCalls.last.userId, refreshedUser.id);
+    },
+  );
+
+  test('signing in force-refreshes stale user-scoped cache', () async {
+    final delegate = await _buildReconciliationProbeRepository();
+    addTearDown(delegate.dispose);
+    final user = await delegate.signUp(
+      email: 'stale-sign-in@example.com',
+      password: 'password123',
+      displayName: 'Stale Sign In',
+    );
+    final defaultCatalog = await delegate.loadDefaultCatalog(
+      forceRefresh: true,
+    );
+    final cachedEntry = await delegate.addDrinkEntry(
+      user: user,
+      drink: defaultCatalog.first,
+      comment: 'Cached entry',
+    );
+    final cachedFeed = await delegate.loadFeedDrinkPosts(
+      userId: user.id,
+      limit: 20,
+      forceRefresh: true,
+    );
+
+    final cacheStore = await BootstrapCacheStore.create(
+      backend: TestCacheStoreBackend(),
+    );
+    await seedBootstrapCache(
+      store: cacheStore,
+      currentUser: user,
+      defaultCatalog: defaultCatalog,
+      entries: <DrinkEntry>[cachedEntry],
+      firstFeedPage: cachedFeed,
+      updatedAt: DateTime(2025, 1, 1),
+    );
+
+    await delegate.signOut();
+    final freshEntry = await delegate.addDrinkEntry(
+      user: user,
+      drink: defaultCatalog.first,
+      comment: 'Fresh remote entry',
+    );
+
+    final repository = CachedAppRepository(
+      delegate: delegate,
+      cacheStore: cacheStore,
+      mediaCacheStore: await MediaCacheStore.create(
+        backend: TestCacheStoreBackend(),
+      ),
+      loadLocalAuthSession: () => delegate.activeSession,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    addTearDown(controller.dispose);
+
+    expect(controller.isAuthenticated, isFalse);
+
+    expect(
+      await controller.signIn(email: user.email, password: 'password123'),
+      isTrue,
+    );
+    expect(controller.currentUser?.id, user.id);
+    expect(
+      controller.entries.map((entry) => entry.id),
+      containsAll(<String>[cachedEntry.id, freshEntry.id]),
+    );
+  });
 }
 
 Future<_ReconciliationProbeLocalRepository>
@@ -272,6 +427,9 @@ class _ReconciliationProbeLocalRepository extends ProbeLocalAppRepository {
   bool useForcedRestoreSessionResult = false;
   AppUser? forceRestoreSessionResult;
   bool useManualNotificationsStream = false;
+  LocalAuthSession? activeSession;
+  Object? forceLoadCustomDrinksError;
+  Object? forceLoadEntriesError;
   int notificationListenCount = 0;
   int notificationCancelCount = 0;
   final List<_TokenCall> registeredTokenCalls = <_TokenCall>[];
@@ -294,6 +452,63 @@ class _ReconciliationProbeLocalRepository extends ProbeLocalAppRepository {
       return forceRestoreSessionResult;
     }
     return super.restoreSession(forceRefresh: forceRefresh);
+  }
+
+  @override
+  Future<AppUser> signUp({
+    required String email,
+    required String password,
+    required String displayName,
+    DateTime? birthday,
+    String? profileImagePath,
+  }) async {
+    final user = await super.signUp(
+      email: email,
+      password: password,
+      displayName: displayName,
+      birthday: birthday,
+      profileImagePath: profileImagePath,
+    );
+    activeSession = LocalAuthSession(id: user.id, email: user.email);
+    return user;
+  }
+
+  @override
+  Future<AppUser> signIn({
+    required String email,
+    required String password,
+  }) async {
+    final user = await super.signIn(email: email, password: password);
+    activeSession = LocalAuthSession(id: user.id, email: user.email);
+    return user;
+  }
+
+  @override
+  Future<void> signOut() async {
+    await super.signOut();
+    activeSession = null;
+  }
+
+  @override
+  Future<List<DrinkEntry>> loadEntries(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
+    if (forceRefresh && forceLoadEntriesError != null) {
+      throw forceLoadEntriesError!;
+    }
+    return super.loadEntries(userId, forceRefresh: forceRefresh);
+  }
+
+  @override
+  Future<List<DrinkDefinition>> loadCustomDrinks(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
+    if (forceRefresh && forceLoadCustomDrinksError != null) {
+      throw forceLoadCustomDrinksError!;
+    }
+    return super.loadCustomDrinks(userId, forceRefresh: forceRefresh);
   }
 
   @override
