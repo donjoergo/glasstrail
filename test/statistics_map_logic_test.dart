@@ -138,6 +138,69 @@ void main() {
     expect((properties['markerImageId']! as String), isNotEmpty);
   });
 
+  test('overlapping marker indexes handle invalid tap index', () {
+    final indexes = statisticsMapOverlappingMarkerIndexes(
+      offsets: const <Offset>[Offset(0, 0), Offset(10, 0)],
+      tappedIndex: -1,
+    );
+
+    expect(indexes, isEmpty);
+  });
+
+  test('resolve marker tap zooms when multiple markers overlap', () {
+    final resolution = resolveStatisticsMapMarkerTap(
+      offsets: const <Offset>[Offset(0, 0), Offset(4, 3)],
+      tappedIndex: 0,
+      currentZoom: 10,
+      overlapRadius: 6,
+    );
+
+    expect(resolution, StatisticsMapTapResolution.zoomIn);
+  });
+
+  test('resolve marker tap opens sheet at max zoom', () {
+    final resolution = resolveStatisticsMapMarkerTap(
+      offsets: const <Offset>[Offset(0, 0), Offset(4, 3)],
+      tappedIndex: 0,
+      currentZoom: 18.5,
+      overlapRadius: 6,
+      zoomResolutionMaxZoom: 18.5,
+    );
+
+    expect(resolution, StatisticsMapTapResolution.openSheet);
+  });
+
+  test('cluster groups merge offsets through transitive neighbors', () {
+    final groups = statisticsMapClusterGroups(
+      offsets: const <Offset>[
+        Offset(0, 0),
+        Offset(20, 0),
+        Offset(40, 0),
+        Offset(200, 0),
+      ],
+      clusterRadius: 25,
+    );
+
+    expect(groups, const <List<int>>[
+      <int>[0, 1, 2],
+      <int>[3],
+    ]);
+  });
+
+  test('standalone marker indexes return isolated markers only', () {
+    final indexes = statisticsMapStandaloneMarkerIndexes(
+      offsets: const <Offset>[
+        Offset(0, 0),
+        Offset(20, 0),
+        Offset(40, 0),
+        Offset(200, 0),
+      ],
+      isolationRadius: 25,
+    );
+
+    expect(indexes, const <int>[3]);
+  });
+
   test('cluster count layer properties keep the label centered', () {
     final properties = statisticsMapClusterCountLayerProperties(
       labelColor: Colors.white,
