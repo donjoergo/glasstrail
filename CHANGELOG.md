@@ -6,9 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Prompt BeerWithMe import after sign-up
-- Profile account management
 - Startup and media caching for faster signed-in launches
+
+## [2.1.0] - 2026-05-25
+### Added
+- Prompt BeerWithMe import after sign-up
+- Profile account management: Delete account and change password
 
 ### Changed
 - Build only arm64 apk to reduce app size from 100mb to \~ 35mb
@@ -112,7 +115,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - settings
   - login
 
-[Unreleased]: https://github.com/donjoergo/glasstrail/compare/2.0.0...HEAD
+[Unreleased]: https://github.com/donjoergo/glasstrail/compare/2.1.0...HEAD
+[2.1.0]: https://github.com/donjoergo/glasstrail/compare/2.0.0...2.1.0
 [2.0.0]: https://github.com/donjoergo/glasstrail/compare/1.2.1...2.0.0
 [1.2.1]: https://github.com/donjoergo/glasstrail/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/donjoergo/glasstrail/compare/1.1.0...1.2.0
