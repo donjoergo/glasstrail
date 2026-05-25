@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:glasstrail/src/app.dart';
@@ -8,6 +9,7 @@ import 'package:glasstrail/src/deep_link_service.dart';
 import 'package:glasstrail/src/locale_memory.dart';
 import 'package:glasstrail/src/app_routes.dart';
 import 'package:glasstrail/src/friend_profile_links.dart';
+import 'package:glasstrail/src/import_file_service.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/push_notification_service.dart';
@@ -17,12 +19,16 @@ import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/widgets/app_media.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/test_harness.dart';
 
 const _transparentPngDataUrl =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRSEAAAAASUVORK5CYII=';
+
+AppLocalizations _l10n(String languageCode) =>
+    lookupAppLocalizations(Locale(languageCode));
 
 Future<void> _tapPhotoAction(
   WidgetTester tester,
@@ -52,6 +58,28 @@ Future<void> _tapPhotoAction(
 Future<void> _switchToSignUp(WidgetTester tester) async {
   await tester.ensureVisible(find.byKey(const Key('auth-mode-segmented')));
   await tester.tap(find.byKey(const Key('auth-mode-sign-up')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _submitSignUp(
+  WidgetTester tester, {
+  required String email,
+  required String password,
+  required String displayName,
+}) async {
+  await _switchToSignUp(tester);
+  await tester.enterText(find.byKey(const Key('signup-email-field')), email);
+  await tester.enterText(
+    find.byKey(const Key('signup-password-field')),
+    password,
+  );
+  await tester.enterText(
+    find.byKey(const Key('signup-display-name-field')),
+    displayName,
+  );
+  await tester.ensureVisible(find.byKey(const Key('auth-submit-button')).last);
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('auth-submit-button')).last);
   await tester.pumpAndSettle();
 }
 
@@ -159,6 +187,10 @@ class _FakePushNotificationService extends PushNotificationService {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+  });
+
   testWidgets('shows a bootstrap screen until the controller is ready', (
     tester,
   ) async {
@@ -182,6 +214,31 @@ void main() {
     expect(find.text('Track every glass'), findsOneWidget);
     expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
   });
+
+  testWidgets(
+    'shows the remembered locale while the bootstrap shell is active',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final localeMemory = await LocaleMemory.create();
+      await localeMemory.rememberLocale('de');
+      final controllerCompleter = Completer<AppController>();
+
+      await tester.pumpWidget(
+        GlassTrailBootstrapApp(
+          controllerFuture: controllerCompleter.future,
+          photoService: const TestPhotoService(),
+          localeMemoryFuture: Future<LocaleMemory>.value(localeMemory),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.text('Getränke und Einstellungen werden geladen.'),
+        findsOneWidget,
+      );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'accepts the browser initial route while the bootstrap shell is active',
@@ -463,6 +520,45 @@ void main() {
     expect(controller.settings.localeCode, 'de');
     expect(localeMemory.localeCode, 'de');
     expect(find.text('Jedes Glas festhalten'), findsOneWidget);
+  });
+
+  testWidgets('remembers signed-in language changes for bootstrap', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final localeMemory = await LocaleMemory.create();
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-language@example.com',
+      password: 'password123',
+      displayName: 'Profile Language',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        localeMemory: localeMemory,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    await _scrollProfileTargetIntoView(
+      tester,
+      find.byKey(const Key('language-segmented-control')),
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('language-segmented-control')),
+        matching: find.text('German'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.settings.localeCode, 'de');
+    expect(localeMemory.localeCode, 'de');
   });
 
   testWidgets('configures browser autofill hints for auth fields', (
@@ -1100,38 +1196,103 @@ void main() {
     expect(route?.settings.name, AppRoutes.barCustom);
   });
 
-  testWidgets('restores the protected route after sign-up', (tester) async {
+  testWidgets('shows the Beer With Me prompt after a fresh sign-up', (
+    tester,
+  ) async {
+    final app = await buildTestApp();
+
+    await tester.pumpWidget(app);
+    await tester.pumpAndSettle();
+
+    await _submitSignUp(
+      tester,
+      email: 'signup-feed@example.com',
+      password: 'password123',
+      displayName: 'Signup Feed',
+    );
+
+    expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+    expect(
+      find.byKey(const Key('post-signup-beer-with-me-dialog')),
+      findsOneWidget,
+    );
+
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.feed);
+  });
+
+  testWidgets(
+    'restores the protected route after sign-up and overlays the Beer With Me prompt',
+    (tester) async {
+      final app = await buildTestApp(initialRoute: AppRoutes.editProfile);
+
+      await tester.pumpWidget(app);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+      expect(
+        find.byKey(const Key('edit-profile-display-name-field')),
+        findsNothing,
+      );
+
+      await _submitSignUp(
+        tester,
+        email: 'protected-signup@example.com',
+        password: 'password123',
+        displayName: 'Protected Signup',
+      );
+
+      expect(
+        find.byKey(const Key('edit-profile-display-name-field')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('post-signup-beer-with-me-dialog')),
+        findsOneWidget,
+      );
+
+      final route = ModalRoute.of(
+        tester.element(
+          find.byKey(const Key('edit-profile-display-name-field')),
+        ),
+      );
+      expect(route?.settings.name, AppRoutes.editProfile);
+    },
+  );
+
+  testWidgets('Maybe later closes the prompt and keeps the resolved route', (
+    tester,
+  ) async {
+    final l10n = _l10n('en');
     final app = await buildTestApp(initialRoute: AppRoutes.editProfile);
 
     await tester.pumpWidget(app);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+    await _submitSignUp(
+      tester,
+      email: 'signup-later@example.com',
+      password: 'password123',
+      displayName: 'Signup Later',
+    );
+
     expect(
-      find.byKey(const Key('edit-profile-display-name-field')),
+      find.byKey(const Key('post-signup-beer-with-me-dialog')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('post-signup-beer-with-me-dialog')),
+        matching: find.widgetWithText(TextButton, l10n.maybeLater),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('post-signup-beer-with-me-dialog')),
       findsNothing,
     );
-
-    await _switchToSignUp(tester);
-
-    await tester.enterText(
-      find.byKey(const Key('signup-email-field')),
-      'protected-signup@example.com',
-    );
-    await tester.enterText(
-      find.byKey(const Key('signup-password-field')),
-      'password123',
-    );
-    await tester.enterText(
-      find.byKey(const Key('signup-display-name-field')),
-      'Protected Signup',
-    );
-
-    await tester.ensureVisible(find.byKey(const Key('auth-submit-button')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('auth-submit-button')));
-    await tester.pumpAndSettle();
-
     expect(
       find.byKey(const Key('edit-profile-display-name-field')),
       findsOneWidget,
@@ -1142,6 +1303,174 @@ void main() {
     );
     expect(route?.settings.name, AppRoutes.editProfile);
   });
+
+  testWidgets('imports a Beer With Me export from the post-sign-up prompt', (
+    tester,
+  ) async {
+    final l10n = _l10n('en');
+    final repository = await buildBlockingLocalRepository(
+      blockedAction: AppBusyAction.addDrinkEntry,
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+    final importFileService = TestImportFileService(
+      file: SelectedImportFile(
+        name: 'history.json',
+        contents: jsonEncode(<Map<String, Object?>>[
+          <String, Object?>{
+            'id': 11,
+            'timestamp': '2022-06-06T22:55:15.000+02:00',
+            'glassType': 'WineRose',
+            'address': 'no_address',
+          },
+        ]),
+      ),
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        importFileService: importFileService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _submitSignUp(
+      tester,
+      email: 'signup-import@example.com',
+      password: 'password123',
+      displayName: 'Signup Import',
+    );
+
+    await tester.tap(
+      find.byKey(const Key('post-signup-beer-with-me-import-button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+        matching: find.widgetWithText(
+          FilledButton,
+          l10n.beerWithMeImportAction,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('beer-with-me-import-progress-dialog')),
+      findsOneWidget,
+    );
+    expect(find.text(l10n.beerWithMeImportProgress(0, 1)), findsOneWidget);
+
+    repository.unblock();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('beer-with-me-import-result-dialog')),
+      findsOneWidget,
+    );
+    expect(controller.entries, hasLength(1));
+    expect(controller.entries.single.importSourceId, '11');
+  });
+
+  testWidgets(
+    'canceling the file picker exits the post-sign-up prompt without reopening it',
+    (tester) async {
+      final app = await buildTestApp(
+        importFileService: const TestImportFileService(file: null),
+      );
+
+      await tester.pumpWidget(app);
+      await tester.pumpAndSettle();
+
+      await _submitSignUp(
+        tester,
+        email: 'signup-file-cancel@example.com',
+        password: 'password123',
+        displayName: 'Signup File Cancel',
+      );
+
+      await tester.tap(
+        find.byKey(const Key('post-signup-beer-with-me-import-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('post-signup-beer-with-me-dialog')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-result-dialog')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'canceling the Beer With Me row confirmation does not reopen the post-sign-up prompt',
+    (tester) async {
+      final l10n = _l10n('en');
+      final app = await buildTestApp(
+        importFileService: TestImportFileService(
+          file: SelectedImportFile(
+            name: 'history.json',
+            contents: jsonEncode(<Map<String, Object?>>[
+              <String, Object?>{
+                'id': 12,
+                'timestamp': '2022-06-06T22:55:15.000+02:00',
+                'glassType': 'WineRose',
+                'address': 'no_address',
+              },
+            ]),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(app);
+      await tester.pumpAndSettle();
+
+      await _submitSignUp(
+        tester,
+        email: 'signup-confirm-cancel@example.com',
+        password: 'password123',
+        displayName: 'Signup Confirm Cancel',
+      );
+
+      await tester.tap(
+        find.byKey(const Key('post-signup-beer-with-me-import-button')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+          matching: find.widgetWithText(TextButton, l10n.cancel),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('post-signup-beer-with-me-dialog')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('beer-with-me-import-confirm-dialog')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+    },
+  );
 
   testWidgets('shows the profile image on the app profile page', (
     tester,
@@ -1351,6 +1680,81 @@ void main() {
       );
       expect(
         find.byKey(const Key('friend-profile-feed-button')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'defers the Beer With Me prompt when sign-up returns to a public friend profile',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final preferences = await SharedPreferences.getInstance();
+      final repository = LocalAppRepository(preferences);
+      final owner = await repository.signUp(
+        email: 'friend-owner-signup@example.com',
+        password: 'password123',
+        displayName: 'Friend Owner Signup',
+      );
+      final ownerProfile = await repository.getOwnFriendProfile(owner.id);
+      await repository.signOut();
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+      final routeMemory = await RouteMemory.create();
+      await routeMemory.markLoggedOut();
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          routeMemory: routeMemory,
+          initialRoute: AppRoutes.friendProfileRoute(
+            ownerProfile.profileShareCode!,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('friend-profile-sign-in-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('friend-profile-sign-in-button')));
+      await tester.pumpAndSettle();
+
+      await _submitSignUp(
+        tester,
+        email: 'friend-viewer-signup@example.com',
+        password: 'password123',
+        displayName: 'Friend Viewer Signup',
+      );
+
+      expect(
+        find.byKey(const Key('friend-profile-link-screen')),
+        findsOneWidget,
+      );
+      expect(find.text('Friend Owner Signup'), findsOneWidget);
+      expect(
+        find.byKey(const Key('post-signup-beer-with-me-dialog')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('friend-profile-add-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('friend-profile-feed-button')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('friend-profile-feed-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('feed-streak-card')), findsOneWidget);
+      expect(
+        find.byKey(const Key('post-signup-beer-with-me-dialog')),
         findsOneWidget,
       );
     },

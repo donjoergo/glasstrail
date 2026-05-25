@@ -6,10 +6,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'app_controller.dart';
+import 'app_locale_catalog.dart';
 import 'app_routes.dart';
 import 'app_scope.dart';
 import 'app_theme.dart';
 import 'backend_config.dart';
+import 'beer_with_me_import_flow.dart';
+import 'browser_theme_color.dart';
 import 'deep_link_service.dart';
 import 'import_file_service.dart';
 import 'locale_memory.dart';
@@ -60,7 +63,9 @@ class GlassTrailBootstrapApp extends StatefulWidget {
 }
 
 class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
+  late final Future<LocaleMemory> _localeMemoryFuture;
   late Future<_BootstrapData> _bootstrapFuture;
+  String _bootstrapLocaleCode = AppLocaleCatalog.fallbackCode;
 
   @override
   void initState() {
@@ -71,7 +76,12 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
           backendConfig: widget.backendConfig,
           pushNotificationService: widget.pushNotificationService,
         );
-    _bootstrapFuture = _loadBootstrapData(controllerFuture);
+    _localeMemoryFuture = widget.localeMemoryFuture ?? LocaleMemory.create();
+    _primeBootstrapLocale();
+    _bootstrapFuture = _loadBootstrapData(
+      controllerFuture,
+      _localeMemoryFuture,
+    );
   }
 
   @override
@@ -96,14 +106,33 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
         return _BootstrapShell(
           hasError: snapshot.hasError,
           initialRoute: widget.initialRoute ?? _routeFromLaunchUri(),
-          localeCode: snapshot.data?.localeCode ?? 'en',
+          localeCode: _bootstrapLocaleCode,
         );
       },
     );
   }
 
+  void _primeBootstrapLocale() {
+    unawaited(() async {
+      try {
+        final localeMemory = await _localeMemoryFuture;
+        _updateBootstrapLocale(localeMemory.localeCode);
+      } catch (_) {}
+    }());
+  }
+
+  void _updateBootstrapLocale(String localeCode) {
+    if (!mounted || _bootstrapLocaleCode == localeCode) {
+      return;
+    }
+    setState(() {
+      _bootstrapLocaleCode = localeCode;
+    });
+  }
+
   Future<_BootstrapData> _loadBootstrapData(
     Future<AppController> controllerFuture,
+    Future<LocaleMemory> localeMemoryFuture,
   ) async {
     final controller = await controllerFuture;
     final launchRoute = widget.initialRoute ?? _routeFromLaunchUri();
@@ -120,8 +149,6 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
         (kIsWeb
             ? RouteMemory.create()
             : Future<RouteMemory>.value(RouteMemory.disabled()));
-    final Future<LocaleMemory> localeMemoryFuture =
-        widget.localeMemoryFuture ?? LocaleMemory.create();
     final routeMemory = await routeMemoryFuture;
     final localeMemory = await localeMemoryFuture;
     var bootstrapLocaleCode = localeMemory.localeCode;
@@ -133,6 +160,7 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
         controller.settings.copyWith(localeCode: bootstrapLocaleCode),
       );
     }
+    _updateBootstrapLocale(bootstrapLocaleCode);
     return _BootstrapData(
       controller: controller,
       routeMemory: routeMemory,
@@ -197,10 +225,12 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<Uri>? _deepLinkSubscription;
   StreamSubscription<PushNotificationOpen>? _notificationOpenSubscription;
+  bool _postSignUpPromptEligible = false;
 
   @override
   void initState() {
     super.initState();
+    _postSignUpPromptEligible = !widget.controller.isAuthenticated;
     _subscribeToDeepLinks();
     _subscribeToNotificationRoutes();
   }
@@ -285,7 +315,14 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
       child: AnimatedBuilder(
         animation: widget.controller,
         builder: (context, _) {
-          Route<dynamic> buildRoute(RouteSettings settings) {
+          if (!widget.controller.isAuthenticated) {
+            _postSignUpPromptEligible = true;
+          }
+
+          Route<dynamic> buildRoute(
+            RouteSettings settings, {
+            required bool allowPostSignUpPrompt,
+          }) {
             final routeName = AppRoutes.normalize(settings.name);
             unawaited(widget.routeMemory.rememberRoute(routeName));
             final routeSettings = RouteSettings(
@@ -297,12 +334,22 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
                 settings: routeSettings,
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
-                pageBuilder: (_, _, _) => _AppRouteScreen(routeName: routeName),
+                pageBuilder: (_, _, _) => _AppRouteScreen(
+                  controller: widget.controller,
+                  routeName: routeName,
+                  allowPostSignUpPrompt:
+                      allowPostSignUpPrompt && _postSignUpPromptEligible,
+                ),
               );
             }
             return MaterialPageRoute<void>(
               settings: routeSettings,
-              builder: (_) => _AppRouteScreen(routeName: routeName),
+              builder: (_) => _AppRouteScreen(
+                controller: widget.controller,
+                routeName: routeName,
+                allowPostSignUpPrompt:
+                    allowPostSignUpPrompt && _postSignUpPromptEligible,
+              ),
             );
           }
 
@@ -321,21 +368,31 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            builder: (context, child) => _buildBrowserThemeColorSync(
+              context,
+              child,
+              widget.controller.settings.themePreference.themeMode,
+            ),
             onGenerateInitialRoutes: (initialRouteName) {
               final routeName = widget.routeMemory.resolveInitialRoute(
                 widget.initialRoute ?? initialRouteName,
               );
               return <Route<dynamic>>[
-                buildRoute(RouteSettings(name: routeName)),
+                buildRoute(
+                  RouteSettings(name: routeName),
+                  allowPostSignUpPrompt: false,
+                ),
               ];
             },
-            onGenerateRoute: buildRoute,
+            onGenerateRoute: (settings) =>
+                buildRoute(settings, allowPostSignUpPrompt: true),
             onUnknownRoute: (_) => buildRoute(
               RouteSettings(
                 name: widget.controller.isAuthenticated
                     ? AppRoutes.feed
                     : AppRoutes.auth,
               ),
+              allowPostSignUpPrompt: true,
             ),
           );
         },
@@ -390,6 +447,8 @@ class _BootstrapShell extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      builder: (context, child) =>
+          _buildBrowserThemeColorSync(context, child, ThemeMode.system),
       onGenerateInitialRoutes: (initialRouteName) {
         final routeName = AppRoutes.normalize(initialRoute ?? initialRouteName);
         return <Route<dynamic>>[buildRoute(RouteSettings(name: routeName))];
@@ -490,6 +549,28 @@ class _BootstrapScreen extends StatelessWidget {
   }
 }
 
+Widget _buildBrowserThemeColorSync(
+  BuildContext context,
+  Widget? child,
+  ThemeMode themeMode,
+) {
+  return BrowserThemeColorSync(
+    brightness: _effectiveThemeBrightness(context, themeMode),
+    child: child ?? const SizedBox.shrink(),
+  );
+}
+
+Brightness _effectiveThemeBrightness(
+  BuildContext context,
+  ThemeMode themeMode,
+) {
+  return switch (themeMode) {
+    ThemeMode.light => Brightness.light,
+    ThemeMode.dark => Brightness.dark,
+    ThemeMode.system => MediaQuery.platformBrightnessOf(context),
+  };
+}
+
 class _BootstrapData {
   const _BootstrapData({
     required this.controller,
@@ -507,13 +588,18 @@ class _BootstrapData {
 }
 
 class _AppRouteScreen extends StatelessWidget {
-  const _AppRouteScreen({required this.routeName});
+  const _AppRouteScreen({
+    required this.controller,
+    required this.routeName,
+    required this.allowPostSignUpPrompt,
+  });
 
+  final AppController controller;
   final String routeName;
+  final bool allowPostSignUpPrompt;
 
   @override
   Widget build(BuildContext context) {
-    final controller = AppScope.controllerOf(context);
     final normalizedRoute = AppRoutes.normalize(routeName);
 
     if (normalizedRoute == AppRoutes.root) {
@@ -521,9 +607,13 @@ class _AppRouteScreen extends StatelessWidget {
     }
 
     if (AppRoutes.isFriendProfileRoute(normalizedRoute)) {
-      return FriendProfileScreen(
+      final child = FriendProfileScreen(
         shareCode: AppRoutes.friendProfileShareCode(normalizedRoute)!,
       );
+      if (!controller.isAuthenticated) {
+        return child;
+      }
+      return _wrapAuthenticatedScreen(child, routeName: normalizedRoute);
     }
 
     if (!controller.isAuthenticated) {
@@ -537,8 +627,11 @@ class _AppRouteScreen extends StatelessWidget {
     }
 
     if (AppRoutes.isFriendStatsProfileRoute(normalizedRoute)) {
-      return FriendStatsProfileScreen(
-        friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
+      return _wrapAuthenticatedScreen(
+        FriendStatsProfileScreen(
+          friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
+        ),
+        routeName: normalizedRoute,
       );
     }
 
@@ -546,16 +639,30 @@ class _AppRouteScreen extends StatelessWidget {
         AppRoutes.isStatisticsRoute(normalizedRoute) ||
         AppRoutes.isBarRoute(normalizedRoute) ||
         normalizedRoute == AppRoutes.profile) {
-      return HomeShell(routeName: normalizedRoute);
+      return _wrapAuthenticatedScreen(
+        HomeShell(routeName: normalizedRoute),
+        routeName: normalizedRoute,
+      );
     }
 
-    return switch (normalizedRoute) {
+    return _wrapAuthenticatedScreen(switch (normalizedRoute) {
       AppRoutes.addDrink => const AddDrinkScreen(),
       AppRoutes.editProfile => const EditProfileScreen(),
       AppRoutes.notifications => const NotificationsScreen(),
       AppRoutes.auth => const HomeShell(routeName: AppRoutes.feed),
       _ => const HomeShell(routeName: AppRoutes.feed),
-    };
+    }, routeName: normalizedRoute);
+  }
+
+  Widget _wrapAuthenticatedScreen(Widget child, {required String routeName}) {
+    if (!allowPostSignUpPrompt) {
+      return child;
+    }
+    return _AuthenticatedRoutePromptGate(
+      controller: controller,
+      routeName: routeName,
+      child: child,
+    );
   }
 }
 
@@ -586,5 +693,60 @@ class _RouteRedirectScreenState extends State<_RouteRedirectScreen> {
   @override
   Widget build(BuildContext context) {
     return const SizedBox.shrink();
+  }
+}
+
+class _AuthenticatedRoutePromptGate extends StatefulWidget {
+  const _AuthenticatedRoutePromptGate({
+    required this.controller,
+    required this.routeName,
+    required this.child,
+  });
+
+  final AppController controller;
+  final String routeName;
+  final Widget child;
+
+  @override
+  State<_AuthenticatedRoutePromptGate> createState() =>
+      _AuthenticatedRoutePromptGateState();
+}
+
+class _AuthenticatedRoutePromptGateState
+    extends State<_AuthenticatedRoutePromptGate> {
+  bool _checkedPendingPrompt = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_showPendingPromptIfNeeded());
+    });
+  }
+
+  Future<void> _showPendingPromptIfNeeded() async {
+    if (!mounted || _checkedPendingPrompt) {
+      return;
+    }
+    _checkedPendingPrompt = true;
+    if (widget.routeName == AppRoutes.auth ||
+        AppRoutes.isExplicitPostAuthRedirectRoute(widget.routeName)) {
+      return;
+    }
+    if (!widget.controller.consumePendingPostSignUpBeerWithMePrompt()) {
+      return;
+    }
+
+    final action = await showBeerWithMePostSignUpPrompt(context);
+    if (!mounted || action != BeerWithMePostSignUpPromptAction.importExport) {
+      return;
+    }
+
+    await startBeerWithMeImportFlow(context, showProgressDialog: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }

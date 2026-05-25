@@ -327,9 +327,11 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                                     l10n.deleteCustomDrink,
                                   )
                             : 0);
+                    // Account for button chrome around the measured labels so
+                    // borderline widths do not oscillate across fonts.
                     final stackDeleteAbove =
                         isEditingDrink &&
-                        inlineActionsWidth > constraints.maxWidth;
+                        inlineActionsWidth + 56 >= constraints.maxWidth;
 
                     return Column(
                       mainAxisSize: MainAxisSize.min,

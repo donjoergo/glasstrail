@@ -338,6 +338,12 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get cancel;
 
+  /// No description provided for @maybeLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Maybe later'**
+  String get maybeLater;
+
   /// No description provided for @close.
   ///
   /// In en, this message translates to:
@@ -433,6 +439,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete this custom drink? Existing history entries will remain available.'**
   String get deleteCustomDrinkPrompt;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account?'**
+  String get deleteAccountTitle;
+
+  /// No description provided for @deleteAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes your account, profile, history, friends, and notifications. Type \"{phrase}\" to enable account deletion.'**
+  String deleteAccountBody(String phrase);
+
+  /// No description provided for @deleteAccountVerificationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type \"{phrase}\" to confirm'**
+  String deleteAccountVerificationLabel(String phrase);
+
+  /// No description provided for @deleteAccountVerificationPhrase.
+  ///
+  /// In en, this message translates to:
+  /// **'DELETE ACCOUNT'**
+  String get deleteAccountVerificationPhrase;
+
+  /// No description provided for @deleteAccountAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountAction;
 
   /// No description provided for @drinkName.
   ///
@@ -800,6 +842,66 @@ abstract class AppLocalizations {
   /// **'Edit profile'**
   String get editProfile;
 
+  /// No description provided for @accountSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get accountSectionTitle;
+
+  /// No description provided for @accountSectionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Change your password or permanently delete this account.'**
+  String get accountSectionBody;
+
+  /// No description provided for @changePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get changePassword;
+
+  /// No description provided for @changePasswordBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm your current password and choose a new one.'**
+  String get changePasswordBody;
+
+  /// No description provided for @currentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get currentPassword;
+
+  /// No description provided for @newPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get newPassword;
+
+  /// No description provided for @repeatNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat new password'**
+  String get repeatNewPassword;
+
+  /// No description provided for @changePasswordAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Update password'**
+  String get changePasswordAction;
+
+  /// No description provided for @changePasswordConfirmationMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The new passwords do not match.'**
+  String get changePasswordConfirmationMismatch;
+
+  /// No description provided for @changePasswordSameAsCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'The new password must be different from the current password.'**
+  String get changePasswordSameAsCurrent;
+
   /// No description provided for @friends.
   ///
   /// In en, this message translates to:
@@ -1142,7 +1244,7 @@ abstract class AppLocalizations {
   /// No description provided for @roadmapBody.
   ///
   /// In en, this message translates to:
-  /// **'Cheers reactions and achievements are planned next.'**
+  /// **'Achievements are planned next.'**
   String get roadmapBody;
 
   /// No description provided for @beerWithMeImport.
@@ -1156,6 +1258,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.'**
   String get beerWithMeImportBody;
+
+  /// No description provided for @beerWithMePostSignUpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import your Beer With Me history?'**
+  String get beerWithMePostSignUpTitle;
+
+  /// No description provided for @beerWithMePostSignUpBody.
+  ///
+  /// In en, this message translates to:
+  /// **'If you already tracked drinks in Beer With Me, you can import that export now and keep your history in GlassTrail.'**
+  String get beerWithMePostSignUpBody;
+
+  /// No description provided for @beerWithMePostSignUpHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also import it later from the profile screen.'**
+  String get beerWithMePostSignUpHint;
 
   /// No description provided for @beerWithMeImportAction.
   ///
@@ -1385,6 +1505,12 @@ abstract class AppLocalizations {
   /// **'Profile updated.'**
   String get profileUpdated;
 
+  /// No description provided for @changePasswordSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changed.'**
+  String get changePasswordSuccess;
+
   /// No description provided for @customDrinkSaved.
   ///
   /// In en, this message translates to:
@@ -1463,11 +1589,35 @@ abstract class AppLocalizations {
   /// **'The email or password is incorrect.'**
   String get invalidCredentials;
 
+  /// No description provided for @changePasswordCurrentPasswordIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'The current password is incorrect.'**
+  String get changePasswordCurrentPasswordIncorrect;
+
   /// No description provided for @profileUpdateFailed.
   ///
   /// In en, this message translates to:
   /// **'The profile could not be updated.'**
   String get profileUpdateFailed;
+
+  /// No description provided for @changePasswordFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The password could not be changed.'**
+  String get changePasswordFailed;
+
+  /// No description provided for @deleteAccountSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Account deleted.'**
+  String get deleteAccountSuccess;
+
+  /// No description provided for @deleteAccountFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The account could not be deleted.'**
+  String get deleteAccountFailed;
 
   /// No description provided for @entryUpdateFailed.
   ///

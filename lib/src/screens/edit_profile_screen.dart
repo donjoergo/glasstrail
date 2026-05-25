@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
-import '../app_theme.dart';
 import '../app_controller.dart';
+import '../app_routes.dart';
 import '../app_scope.dart';
+import '../app_theme.dart';
 import '../birthday.dart';
 import '../models.dart';
 import '../photo_pick_flow.dart';
@@ -23,6 +24,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   DateTime? _birthday;
   String? _profileImagePath;
   String? _hydratedUserId;
+  bool _authRedirectScheduled = false;
 
   Widget _fullWidthAction(Widget child) {
     return SizedBox(width: double.infinity, child: child);
@@ -110,11 +112,58 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Navigator.of(context).pop<String>(message ?? l10n.editProfile);
   }
 
+  Future<void> _showChangePasswordDialog() async {
+    final message = await showDialog<String>(
+      context: context,
+      builder: (context) => const _ChangePasswordDialog(),
+    );
+    if (!mounted || message == null) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _showDeleteAccountDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => const _DeleteAccountDialog(),
+    );
+  }
+
+  Widget _busyIcon(AppBusyAction action, IconData icon) {
+    if (!AppScope.controllerOf(context).isBusyFor(action)) {
+      return Icon(icon);
+    }
+    return const SizedBox.square(
+      dimension: 18,
+      child: CircularProgressIndicator(strokeWidth: 2),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
-    final user = controller.currentUser!;
+    final user = controller.currentUser;
+    if (user == null) {
+      if (!_authRedirectScheduled) {
+        _authRedirectScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            return;
+          }
+          Navigator.of(
+            context,
+            rootNavigator: true,
+          ).pushNamedAndRemoveUntil(AppRoutes.auth, (_) => false);
+        });
+      }
+      return const Scaffold(body: SizedBox.shrink());
+    }
+    _authRedirectScheduled = false;
+
     final theme = Theme.of(context);
     final isBusy = controller.isBusy;
     final isSavingProfile = controller.isBusyFor(AppBusyAction.updateProfile);
@@ -320,6 +369,52 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               : Text(l10n.save),
                         ),
                       ),
+                      const SizedBox(height: 28),
+                      Divider(
+                        color: theme.colorScheme.outlineVariant,
+                        height: 1,
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        l10n.accountSectionTitle,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        l10n.accountSectionBody,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _fullWidthAction(
+                        FilledButton.tonalIcon(
+                          key: const Key('edit-profile-change-password-button'),
+                          onPressed: isBusy ? null : _showChangePasswordDialog,
+                          icon: _busyIcon(
+                            AppBusyAction.changePassword,
+                            Icons.lock_outline_rounded,
+                          ),
+                          label: Text(l10n.changePassword),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _fullWidthAction(
+                        OutlinedButton.icon(
+                          key: const Key('edit-profile-delete-account-button'),
+                          style: AppTheme.destructiveOutlinedButtonStyle(
+                            theme.colorScheme,
+                          ),
+                          onPressed: isBusy ? null : _showDeleteAccountDialog,
+                          icon: _busyIcon(
+                            AppBusyAction.deleteAccount,
+                            Icons.delete_forever_outlined,
+                          ),
+                          label: Text(l10n.deleteAccount),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -328,6 +423,267 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _currentPasswordController;
+  late final TextEditingController _newPasswordController;
+  late final TextEditingController _repeatNewPasswordController;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPasswordController = TextEditingController();
+    _newPasswordController = TextEditingController();
+    _repeatNewPasswordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _repeatNewPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final controller = AppScope.controllerOf(context);
+    final success = await controller.changePassword(
+      currentPassword: _currentPasswordController.text,
+      newPassword: _newPasswordController.text,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final message = controller.takeFlashMessage(l10n);
+    if (!success) {
+      if (message != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+      return;
+    }
+
+    Navigator.of(context).pop<String>(message ?? l10n.changePasswordSuccess);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final isChangingPassword = controller.isBusyFor(
+      AppBusyAction.changePassword,
+    );
+    final isBusy = controller.isBusy;
+
+    return AlertDialog(
+      key: const Key('change-password-dialog'),
+      scrollable: true,
+      title: Text(l10n.changePassword),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(l10n.changePasswordBody),
+            const SizedBox(height: 16),
+            TextFormField(
+              key: const Key('change-password-current-field'),
+              controller: _currentPasswordController,
+              enabled: !isBusy,
+              obscureText: true,
+              autofillHints: const <String>[AutofillHints.password],
+              decoration: InputDecoration(labelText: l10n.currentPassword),
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? l10n.invalidRequired
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key: const Key('change-password-new-field'),
+              controller: _newPasswordController,
+              enabled: !isBusy,
+              obscureText: true,
+              autofillHints: const <String>[AutofillHints.newPassword],
+              decoration: InputDecoration(labelText: l10n.newPassword),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return l10n.invalidRequired;
+                }
+                if (value == _currentPasswordController.text) {
+                  return l10n.changePasswordSameAsCurrent;
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key: const Key('change-password-repeat-field'),
+              controller: _repeatNewPasswordController,
+              enabled: !isBusy,
+              obscureText: true,
+              autofillHints: const <String>[AutofillHints.newPassword],
+              decoration: InputDecoration(labelText: l10n.repeatNewPassword),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return l10n.invalidRequired;
+                }
+                if (value != _newPasswordController.text) {
+                  return l10n.changePasswordConfirmationMismatch;
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: isBusy ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          key: const Key('change-password-submit-button'),
+          onPressed: isBusy ? null : _submit,
+          child: isChangingPassword
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.changePasswordAction),
+        ),
+      ],
+    );
+  }
+}
+
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  late final TextEditingController _confirmationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _confirmationController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _confirmationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
+    final phrase = l10n.deleteAccountVerificationPhrase;
+    if (_confirmationController.text.trim() != phrase) {
+      return;
+    }
+
+    final controller = AppScope.controllerOf(context);
+    final success = await controller.deleteAccount();
+    if (!mounted) {
+      return;
+    }
+
+    final message = controller.takeFlashMessage(l10n);
+    if (!success) {
+      if (message != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+      return;
+    }
+    final routeMemory = AppScope.routeMemoryOf(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    await routeMemory.markLoggedOut();
+    if (!mounted) {
+      return;
+    }
+    navigator.pushNamedAndRemoveUntil(AppRoutes.auth, (_) => false);
+    messenger.showSnackBar(SnackBar(content: Text(l10n.deleteAccountSuccess)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final theme = Theme.of(context);
+    final isDeletingAccount = controller.isBusyFor(AppBusyAction.deleteAccount);
+    final isBusy = controller.isBusy;
+    final verificationPhrase = l10n.deleteAccountVerificationPhrase;
+    final canDelete = _confirmationController.text.trim() == verificationPhrase;
+
+    return AlertDialog(
+      key: const Key('delete-account-dialog'),
+      scrollable: true,
+      title: Text(l10n.deleteAccountTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(l10n.deleteAccountBody(verificationPhrase)),
+          const SizedBox(height: 16),
+          TextField(
+            key: const Key('delete-account-confirmation-field'),
+            controller: _confirmationController,
+            enabled: !isBusy,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: l10n.deleteAccountVerificationLabel(
+                verificationPhrase,
+              ),
+              helperText: verificationPhrase,
+            ),
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: isBusy ? null : () => Navigator.of(context).pop(false),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          key: const Key('delete-account-submit-button'),
+          style: FilledButton.styleFrom(
+            backgroundColor: theme.colorScheme.error,
+            foregroundColor: theme.colorScheme.onError,
+          ),
+          onPressed: isBusy || !canDelete ? null : _submit,
+          child: isDeletingAccount
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.deleteAccountAction),
+        ),
+      ],
     );
   }
 }

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-05-25
+### Added
+- Prompt BeerWithMe import after sign-up
+- Profile account management
+
+### Changed
+- Build only arm64 apk to reduce app size from 100mb to \~ 35mb
+
+### Fixed
+- Feed was sometimes stuck on scrolling
+- Chrome Mobile: Keep web theme color after sign-in
+- Localize startup loading text
+- Statistics map now uses native MapLibre markers with sharper pins and more reliable alignment, clustering, hover, and tap behavior
+
 ## [2.0.0] - 2026-05-11
 ### Added
 - Social & Friends
@@ -97,6 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - settings
   - login
 
+[2.1.0]: https://github.com/donjoergo/glasstrail/compare/2.0.0...2.1.0
 [2.0.0]: https://github.com/donjoergo/glasstrail/compare/1.2.1...2.0.0
 [1.2.1]: https://github.com/donjoergo/glasstrail/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/donjoergo/glasstrail/compare/1.1.0...1.2.0
