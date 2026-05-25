@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -19,6 +20,7 @@ import '../runtime_platform.dart' as runtime_platform;
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 import '../widgets/statistics_overview_content.dart';
+import 'statistics/statistics_map_web_cursor.dart' as statistics_map_web_cursor;
 
 part 'statistics/statistics_screen_overview.dart';
 part 'statistics/statistics_screen_map_logic.dart';

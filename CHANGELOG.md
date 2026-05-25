@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Feed was sometimes stuck on scrolling
 - Chrome Mobile: Keep web theme color after sign-in
 - Localize startup loading text
+- Statistics map now uses native MapLibre markers with sharper pins and more reliable alignment, clustering, hover, and tap behavior
 
 ## [2.0.0] - 2026-05-11
 ### Added
