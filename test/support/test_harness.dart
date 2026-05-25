@@ -126,11 +126,13 @@ Future<GlassTrailApp> buildTestApp({
   Map<String, Object> initialValues = const <String, Object>{},
   String? initialRoute,
   LocationService locationService = const TestLocationService(),
+  ImportFileService importFileService = const TestImportFileService(),
 }) async {
   final controller = await buildTestController(initialValues: initialValues);
   return GlassTrailApp(
     controller: controller,
     photoService: const TestPhotoService(),
+    importFileService: importFileService,
     locationService: locationService,
     initialRoute: initialRoute,
   );
@@ -210,6 +212,30 @@ class BlockingLocalAppRepository extends LocalAppRepository {
     return _runBlocked(
       AppBusyAction.updateProfile,
       () => super.updateProfile(user),
+    );
+  }
+
+  @override
+  Future<void> changePassword({
+    required AppUser user,
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _runBlocked(
+      AppBusyAction.changePassword,
+      () => super.changePassword(
+        user: user,
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteAccount(AppUser user) {
+    return _runBlocked(
+      AppBusyAction.deleteAccount,
+      () => super.deleteAccount(user),
     );
   }
 

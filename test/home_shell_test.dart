@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -25,6 +28,7 @@ import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
 import 'package:glasstrail/src/widgets/app_empty_state_card.dart';
+import 'package:glasstrail/src/widgets/app_media.dart';
 
 import 'support/test_harness.dart';
 
@@ -34,6 +38,48 @@ const _lastAcknowledgedReleaseKey = 'glasstrail.last_acknowledged_release';
 const _currentReleaseId = '1.0.0+1';
 const _changelogUrl =
     'https://github.com/donjoergo/glasstrail/blob/main/CHANGELOG.md';
+
+class _TestFeedImageProvider extends ImageProvider<_TestFeedImageProvider> {
+  const _TestFeedImageProvider({required this.width, required this.height});
+
+  final int width;
+  final int height;
+
+  @override
+  Future<_TestFeedImageProvider> obtainKey(ImageConfiguration configuration) {
+    return SynchronousFuture<_TestFeedImageProvider>(this);
+  }
+
+  @override
+  ImageStreamCompleter loadImage(
+    _TestFeedImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
+    return OneFrameImageStreamCompleter(_load());
+  }
+
+  Future<ImageInfo> _load() async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final paint = Paint()..color = const Color(0xFF4A6572);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+      paint,
+    );
+    final image = await recorder.endRecording().toImage(width, height);
+    return ImageInfo(image: image);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _TestFeedImageProvider &&
+        width == other.width &&
+        height == other.height;
+  }
+
+  @override
+  int get hashCode => Object.hash(width, height);
+}
 
 AppLocalizations _l10n(String languageCode) =>
     lookupAppLocalizations(Locale(languageCode));
@@ -242,6 +288,7 @@ void main() {
   });
 
   setUp(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
     PackageInfo.setMockInitialValues(
       appName: 'Glass Trail',
       packageName: 'dev.glasstrail.glasstrail',
@@ -252,6 +299,9 @@ void main() {
     urlLauncherPlatform = _RecordingUrlLauncherPlatform();
     UrlLauncherPlatform.instance = urlLauncherPlatform;
     debugForceUpdateNotice = false;
+    AppMediaResolver.debugImageProviderResolverOverride = null;
+    debugResetAppPhotoPreviewAspectRatioCache();
+    PaintingBinding.instance.imageCache.clear();
   });
 
   testWidgets('opens profile editing on a separate screen', (tester) async {
@@ -281,6 +331,208 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('edit-profile-save-button')), findsOneWidget);
+  });
+
+  testWidgets('shows both account management actions on edit profile', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-account-actions@example.com',
+      password: 'password123',
+      displayName: 'Profile Account Actions',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.tap(find.byKey(const Key('profile-edit-button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-profile-delete-account-button')),
+    );
+
+    expect(
+      find.byKey(const Key('edit-profile-change-password-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('edit-profile-delete-account-button')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('validates the change-password dialog fields', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-password-dialog@example.com',
+      password: 'password123',
+      displayName: 'Profile Password Dialog',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.tap(find.byKey(const Key('profile-edit-button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-profile-change-password-button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('edit-profile-change-password-button')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('change-password-submit-button')));
+    await tester.pump();
+    expect(find.text('Please fill in all required fields.'), findsWidgets);
+
+    await tester.enterText(
+      find.byKey(const Key('change-password-current-field')),
+      'password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('change-password-new-field')),
+      'password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('change-password-repeat-field')),
+      'password123',
+    );
+    await tester.tap(find.byKey(const Key('change-password-submit-button')));
+    await tester.pump();
+    expect(
+      find.text(
+        'The new password must be different from the current password.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('change-password-new-field')),
+      'new-password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('change-password-repeat-field')),
+      'different-password',
+    );
+    await tester.tap(find.byKey(const Key('change-password-submit-button')));
+    await tester.pump();
+    expect(find.text('The new passwords do not match.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'keeps account deletion disabled until the exact phrase is entered',
+    (tester) async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'profile-delete-phrase@example.com',
+        password: 'password123',
+        displayName: 'Profile Delete Phrase',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openProfileTab(tester);
+      await tester.tap(find.byKey(const Key('profile-edit-button')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const Key('edit-profile-delete-account-button')),
+      );
+      await tester.tap(
+        find.byKey(const Key('edit-profile-delete-account-button')),
+      );
+      await tester.pumpAndSettle();
+
+      FilledButton submitButton() => tester.widget<FilledButton>(
+        find.byKey(const Key('delete-account-submit-button')),
+      );
+
+      expect(submitButton().onPressed, isNull);
+
+      await tester.enterText(
+        find.byKey(const Key('delete-account-confirmation-field')),
+        'delete account',
+      );
+      await tester.pump();
+      expect(submitButton().onPressed, isNull);
+
+      await tester.enterText(
+        find.byKey(const Key('delete-account-confirmation-field')),
+        ' DELETE ACCOUNT ',
+      );
+      await tester.pump();
+      expect(submitButton().onPressed, isNotNull);
+    },
+  );
+
+  testWidgets('redirects to auth after deleting the account', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'profile-delete-success@example.com',
+      password: 'password123',
+      displayName: 'Profile Delete Success',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openProfileTab(tester);
+    await tester.tap(find.byKey(const Key('profile-edit-button')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('edit-profile-delete-account-button')),
+    );
+    await tester.tap(
+      find.byKey(const Key('edit-profile-delete-account-button')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('delete-account-confirmation-field')),
+      'DELETE ACCOUNT',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('delete-account-submit-button')));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    for (
+      var attempt = 0;
+      attempt < 40 &&
+          find.byKey(const Key('auth-submit-button')).evaluate().isEmpty;
+      attempt++
+    ) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+    expect(
+      find.byKey(const Key('edit-profile-display-name-field')),
+      findsNothing,
+    );
   });
 
   testWidgets('keeps notification unread until it is tapped', (tester) async {
@@ -434,7 +686,9 @@ void main() {
           photoService: const TestPhotoService(),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
       await controller.updateSettings(
         controller.settings.copyWith(localeCode: 'de'),
       );
@@ -3559,6 +3813,86 @@ void main() {
       contains(oldestEntry.id),
     );
   });
+
+  testWidgets(
+    'allows dragging back to the streak card after paging in an image-heavy feed',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(430, 1000));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'feed-drag-return@example.com',
+        password: 'password123',
+        displayName: 'Feed Drag Return',
+      );
+      const wideImagePath = 'debug-feed-wide-image';
+      AppMediaResolver.debugImageProviderResolverOverride =
+          (String? imagePath) async {
+            if (imagePath?.trim() != wideImagePath) {
+              return null;
+            }
+            return const _TestFeedImageProvider(width: 2, height: 1);
+          };
+      final user = controller.currentUser!;
+      final preferences = await SharedPreferences.getInstance();
+      final externalRepository = LocalAppRepository(preferences);
+      final drink = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final baseTime = DateTime(2026, 4, 29, 20);
+      for (var index = 0; index < 25; index++) {
+        await externalRepository.addDrinkEntry(
+          user: user,
+          drink: drink,
+          consumedAt: baseTime.subtract(Duration(minutes: index)),
+          imagePath: wideImagePath,
+        );
+      }
+      await controller.refreshData();
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.feedPosts, hasLength(20));
+      expect(controller.hasMoreFeedPosts, isTrue);
+
+      final feedList = find.byKey(const Key('feed-list-view'));
+      final streakCard = find.byKey(const Key('feed-streak-card'));
+
+      for (
+        var index = 0;
+        index < 5 && controller.feedPosts.length < 25;
+        index++
+      ) {
+        await tester.drag(feedList, const Offset(0, -1400));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 180));
+      }
+
+      expect(controller.feedPosts, hasLength(25));
+      expect(controller.hasMoreFeedPosts, isFalse);
+
+      await tester.dragUntilVisible(streakCard, feedList, const Offset(0, 700));
+      await tester.pump();
+
+      final feedTop = tester.getTopLeft(feedList).dy;
+      final feedBottom = tester.getBottomRight(feedList).dy;
+      final streakTop = tester.getTopLeft(streakCard).dy;
+      final streakBottom = tester.getBottomRight(streakCard).dy;
+
+      expect(streakTop, greaterThanOrEqualTo(feedTop));
+      expect(streakBottom, lessThanOrEqualTo(feedBottom));
+    },
+  );
 
   testWidgets('refreshes the statistics with pull to refresh', (tester) async {
     tester.view.physicalSize = const Size(430, 1000);

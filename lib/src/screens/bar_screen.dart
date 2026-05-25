@@ -386,175 +386,173 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
-    return Container(
+    return Material(
       key: Key('bar-category-card-${category.storageValue}'),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              CircleAvatar(
-                backgroundColor: theme.colorScheme.primary.withValues(
-                  alpha: 0.12,
+      color: theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                CircleAvatar(
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.12,
+                  ),
+                  foregroundColor: theme.colorScheme.primary,
+                  child: Icon(category.icon),
                 ),
-                foregroundColor: theme.colorScheme.primary,
-                child: Icon(category.icon),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  l10n.categoryLabel(category),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.categoryLabel(category),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
+                TextButton.icon(
+                  key: Key(
+                    categoryHidden
+                        ? 'bar-show-category-${category.storageValue}'
+                        : 'bar-hide-category-${category.storageValue}',
+                  ),
+                  onPressed: enabled
+                      ? (categoryHidden ? onShowCategory : onHideCategory)
+                      : null,
+                  icon: Icon(
+                    categoryHidden
+                        ? Icons.visibility_rounded
+                        : Icons.visibility_off_rounded,
+                  ),
+                  label: Text(
+                    categoryHidden ? l10n.showCategory : l10n.hideCategory,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (sortableDrinks.isEmpty)
+              Text(
+                l10n.allGlobalDrinksHidden,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              ReorderableListView.builder(
+                key: Key('bar-visible-list-${category.storageValue}'),
+                shrinkWrap: true,
+                primary: false,
+                buildDefaultDragHandles: false,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: sortableDrinks.length,
+                onReorderItem: enabled
+                    ? (oldIndex, newIndex) {
+                        final reordered = sortableDrinks.toList(growable: true);
+                        final movedDrink = reordered.removeAt(oldIndex);
+                        reordered.insert(newIndex, movedDrink);
+                        onReorder(
+                          reordered
+                              .map((drink) => drink.id)
+                              .toList(growable: false),
+                        );
+                      }
+                    : (_, _) {},
+                itemBuilder: (context, index) {
+                  final drink = sortableDrinks[index];
+                  final itemKey = drink.isCustom
+                      ? ValueKey('bar-visible-custom-drink-${drink.id}')
+                      : ValueKey('bar-visible-global-drink-${drink.id}');
+                  return ListTile(
+                    key: itemKey,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      drink.category.icon,
+                      color: theme.colorScheme.primary,
+                    ),
+                    title: Text(drink.displayName(l10n.locale.languageCode)),
+                    subtitle: Text(l10n.drinkDefinitionMetadata(drink, unit)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        if (!drink.isCustom)
+                          IconButton(
+                            key: Key('bar-hide-global-drink-${drink.id}'),
+                            tooltip: l10n.hideDrink,
+                            onPressed: enabled
+                                ? () => onHideDrink(drink.id)
+                                : null,
+                            icon: const Icon(Icons.visibility_off_rounded),
+                          ),
+                        ReorderableDragStartListener(
+                          index: index,
+                          enabled: enabled,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.drag_handle_rounded,
+                              key: Key('bar-reorder-global-drink-${drink.id}'),
+                              color: enabled
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : theme.disabledColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
-              TextButton.icon(
-                key: Key(
-                  categoryHidden
-                      ? 'bar-show-category-${category.storageValue}'
-                      : 'bar-hide-category-${category.storageValue}',
-                ),
-                onPressed: enabled
-                    ? (categoryHidden ? onShowCategory : onHideCategory)
-                    : null,
-                icon: Icon(
-                  categoryHidden
-                      ? Icons.visibility_rounded
-                      : Icons.visibility_off_rounded,
-                ),
-                label: Text(
-                  categoryHidden ? l10n.showCategory : l10n.hideCategory,
+            if (hiddenDrinks.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 8),
+              const Divider(),
+              Theme(
+                data: theme.copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  key: Key('bar-hidden-section-${category.storageValue}'),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  title: Text(
+                    l10n.hiddenDrinks,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  children: hiddenDrinks
+                      .map(
+                        (drink) => ListTile(
+                          key: Key('bar-hidden-global-drink-${drink.id}'),
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            Icons.visibility_off_rounded,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          title: Text(
+                            drink.displayName(l10n.locale.languageCode),
+                          ),
+                          subtitle: Text(
+                            l10n.drinkDefinitionMetadata(drink, unit),
+                          ),
+                          trailing: TextButton.icon(
+                            key: Key('bar-unhide-global-drink-${drink.id}'),
+                            onPressed: enabled && !categoryHidden
+                                ? () => onShowDrink(drink.id)
+                                : null,
+                            icon: const Icon(Icons.visibility_rounded),
+                            label: Text(l10n.showDrink),
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          if (sortableDrinks.isEmpty)
-            Text(
-              l10n.allGlobalDrinksHidden,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            )
-          else
-            ReorderableListView.builder(
-              key: Key('bar-visible-list-${category.storageValue}'),
-              shrinkWrap: true,
-              primary: false,
-              buildDefaultDragHandles: false,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: sortableDrinks.length,
-              onReorder: enabled
-                  ? (oldIndex, newIndex) {
-                      final reordered = sortableDrinks.toList(growable: true);
-                      if (newIndex > oldIndex) {
-                        newIndex -= 1;
-                      }
-                      final movedDrink = reordered.removeAt(oldIndex);
-                      reordered.insert(newIndex, movedDrink);
-                      onReorder(
-                        reordered
-                            .map((drink) => drink.id)
-                            .toList(growable: false),
-                      );
-                    }
-                  : (_, _) {},
-              itemBuilder: (context, index) {
-                final drink = sortableDrinks[index];
-                final itemKey = drink.isCustom
-                    ? ValueKey('bar-visible-custom-drink-${drink.id}')
-                    : ValueKey('bar-visible-global-drink-${drink.id}');
-                return ListTile(
-                  key: itemKey,
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    drink.category.icon,
-                    color: theme.colorScheme.primary,
-                  ),
-                  title: Text(drink.displayName(l10n.locale.languageCode)),
-                  subtitle: Text(l10n.drinkDefinitionMetadata(drink, unit)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      if (!drink.isCustom)
-                        IconButton(
-                          key: Key('bar-hide-global-drink-${drink.id}'),
-                          tooltip: l10n.hideDrink,
-                          onPressed: enabled
-                              ? () => onHideDrink(drink.id)
-                              : null,
-                          icon: const Icon(Icons.visibility_off_rounded),
-                        ),
-                      ReorderableDragStartListener(
-                        index: index,
-                        enabled: enabled,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Icon(
-                            Icons.drag_handle_rounded,
-                            key: Key('bar-reorder-global-drink-${drink.id}'),
-                            color: enabled
-                                ? theme.colorScheme.onSurfaceVariant
-                                : theme.disabledColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          if (hiddenDrinks.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 8),
-            const Divider(),
-            Theme(
-              data: theme.copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                key: Key('bar-hidden-section-${category.storageValue}'),
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: EdgeInsets.zero,
-                title: Text(
-                  l10n.hiddenDrinks,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                children: hiddenDrinks
-                    .map(
-                      (drink) => ListTile(
-                        key: Key('bar-hidden-global-drink-${drink.id}'),
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          Icons.visibility_off_rounded,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        title: Text(
-                          drink.displayName(l10n.locale.languageCode),
-                        ),
-                        subtitle: Text(
-                          l10n.drinkDefinitionMetadata(drink, unit),
-                        ),
-                        trailing: TextButton.icon(
-                          key: Key('bar-unhide-global-drink-${drink.id}'),
-                          onPressed: enabled && !categoryHidden
-                              ? () => onShowDrink(drink.id)
-                              : null,
-                          icon: const Icon(Icons.visibility_rounded),
-                          label: Text(l10n.showDrink),
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-            ),
           ],
-        ],
+        ),
       ),
     );
   }

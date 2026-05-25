@@ -66,74 +66,6 @@ List<Widget> _statisticsMapMarkerWidgets({
       .toList(growable: false);
 }
 
-List<Widget> _statisticsMapClusterOverlayWidgets({
-  required List<_StatisticsMapMarkerData> markers,
-  required List<Offset> offsets,
-  required Map<DrinkCategory, Color> colors,
-  required Future<void> Function(int index, _StatisticsMapMarkerData marker)
-  onMarkerTap,
-  required Future<void> Function(List<int> markerIndexes) onClusterTap,
-}) {
-  return _statisticsMapScreenClusters(offsets: offsets)
-      .map((cluster) {
-        final offset = cluster.center;
-
-        if (cluster.markerIndexes.length == 1) {
-          final markerIndex = cluster.markerIndexes.single;
-          final marker = markers[markerIndex];
-          final backgroundColor = colors[marker.entry.category]!;
-
-          return Positioned(
-            key: Key('statistics-map-slot-${marker.entry.id}'),
-            left: offset.dx - (_statisticsMapMarkerHitSize / 2),
-            top: offset.dy - (_statisticsMapMarkerHitSize / 2),
-            child: SizedBox(
-              width: _statisticsMapMarkerHitSize,
-              height: _statisticsMapMarkerHitSize,
-              child: Center(
-                child: _StatisticsMapMarker(
-                  entry: marker.entry,
-                  backgroundColor: backgroundColor,
-                  foregroundColor: _statisticsMapMarkerForegroundColor(
-                    backgroundColor,
-                  ),
-                  onTap: () => onMarkerTap(markerIndex, marker),
-                ),
-              ),
-            ),
-          );
-        }
-
-        final clusterKey = cluster.markerIndexes
-            .map((index) => markers[index].entry.id)
-            .join('-');
-        final backgroundColor =
-            colors[markers[cluster.markerIndexes.first].entry.category]!;
-
-        return Positioned(
-          key: Key('statistics-map-cluster-slot-$clusterKey'),
-          left: offset.dx - (_statisticsMapMarkerHitSize / 2),
-          top: offset.dy - (_statisticsMapMarkerHitSize / 2),
-          child: SizedBox(
-            width: _statisticsMapMarkerHitSize,
-            height: _statisticsMapMarkerHitSize,
-            child: Center(
-              child: _StatisticsMapClusterMarker(
-                markerIds: clusterKey,
-                count: cluster.markerIndexes.length,
-                backgroundColor: backgroundColor,
-                foregroundColor: _statisticsMapMarkerForegroundColor(
-                  backgroundColor,
-                ),
-                onTap: () => onClusterTap(cluster.markerIndexes),
-              ),
-            ),
-          ),
-        );
-      })
-      .toList(growable: false);
-}
-
 List<Widget> _statisticsMapAttributionChildren(ThemeData theme) {
   Widget buildButton({
     required String keyValue,
@@ -322,58 +254,6 @@ class _StatisticsMapAttributionCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       elevation: 1,
       child: Wrap(children: children),
-    );
-  }
-}
-
-class _StatisticsMapClusterMarker extends StatelessWidget {
-  const _StatisticsMapClusterMarker({
-    required this.markerIds,
-    required this.count,
-    required this.backgroundColor,
-    required this.foregroundColor,
-    required this.onTap,
-  });
-
-  final String markerIds;
-  final int count;
-  final Color backgroundColor;
-  final Color foregroundColor;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: Key('statistics-map-cluster-$markerIds'),
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: _statisticsMapMarkerVisualSize,
-          height: _statisticsMapMarkerVisualSize,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Theme.of(context).colorScheme.surface,
-                width: 2.5,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                '$count',
-                key: Key('statistics-map-cluster-count-$markerIds'),
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: foregroundColor,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

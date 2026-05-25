@@ -1,13 +1,10 @@
 # Repository Guidelines
 
 ## Agent Quick Reference
-Work on implementation tasks in a separate Git worktree under
-`codex/<item-name>` from the repository root. Keep the item name short and
-descriptive, for example `codex/profile-photo-fix`.
+Work on implementation tasks in a meaningful task-specific Git worktree when possible, typically under `codex/<item-name>` from the repository root. Keep the item name short and descriptive, for example `codex/profile-photo-fix`.
 
 Before changing code, check the current worktree status and preserve unrelated
-user changes. Keep changelog updates short and only add or adjust entries when
-they add useful release context.
+user changes. If the agent is already running in a meaningful task-specific worktree, it should keep using that worktree. If not, it should ask the user for approval before creating or switching to one with `wt switch`. Keep changelog updates short and only add or adjust entries when they add useful release context.
 
 Use Conventional Commit messages when asked to commit. Keep the subject short,
 around seven words or fewer, such as `fix(profile): save avatar`.
@@ -15,7 +12,7 @@ around seven words or fewer, such as `fix(profile): save avatar`.
 ## Project Structure & Module Organization
 `lib/main.dart` bootstraps `GlassTrailBootstrapApp` with the platform photo and location services. Core app wiring lives in `lib/src/app.dart`, `lib/src/app_controller.dart`, `lib/src/app_scope.dart`, and `lib/src/app_routes.dart`. Visible pages live in `lib/src/screens/`; the main shell currently exposes feed/history, statistics, bar, and profile tabs, plus dedicated auth, add-drink, and edit-profile routes. Repository implementations live in `lib/src/repository/`; `createRepository()` selects `SupabaseAppRepository` when `BackendConfig` is configured and falls back to `LocalAppRepository` otherwise. Shared models and helpers live alongside them in files such as `lib/src/models.dart`, `lib/src/stats_calculator.dart`, `lib/src/photo_service.dart`, `lib/src/location_service.dart`, and `lib/src/route_memory.dart`.
 
-Localization sources live in `lib/l10n/*.arb`. Treat `lib/l10n/app_localizations*.dart` as generated output and do not hand-edit it. Unit and widget tests live in `test/`, with reusable fakes and builders in `test/support/test_harness.dart`; end-to-end flows live in `integration_test/`. Supabase schema changes belong in `supabase/migrations/` using timestamped SQL filenames, with seed data in `supabase/seed.sql`. Treat `android/`, `ios/`, `linux/`, `macos/`, `web/`, and `windows/` as platform scaffolding unless the work is explicitly platform-specific; the statistics map also relies on the MapLibre registration helpers under `lib/src/maplibre_*`.
+Localization sources live in `lib/l10n/*.arb`. Treat `lib/l10n/app_localizations*.dart` as generated output and do not hand-edit it. Unit and widget tests live in `test/`, with reusable fakes and builders in `test/support/test_harness.dart`; end-to-end flows live in `integration_test/`. Supabase schema changes belong in `supabase/migrations/` using timestamped SQL filenames, with seed data in `supabase/seed.sql`. Only `android/` and `web/` are supported runtime targets. Treat `ios/`, `linux/`, `macos/`, and `windows/` as unsupported Flutter scaffolding unless the user explicitly asks for platform-specific work there; the statistics map also relies on the MapLibre registration helpers under `lib/src/maplibre_*`.
 
 ## Build, Test, and Development Commands
 Run `flutter pub get` after changing dependencies. Use `flutter run` for local development. Override backend values with `--dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...`; `BackendConfig.fromEnvironment()` otherwise uses the checked-in production defaults from `lib/src/backend_config.dart`. If you change ARB files, regenerate localization output with `flutter gen-l10n` before finishing the task. After every modification to the language files in `lib/l10n/*.arb`, also run `dart run tool/generate_notification_push_l10n.dart` from the repository root to update the Supabase Edge Function push localization helper.
@@ -29,6 +26,8 @@ edited document has generated output or formatting requirements.
 This repository follows `flutter_lints` from `analysis_options.yaml`. Keep Dart code formatted with `dart format .`; use 2-space indentation, trailing commas where Flutter formatting benefits, `PascalCase` for types, and `lower_snake_case.dart` for files. Prefer small widgets and keep non-trivial behavior in `AppController`, repository classes, service classes, or focused helpers rather than page `build` methods.
 
 Keep routing decisions centralized in `lib/src/app_routes.dart`, bootstrap and dependency wiring in `lib/src/app.dart` and `lib/src/repository/repository_factory.dart`, and localization changes in the ARB files instead of the generated Dart output. When touching statistics or map behavior, account for both supported MapLibre platforms and the non-map fallback path.
+
+Only Android and Web are supported application platforms. Do not broaden support to iOS, Linux, macOS, Windows, or other targets unless the user explicitly requests that scope change.
 
 ## Testing Guidelines
 Add or update tests for every behavior change. Follow the existing naming pattern such as `test/app_controller_test.dart`, `test/home_shell_test.dart`, or `integration_test/app_flow_test.dart`. Name tests as clear behavior statements in single quotes. Reuse `test/support/test_harness.dart` for controller bootstrapping, local repository setup, and fake photo or location services instead of re-creating ad hoc test plumbing.
@@ -49,9 +48,8 @@ Review row-level-security implications whenever you add or modify Supabase migra
 For Dart and Flutter work in this repository, prefer Dart MCP tools over shell
 commands whenever possible.
 
-Start implementation work by creating or switching to a separate worktree under
-`codex/<item-name>`. Do not make feature or fix edits directly in the primary
-checkout unless the user explicitly asks for that.
+Start implementation work by checking whether the current checkout is already a meaningful task-specific worktree, usually named like `codex/<item-name>`. If it is, keep using it. Do not create a new worktree automatically. If the
+current checkout is not a meaningful task worktree, ask the user for approval before creating or switching to one with `wt switch <item-name>`. Do not make feature or fix edits directly in the primary checkout unless the user explicitly asks for that.
 
 Call `mcp__dart__add_roots` for this repository before other Dart MCP calls when needed. Prefer `mcp__dart__analyze_files` over `flutter analyze`, `mcp__dart__run_tests` over `flutter test`, and `mcp__dart__dart_format` over `dart format`. Use shell `dart` or `flutter` commands only when the Dart MCP cannot perform the task or when the user explicitly asks for shell commands.
 

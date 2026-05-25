@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,7 +13,7 @@ import '../app_controller.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../app_theme.dart';
-import '../beer_with_me_import.dart';
+import '../beer_with_me_import_flow.dart';
 import '../birthday.dart';
 import '../friend_profile_links.dart';
 import '../l10n_extensions.dart';
@@ -34,8 +36,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const Color _importSuccessColor = Color(0xFF1F8F5A);
-  static const Color _importWarningColor = Color(0xFFB7791F);
   static final Uri _gitHubRepositoryUri = Uri.parse(
     'https://github.com/donjoergo/GlassTrail',
   );
@@ -77,6 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ) async {
     final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
+    final localeMemory = AppScope.localeMemoryOf(context);
     setState(() {
       _pendingSetting = pendingSetting;
     });
@@ -94,294 +95,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!success) {
       return;
     }
+    if (pendingSetting == _ProfilePendingSetting.language) {
+      await localeMemory.rememberLocale(settings.localeCode);
+      if (!mounted) {
+        return;
+      }
+    }
   }
 
   Future<void> _pickBeerWithMeImport() async {
-    final l10n = AppLocalizations.of(context);
-    final controller = AppScope.controllerOf(context);
-    final importFileService = AppScope.importFileServiceOf(context);
-
-    try {
-      final selectedFile = await importFileService.pickJsonFile();
-      if (!mounted || selectedFile == null) {
-        return;
-      }
-
-      final exportFile = parseBeerWithMeExportFile(selectedFile.contents);
-      if (exportFile.rows.isEmpty) {
-        _showMessage(l10n.beerWithMeImportEmpty);
-        return;
-      }
-
-      final shouldImport = await _confirmBeerWithMeImport(
-        exportFile.rows.length,
-      );
-      if (!mounted || shouldImport != true) {
-        return;
-      }
-
-      final result = await controller.importBeerWithMeExport(exportFile);
-      if (!mounted) {
-        return;
-      }
-      await _showBeerWithMeImportResult(result);
-    } on FormatException {
-      if (!mounted) {
-        return;
-      }
-      _showMessage(l10n.beerWithMeImportInvalidFile);
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      _showMessage(l10n.beerWithMeImportReadFailed);
-    }
-  }
-
-  Future<bool?> _confirmBeerWithMeImport(int rowCount) {
-    final l10n = AppLocalizations.of(context);
-    return showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          key: const Key('beer-with-me-import-confirm-dialog'),
-          title: Text(l10n.beerWithMeImportConfirmTitle),
-          content: Text(l10n.beerWithMeImportConfirmBody(rowCount)),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(l10n.beerWithMeImportAction),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _showBeerWithMeImportResult(BeerWithMeImportResult result) {
-    final l10n = AppLocalizations.of(context);
-    final errors = result.errors;
-    return showDialog<void>(
-      context: context,
-      builder: (context) {
-        final theme = Theme.of(context);
-        final colorScheme = theme.colorScheme;
-        final summaryRows = <Widget>[
-          if (result.importedCount > 0)
-            _buildBeerWithMeImportSummaryRow(
-              key: const Key('beer-with-me-import-summary-imported'),
-              icon: Icons.check_circle_rounded,
-              color: _importSuccessColor,
-              message: l10n.beerWithMeImportResultImported(
-                result.importedCount,
-              ),
-            ),
-          if (result.skippedDuplicateCount > 0)
-            _buildBeerWithMeImportSummaryRow(
-              key: const Key('beer-with-me-import-summary-skipped'),
-              icon: Icons.warning_amber_rounded,
-              color: _importWarningColor,
-              message: l10n.beerWithMeImportResultSkipped(
-                result.skippedDuplicateCount,
-              ),
-            ),
-          if (result.errorCount > 0)
-            _buildBeerWithMeImportSummaryRow(
-              key: const Key('beer-with-me-import-summary-errors'),
-              icon: Icons.error_outline_rounded,
-              color: colorScheme.error,
-              message: l10n.beerWithMeImportResultErrors(result.errorCount),
-            ),
-          _buildBeerWithMeImportSummaryRow(
-            key: const Key('beer-with-me-import-summary-total'),
-            icon: Icons.inventory_2_outlined,
-            color: colorScheme.primary,
-            message: l10n.beerWithMeImportResultTotal(result.totalRows),
-            emphasize: false,
-          ),
-        ];
-        return AlertDialog(
-          key: const Key('beer-with-me-import-result-dialog'),
-          title: Text(l10n.beerWithMeImportResultTitle),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440, maxHeight: 480),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  if (result.wasCancelled) ...<Widget>[
-                    _buildBeerWithMeImportBanner(
-                      icon: Icons.warning_amber_rounded,
-                      color: _importWarningColor,
-                      message: l10n.beerWithMeImportResultCancelled(
-                        result.processedCount,
-                        result.totalRows,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  for (
-                    var index = 0;
-                    index < summaryRows.length;
-                    index++
-                  ) ...<Widget>[
-                    if (index > 0) const SizedBox(height: 8),
-                    summaryRows[index],
-                  ],
-                  if (errors.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 16),
-                    Row(
-                      children: <Widget>[
-                        Icon(
-                          Icons.error_outline_rounded,
-                          size: 18,
-                          color: colorScheme.error,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          l10n.beerWithMeImportErrorListTitle,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: colorScheme.error,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    for (final error in errors) ...<Widget>[
-                      _buildBeerWithMeImportErrorCard(error),
-                      const SizedBox(height: 10),
-                    ],
-                  ],
-                ],
-              ),
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.close),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildBeerWithMeImportBanner({
-    required IconData icon,
-    required Color color,
-    required String message,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      key: const Key('beer-with-me-import-status-banner'),
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.24)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBeerWithMeImportSummaryRow({
-    required Key key,
-    required IconData icon,
-    required Color color,
-    required String message,
-    bool emphasize = true,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      key: key,
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: emphasize ? 0.09 : 0.07),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: emphasize ? FontWeight.w700 : FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBeerWithMeImportErrorCard(BeerWithMeImportError error) {
-    final theme = Theme.of(context);
-    final color = theme.colorScheme.error;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.16)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(Icons.error_outline_rounded, size: 18, color: color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              _formatBeerWithMeImportError(error),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface,
-                height: 1.35,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatBeerWithMeImportError(BeerWithMeImportError error) {
-    final parts = <String>['#${error.rowNumber}'];
-    final sourceId = error.sourceId?.trim();
-    final glassType = error.glassType?.trim();
-    if (sourceId != null && sourceId.isNotEmpty) {
-      parts.add('ID $sourceId');
-    }
-    if (glassType != null && glassType.isNotEmpty) {
-      parts.add(glassType);
-    }
-    return '${parts.join(' • ')}: ${error.message}';
+    await startBeerWithMeImportFlow(context);
   }
 
   void _showMessage(String message) {
@@ -672,7 +395,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final theme = Theme.of(context);
     final settings = controller.settings;
     final routeMemory = AppScope.routeMemoryOf(context);
-    final navigator = Navigator.of(context);
+    final navigator = Navigator.of(context, rootNavigator: true);
     final isBusy = controller.isBusy;
     final isSigningOut = controller.isBusyFor(AppBusyAction.signOut);
     final isImporting = controller.isBusyFor(AppBusyAction.importBeerWithMe);
@@ -711,11 +434,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!success) {
                 return;
               }
-              await routeMemory.markLoggedOut();
-              if (!mounted) {
-                return;
-              }
-              navigator.pushReplacementNamed(AppRoutes.auth);
+              unawaited(routeMemory.markLoggedOut());
+              navigator.pushNamedAndRemoveUntil(AppRoutes.auth, (_) => false);
             },
       icon: isSigningOut
           ? const SizedBox.square(
@@ -1094,11 +814,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 FutureBuilder<String?>(
                   future: _appVersionFuture,
                   builder: (context, snapshot) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
+                    return Material(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(18),
+                      clipBehavior: Clip.antiAlias,
                       child: ListTile(
                         key: const Key('profile-about-version-button'),
                         onTap: _openChangelog,
@@ -1127,11 +846,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
+                Material(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(18),
+                  clipBehavior: Clip.antiAlias,
                   child: ListTile(
                     key: const Key('profile-about-github-button'),
                     onTap: _openGitHubRepository,

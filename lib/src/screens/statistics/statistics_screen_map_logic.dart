@@ -10,11 +10,25 @@ const String _statisticsMapAttributionOpenStreetMapUrl =
 const String _statisticsMapAttributionCartoLabel = '© CARTO';
 const String _statisticsMapAttributionCartoUrl =
     'https://carto.com/attributions';
-const String _statisticsMapClusterSourceId = 'statistics-map-cluster-source';
+const String _statisticsMapClusteredSourceId =
+    'statistics-map-clustered-source';
+const String _statisticsMapDetailSourceId = 'statistics-map-detail-source';
 const String _statisticsMapClusterCircleLayerId =
     'statistics-map-cluster-circle-layer';
 const String _statisticsMapClusterCountLayerId =
     'statistics-map-cluster-count-layer';
+const String _statisticsMapLowZoomMarkerLayerId =
+    'statistics-map-low-zoom-marker-layer';
+const String _statisticsMapDetailMarkerLayerId =
+    'statistics-map-detail-marker-layer';
+const String _statisticsMapLowZoomMarkerHoverLayerId =
+    'statistics-map-low-zoom-marker-hover-layer';
+const String _statisticsMapDetailMarkerHoverLayerId =
+    'statistics-map-detail-marker-hover-layer';
+const String _statisticsMapLowZoomMarkerHitLayerId =
+    'statistics-map-low-zoom-marker-hit-layer';
+const String _statisticsMapDetailMarkerHitLayerId =
+    'statistics-map-detail-marker-hit-layer';
 const double _statisticsMapFanOutDistanceMeters = 9;
 const double _statisticsMapClusterRadius = 52;
 const double _statisticsMapClusterMaxZoom = 12;
@@ -28,6 +42,12 @@ const double _statisticsMapBoundsPadding = 48;
 const double _statisticsMapMarkerHitSize = 56;
 const double _statisticsMapMarkerVisualSize = 44;
 const double _statisticsMapFallbackPadding = 56;
+const double _statisticsMapClusterCountTextOffsetY = -0.08;
+const double _statisticsMapNativeMarkerSpriteSize =
+    _statisticsMapMarkerVisualSize + 8;
+const double _statisticsMapNativeMarkerInnerCircleSize = 18;
+const double _statisticsMapNativeMarkerInnerIconSize = 18;
+const double _statisticsMapMarkerHoverIconScale = 1.1;
 const latlong2.Distance _statisticsMapDistance = latlong2.Distance();
 
 final Set<Factory<OneSequenceGestureRecognizer>>
@@ -64,16 +84,6 @@ class _StatisticsMapCoordinateGroup {
   final List<DrinkEntry> entries;
 }
 
-class _StatisticsMapScreenCluster {
-  const _StatisticsMapScreenCluster({
-    required this.markerIndexes,
-    required this.center,
-  });
-
-  final List<int> markerIndexes;
-  final Offset center;
-}
-
 bool _statisticsEntryHasCoordinates(DrinkEntry entry) {
   final latitude = entry.locationLatitude;
   final longitude = entry.locationLongitude;
@@ -93,6 +103,23 @@ double _roundStatisticsCoordinate(double value) {
 String _statisticsMapCoordinateGroupKey(double latitude, double longitude) {
   return '${_roundStatisticsCoordinate(latitude).toStringAsFixed(4)}|'
       '${_roundStatisticsCoordinate(longitude).toStringAsFixed(4)}';
+}
+
+List<_StatisticsMapMarkerData> _statisticsMapRawMarkersForEntries(
+  List<DrinkEntry> entries,
+) {
+  return entries
+      .where(_statisticsEntryHasCoordinates)
+      .map(
+        (entry) => _StatisticsMapMarkerData(
+          entry: entry,
+          position: maplibre.LatLng(
+            entry.locationLatitude!,
+            entry.locationLongitude!,
+          ),
+        ),
+      )
+      .toList(growable: false);
 }
 
 List<_StatisticsMapMarkerData> _statisticsMapMarkersForEntries(
@@ -161,10 +188,6 @@ List<_StatisticsMapMarkerData> _statisticsMapMarkersForEntries(
 
 maplibre.LatLng _statisticsMapLatLngFromOffset(latlong2.LatLng position) {
   return maplibre.LatLng(position.latitude, position.longitude);
-}
-
-bool _statisticsMapShowsIndividualMarkers(double zoom) {
-  return zoom >= _statisticsMapDetailMarkerMinZoom;
 }
 
 @visibleForTesting
@@ -258,29 +281,6 @@ List<int> statisticsMapStandaloneMarkerIndexes({
       .toList(growable: false);
 }
 
-List<_StatisticsMapScreenCluster> _statisticsMapScreenClusters({
-  required List<Offset> offsets,
-  double clusterRadius = _statisticsMapLonelyMarkerRadius,
-}) {
-  return statisticsMapClusterGroups(
-        offsets: offsets,
-        clusterRadius: clusterRadius,
-      )
-      .map((group) {
-        final averageDx =
-            group.fold<double>(0, (sum, index) => sum + offsets[index].dx) /
-            group.length;
-        final averageDy =
-            group.fold<double>(0, (sum, index) => sum + offsets[index].dy) /
-            group.length;
-        return _StatisticsMapScreenCluster(
-          markerIndexes: group,
-          center: Offset(averageDx, averageDy),
-        );
-      })
-      .toList(growable: false);
-}
-
 maplibre.LatLngBounds? _statisticsMapBounds(
   List<_StatisticsMapMarkerData> markers,
 ) {
@@ -310,27 +310,107 @@ String _statisticsMapSignature(List<_StatisticsMapMarkerData> markers) {
   return markers.map((marker) => marker.signature).join('|');
 }
 
-Object _statisticsMapClusterGeoJson(List<_StatisticsMapMarkerData> markers) {
+String _statisticsMapStableHash(String value) {
+  var hash = 0x811c9dc5;
+  for (final codeUnit in value.codeUnits) {
+    hash ^= codeUnit;
+    hash = (hash * 0x01000193) & 0xffffffff;
+  }
+  return hash.toRadixString(16).padLeft(8, '0');
+}
+
+String _statisticsMapMarkerAssetSignature(
+  Map<DrinkCategory, Color> colors, {
+  double spriteScale = 1,
+}) {
+  return DrinkCategory.values
+      .map((category) {
+        final backgroundColor = colors[category]!;
+        final foregroundColor = _statisticsMapMarkerForegroundColor(
+          backgroundColor,
+        );
+        return <Object>[
+          category.storageValue,
+          category.icon.codePoint,
+          _statisticsMapHexColor(backgroundColor),
+          _statisticsMapHexColor(foregroundColor),
+          spriteScale.toStringAsFixed(2),
+        ].join(':');
+      })
+      .join('|');
+}
+
+String _statisticsMapMarkerSpriteId(
+  DrinkCategory category,
+  String markerAssetSignature,
+) {
+  final assetHash = _statisticsMapStableHash(markerAssetSignature);
+  return 'statistics-map-marker-${category.storageValue}-$assetHash';
+}
+
+Map<String, Object> _statisticsMapFeatureForMarker({
+  required _StatisticsMapMarkerData marker,
+  required String markerAssetSignature,
+}) {
+  final entry = marker.entry;
+  return <String, Object>{
+    'type': 'Feature',
+    'id': entry.id,
+    'properties': <String, Object>{
+      'entryId': entry.id,
+      'category': entry.category.storageValue,
+      'markerImageId': _statisticsMapMarkerSpriteId(
+        entry.category,
+        markerAssetSignature,
+      ),
+    },
+    'geometry': <String, Object>{
+      'type': 'Point',
+      'coordinates': <double>[
+        marker.position.longitude,
+        marker.position.latitude,
+      ],
+    },
+  };
+}
+
+Map<String, Object> _statisticsMapSourceGeoJson(
+  List<_StatisticsMapMarkerData> markers, {
+  required String markerAssetSignature,
+}) {
   return <String, Object>{
     'type': 'FeatureCollection',
     'features': markers
-        .map((marker) {
-          final entry = marker.entry;
-          return <String, Object>{
-            'type': 'Feature',
-            'id': entry.id,
-            'properties': <String, Object>{'entryId': entry.id},
-            'geometry': <String, Object>{
-              'type': 'Point',
-              'coordinates': <double>[
-                entry.locationLongitude!,
-                entry.locationLatitude!,
-              ],
-            },
-          };
-        })
+        .map(
+          (marker) => _statisticsMapFeatureForMarker(
+            marker: marker,
+            markerAssetSignature: markerAssetSignature,
+          ),
+        )
         .toList(growable: false),
   };
+}
+
+@visibleForTesting
+Map<String, Object> statisticsMapClusteredSourceGeoJsonForEntries({
+  required List<DrinkEntry> entries,
+  required String markerAssetSignature,
+}) {
+  return _statisticsMapSourceGeoJson(
+    _statisticsMapRawMarkersForEntries(entries),
+    markerAssetSignature: markerAssetSignature,
+  );
+}
+
+@visibleForTesting
+Map<String, Object> statisticsMapDetailSourceGeoJsonForEntries({
+  required List<DrinkEntry> entries,
+  required String markerAssetSignature,
+}) {
+  return _statisticsMapSourceGeoJson(
+    _statisticsMapMarkersForEntries(entries),
+    markerAssetSignature: markerAssetSignature,
+  );
 }
 
 String _statisticsMapHexColor(Color color) {
@@ -339,6 +419,176 @@ String _statisticsMapHexColor(Color color) {
   return '#${component(channel(color.r))}'
       '${component(channel(color.g))}'
       '${component(channel(color.b))}';
+}
+
+maplibre.SymbolLayerProperties _statisticsMapMarkerLayerProperties({
+  required double iconSize,
+}) {
+  return maplibre.SymbolLayerProperties(
+    iconImage: <Object>['get', 'markerImageId'],
+    iconSize: iconSize,
+    iconAnchor: 'bottom',
+    iconAllowOverlap: true,
+    iconIgnorePlacement: true,
+  );
+}
+
+maplibre.CircleLayerProperties _statisticsMapMarkerHitLayerProperties() {
+  return const maplibre.CircleLayerProperties(
+    circleRadius: _statisticsMapMarkerHitSize / 2,
+    circleColor: 'rgba(0, 0, 0, 0)',
+    circleOpacity: 1.0,
+    circleStrokeWidth: 0,
+  );
+}
+
+maplibre.SymbolLayerProperties _statisticsMapMarkerHoverLayerProperties({
+  required double iconSize,
+}) {
+  return maplibre.SymbolLayerProperties(
+    iconImage: const <Object>['get', 'markerImageId'],
+    iconSize: iconSize * _statisticsMapMarkerHoverIconScale,
+    iconAnchor: 'bottom',
+    iconAllowOverlap: true,
+    iconIgnorePlacement: true,
+  );
+}
+
+Object _statisticsMapEntryIdFilter(String? entryId) {
+  return <Object>[
+    '==',
+    const <Object>['get', 'entryId'],
+    entryId ?? '__statistics_map_no_hover__',
+  ];
+}
+
+maplibre.SymbolLayerProperties _statisticsMapClusterCountLayerProperties({
+  required Color labelColor,
+}) {
+  return maplibre.SymbolLayerProperties(
+    textField: '{point_count}',
+    textFont: const <String>['Open Sans Bold', 'Arial Unicode MS Bold'],
+    textSize: 16,
+    textColor: _statisticsMapHexColor(labelColor),
+    textHaloWidth: 0.0,
+    textAnchor: 'center',
+    textJustify: 'center',
+    textOffset: const <double>[0, _statisticsMapClusterCountTextOffsetY],
+    textAllowOverlap: true,
+    textIgnorePlacement: true,
+  );
+}
+
+@visibleForTesting
+maplibre.SymbolLayerProperties statisticsMapClusterCountLayerProperties({
+  required Color labelColor,
+}) {
+  return _statisticsMapClusterCountLayerProperties(labelColor: labelColor);
+}
+
+Future<void> _configureStatisticsMapMarkerImages(
+  maplibre.MapLibreMapController controller, {
+  required Map<DrinkCategory, Color> colors,
+  required String markerAssetSignature,
+  double spriteScale = 1,
+}) async {
+  final sprites = await Future.wait(
+    DrinkCategory.values.map((category) async {
+      final backgroundColor = colors[category]!;
+      return MapEntry(
+        category,
+        await _statisticsMapMarkerSpriteBytes(
+          category: category,
+          backgroundColor: backgroundColor,
+          spriteScale: spriteScale,
+        ),
+      );
+    }),
+  );
+
+  for (final sprite in sprites) {
+    await controller.addImage(
+      _statisticsMapMarkerSpriteId(sprite.key, markerAssetSignature),
+      sprite.value,
+    );
+  }
+}
+
+Future<Uint8List> _statisticsMapMarkerSpriteBytes({
+  required DrinkCategory category,
+  required Color backgroundColor,
+  double spriteScale = 1,
+}) async {
+  const size = _statisticsMapNativeMarkerSpriteSize;
+  const innerCircleRadius = _statisticsMapNativeMarkerInnerCircleSize / 2;
+  const innerCircleTop = 6.0;
+  const innerIconTop = 12.0;
+
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  if (spriteScale != 1) {
+    canvas.scale(spriteScale, spriteScale);
+  }
+  final foregroundColor = _statisticsMapMarkerForegroundColor(backgroundColor);
+
+  _statisticsMapPaintIconGlyph(
+    canvas,
+    icon: Icons.location_on_rounded,
+    color: backgroundColor,
+    size: size,
+    top: 0,
+    width: size,
+  );
+
+  canvas.drawCircle(
+    const Offset(size / 2, innerCircleTop + innerCircleRadius),
+    innerCircleRadius,
+    Paint()..color = backgroundColor,
+  );
+
+  _statisticsMapPaintIconGlyph(
+    canvas,
+    icon: category.icon,
+    color: foregroundColor,
+    size: _statisticsMapNativeMarkerInnerIconSize,
+    top: innerIconTop,
+    width: size,
+  );
+
+  final image = await recorder.endRecording().toImage(
+    (size * spriteScale).ceil(),
+    (size * spriteScale).ceil(),
+  );
+  final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+  if (byteData == null) {
+    throw StateError('Could not encode statistics map marker sprite.');
+  }
+  return byteData.buffer.asUint8List();
+}
+
+void _statisticsMapPaintIconGlyph(
+  Canvas canvas, {
+  required IconData icon,
+  required Color color,
+  required double size,
+  required double top,
+  required double width,
+}) {
+  final painter = TextPainter(
+    textDirection: ui.TextDirection.ltr,
+    text: TextSpan(
+      text: String.fromCharCode(icon.codePoint),
+      style: TextStyle(
+        color: color,
+        fontSize: size,
+        fontFamily: icon.fontFamily,
+        package: icon.fontPackage,
+        height: 1,
+      ),
+    ),
+  )..layout();
+
+  painter.paint(canvas, Offset((width - painter.width) / 2, top));
 }
 
 maplibre.CameraPosition _statisticsMapInitialCameraPosition(
@@ -426,32 +676,4 @@ Offset _statisticsMapFallbackOffsetForMarker({
     _statisticsMapFallbackPadding + (availableWidth * normalizedX),
     _statisticsMapFallbackPadding + (availableHeight * normalizedY),
   );
-}
-
-List<Offset> _statisticsMapFallbackOffsets({
-  required List<_StatisticsMapMarkerData> markers,
-  required Size size,
-}) {
-  return markers
-      .map(
-        (marker) => _statisticsMapFallbackOffsetForMarker(
-          marker: marker,
-          markers: markers,
-          size: size,
-        ),
-      )
-      .toList(growable: false);
-}
-
-bool _statisticsMapOffsetsEqual(List<Offset> left, List<Offset> right) {
-  if (left.length != right.length) {
-    return false;
-  }
-
-  for (var index = 0; index < left.length; index++) {
-    if ((left[index] - right[index]).distance > 0.1) {
-      return false;
-    }
-  }
-  return true;
 }

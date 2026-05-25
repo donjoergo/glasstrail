@@ -1,3 +1,4 @@
+import com.android.build.VariantOutput
 import com.android.build.gradle.api.ApkVariantOutput
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
@@ -7,7 +8,6 @@ plugins {
     // START: FlutterFire Configuration
     id("com.google.gms.google-services")
     // END: FlutterFire Configuration
-    id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -104,8 +104,12 @@ android.applicationVariants.all {
     val resolvedVersionName = versionName ?: "0.0.0"
 
     outputs.all {
-        (this as ApkVariantOutput).outputFileName =
-            "glasstrail-v${resolvedVersionName}-${buildTypeName}.apk"
+        val apkOutput = this as ApkVariantOutput
+        val abiName = apkOutput.getFilter(VariantOutput.FilterType.ABI)
+        val abiSuffix = abiName?.let { "-$it" }.orEmpty()
+
+        apkOutput.outputFileName =
+            "glasstrail-v${resolvedVersionName}-${buildTypeName}${abiSuffix}.apk"
     }
 }
 

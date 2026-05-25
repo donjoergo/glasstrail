@@ -42,7 +42,6 @@ class _FeedScreenState extends State<FeedScreen> {
 
   _UpdateNoticeData? _updateNotice;
   bool _isHandlingUpdateNotice = false;
-  late final ScrollController _scrollController;
 
   LaunchMode get _changelogLaunchMode {
     return switch (defaultTargetPlatform) {
@@ -55,30 +54,34 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController()..addListener(_handleScroll);
     _loadUpdateNotice();
   }
 
-  @override
-  void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _handleScroll() {
-    if (!mounted || !_scrollController.hasClients) {
-      return;
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (!mounted ||
+        notification.depth != 0 ||
+        notification is! ScrollUpdateNotification) {
+      return false;
     }
-    final position = _scrollController.position;
-    if (position.extentAfter > position.viewportDimension * 2) {
-      return;
+    final axisDirection = notification.metrics.axisDirection;
+    if (axisDirection != AxisDirection.down &&
+        axisDirection != AxisDirection.up) {
+      return false;
+    }
+    final scrollDelta = notification.scrollDelta;
+    if (scrollDelta == null || scrollDelta <= 0) {
+      return false;
+    }
+    final metrics = notification.metrics;
+    if (metrics.extentAfter > metrics.viewportDimension * 2) {
+      return false;
     }
     final controller = AppScope.controllerOf(context);
-    if (controller.hasMoreFeedPosts && !controller.isLoadingMoreFeedPosts) {
-      unawaited(controller.loadMoreFeedPosts());
+    if (!controller.hasMoreFeedPosts || controller.isLoadingMoreFeedPosts) {
+      return false;
     }
+    unawaited(controller.loadMoreFeedPosts());
+    return false;
   }
 
   Future<void> _loadUpdateNotice() async {
@@ -203,55 +206,85 @@ class _FeedScreenState extends State<FeedScreen> {
     return RefreshIndicator(
       key: const Key('feed-refresh-indicator'),
       onRefresh: _refresh,
-      child: ListView(
-        key: const Key('feed-list-view'),
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-        children: <Widget>[
-          if (_updateNotice case final notice?) ...<Widget>[
-            _FeedUpdateCard(
-              version: notice.version,
-              isBusy: _isHandlingUpdateNotice,
-              onClose: () => _acknowledgeUpdateNotice(openChangelog: false),
-              onOpenChangelog: () =>
-                  _acknowledgeUpdateNotice(openChangelog: true),
-            ),
-            const SizedBox(height: 24),
-          ],
-          _FeedStreakCard(stats: stats),
-          const SizedBox(height: 24),
-          if (posts.isEmpty)
-            AppEmptyStateCard(
-              key: const Key('feed-empty-state'),
-              icon: Icons.hourglass_empty_rounded,
-              title: l10n.noEntries,
-              body: l10n.startLogging,
-            )
-          else
-            ...posts.map(
-              (post) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _DrinkEntryCard(
-                  post: post,
-                  drinkName: controller.localizedFeedPostDrinkName(post),
-                  locale: locale,
-                  unit: controller.settings.unit,
-                  categoryLabel: l10n.categoryLabel(post.entry.category),
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _handleScrollNotification,
+        child: CustomScrollView(
+          key: const Key('feed-list-view'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: <Widget>[
+            if (_updateNotice case final notice?) ...<Widget>[
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                sliver: SliverToBoxAdapter(
+                  child: _FeedUpdateCard(
+                    version: notice.version,
+                    isBusy: _isHandlingUpdateNotice,
+                    onClose: () =>
+                        _acknowledgeUpdateNotice(openChangelog: false),
+                    onOpenChangelog: () =>
+                        _acknowledgeUpdateNotice(openChangelog: true),
+                  ),
                 ),
               ),
-            ),
-          if (controller.isLoadingMoreFeedPosts) ...<Widget>[
-            const SizedBox(height: 12),
-            const Center(
-              child: SizedBox.square(
-                key: Key('feed-loading-more'),
-                dimension: 28,
-                child: CircularProgressIndicator(strokeWidth: 2),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                _updateNotice == null ? 20 : 0,
+                20,
+                0,
               ),
+              sliver: SliverToBoxAdapter(child: _FeedStreakCard(stats: stats)),
             ),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            if (posts.isEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverToBoxAdapter(
+                  child: AppEmptyStateCard(
+                    key: const Key('feed-empty-state'),
+                    icon: Icons.hourglass_empty_rounded,
+                    title: l10n.noEntries,
+                    body: l10n.startLogging,
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final post = posts[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _DrinkEntryCard(
+                        post: post,
+                        drinkName: controller.localizedFeedPostDrinkName(post),
+                        locale: locale,
+                        unit: controller.settings.unit,
+                        categoryLabel: l10n.categoryLabel(post.entry.category),
+                      ),
+                    );
+                  }, childCount: posts.length),
+                ),
+              ),
+            if (controller.isLoadingMoreFeedPosts)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Center(
+                    child: SizedBox.square(
+                      key: Key('feed-loading-more'),
+                      dimension: 28,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 120)),
           ],
-        ],
+        ),
       ),
     );
   }

@@ -74,14 +74,24 @@ class _StatisticsMapCard extends StatefulWidget {
 
 class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   maplibre.MapLibreMapController? _controller;
-  List<Offset> _markerOffsets = const <Offset>[];
-  bool _isSyncScheduled = false;
-  int _projectionRetryEpoch = 0;
+  String? _hoveredMarkerEntryId;
+  bool _isWebHoverQueryInFlight = false;
+  int _webHoverEpoch = 0;
+  math.Point<double>? _pendingWebHoverPoint;
+  VoidCallback? _detachWebMouseLeaveListener;
   late double _currentZoom;
   late final maplibre.OnFeatureInteractionCallback _featureTapListener;
+  late final maplibre.OnFeatureHoverCallback _featureHoverListener;
+  late final maplibre.OnMapMouseMoveCallback _mapMouseMoveListener;
 
-  bool get _usesOverlayClusters =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  double get _nativeMarkerIconSize => 1;
+
+  double get _nativeMarkerSpriteScale {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return MediaQuery.devicePixelRatioOf(context);
+    }
+    return 1;
+  }
 
   double get _projectionScale {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
@@ -90,11 +100,16 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     return MediaQuery.devicePixelRatioOf(context);
   }
 
+  List<DrinkEntry> get _entries =>
+      widget.markers.map((marker) => marker.entry).toList(growable: false);
+
   @override
   void initState() {
     super.initState();
     _currentZoom = _statisticsMapInitialCameraPosition(widget.markers).zoom;
     _featureTapListener = _handleFeatureTap;
+    _featureHoverListener = _handleFeatureHover;
+    _mapMouseMoveListener = _handleMapMouseMove;
   }
 
   @override
@@ -102,10 +117,13 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     super.didUpdateWidget(oldWidget);
     if (_statisticsMapSignature(oldWidget.markers) !=
         _statisticsMapSignature(widget.markers)) {
-      _projectionRetryEpoch += 1;
       _currentZoom = _statisticsMapInitialCameraPosition(widget.markers).zoom;
-      _markerOffsets = const <Offset>[];
-      _scheduleMarkerSync();
+      if (_hoveredMarkerEntryId != null &&
+          !widget.markers.any(
+            (marker) => marker.entry.id == _hoveredMarkerEntryId,
+          )) {
+        _hoveredMarkerEntryId = null;
+      }
     }
   }
 
@@ -114,7 +132,11 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     final controller = _controller;
     if (controller != null) {
       controller.onFeatureTapped.remove(_featureTapListener);
+      controller.onFeatureHover.remove(_featureHoverListener);
+      controller.onMapMouseMove.remove(_mapMouseMoveListener);
     }
+    _detachWebMouseLeaveListener?.call();
+    _setWebCanvasCursor('');
     super.dispose();
   }
 
@@ -124,18 +146,30 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       return;
     }
 
-    if (!_usesOverlayClusters) {
-      await _configureClusterLayers(controller);
-    }
+    final theme = Theme.of(context);
+    final colors = statisticsCategoryColors(theme);
+    final markerAssetSignature = _statisticsMapMarkerAssetSignature(
+      colors,
+      spriteScale: _nativeMarkerSpriteScale,
+    );
+
+    await _configureNativeLayers(
+      controller,
+      theme: theme,
+      colors: colors,
+      markerAssetSignature: markerAssetSignature,
+    );
+    _attachWebMouseLeaveListener();
+    _setWebCanvasCursor('');
     await _fitStatisticsMapCamera(controller, widget.markers);
-    _scheduleMarkerSync();
-    _scheduleProjectionRetries();
   }
 
-  Future<void> _configureClusterLayers(
-    maplibre.MapLibreMapController controller,
-  ) async {
-    final theme = Theme.of(context);
+  Future<void> _configureNativeLayers(
+    maplibre.MapLibreMapController controller, {
+    required ThemeData theme,
+    required Map<DrinkCategory, Color> colors,
+    required String markerAssetSignature,
+  }) async {
     final clusterColor = theme.brightness == Brightness.dark
         ? theme.colorScheme.primaryContainer
         : theme.colorScheme.primary;
@@ -143,6 +177,12 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     final strokeColor = theme.colorScheme.surface;
 
     for (final layerId in <String>[
+      _statisticsMapDetailMarkerHitLayerId,
+      _statisticsMapDetailMarkerHoverLayerId,
+      _statisticsMapDetailMarkerLayerId,
+      _statisticsMapLowZoomMarkerHitLayerId,
+      _statisticsMapLowZoomMarkerHoverLayerId,
+      _statisticsMapLowZoomMarkerLayerId,
       _statisticsMapClusterCountLayerId,
       _statisticsMapClusterCircleLayerId,
     ]) {
@@ -153,23 +193,47 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       }
     }
 
-    try {
-      await controller.removeSource(_statisticsMapClusterSourceId);
-    } catch (_) {
-      // Ignore missing source during initial style loads.
+    for (final sourceId in <String>[
+      _statisticsMapDetailSourceId,
+      _statisticsMapClusteredSourceId,
+    ]) {
+      try {
+        await controller.removeSource(sourceId);
+      } catch (_) {
+        // Ignore missing sources during initial style loads.
+      }
     }
 
+    await _configureStatisticsMapMarkerImages(
+      controller,
+      colors: colors,
+      markerAssetSignature: markerAssetSignature,
+      spriteScale: _nativeMarkerSpriteScale,
+    );
+
     await controller.addSource(
-      _statisticsMapClusterSourceId,
+      _statisticsMapClusteredSourceId,
       maplibre.GeojsonSourceProperties(
-        data: _statisticsMapClusterGeoJson(widget.markers),
+        data: statisticsMapClusteredSourceGeoJsonForEntries(
+          entries: _entries,
+          markerAssetSignature: markerAssetSignature,
+        ),
         cluster: true,
         clusterRadius: _statisticsMapClusterRadius,
         clusterMaxZoom: _statisticsMapClusterMaxZoom,
       ),
     );
+    await controller.addSource(
+      _statisticsMapDetailSourceId,
+      maplibre.GeojsonSourceProperties(
+        data: statisticsMapDetailSourceGeoJsonForEntries(
+          entries: _entries,
+          markerAssetSignature: markerAssetSignature,
+        ),
+      ),
+    );
     await controller.addCircleLayer(
-      _statisticsMapClusterSourceId,
+      _statisticsMapClusteredSourceId,
       _statisticsMapClusterCircleLayerId,
       maplibre.CircleLayerProperties(
         circleColor: _statisticsMapHexColor(clusterColor),
@@ -194,22 +258,67 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       enableInteraction: true,
     );
     await controller.addSymbolLayer(
-      _statisticsMapClusterSourceId,
+      _statisticsMapClusteredSourceId,
       _statisticsMapClusterCountLayerId,
-      maplibre.SymbolLayerProperties(
-        textField: '{point_count}',
-        textFont: const <String>['Noto Sans Medium', 'Noto Sans Regular'],
-        textSize: 13,
-        textColor: _statisticsMapHexColor(labelColor),
-        textHaloColor: _statisticsMapHexColor(strokeColor),
-        textHaloWidth: 1.2,
-        textAllowOverlap: true,
-        textIgnorePlacement: true,
-      ),
+      _statisticsMapClusterCountLayerProperties(labelColor: labelColor),
       maxzoom: _statisticsMapDetailMarkerMinZoom,
       filter: const <Object>['has', 'point_count'],
       enableInteraction: true,
     );
+    await controller.addSymbolLayer(
+      _statisticsMapClusteredSourceId,
+      _statisticsMapLowZoomMarkerLayerId,
+      _statisticsMapMarkerLayerProperties(iconSize: _nativeMarkerIconSize),
+      maxzoom: _statisticsMapDetailMarkerMinZoom,
+      filter: <Object>[
+        '!',
+        const <Object>['has', 'point_count'],
+      ],
+      enableInteraction: true,
+    );
+    await controller.addSymbolLayer(
+      _statisticsMapClusteredSourceId,
+      _statisticsMapLowZoomMarkerHoverLayerId,
+      _statisticsMapMarkerHoverLayerProperties(iconSize: _nativeMarkerIconSize),
+      maxzoom: _statisticsMapDetailMarkerMinZoom,
+      filter: _statisticsMapEntryIdFilter(_hoveredMarkerEntryId),
+      enableInteraction: false,
+    );
+    await controller.addCircleLayer(
+      _statisticsMapClusteredSourceId,
+      _statisticsMapLowZoomMarkerHitLayerId,
+      _statisticsMapMarkerHitLayerProperties(),
+      maxzoom: _statisticsMapDetailMarkerMinZoom,
+      filter: <Object>[
+        '!',
+        const <Object>['has', 'point_count'],
+      ],
+      enableInteraction: true,
+    );
+    await controller.addSymbolLayer(
+      _statisticsMapDetailSourceId,
+      _statisticsMapDetailMarkerLayerId,
+      _statisticsMapMarkerLayerProperties(iconSize: _nativeMarkerIconSize),
+      minzoom: _statisticsMapDetailMarkerMinZoom,
+      enableInteraction: true,
+    );
+    await controller.addSymbolLayer(
+      _statisticsMapDetailSourceId,
+      _statisticsMapDetailMarkerHoverLayerId,
+      _statisticsMapMarkerHoverLayerProperties(iconSize: _nativeMarkerIconSize),
+      minzoom: _statisticsMapDetailMarkerMinZoom,
+      filter: _statisticsMapEntryIdFilter(_hoveredMarkerEntryId),
+      enableInteraction: false,
+    );
+    await controller.addCircleLayer(
+      _statisticsMapDetailSourceId,
+      _statisticsMapDetailMarkerHitLayerId,
+      _statisticsMapMarkerHitLayerProperties(),
+      minzoom: _statisticsMapDetailMarkerMinZoom,
+      enableInteraction: true,
+    );
+
+    await _updateHoveredMarkerFilters();
   }
 
   Future<void> _handleFeatureTap(
@@ -219,8 +328,261 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     String layerId,
     maplibre.Annotation? annotation,
   ) async {
-    if (layerId != _statisticsMapClusterCircleLayerId &&
-        layerId != _statisticsMapClusterCountLayerId) {
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+
+    if (layerId == _statisticsMapClusterCircleLayerId ||
+        layerId == _statisticsMapClusterCountLayerId) {
+      final nextZoom = math.min(
+        _currentZoom + _statisticsMapTapResolveZoomStep,
+        _statisticsMapTapResolveMaxZoom,
+      );
+      await controller.animateCamera(
+        maplibre.CameraUpdate.newLatLngZoom(coordinates, nextZoom),
+      );
+      return;
+    }
+
+    final markerIndex = await _resolveTappedMarkerIndex(
+      controller: controller,
+      point: point,
+      layerId: layerId,
+      featureId: id,
+    );
+    if (markerIndex == -1) {
+      return;
+    }
+
+    final marker = widget.markers[markerIndex];
+    if (layerId == _statisticsMapLowZoomMarkerLayerId ||
+        layerId == _statisticsMapLowZoomMarkerHitLayerId) {
+      await _openMarkerSheet(marker);
+      return;
+    }
+
+    if (layerId != _statisticsMapDetailMarkerLayerId &&
+        layerId != _statisticsMapDetailMarkerHitLayerId) {
+      return;
+    }
+
+    try {
+      final offsets = await _projectMarkerOffsets(controller);
+      final tapResolution = resolveStatisticsMapMarkerTap(
+        offsets: offsets,
+        tappedIndex: markerIndex,
+        currentZoom: _currentZoom,
+      );
+      if (tapResolution == StatisticsMapTapResolution.zoomIn) {
+        final overlappingIndexes = statisticsMapOverlappingMarkerIndexes(
+          offsets: offsets,
+          tappedIndex: markerIndex,
+        );
+        final group = overlappingIndexes
+            .map((index) => widget.markers[index])
+            .toList(growable: false);
+        await _zoomToMarkerGroup(controller, group);
+        return;
+      }
+    } catch (_) {
+      // Fall back to the tapped marker when transient projection fails.
+    }
+
+    await _openMarkerSheet(marker);
+  }
+
+  Future<void> _handleFeatureHover(
+    math.Point<double> point,
+    maplibre.LatLng coordinates,
+    String id,
+    maplibre.Annotation? annotation,
+    maplibre.HoverEventType eventType,
+  ) async {
+    final markerExists = widget.markers.any((marker) => marker.entry.id == id);
+    if (!markerExists) {
+      return;
+    }
+
+    final nextHoveredEntryId = switch (eventType) {
+      maplibre.HoverEventType.enter => id,
+      maplibre.HoverEventType.move => id,
+      maplibre.HoverEventType.leave =>
+        _hoveredMarkerEntryId == id ? null : _hoveredMarkerEntryId,
+    };
+
+    if (nextHoveredEntryId == _hoveredMarkerEntryId) {
+      return;
+    }
+
+    await _setHoveredMarkerEntryId(nextHoveredEntryId);
+  }
+
+  Future<void> _handleMapMouseMove(
+    math.Point<double> point,
+    maplibre.LatLng coordinates,
+  ) async {
+    if (!kIsWeb || !runtime_platform.isMapLibrePlatformSupported) {
+      return;
+    }
+
+    final epoch = _webHoverEpoch;
+    if (_isWebHoverQueryInFlight) {
+      _pendingWebHoverPoint = point;
+      return;
+    }
+
+    await _runWebHoverQuery(point: point, epoch: epoch);
+  }
+
+  Future<void> _runWebHoverQuery({
+    required math.Point<double> point,
+    required int epoch,
+  }) async {
+    _isWebHoverQueryInFlight = true;
+    try {
+      await _updateHoveredMarkerFromPoint(point: point, epoch: epoch);
+    } finally {
+      _isWebHoverQueryInFlight = false;
+      final pendingPoint = _pendingWebHoverPoint;
+      _pendingWebHoverPoint = null;
+      if (pendingPoint != null && mounted && epoch == _webHoverEpoch) {
+        unawaited(_runWebHoverQuery(point: pendingPoint, epoch: epoch));
+      }
+    }
+  }
+
+  Future<void> _updateHoveredMarkerFromPoint({
+    required math.Point<double> point,
+    required int epoch,
+  }) async {
+    final controller = _controller;
+    if (controller == null) {
+      await _setHoveredMarkerEntryId(null);
+      return;
+    }
+
+    String? nextHoveredEntryId;
+    try {
+      final features = await controller.queryRenderedFeatures(point, <String>[
+        _statisticsMapLowZoomMarkerLayerId,
+        _statisticsMapDetailMarkerLayerId,
+        _statisticsMapLowZoomMarkerHitLayerId,
+        _statisticsMapDetailMarkerHitLayerId,
+      ], null);
+      for (final feature in features) {
+        if (feature is! Map) {
+          continue;
+        }
+        final properties = feature['properties'];
+        if (properties is! Map) {
+          continue;
+        }
+        final entryId = properties['entryId']?.toString();
+        if (entryId == null || entryId.isEmpty) {
+          continue;
+        }
+        if (widget.markers.any((marker) => marker.entry.id == entryId)) {
+          nextHoveredEntryId = entryId;
+          break;
+        }
+      }
+    } catch (_) {
+      // Ignore transient rendered-feature query failures during hover.
+    }
+
+    if (!mounted || epoch != _webHoverEpoch) {
+      return;
+    }
+    await _setHoveredMarkerEntryId(nextHoveredEntryId);
+  }
+
+  Future<void> _handleWebMouseExit() async {
+    _webHoverEpoch += 1;
+    _pendingWebHoverPoint = null;
+    await _setHoveredMarkerEntryId(null);
+  }
+
+  void _attachWebMouseLeaveListener() {
+    if (!kIsWeb) {
+      return;
+    }
+
+    _detachWebMouseLeaveListener?.call();
+    _detachWebMouseLeaveListener = statistics_map_web_cursor
+        .attachStatisticsMapWebMouseLeaveListener(() {
+          unawaited(_handleWebMouseExit());
+        });
+  }
+
+  void _setWebCanvasCursor(String cursor) {
+    if (!kIsWeb) {
+      return;
+    }
+    statistics_map_web_cursor.setStatisticsMapWebCursor(cursor);
+  }
+
+  Future<void> _setHoveredMarkerEntryId(String? nextHoveredEntryId) async {
+    if (nextHoveredEntryId == _hoveredMarkerEntryId) {
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _hoveredMarkerEntryId = nextHoveredEntryId;
+      });
+    } else {
+      _hoveredMarkerEntryId = nextHoveredEntryId;
+    }
+    _setWebCanvasCursor(nextHoveredEntryId == null ? '' : 'pointer');
+    await _updateHoveredMarkerFilters();
+  }
+
+  Future<int> _resolveTappedMarkerIndex({
+    required maplibre.MapLibreMapController controller,
+    required math.Point<double> point,
+    required String layerId,
+    required String featureId,
+  }) async {
+    final directIndex = widget.markers.indexWhere(
+      (marker) => marker.entry.id == featureId,
+    );
+    if (directIndex != -1) {
+      return directIndex;
+    }
+
+    try {
+      final features = await controller.queryRenderedFeatures(point, <String>[
+        layerId,
+      ], null);
+      for (final feature in features) {
+        if (feature is! Map) {
+          continue;
+        }
+        final properties = feature['properties'];
+        if (properties is! Map) {
+          continue;
+        }
+        final entryId = properties['entryId']?.toString();
+        if (entryId == null || entryId.isEmpty) {
+          continue;
+        }
+        final resolvedIndex = widget.markers.indexWhere(
+          (marker) => marker.entry.id == entryId,
+        );
+        if (resolvedIndex != -1) {
+          return resolvedIndex;
+        }
+      }
+    } catch (_) {
+      // Ignore transient rendered-feature query failures and fall through.
+    }
+
+    return -1;
+  }
+
+  Future<void> _updateHoveredMarkerFilters() async {
+    if (!kIsWeb) {
       return;
     }
 
@@ -229,111 +591,40 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       return;
     }
 
-    final nextZoom = math.min(
-      _currentZoom + _statisticsMapTapResolveZoomStep,
-      _statisticsMapTapResolveMaxZoom,
-    );
-    await controller.animateCamera(
-      maplibre.CameraUpdate.newLatLngZoom(coordinates, nextZoom),
-    );
-  }
-
-  void _scheduleMarkerSync() {
-    if (_isSyncScheduled || !mounted) {
-      return;
-    }
-
-    _isSyncScheduled = true;
-    scheduleMicrotask(() async {
-      _isSyncScheduled = false;
-      await _syncMarkerOffsets();
-    });
-  }
-
-  Future<void> _syncMarkerOffsets() async {
-    final controller = _controller;
-    if (controller == null || !mounted) {
-      return;
-    }
-
+    final filter = _statisticsMapEntryIdFilter(_hoveredMarkerEntryId);
     try {
-      final points = await controller.toScreenLocationBatch(
-        widget.markers.map((marker) => marker.position),
+      await controller.setFilter(
+        _statisticsMapLowZoomMarkerHoverLayerId,
+        filter,
       );
-      if (!mounted) {
-        return;
-      }
-
-      final projectionScale = _projectionScale;
-      final nextOffsets = points
-          .map(
-            (point) => Offset(
-              point.x.toDouble() / projectionScale,
-              point.y.toDouble() / projectionScale,
-            ),
-          )
-          .toList(growable: false);
-      if (_statisticsMapOffsetsEqual(_markerOffsets, nextOffsets)) {
-        return;
-      }
-
-      setState(() {
-        _markerOffsets = nextOffsets;
-      });
+      await controller.setFilter(
+        _statisticsMapDetailMarkerHoverLayerId,
+        filter,
+      );
     } catch (_) {
-      // Ignore transient projection errors during initial style loads.
+      // Ignore transient style resets while hover layers are being recreated.
     }
   }
 
   void _handleCameraMove(maplibre.CameraPosition cameraPosition) {
-    final previousShowsMarkers = _statisticsMapShowsIndividualMarkers(
-      _currentZoom,
-    );
     _currentZoom = cameraPosition.zoom;
-    final nextShowsMarkers = _statisticsMapShowsIndividualMarkers(_currentZoom);
-    if (previousShowsMarkers != nextShowsMarkers && mounted) {
-      setState(() {});
-    }
-    _scheduleMarkerSync();
   }
 
-  void _handleCameraIdle() {
-    _scheduleMarkerSync();
-  }
-
-  Future<void> _handleMarkerTap(
-    int index,
-    _StatisticsMapMarkerData marker,
-    List<Offset> offsets,
-    Map<DrinkCategory, Color> colors,
+  Future<List<Offset>> _projectMarkerOffsets(
+    maplibre.MapLibreMapController controller,
   ) async {
-    final tapResolution = resolveStatisticsMapMarkerTap(
-      offsets: offsets,
-      tappedIndex: index,
-      currentZoom: _currentZoom,
+    final points = await controller.toScreenLocationBatch(
+      widget.markers.map((marker) => marker.position),
     );
-    if (tapResolution == StatisticsMapTapResolution.zoomIn &&
-        runtime_platform.isMapLibrePlatformSupported) {
-      final controller = _controller;
-      if (controller != null) {
-        final overlappingIndexes = statisticsMapOverlappingMarkerIndexes(
-          offsets: offsets,
-          tappedIndex: index,
-        );
-        final group = overlappingIndexes
-            .map((markerIndex) => widget.markers[markerIndex])
-            .toList(growable: false);
-        await _zoomToMarkerGroup(controller, group);
-        return;
-      }
-    }
-
-    if (!mounted) {
-      return;
-    }
-
-    final backgroundColor = colors[marker.entry.category]!;
-    await _showStatisticsMapEntrySheet(context, marker, backgroundColor);
+    final projectionScale = _projectionScale;
+    return points
+        .map(
+          (point) => Offset(
+            point.x.toDouble() / projectionScale,
+            point.y.toDouble() / projectionScale,
+          ),
+        )
+        .toList(growable: false);
   }
 
   Future<void> _zoomToMarkerGroup(
@@ -400,38 +691,14 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     );
   }
 
-  Future<void> _handleOverlayClusterTap(List<int> markerIndexes) async {
-    if (markerIndexes.isEmpty) {
+  Future<void> _openMarkerSheet(_StatisticsMapMarkerData marker) async {
+    if (!mounted) {
       return;
     }
 
-    final controller = _controller;
-    if (controller == null) {
-      return;
-    }
-
-    final markers = markerIndexes
-        .map((index) => widget.markers[index])
-        .toList(growable: false);
-    await _zoomToMarkerGroup(controller, markers);
-  }
-
-  void _scheduleProjectionRetries() {
-    final retryEpoch = ++_projectionRetryEpoch;
-    const retryDelays = <Duration>[
-      Duration(milliseconds: 120),
-      Duration(milliseconds: 320),
-      Duration(milliseconds: 700),
-    ];
-
-    for (final delay in retryDelays) {
-      Future<void>.delayed(delay, () async {
-        if (!mounted || retryEpoch != _projectionRetryEpoch) {
-          return;
-        }
-        await _syncMarkerOffsets();
-      });
-    }
+    final colors = statisticsCategoryColors(Theme.of(context));
+    final backgroundColor = colors[marker.entry.category]!;
+    await _showStatisticsMapEntrySheet(context, marker, backgroundColor);
   }
 
   @override
@@ -441,120 +708,64 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     final theme = Theme.of(context);
     final colors = statisticsCategoryColors(theme);
     final styleString = statisticsMapStyleUrl(theme.brightness);
+    final markerAssetSignature = _statisticsMapMarkerAssetSignature(
+      colors,
+      spriteScale: _nativeMarkerSpriteScale,
+    );
     final useMapLibre = runtime_platform.isMapLibrePlatformSupported;
+
+    final content = Stack(
+      children: <Widget>[
+        Positioned.fill(
+          child: useMapLibre
+              ? maplibre.MapLibreMap(
+                  key: ValueKey<String>(
+                    '${_statisticsMapSignature(widget.markers)}:'
+                    '$styleString:$markerAssetSignature',
+                  ),
+                  initialCameraPosition: _statisticsMapInitialCameraPosition(
+                    widget.markers,
+                  ),
+                  styleString: styleString,
+                  logoEnabled: false,
+                  compassEnabled: false,
+                  rotateGesturesEnabled: false,
+                  tiltGesturesEnabled: false,
+                  gestureRecognizers: _statisticsMapGestureRecognizers,
+                  trackCameraPosition: true,
+                  attributionButtonPosition:
+                      maplibre.AttributionButtonPosition.bottomRight,
+                  onMapCreated: (controller) {
+                    _controller?.onFeatureTapped.remove(_featureTapListener);
+                    _controller?.onFeatureHover.remove(_featureHoverListener);
+                    _controller?.onMapMouseMove.remove(_mapMouseMoveListener);
+                    _controller = controller;
+                    controller.onFeatureTapped.add(_featureTapListener);
+                    controller.onFeatureHover.add(_featureHoverListener);
+                    controller.onMapMouseMove.add(_mapMouseMoveListener);
+                  },
+                  onStyleLoadedCallback: _handleStyleLoaded,
+                  onCameraMove: _handleCameraMove,
+                )
+              : _StatisticsMapFallbackSurface(
+                  markers: widget.markers,
+                  colors: colors,
+                ),
+        ),
+        if (!useMapLibre)
+          Positioned(
+            right: 12,
+            bottom: 12,
+            child: _StatisticsMapAttributionCard(
+              children: _statisticsMapAttributionChildren(theme),
+            ),
+          ),
+      ],
+    );
 
     return ClipRect(
       key: const Key('statistics-map-card'),
-      child: ColoredBox(
-        color: theme.colorScheme.surface,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final showsIndividualMarkers =
-                !useMapLibre ||
-                _statisticsMapShowsIndividualMarkers(_currentZoom);
-            final showsOverlayClusters =
-                useMapLibre && _usesOverlayClusters && !showsIndividualMarkers;
-            final overlayOffsets =
-                _markerOffsets.length == widget.markers.length
-                ? _markerOffsets
-                : _statisticsMapFallbackOffsets(
-                    markers: widget.markers,
-                    size: constraints.biggest,
-                  );
-            final overlayChildren = !useMapLibre
-                ? const <Widget>[]
-                : showsOverlayClusters
-                ? _statisticsMapClusterOverlayWidgets(
-                    markers: widget.markers,
-                    offsets: overlayOffsets,
-                    colors: colors,
-                    onMarkerTap: (index, marker) =>
-                        _handleMarkerTap(index, marker, overlayOffsets, colors),
-                    onClusterTap: _handleOverlayClusterTap,
-                  )
-                : () {
-                    final visibleMarkerIndexes = showsIndividualMarkers
-                        ? List<int>.generate(
-                            widget.markers.length,
-                            (index) => index,
-                          )
-                        : statisticsMapStandaloneMarkerIndexes(
-                            offsets: overlayOffsets,
-                          );
-                    final visibleMarkers = visibleMarkerIndexes
-                        .map((index) => widget.markers[index])
-                        .toList(growable: false);
-                    final visibleOffsets = visibleMarkerIndexes
-                        .map((index) => overlayOffsets[index])
-                        .toList(growable: false);
-                    return visibleOffsets.isNotEmpty
-                        ? _statisticsMapMarkerWidgets(
-                            markers: visibleMarkers,
-                            markerIndexes: visibleMarkerIndexes,
-                            offsets: visibleOffsets,
-                            colors: colors,
-                            onMarkerTap: (index, marker) => _handleMarkerTap(
-                              index,
-                              marker,
-                              overlayOffsets,
-                              colors,
-                            ),
-                          )
-                        : const <Widget>[];
-                  }();
-
-            return Stack(
-              children: <Widget>[
-                Positioned.fill(
-                  child: useMapLibre
-                      ? maplibre.MapLibreMap(
-                          key: ValueKey<String>(
-                            '${_statisticsMapSignature(widget.markers)}:$styleString',
-                          ),
-                          initialCameraPosition:
-                              _statisticsMapInitialCameraPosition(
-                                widget.markers,
-                              ),
-                          styleString: styleString,
-                          logoEnabled: false,
-                          compassEnabled: false,
-                          rotateGesturesEnabled: false,
-                          tiltGesturesEnabled: false,
-                          gestureRecognizers: _statisticsMapGestureRecognizers,
-                          trackCameraPosition: true,
-                          attributionButtonPosition:
-                              maplibre.AttributionButtonPosition.bottomRight,
-                          onMapCreated: (controller) {
-                            _controller?.onFeatureTapped.remove(
-                              _featureTapListener,
-                            );
-                            _controller = controller;
-                            controller.onFeatureTapped.add(_featureTapListener);
-                            _scheduleProjectionRetries();
-                          },
-                          onStyleLoadedCallback: _handleStyleLoaded,
-                          onCameraMove: _handleCameraMove,
-                          onCameraIdle: _handleCameraIdle,
-                        )
-                      : _StatisticsMapFallbackSurface(
-                          markers: widget.markers,
-                          colors: colors,
-                        ),
-                ),
-                ...overlayChildren,
-                if (!useMapLibre)
-                  Positioned(
-                    right: 12,
-                    bottom: 12,
-                    child: _StatisticsMapAttributionCard(
-                      children: _statisticsMapAttributionChildren(theme),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
+      child: ColoredBox(color: theme.colorScheme.surface, child: content),
     );
   }
 }
