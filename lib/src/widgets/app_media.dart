@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../cache/media_cache_store.dart';
+
 final Map<String, double> _appPhotoPreviewAspectRatioCache = <String, double>{};
 
 @visibleForTesting
@@ -927,6 +929,7 @@ class AppMediaResolver {
       <String, _SignedUrlCacheEntry>{};
   static final Map<String, Future<String?>> _signedUrlRequests =
       <String, Future<String?>>{};
+  static Future<MediaCacheStore>? _mediaCacheStoreFuture;
   @visibleForTesting
   static Future<ImageProvider<Object>?> Function(String? imagePath)?
   debugImageProviderResolverOverride;
@@ -962,11 +965,19 @@ class AppMediaResolver {
       return MemoryImage(bytes);
     }
 
-    final signedUrl = await _resolveSignedStorageUrl(normalized);
-    if (signedUrl == null) {
-      return null;
-    }
-    return NetworkImage(signedUrl);
+    return _resolveCanonicalStorageProvider(normalized);
+  }
+
+  static Future<void> warmImagePaths(Iterable<String> imagePaths) async {
+    final warmablePaths = imagePaths
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty && _isCanonicalStoragePath(path))
+        .take(12)
+        .toSet();
+    await Future.wait<void>(
+      warmablePaths.map(_warmCanonicalStoragePath),
+      eagerError: false,
+    );
   }
 
   static Future<String?> _resolveSignedStorageUrl(String path) {
@@ -987,6 +998,35 @@ class AppMediaResolver {
     });
   }
 
+  static Future<ImageProvider<Object>?> _resolveCanonicalStorageProvider(
+    String path,
+  ) async {
+    final cachedBytes = await _readPersistentBytes(path);
+    if (cachedBytes != null) {
+      return MemoryImage(cachedBytes);
+    }
+
+    final signedUrl = await _resolveSignedStorageUrl(path);
+    if (signedUrl == null) {
+      return null;
+    }
+
+    final downloadedBytes = await _downloadAndPersistStorageBytes(
+      path,
+      signedUrl,
+    );
+    if (downloadedBytes != null) {
+      return MemoryImage(downloadedBytes);
+    }
+    return NetworkImage(signedUrl);
+  }
+
+  static Future<void> _warmCanonicalStoragePath(String path) async {
+    try {
+      await _resolveCanonicalStorageProvider(path);
+    } catch (_) {}
+  }
+
   static Future<String?> _createSignedStorageUrl(String path) async {
     final client = _trySupabaseClient();
     if (client == null) {
@@ -1001,6 +1041,36 @@ class AppMediaResolver {
       expiresAt: DateTime.now().add(const Duration(minutes: 50)),
     );
     return url;
+  }
+
+  static Future<Uint8List?> _readPersistentBytes(String path) async {
+    final store = await _mediaCacheStore();
+    return store.read(path);
+  }
+
+  static Future<Uint8List?> _downloadAndPersistStorageBytes(
+    String path,
+    String signedUrl,
+  ) async {
+    try {
+      final bundle = NetworkAssetBundle(Uri.parse(signedUrl));
+      final byteData = await bundle.load(signedUrl);
+      final bytes = byteData.buffer.asUint8List();
+      final store = await _mediaCacheStore();
+      await store.write(
+        path,
+        bytes,
+        scopeUserId: _currentUserScopeId(),
+        contentType: _contentTypeForStoragePath(path),
+      );
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<MediaCacheStore> _mediaCacheStore() {
+    return _mediaCacheStoreFuture ??= MediaCacheStore.create();
   }
 
   static SupabaseClient? _trySupabaseClient() {
@@ -1036,6 +1106,27 @@ class AppMediaResolver {
       return path;
     }
     return Uri.parse(path).toFilePath();
+  }
+
+  static bool _isCanonicalStoragePath(String path) {
+    return !_looksLikeRemoteUrl(path) &&
+        !_looksLikeDataUrl(path) &&
+        !_looksLikeLocalFile(path);
+  }
+
+  static String? _currentUserScopeId() {
+    return _trySupabaseClient()?.auth.currentUser?.id;
+  }
+
+  static String _contentTypeForStoragePath(String path) {
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (lower.endsWith('.webp')) {
+      return 'image/webp';
+    }
+    return 'image/jpeg';
   }
 }
 

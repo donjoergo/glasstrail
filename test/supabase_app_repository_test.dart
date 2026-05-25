@@ -736,7 +736,10 @@ class _ControllableNotificationWatchRepository extends SupabaseAppRepository {
   Future<void> Function()? _publishSnapshot;
 
   @override
-  Future<List<AppNotification>> loadNotifications(String userId) async {
+  Future<List<AppNotification>> loadNotifications(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     loadNotificationsCallCount++;
     return notificationsToReturn;
   }

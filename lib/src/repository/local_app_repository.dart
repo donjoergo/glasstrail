@@ -42,7 +42,7 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
-  Future<AppUser?> restoreSession() async {
+  Future<AppUser?> restoreSession({bool forceRefresh = false}) async {
     final currentUserId = _preferences.getString(_sessionUserIdKey);
     if (currentUserId == null) {
       return null;
@@ -240,7 +240,10 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<FriendConnection>> loadFriendConnections(String userId) async {
+  Future<List<FriendConnection>> loadFriendConnections(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     return _friendConnectionsForUser(userId);
   }
 
@@ -495,7 +498,10 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<AppNotification>> loadNotifications(String userId) async {
+  Future<List<AppNotification>> loadNotifications(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     await _pruneExpiredNotifications();
     return _notificationsForUser(userId);
   }
@@ -559,11 +565,15 @@ class LocalAppRepository implements AppRepository {
   }) async {}
 
   @override
-  Future<List<DrinkDefinition>> loadDefaultCatalog() async =>
-      buildDefaultDrinkCatalog();
+  Future<List<DrinkDefinition>> loadDefaultCatalog({
+    bool forceRefresh = false,
+  }) async => buildDefaultDrinkCatalog();
 
   @override
-  Future<List<DrinkDefinition>> loadCustomDrinks(String userId) async {
+  Future<List<DrinkDefinition>> loadCustomDrinks(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     final map = _readJsonMap(_customDrinksKey);
     final raw = (map[userId] as List?) ?? const <dynamic>[];
     final list = raw
@@ -641,7 +651,10 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<DrinkEntry>> loadEntries(String userId) async {
+  Future<List<DrinkEntry>> loadEntries(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     final map = _readJsonMap(_entriesKey);
     final raw = (map[userId] as List?) ?? const <dynamic>[];
     final entries = raw
@@ -658,6 +671,7 @@ class LocalAppRepository implements AppRepository {
     required String userId,
     FeedDrinkPostCursor? cursor,
     int limit = 20,
+    bool forceRefresh = false,
   }) async {
     final pageLimit = limit.clamp(1, 50).toInt();
     final usersById = <String, AppUser>{
@@ -885,7 +899,10 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
-  Future<UserSettings> loadSettings(String userId) async {
+  Future<UserSettings> loadSettings(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     final map = _readJsonMap(_settingsKey);
     final raw = map[userId];
     if (raw == null) {

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Prompt BeerWithMe import after sign-up
 - Profile account management
+- Startup and media caching for faster signed-in launches
 
 ### Changed
 - Build only arm64 apk to reduce app size from 100mb to \~ 35mb

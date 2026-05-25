@@ -35,7 +35,7 @@ class SupabaseAppRepository implements AppRepository {
   bool get usesRemoteBackend => true;
 
   @override
-  Future<AppUser?> restoreSession() async {
+  Future<AppUser?> restoreSession({bool forceRefresh = false}) async {
     final authUser = _client.auth.currentUser;
     if (authUser == null) {
       return null;
@@ -246,7 +246,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<FriendConnection>> loadFriendConnections(String userId) async {
+  Future<List<FriendConnection>> loadFriendConnections(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client.rpc('load_friend_connections');
       return (rows as List<dynamic>)
@@ -437,7 +440,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<AppNotification>> loadNotifications(String userId) async {
+  Future<List<AppNotification>> loadNotifications(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client.rpc('load_notifications');
       return (rows as List<dynamic>)
@@ -596,7 +602,9 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<DrinkDefinition>> loadDefaultCatalog() async {
+  Future<List<DrinkDefinition>> loadDefaultCatalog({
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client
           .from('global_drinks')
@@ -621,7 +629,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<DrinkDefinition>> loadCustomDrinks(String userId) async {
+  Future<List<DrinkDefinition>> loadCustomDrinks(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client
           .from('user_drinks')
@@ -717,7 +728,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<DrinkEntry>> loadEntries(String userId) async {
+  Future<List<DrinkEntry>> loadEntries(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client
           .from('drink_entries')
@@ -738,6 +752,7 @@ class SupabaseAppRepository implements AppRepository {
     required String userId,
     FeedDrinkPostCursor? cursor,
     int limit = 20,
+    bool forceRefresh = false,
   }) async {
     try {
       final pageLimit = limit.clamp(1, 50).toInt();
@@ -939,7 +954,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<UserSettings> loadSettings(String userId) async {
+  Future<UserSettings> loadSettings(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final row = await _client
           .from('user_settings')

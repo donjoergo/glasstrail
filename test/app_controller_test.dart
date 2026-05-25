@@ -2188,25 +2188,33 @@ class _BootstrapProbeRepository implements AppRepository {
   bool get usesRemoteBackend => false;
 
   @override
-  Future<List<DrinkDefinition>> loadDefaultCatalog() {
+  Future<List<DrinkDefinition>> loadDefaultCatalog({
+    bool forceRefresh = false,
+  }) {
     loadDefaultCatalogCalls++;
     return defaultCatalogCompleter.future;
   }
 
   @override
-  Future<AppUser?> restoreSession() {
+  Future<AppUser?> restoreSession({bool forceRefresh = false}) {
     restoreSessionCalls++;
     return restoreSessionCompleter.future;
   }
 
   @override
-  Future<List<DrinkDefinition>> loadCustomDrinks(String userId) {
+  Future<List<DrinkDefinition>> loadCustomDrinks(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadCustomDrinksCalls++;
     return customDrinksCompleter.future;
   }
 
   @override
-  Future<List<DrinkEntry>> loadEntries(String userId) {
+  Future<List<DrinkEntry>> loadEntries(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadEntriesCalls++;
     return entriesCompleter.future;
   }
@@ -2216,6 +2224,7 @@ class _BootstrapProbeRepository implements AppRepository {
     required String userId,
     FeedDrinkPostCursor? cursor,
     int limit = 20,
+    bool forceRefresh = false,
   }) {
     loadFeedDrinkPostsCalls++;
     final handler = onLoadFeedDrinkPosts;
@@ -2226,13 +2235,19 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
-  Future<UserSettings> loadSettings(String userId) {
+  Future<UserSettings> loadSettings(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadSettingsCalls++;
     return settingsCompleter.future;
   }
 
   @override
-  Future<List<FriendConnection>> loadFriendConnections(String userId) {
+  Future<List<FriendConnection>> loadFriendConnections(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadFriendConnectionsCalls++;
     final handler = onLoadFriendConnections;
     if (handler != null) {
@@ -2242,7 +2257,10 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
-  Future<List<AppNotification>> loadNotifications(String userId) {
+  Future<List<AppNotification>> loadNotifications(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadNotificationsCalls++;
     return notificationsCompleter.future;
   }
