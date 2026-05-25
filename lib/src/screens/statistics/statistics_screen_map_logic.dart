@@ -190,10 +190,6 @@ maplibre.LatLng _statisticsMapLatLngFromOffset(latlong2.LatLng position) {
   return maplibre.LatLng(position.latitude, position.longitude);
 }
 
-bool _statisticsMapShowsIndividualMarkers(double zoom) {
-  return zoom >= _statisticsMapDetailMarkerMinZoom;
-}
-
 @visibleForTesting
 List<int> statisticsMapOverlappingMarkerIndexes({
   required List<Offset> offsets,
@@ -680,19 +676,4 @@ Offset _statisticsMapFallbackOffsetForMarker({
     _statisticsMapFallbackPadding + (availableWidth * normalizedX),
     _statisticsMapFallbackPadding + (availableHeight * normalizedY),
   );
-}
-
-List<Offset> _statisticsMapFallbackOffsets({
-  required List<_StatisticsMapMarkerData> markers,
-  required Size size,
-}) {
-  return markers
-      .map(
-        (marker) => _statisticsMapFallbackOffsetForMarker(
-          marker: marker,
-          markers: markers,
-          size: size,
-        ),
-      )
-      .toList(growable: false);
 }
