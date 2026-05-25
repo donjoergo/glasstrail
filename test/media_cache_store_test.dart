@@ -7,6 +7,15 @@ import 'package:glasstrail/src/cache/media_cache_store.dart';
 import 'support/cache_test_support.dart';
 
 void main() {
+  test('reuses a shared store for the same backend instance', () async {
+    final backend = TestCacheStoreBackend();
+
+    final firstStore = await MediaCacheStore.shared(backend: backend);
+    final secondStore = await MediaCacheStore.shared(backend: backend);
+
+    expect(identical(firstStore, secondStore), isTrue);
+  });
+
   test('persists canonical storage bytes across store restarts', () async {
     final backend = TestCacheStoreBackend();
     final firstStore = await MediaCacheStore.create(backend: backend);

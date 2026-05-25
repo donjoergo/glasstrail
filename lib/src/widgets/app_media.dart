@@ -1070,7 +1070,7 @@ class AppMediaResolver {
   }
 
   static Future<MediaCacheStore> _mediaCacheStore() {
-    return _mediaCacheStoreFuture ??= MediaCacheStore.create();
+    return _mediaCacheStoreFuture ??= MediaCacheStore.shared();
   }
 
   static SupabaseClient? _trySupabaseClient() {

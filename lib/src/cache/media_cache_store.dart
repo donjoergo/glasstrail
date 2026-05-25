@@ -10,6 +10,9 @@ class MediaCacheStore {
   MediaCacheStore._(this._backend);
 
   static const _manifestPath = 'media/manifest.json';
+  static final Object _defaultSharedStoreKey = Object();
+  static final Map<Object, Future<MediaCacheStore>> _sharedStoreFutures =
+      <Object, Future<MediaCacheStore>>{};
 
   final CacheStoreBackend _backend;
   Future<void> _writeQueue = Future<void>.value();
@@ -18,6 +21,16 @@ class MediaCacheStore {
     return MediaCacheStore._(
       backend ?? await createDefaultCacheStoreBackend(namespace: 'glasstrail'),
     );
+  }
+
+  static Future<MediaCacheStore> shared({CacheStoreBackend? backend}) {
+    final key = backend ?? _defaultSharedStoreKey;
+    return _sharedStoreFutures.putIfAbsent(key, () async {
+      return MediaCacheStore._(
+        backend ??
+            await createDefaultCacheStoreBackend(namespace: 'glasstrail'),
+      );
+    });
   }
 
   Future<MediaCacheManifest> _readManifest() async {

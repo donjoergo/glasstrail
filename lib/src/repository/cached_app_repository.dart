@@ -35,6 +35,14 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
        _loadLocalAuthSession = loadLocalAuthSession;
 
   static const _firstFeedPageLimit = 20;
+  static const Set<CacheDomain> _userScopedDomains = <CacheDomain>{
+    CacheDomain.customDrinks,
+    CacheDomain.entries,
+    CacheDomain.firstFeedPage,
+    CacheDomain.settings,
+    CacheDomain.friendConnections,
+    CacheDomain.notifications,
+  };
 
   final AppRepository _delegate;
   final BootstrapCacheStore _cacheStore;
@@ -99,7 +107,10 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
         );
         return null;
       }
-      await _cacheStore.update((state) => _writeCurrentUser(state, user));
+      await _updateCache(
+        (state) => _writeCurrentUser(state, user),
+        userScopeId: user.id,
+      );
       _recordRuntime(
         CacheDomain.currentUser,
         source: CacheReadSource.remote,
@@ -155,7 +166,10 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       birthday: birthday,
       profileImagePath: profileImagePath,
     );
-    await _cacheStore.update((state) => _writeCurrentUser(state, user));
+    await _updateCache(
+      (state) => _writeCurrentUser(state, user),
+      userScopeId: user.id,
+    );
     return user;
   }
 
@@ -165,7 +179,10 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     required String password,
   }) async {
     final user = await _delegate.signIn(email: email, password: password);
-    await _cacheStore.update((state) => _writeCurrentUser(state, user));
+    await _updateCache(
+      (state) => _writeCurrentUser(state, user),
+      userScopeId: user.id,
+    );
     return user;
   }
 
@@ -204,7 +221,10 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
   @override
   Future<AppUser> updateProfile(AppUser user) async {
     final updatedUser = await _delegate.updateProfile(user);
-    await _cacheStore.update((state) => _writeCurrentUser(state, updatedUser));
+    await _updateCache(
+      (state) => _writeCurrentUser(state, updatedUser),
+      userScopeId: updatedUser.id,
+    );
     return updatedUser;
   }
 
@@ -260,8 +280,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       userId: userId,
       shareCode: shareCode,
     );
-    await _cacheStore.update(
+    await _updateCache(
       (state) => _writeFriendConnections(state, userId, connections),
+      userScopeId: userId,
     );
     return connections;
   }
@@ -275,8 +296,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       userId: userId,
       relationshipId: relationshipId,
     );
-    await _cacheStore.update(
+    await _updateCache(
       (state) => _writeFriendConnections(state, userId, connections),
+      userScopeId: userId,
     );
     return connections;
   }
@@ -290,8 +312,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       userId: userId,
       relationshipId: relationshipId,
     );
-    await _cacheStore.update(
+    await _updateCache(
       (state) => _writeFriendConnections(state, userId, connections),
+      userScopeId: userId,
     );
     return connections;
   }
@@ -305,8 +328,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       userId: userId,
       relationshipId: relationshipId,
     );
-    await _cacheStore.update(
+    await _updateCache(
       (state) => _writeFriendConnections(state, userId, connections),
+      userScopeId: userId,
     );
     return connections;
   }
@@ -320,8 +344,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       userId: userId,
       friendUserId: friendUserId,
     );
-    await _cacheStore.update(
+    await _updateCache(
       (state) => _writeFriendConnections(state, userId, connections),
+      userScopeId: userId,
     );
     return connections;
   }
@@ -350,8 +375,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       userId: userId,
       notificationIds: notificationIds,
     );
-    await _cacheStore.update(
+    await _updateCache(
       (state) => _writeNotifications(state, userId, notifications),
+      userScopeId: userId,
     );
     return notifications;
   }
@@ -359,8 +385,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
   @override
   Stream<List<AppNotification>> watchNotifications(String userId) {
     return _delegate.watchNotifications(userId).asyncMap((notifications) async {
-      await _cacheStore.update(
+      await _updateCache(
         (state) => _writeNotifications(state, userId, notifications),
+        userScopeId: userId,
       );
       return notifications;
     });
@@ -437,7 +464,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       isAlcoholFree: isAlcoholFree,
       imagePath: imagePath,
     );
-    await _cacheStore.update((state) {
+    await _updateCache((state) {
       final drinks =
           <DrinkDefinition>[
             drink,
@@ -449,7 +476,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
                 left.name.toLowerCase().compareTo(right.name.toLowerCase()),
           );
       return _writeCustomDrinks(state, userId, drinks);
-    });
+    }, userScopeId: userId);
     return drink;
   }
 
@@ -459,12 +486,12 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     required DrinkDefinition drink,
   }) async {
     await _delegate.deleteCustomDrink(userId: userId, drink: drink);
-    await _cacheStore.update((state) {
+    await _updateCache((state) {
       final drinks = state.snapshot.customDrinks
           .where((candidate) => candidate.id != drink.id)
           .toList(growable: false);
       return _writeCustomDrinks(state, userId, drinks);
-    });
+    }, userScopeId: userId);
   }
 
   @override
@@ -528,7 +555,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       entryId: entryId,
       shouldCheer: shouldCheer,
     );
-    await _cacheStore.update((state) {
+    await _updateCache((state) {
       final page = state.snapshot.firstFeedPage;
       if (page == null) {
         return state;
@@ -553,7 +580,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
           hasMore: page.hasMore,
         ),
       );
-    });
+    }, userScopeId: userId);
     return update;
   }
 
@@ -584,7 +611,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       importSource: importSource,
       importSourceId: importSourceId,
     );
-    await _cacheStore.update((state) {
+    await _updateCache((state) {
       final entries = <DrinkEntry>[
         entry,
         ...state.snapshot.entries.where(
@@ -599,7 +626,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       );
       nextState = _writeFirstFeedPage(nextState, user.id, page);
       return nextState;
-    });
+    }, userScopeId: user.id);
     return entry;
   }
 
@@ -620,7 +647,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       comment: comment,
       imagePath: imagePath,
     );
-    await _cacheStore.update((state) {
+    await _updateCache((state) {
       final entries =
           state.snapshot.entries
               .map(
@@ -651,7 +678,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
         );
       }
       return nextState;
-    });
+    }, userScopeId: user.id);
     return updatedEntry;
   }
 
@@ -661,7 +688,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     required DrinkEntry entry,
   }) async {
     await _delegate.deleteDrinkEntry(userId: userId, entry: entry);
-    await _cacheStore.update((state) {
+    await _updateCache((state) {
       final entries = state.snapshot.entries
           .where((candidate) => candidate.id != entry.id)
           .toList(growable: false);
@@ -682,7 +709,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
         );
       }
       return nextState;
-    });
+    }, userScopeId: userId);
   }
 
   @override
@@ -706,8 +733,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     UserSettings settings,
   ) async {
     final savedSettings = await _delegate.saveSettings(userId, settings);
-    await _cacheStore.update(
+    await _updateCache(
       (state) => _writeSettings(state, userId, savedSettings),
+      userScopeId: userId,
     );
     return savedSettings;
   }
@@ -752,7 +780,10 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
 
     try {
       final value = await remoteLoad();
-      await _cacheStore.update((current) => writeState(current, value));
+      await _updateCache(
+        (current) => writeState(current, value),
+        userScopeId: userScopeId,
+      );
       _recordRuntime(
         domain,
         source: CacheReadSource.remote,
@@ -793,14 +824,55 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     BootstrapCacheState state,
     AppUser user,
   ) {
-    return state.copyWith(
-      snapshot: state.snapshot.copyWith(currentUser: user),
-      manifest: state.manifest.copyWithDomain(
+    final nextState =
+        state.manifest.userId != null && state.manifest.userId != user.id
+        ? _clearUserScopedDomains(state)
+        : state;
+    return nextState.copyWith(
+      snapshot: nextState.snapshot.copyWith(currentUser: user),
+      manifest: nextState.manifest.copyWithDomain(
         CacheDomain.currentUser,
         _manifestEntry(itemCount: 1),
         userId: user.id,
       ),
     );
+  }
+
+  BootstrapCacheState _clearUserScopedDomains(BootstrapCacheState state) {
+    return state.copyWith(
+      snapshot: state.snapshot.copyWith(
+        customDrinks: const <DrinkDefinition>[],
+        entries: const <DrinkEntry>[],
+        clearFirstFeedPage: true,
+        clearSettings: true,
+        friendConnections: const <FriendConnection>[],
+        notifications: const <AppNotification>[],
+      ),
+      manifest: state.manifest.removeDomains(_userScopedDomains),
+    );
+  }
+
+  bool _isLocalSessionActive(String userId) {
+    final loadLocalAuthSession = _loadLocalAuthSession;
+    if (loadLocalAuthSession == null) {
+      return true;
+    }
+    return loadLocalAuthSession.call()?.id == userId;
+  }
+
+  Future<void> _updateCache(
+    BootstrapCacheState Function(BootstrapCacheState state) transform, {
+    String? userScopeId,
+  }) async {
+    if (userScopeId != null && !_isLocalSessionActive(userScopeId)) {
+      return;
+    }
+    await _cacheStore.update((state) {
+      if (userScopeId != null && !_isLocalSessionActive(userScopeId)) {
+        return state;
+      }
+      return transform(state);
+    });
   }
 
   BootstrapCacheState _writeDefaultCatalog(

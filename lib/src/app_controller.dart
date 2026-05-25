@@ -161,6 +161,7 @@ class AppController extends ChangeNotifier {
   String? _registeredPushTokenUserId;
   Future<void>? _bootstrapReconciliationFuture;
   Future<void>? _resumeRevalidationFuture;
+  int _authSessionEpoch = 0;
 
   static Future<AppController> bootstrap({
     BackendConfig? backendConfig,
@@ -562,6 +563,7 @@ class AppController extends ChangeNotifier {
     String? profileImagePath,
   }) async {
     return _guardFor(AppBusyAction.signUp, () async {
+      _markAuthSessionTransition();
       await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signUp(
         email: email,
@@ -583,6 +585,7 @@ class AppController extends ChangeNotifier {
 
   Future<bool> signIn({required String email, required String password}) async {
     return _guardFor(AppBusyAction.signIn, () async {
+      _markAuthSessionTransition();
       await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signIn(email: email, password: password);
       _notificationReadOverrides.clear();
@@ -596,6 +599,7 @@ class AppController extends ChangeNotifier {
 
   Future<bool> signOut() async {
     return _guardFor(AppBusyAction.signOut, () async {
+      _markAuthSessionTransition();
       await _unregisterPushTokenBestEffort();
       _cancelNotificationSubscription();
       await _repository.signOut();
@@ -631,6 +635,7 @@ class AppController extends ChangeNotifier {
       return false;
     }
     return _guardFor(AppBusyAction.deleteAccount, () async {
+      _markAuthSessionTransition();
       await _repository.deleteAccount(user);
       _cancelPushTokenSubscription();
       _cancelNotificationSubscription();
@@ -1299,14 +1304,16 @@ class AppController extends ChangeNotifier {
       return;
     }
 
+    final authSessionEpoch = _authSessionEpoch;
     try {
       final refreshedUser = await _repository.restoreSession(
         forceRefresh: true,
       );
+      if (!_isAuthSessionCurrent(authSessionEpoch)) {
+        return;
+      }
       if (refreshedUser == null) {
-        _currentUser = null;
-        _clearUserScopeState();
-        notifyListeners();
+        await _handleReconciliationSessionLoss(authSessionEpoch);
         return;
       }
       _currentUser = refreshedUser;
@@ -1315,13 +1322,23 @@ class AppController extends ChangeNotifier {
         includeHotResumeDomainsOnly: false,
         forceNotificationsRefresh: true,
       );
+      if (!_isAuthSessionCurrent(authSessionEpoch)) {
+        return;
+      }
       await _refreshDomains(
         user: refreshedUser,
         staleDomains: staleDomains,
         forceRefresh: true,
+        authSessionEpoch: authSessionEpoch,
       );
+      if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
+        return;
+      }
       _subscribeToNotifications();
       await _registerPushTokenBestEffort();
+      if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
+        return;
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -1332,6 +1349,7 @@ class AppController extends ChangeNotifier {
       return;
     }
 
+    final authSessionEpoch = _authSessionEpoch;
     try {
       final staleDomains = await _staleDomains(
         includeHotResumeDomainsOnly: true,
@@ -1339,11 +1357,18 @@ class AppController extends ChangeNotifier {
       if (staleDomains.isEmpty) {
         return;
       }
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
       await _refreshDomains(
         user: user,
         staleDomains: staleDomains,
         forceRefresh: true,
+        authSessionEpoch: authSessionEpoch,
       );
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -1389,11 +1414,19 @@ class AppController extends ChangeNotifier {
     required AppUser user,
     required Set<CacheDomain> staleDomains,
     required bool forceRefresh,
+    required int authSessionEpoch,
   }) async {
     final defaultCatalogFuture =
         staleDomains.contains(CacheDomain.defaultCatalog)
         ? _repository.loadDefaultCatalog(forceRefresh: forceRefresh)
         : null;
+
+    if (defaultCatalogFuture != null) {
+      _defaultCatalog = await defaultCatalogFuture;
+    }
+    if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+      return;
+    }
     final customDrinksFuture = staleDomains.contains(CacheDomain.customDrinks)
         ? _repository.loadCustomDrinks(user.id, forceRefresh: forceRefresh)
         : null;
@@ -1416,32 +1449,47 @@ class AppController extends ChangeNotifier {
     final notificationsFuture = staleDomains.contains(CacheDomain.notifications)
         ? _repository.loadNotifications(user.id, forceRefresh: forceRefresh)
         : null;
-
-    if (defaultCatalogFuture != null) {
-      _defaultCatalog = await defaultCatalogFuture;
-    }
-    if (_currentUser?.id != user.id) {
-      return;
-    }
     if (customDrinksFuture != null) {
-      _customDrinks = await customDrinksFuture;
+      final customDrinks = await customDrinksFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _customDrinks = customDrinks;
     }
     if (entriesFuture != null) {
-      _entries = await entriesFuture;
+      final entries = await entriesFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _entries = entries;
     }
     if (feedPostsFuture != null) {
-      _applyFeedPostPage(await feedPostsFuture);
+      final feedPosts = await feedPostsFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _applyFeedPostPage(feedPosts);
     }
     if (settingsFuture != null) {
-      _settings = await settingsFuture;
+      final settings = await settingsFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _settings = settings;
     }
     if (friendsFuture != null) {
-      _friendConnections = await friendsFuture;
+      final friends = await friendsFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _friendConnections = friends;
     }
     if (notificationsFuture != null) {
-      _notifications = _mergeNotificationReadOverrides(
-        await notificationsFuture,
-      );
+      final notifications = await notificationsFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _notifications = _mergeNotificationReadOverrides(notifications);
     }
   }
 
@@ -1920,6 +1968,30 @@ class AppController extends ChangeNotifier {
     final pushTokenSubscription = _pushTokenSubscription;
     _pushTokenSubscription = null;
     unawaited(pushTokenSubscription?.cancel());
+  }
+
+  void _markAuthSessionTransition() {
+    _authSessionEpoch++;
+  }
+
+  bool _isAuthSessionCurrent(int authSessionEpoch) {
+    return _authSessionEpoch == authSessionEpoch;
+  }
+
+  bool _isCurrentRefreshContext(AppUser user, int authSessionEpoch) {
+    return _isAuthSessionCurrent(authSessionEpoch) &&
+        _currentUser?.id == user.id;
+  }
+
+  Future<void> _handleReconciliationSessionLoss(int authSessionEpoch) async {
+    _cancelNotificationSubscription();
+    await _unregisterPushTokenBestEffort();
+    if (!_isAuthSessionCurrent(authSessionEpoch)) {
+      return;
+    }
+    _currentUser = null;
+    _clearUserScopeState();
+    notifyListeners();
   }
 
   void _clearAuthenticatedState({

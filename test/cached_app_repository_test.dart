@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:glasstrail/src/cache/bootstrap_cache_store.dart';
+import 'package:glasstrail/src/cache/cache_policy.dart';
 import 'package:glasstrail/src/cache/media_cache_store.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/cached_app_repository.dart';
@@ -255,4 +257,152 @@ void main() {
     expect(clearedState.snapshot.entries, isEmpty);
     expect(await mediaStore.read('friend-1/profiles/avatar.jpg'), isNull);
   });
+
+  test(
+    'switching cached users clears old user-scoped snapshot domains',
+    () async {
+      final delegate = await buildProbeLocalRepository();
+      final firstUser = await delegate.signUp(
+        email: 'cache-first-user@example.com',
+        password: 'password123',
+        displayName: 'Cache First User',
+      );
+      final defaultCatalog = await delegate.loadDefaultCatalog(
+        forceRefresh: true,
+      );
+      final cachedCustomDrink = await delegate.saveCustomDrink(
+        userId: firstUser.id,
+        name: 'First User Spritz',
+        category: DrinkCategory.cocktails,
+      );
+      final cachedEntry = await delegate.addDrinkEntry(
+        user: firstUser,
+        drink: defaultCatalog.first,
+        comment: 'First user cached entry',
+      );
+      final cachedFeed = await delegate.loadFeedDrinkPosts(
+        userId: firstUser.id,
+        limit: 20,
+        forceRefresh: true,
+      );
+      final cachedSettings = await delegate.saveSettings(
+        firstUser.id,
+        UserSettings.defaults().copyWith(localeCode: 'de'),
+      );
+
+      final cacheStore = await BootstrapCacheStore.create(
+        backend: TestCacheStoreBackend(),
+      );
+      await seedBootstrapCache(
+        store: cacheStore,
+        currentUser: firstUser,
+        defaultCatalog: defaultCatalog,
+        customDrinks: <DrinkDefinition>[cachedCustomDrink],
+        entries: <DrinkEntry>[cachedEntry],
+        firstFeedPage: cachedFeed,
+        settings: cachedSettings,
+      );
+
+      final secondUser = await delegate.signUp(
+        email: 'cache-second-user@example.com',
+        password: 'password123',
+        displayName: 'Cache Second User',
+      );
+      final repository = CachedAppRepository(
+        delegate: delegate,
+        cacheStore: cacheStore,
+        mediaCacheStore: await MediaCacheStore.create(
+          backend: TestCacheStoreBackend(),
+        ),
+        loadLocalAuthSession: () =>
+            LocalAuthSession(id: secondUser.id, email: secondUser.email),
+      );
+
+      final restoredUser = await repository.restoreSession(forceRefresh: true);
+      final state = await cacheStore.readState();
+
+      expect(restoredUser?.id, secondUser.id);
+      expect(state.manifest.userId, secondUser.id);
+      expect(state.snapshot.currentUser?.id, secondUser.id);
+      expect(state.snapshot.defaultCatalog, isNotEmpty);
+      expect(state.snapshot.customDrinks, isEmpty);
+      expect(state.snapshot.entries, isEmpty);
+      expect(state.snapshot.firstFeedPage, isNull);
+      expect(state.snapshot.settings, isNull);
+      expect(state.snapshot.friendConnections, isEmpty);
+      expect(state.snapshot.notifications, isEmpty);
+      expect(state.manifest.entryFor(CacheDomain.customDrinks), isNull);
+      expect(state.manifest.entryFor(CacheDomain.entries), isNull);
+      expect(state.manifest.entryFor(CacheDomain.firstFeedPage), isNull);
+      expect(state.manifest.entryFor(CacheDomain.settings), isNull);
+      expect(state.manifest.entryFor(CacheDomain.friendConnections), isNull);
+      expect(state.manifest.entryFor(CacheDomain.notifications), isNull);
+    },
+  );
+
+  test(
+    'skips stale user-scoped cache writes after the active user changes',
+    () async {
+      final delegate = await buildProbeLocalRepository();
+      final firstUser = await delegate.signUp(
+        email: 'cache-stale-first@example.com',
+        password: 'password123',
+        displayName: 'Cache Stale First',
+      );
+      final defaultCatalog = await delegate.loadDefaultCatalog(
+        forceRefresh: true,
+      );
+      final firstUserEntry = await delegate.addDrinkEntry(
+        user: firstUser,
+        drink: defaultCatalog.first,
+        comment: 'Stale first user entry',
+      );
+      final secondUser = await delegate.signUp(
+        email: 'cache-stale-second@example.com',
+        password: 'password123',
+        displayName: 'Cache Stale Second',
+      );
+      final cacheStore = await BootstrapCacheStore.create(
+        backend: TestCacheStoreBackend(),
+      );
+      await seedBootstrapCache(
+        store: cacheStore,
+        currentUser: secondUser,
+        defaultCatalog: defaultCatalog,
+      );
+      final loadEntriesBlocker = Completer<void>();
+      delegate.loadEntriesForceBlocker = loadEntriesBlocker;
+      LocalAuthSession? activeSession = LocalAuthSession(
+        id: firstUser.id,
+        email: firstUser.email,
+      );
+      final repository = CachedAppRepository(
+        delegate: delegate,
+        cacheStore: cacheStore,
+        mediaCacheStore: await MediaCacheStore.create(
+          backend: TestCacheStoreBackend(),
+        ),
+        loadLocalAuthSession: () => activeSession,
+      );
+
+      final pendingEntries = repository.loadEntries(
+        firstUser.id,
+        forceRefresh: true,
+      );
+      await Future<void>.delayed(Duration.zero);
+      activeSession = LocalAuthSession(
+        id: secondUser.id,
+        email: secondUser.email,
+      );
+      loadEntriesBlocker.complete();
+
+      final entries = await pendingEntries;
+      final state = await cacheStore.readState();
+
+      expect(entries.single.id, firstUserEntry.id);
+      expect(state.manifest.userId, secondUser.id);
+      expect(state.snapshot.entries, isEmpty);
+      expect(state.manifest.entryFor(CacheDomain.entries)?.itemCount, 0);
+    },
+  );
 }

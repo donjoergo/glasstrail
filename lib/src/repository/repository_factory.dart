@@ -20,7 +20,7 @@ Future<AppRepository> createRepository({BackendConfig? backendConfig}) async {
   );
 
   final cacheStore = await BootstrapCacheStore.create();
-  final mediaCacheStore = await MediaCacheStore.create();
+  final mediaCacheStore = await MediaCacheStore.shared();
   final repository = SupabaseAppRepository(Supabase.instance.client);
   return CachedAppRepository(
     delegate: repository,
