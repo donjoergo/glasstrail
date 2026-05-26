@@ -137,6 +137,86 @@ void main() {
     );
   });
 
+  group('SupabaseAppRepository.restoreSession', () {
+    late _MockSupabaseServer server;
+    late SupabaseClient client;
+    late SupabaseAppRepository repository;
+
+    setUp(() async {
+      server = await _MockSupabaseServer.start();
+      client = SupabaseClient(
+        server.baseUrl,
+        'test-key',
+        headers: const <String, String>{'X-Client-Info': 'glasstrail-test'},
+      );
+      repository = SupabaseAppRepository(client);
+    });
+
+    tearDown(() async {
+      await client.dispose();
+      await server.close();
+    });
+
+    test(
+      'forceRefresh revalidates the current session with Supabase',
+      () async {
+        server.profilesById['user-123'] = <String, dynamic>{
+          'id': 'user-123',
+          'email': 'user@example.com',
+          'display_name': 'Restored User',
+        };
+        await client.auth.signInWithPassword(
+          email: 'user@example.com',
+          password: 'secret',
+        );
+
+        final restored = await repository.restoreSession(forceRefresh: true);
+
+        expect(restored?.id, 'user-123');
+        expect(server.refreshSessionCalls, 1);
+      },
+    );
+
+    test(
+      'returns null when forceRefresh finds an invalid remote session',
+      () async {
+        await client.auth.signInWithPassword(
+          email: 'user@example.com',
+          password: 'secret',
+        );
+        server.failRefreshSession = true;
+
+        final restored = await repository.restoreSession(forceRefresh: true);
+
+        expect(restored, isNull);
+        expect(server.refreshSessionCalls, 1);
+      },
+    );
+
+    test(
+      'still surfaces profile loading failures after a successful auth refresh',
+      () async {
+        await client.auth.signInWithPassword(
+          email: 'user@example.com',
+          password: 'secret',
+        );
+        server.failProfileLookup = true;
+
+        await expectLater(
+          () => repository.restoreSession(forceRefresh: true),
+          throwsA(
+            isA<AppException>().having(
+              (error) => error.message,
+              'message',
+              contains('Profile lookup failed'),
+            ),
+          ),
+        );
+        expect(server.refreshSessionCalls, 1);
+      },
+    );
+  });
+
   group('SupabaseAppRepository.saveCustomDrink', () {
     late _MockSupabaseServer server;
     late SupabaseClient client;
@@ -509,6 +589,10 @@ class _MockSupabaseServer {
   }
 
   final HttpServer _server;
+  final Map<String, Map<String, dynamic>> profilesById =
+      <String, Map<String, dynamic>>{};
+  final Map<String, Map<String, dynamic>> userSettingsByUserId =
+      <String, Map<String, dynamic>>{};
   final Map<String, Map<String, dynamic>> userDrinksById =
       <String, Map<String, dynamic>>{};
   final List<Map<String, dynamic>> globalDrinks = <Map<String, dynamic>>[];
@@ -516,7 +600,9 @@ class _MockSupabaseServer {
       <String, Map<String, dynamic>>{};
   final List<String> deletedPrefixes = <String>[];
   bool failPasswordReauth = false;
+  bool failRefreshSession = false;
   bool failLogout = false;
+  bool failProfileLookup = false;
   final Map<String, dynamic> friendSharedProfileResponse = <String, dynamic>{
     'id': '22222222-2222-4222-8222-222222222222',
     'displayName': 'Shared Friend',
@@ -525,6 +611,7 @@ class _MockSupabaseServer {
     'statistics': null,
   };
   int signInWithPasswordCalls = 0;
+  int refreshSessionCalls = 0;
   int updateUserCalls = 0;
   int logoutCalls = 0;
   int deleteAccountFunctionCalls = 0;
@@ -574,6 +661,33 @@ class _MockSupabaseServer {
       return;
     }
 
+    if (request.method == 'POST' &&
+        path == '/auth/v1/token' &&
+        request.uri.queryParameters['grant_type'] == 'refresh_token') {
+      refreshSessionCalls++;
+      await _readJsonMap(request);
+      if (failRefreshSession) {
+        await _writeAuthError(
+          request.response,
+          HttpStatus.badRequest,
+          'Invalid Refresh Token',
+        );
+        return;
+      }
+      await _writeJson(request.response, <String, dynamic>{
+        'access_token': 'refreshed-token',
+        'refresh_token': 'refreshed-refresh-token',
+        'token_type': 'bearer',
+        'expires_in': 3600,
+        'expires_at': 1_893_456_000,
+        'user': <String, dynamic>{
+          'id': 'user-123',
+          'email': 'user@example.com',
+        },
+      });
+      return;
+    }
+
     if (request.method == 'PUT' && path == '/auth/v1/user') {
       updateUserCalls++;
       lastUpdateUserBody = await _readJsonMap(request);
@@ -595,6 +709,39 @@ class _MockSupabaseServer {
         return;
       }
       await _writeJson(request.response, <String, dynamic>{});
+      return;
+    }
+
+    if (request.method == 'GET' && path == '/rest/v1/profiles') {
+      if (failProfileLookup) {
+        await _writePostgrestError(
+          request.response,
+          HttpStatus.internalServerError,
+          'Profile lookup failed',
+        );
+        return;
+      }
+      final userId = _stripEqPrefix(request.uri.queryParameters['id']);
+      final row = userId == null ? null : profilesById[userId];
+      await _writeJson(
+        request.response,
+        row == null ? <Map<String, dynamic>>[] : <Map<String, dynamic>>[row],
+      );
+      return;
+    }
+
+    if (request.method == 'POST' && path == '/rest/v1/profiles') {
+      final body = await _readJsonMap(request);
+      profilesById[body['id'] as String] = Map<String, dynamic>.from(body);
+      await _writeJson(request.response, body);
+      return;
+    }
+
+    if (request.method == 'POST' && path == '/rest/v1/user_settings') {
+      final body = await _readJsonMap(request);
+      userSettingsByUserId[body['user_id'] as String] =
+          Map<String, dynamic>.from(body);
+      await _writeJson(request.response, body);
       return;
     }
 
@@ -719,6 +866,17 @@ class _MockSupabaseServer {
     await response.close();
   }
 
+  Future<void> _writePostgrestError(
+    HttpResponse response,
+    int statusCode,
+    String message,
+  ) async {
+    response.statusCode = statusCode;
+    response.headers.contentType = ContentType.json;
+    response.write(jsonEncode(<String, dynamic>{'message': message}));
+    await response.close();
+  }
+
   String? _stripEqPrefix(String? value) {
     if (value == null) {
       return null;
@@ -736,7 +894,10 @@ class _ControllableNotificationWatchRepository extends SupabaseAppRepository {
   Future<void> Function()? _publishSnapshot;
 
   @override
-  Future<List<AppNotification>> loadNotifications(String userId) async {
+  Future<List<AppNotification>> loadNotifications(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     loadNotificationsCallCount++;
     return notificationsToReturn;
   }

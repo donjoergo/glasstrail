@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import 'cache/cache_debug_report.dart';
+import 'cache/cache_policy.dart';
 import 'app_routes.dart';
 import 'backend_config.dart';
 import 'beer_with_me_import.dart';
@@ -13,6 +15,7 @@ import 'l10n_extensions.dart';
 import 'models.dart';
 import 'push_notification_service.dart';
 import 'repository/app_repository.dart';
+import 'repository/cached_app_repository.dart';
 import 'repository/repository_factory.dart';
 import 'stats_calculator.dart';
 
@@ -156,6 +159,9 @@ class AppController extends ChangeNotifier {
   StreamSubscription<PushDeviceToken>? _pushTokenSubscription;
   PushDeviceToken? _registeredPushToken;
   String? _registeredPushTokenUserId;
+  Future<void>? _bootstrapReconciliationFuture;
+  Future<void>? _resumeRevalidationFuture;
+  int _authSessionEpoch = 0;
 
   static Future<AppController> bootstrap({
     BackendConfig? backendConfig,
@@ -557,6 +563,7 @@ class AppController extends ChangeNotifier {
     String? profileImagePath,
   }) async {
     return _guardFor(AppBusyAction.signUp, () async {
+      _markAuthSessionTransition();
       await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signUp(
         email: email,
@@ -578,10 +585,11 @@ class AppController extends ChangeNotifier {
 
   Future<bool> signIn({required String email, required String password}) async {
     return _guardFor(AppBusyAction.signIn, () async {
+      _markAuthSessionTransition();
       await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signIn(email: email, password: password);
       _notificationReadOverrides.clear();
-      await _reloadUserScope();
+      await _reloadUserScope(forceRefresh: true);
       _subscribeToNotifications();
       await _registerPushTokenBestEffort();
       _pendingPostSignUpBeerWithMePrompt = false;
@@ -591,10 +599,12 @@ class AppController extends ChangeNotifier {
 
   Future<bool> signOut() async {
     return _guardFor(AppBusyAction.signOut, () async {
+      _markAuthSessionTransition();
       await _unregisterPushTokenBestEffort();
       _cancelNotificationSubscription();
       await _repository.signOut();
       _clearAuthenticatedState();
+      _pendingPostSignUpBeerWithMePrompt = false;
     });
   }
 
@@ -625,6 +635,7 @@ class AppController extends ChangeNotifier {
       return false;
     }
     return _guardFor(AppBusyAction.deleteAccount, () async {
+      _markAuthSessionTransition();
       await _repository.deleteAccount(user);
       _cancelPushTokenSubscription();
       _cancelNotificationSubscription();
@@ -1120,7 +1131,7 @@ class AppController extends ChangeNotifier {
         userId: user.id,
         relationshipId: connection.id,
       );
-      await _reloadInitialFeedPosts(user.id);
+      await _reloadInitialFeedPosts(user.id, forceRefresh: true);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.friendRequestAccepted,
       );
@@ -1169,7 +1180,7 @@ class AppController extends ChangeNotifier {
         userId: user.id,
         friendUserId: connection.profile.id,
       );
-      await _reloadInitialFeedPosts(user.id);
+      await _reloadInitialFeedPosts(user.id, forceRefresh: true);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.friendRemoved,
       );
@@ -1242,7 +1253,7 @@ class AppController extends ChangeNotifier {
 
   Future<bool> refreshData() async {
     return _guard(() async {
-      await _reloadAppData();
+      await _reloadAppData(forceRefresh: true);
       _subscribeToNotifications();
     });
   }
@@ -1265,6 +1276,231 @@ class AppController extends ChangeNotifier {
     return _refreshForNotificationRoute(routeName);
   }
 
+  Future<CacheDebugReport?> loadCacheDebugReport() async {
+    final repository = _repository;
+    if (repository is! CacheAwareAppRepository) {
+      return null;
+    }
+    return (repository as CacheAwareAppRepository).loadCacheDebugReport();
+  }
+
+  Future<void> startBootstrapReconciliation() {
+    return _bootstrapReconciliationFuture ??= _runBootstrapReconciliation()
+        .whenComplete(() {
+          _bootstrapReconciliationFuture = null;
+        });
+  }
+
+  Future<void> revalidateHotDomainsOnResume() {
+    return _resumeRevalidationFuture ??= _runResumeRevalidation().whenComplete(
+      () {
+        _resumeRevalidationFuture = null;
+      },
+    );
+  }
+
+  Future<void> _runBootstrapReconciliation() async {
+    if (!usesRemoteBackend) {
+      return;
+    }
+
+    final authSessionEpoch = _authSessionEpoch;
+    try {
+      final refreshedUser = await _repository.restoreSession(
+        forceRefresh: true,
+      );
+      if (!_isAuthSessionCurrent(authSessionEpoch)) {
+        return;
+      }
+      if (refreshedUser == null) {
+        await _handleReconciliationSessionLoss(authSessionEpoch);
+        return;
+      }
+      final reboundLiveBindings = await _activateReconciledUser(
+        refreshedUser,
+        authSessionEpoch,
+      );
+      if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
+        return;
+      }
+
+      final staleDomains = await _staleDomains(
+        includeHotResumeDomainsOnly: false,
+        forceNotificationsRefresh: true,
+      );
+      if (!_isAuthSessionCurrent(authSessionEpoch)) {
+        return;
+      }
+      await _refreshDomains(
+        user: refreshedUser,
+        staleDomains: staleDomains,
+        forceRefresh: true,
+        authSessionEpoch: authSessionEpoch,
+      );
+      if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
+        return;
+      }
+      if (!reboundLiveBindings) {
+        _subscribeToNotifications();
+        await _registerPushTokenBestEffort();
+        if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
+          return;
+        }
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> _runResumeRevalidation() async {
+    final user = _currentUser;
+    if (user == null || !usesRemoteBackend) {
+      return;
+    }
+
+    final authSessionEpoch = _authSessionEpoch;
+    try {
+      final staleDomains = await _staleDomains(
+        includeHotResumeDomainsOnly: true,
+      );
+      if (staleDomains.isEmpty) {
+        return;
+      }
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      await _refreshDomains(
+        user: user,
+        staleDomains: staleDomains,
+        forceRefresh: true,
+        authSessionEpoch: authSessionEpoch,
+      );
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<Set<CacheDomain>> _staleDomains({
+    required bool includeHotResumeDomainsOnly,
+    bool forceNotificationsRefresh = false,
+  }) async {
+    final report = await loadCacheDebugReport();
+    if (report == null) {
+      final domains = <CacheDomain>{
+        CacheDomain.defaultCatalog,
+        CacheDomain.settings,
+        CacheDomain.customDrinks,
+        CacheDomain.entries,
+        CacheDomain.firstFeedPage,
+        CacheDomain.friendConnections,
+      };
+      if (forceNotificationsRefresh || includeHotResumeDomainsOnly) {
+        domains.add(CacheDomain.notifications);
+      }
+      return domains;
+    }
+
+    final staleDomains = <CacheDomain>{};
+    for (final domain in CacheDomain.values) {
+      if (includeHotResumeDomainsOnly &&
+          !CachePolicy.isHotResumeDomain(domain)) {
+        continue;
+      }
+      final state = report.domain(domain);
+      if (state == null || !state.isFresh) {
+        staleDomains.add(domain);
+      }
+    }
+    if (forceNotificationsRefresh) {
+      staleDomains.add(CacheDomain.notifications);
+    }
+    return staleDomains;
+  }
+
+  Future<void> _refreshDomains({
+    required AppUser user,
+    required Set<CacheDomain> staleDomains,
+    required bool forceRefresh,
+    required int authSessionEpoch,
+  }) async {
+    final defaultCatalogFuture =
+        staleDomains.contains(CacheDomain.defaultCatalog)
+        ? _repository.loadDefaultCatalog(forceRefresh: forceRefresh)
+        : null;
+
+    if (defaultCatalogFuture != null) {
+      _defaultCatalog = await defaultCatalogFuture;
+    }
+    if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+      return;
+    }
+    final customDrinksFuture = staleDomains.contains(CacheDomain.customDrinks)
+        ? _repository.loadCustomDrinks(user.id, forceRefresh: forceRefresh)
+        : null;
+    final entriesFuture = staleDomains.contains(CacheDomain.entries)
+        ? _repository.loadEntries(user.id, forceRefresh: forceRefresh)
+        : null;
+    final feedPostsFuture = staleDomains.contains(CacheDomain.firstFeedPage)
+        ? _repository.loadFeedDrinkPosts(
+            userId: user.id,
+            limit: _feedPageSize,
+            forceRefresh: forceRefresh,
+          )
+        : null;
+    final settingsFuture = staleDomains.contains(CacheDomain.settings)
+        ? _repository.loadSettings(user.id, forceRefresh: forceRefresh)
+        : null;
+    final friendsFuture = staleDomains.contains(CacheDomain.friendConnections)
+        ? _repository.loadFriendConnections(user.id, forceRefresh: forceRefresh)
+        : null;
+    final notificationsFuture = staleDomains.contains(CacheDomain.notifications)
+        ? _repository.loadNotifications(user.id, forceRefresh: forceRefresh)
+        : null;
+    if (customDrinksFuture != null) {
+      final customDrinks = await customDrinksFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _customDrinks = customDrinks;
+    }
+    if (entriesFuture != null) {
+      final entries = await entriesFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _entries = entries;
+    }
+    if (feedPostsFuture != null) {
+      final feedPosts = await feedPostsFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _applyFeedPostPage(feedPosts);
+    }
+    if (settingsFuture != null) {
+      final settings = await settingsFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _settings = settings;
+    }
+    if (friendsFuture != null) {
+      final friends = await friendsFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _friendConnections = friends;
+    }
+    if (notificationsFuture != null) {
+      final notifications = await notificationsFuture;
+      if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
+        return;
+      }
+      _notifications = _mergeNotificationReadOverrides(notifications);
+    }
+  }
+
   Future<bool> loadMoreFeedPosts() async {
     final user = _currentUser;
     if (user == null || !_hasMoreFeedPosts || _isLoadingMoreFeedPosts) {
@@ -1278,6 +1514,7 @@ class AppController extends ChangeNotifier {
         userId: user.id,
         cursor: _feedCursor,
         limit: _feedPageSize,
+        forceRefresh: true,
       );
       if (_currentUser?.id != user.id) {
         return true;
@@ -1355,6 +1592,7 @@ class AppController extends ChangeNotifier {
     try {
       final friendConnections = await _repository.loadFriendConnections(
         user.id,
+        forceRefresh: true,
       );
       if (_currentUser?.id != user.id) {
         return true;
@@ -1378,10 +1616,12 @@ class AppController extends ChangeNotifier {
       late FeedDrinkPostPage feedPostsPage;
       final friendConnectionsFuture = _repository.loadFriendConnections(
         user.id,
+        forceRefresh: true,
       );
       final feedPostsFuture = _repository.loadFeedDrinkPosts(
         userId: user.id,
         limit: _feedPageSize,
+        forceRefresh: true,
       );
       await Future.wait<void>(<Future<void>>[
         friendConnectionsFuture.then((value) => friendConnections = value),
@@ -1450,36 +1690,40 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> _reloadAppData() async {
-    final defaultCatalogFuture = _repository.loadDefaultCatalog();
+  Future<void> _reloadAppData({bool forceRefresh = false}) async {
+    final defaultCatalogFuture = _repository.loadDefaultCatalog(
+      forceRefresh: forceRefresh,
+    );
     final user = _currentUser;
     final customDrinksFuture = user == null
         ? null
-        : _repository.loadCustomDrinks(user.id);
+        : _repository.loadCustomDrinks(user.id, forceRefresh: forceRefresh);
     final entriesFuture = user == null
         ? null
-        : _repository.loadEntries(user.id);
+        : _repository.loadEntries(user.id, forceRefresh: forceRefresh);
     final feedPostsFuture = user == null
         ? null
-        : _repository.loadFeedDrinkPosts(userId: user.id, limit: _feedPageSize);
+        : _repository.loadFeedDrinkPosts(
+            userId: user.id,
+            limit: _feedPageSize,
+            forceRefresh: forceRefresh,
+          );
     final settingsFuture = user == null
         ? null
-        : _repository.loadSettings(user.id);
+        : _repository.loadSettings(user.id, forceRefresh: forceRefresh);
     final friendsFuture = user == null
         ? null
-        : _repository.loadFriendConnections(user.id);
+        : _repository.loadFriendConnections(
+            user.id,
+            forceRefresh: forceRefresh,
+          );
     final notificationsFuture = user == null
         ? null
-        : _repository.loadNotifications(user.id);
+        : _repository.loadNotifications(user.id, forceRefresh: forceRefresh);
 
     _defaultCatalog = await defaultCatalogFuture;
     if (user == null) {
-      _notifications = const <AppNotification>[];
-      _feedPosts = const <FeedDrinkPost>[];
-      _pendingFeedEntryCheers.clear();
-      _feedCursor = null;
-      _hasMoreFeedPosts = false;
-      _notificationReadOverrides.clear();
+      _clearUserScopeState();
       return;
     }
 
@@ -1493,20 +1737,36 @@ class AppController extends ChangeNotifier {
     );
   }
 
-  Future<void> _reloadUserScope() async {
+  Future<void> _reloadUserScope({bool forceRefresh = false}) async {
     final user = _currentUser;
     if (user == null) {
       return;
     }
-    final customDrinksFuture = _repository.loadCustomDrinks(user.id);
-    final entriesFuture = _repository.loadEntries(user.id);
+    final customDrinksFuture = _repository.loadCustomDrinks(
+      user.id,
+      forceRefresh: forceRefresh,
+    );
+    final entriesFuture = _repository.loadEntries(
+      user.id,
+      forceRefresh: forceRefresh,
+    );
     final feedPostsFuture = _repository.loadFeedDrinkPosts(
       userId: user.id,
       limit: _feedPageSize,
+      forceRefresh: forceRefresh,
     );
-    final settingsFuture = _repository.loadSettings(user.id);
-    final friendsFuture = _repository.loadFriendConnections(user.id);
-    final notificationsFuture = _repository.loadNotifications(user.id);
+    final settingsFuture = _repository.loadSettings(
+      user.id,
+      forceRefresh: forceRefresh,
+    );
+    final friendsFuture = _repository.loadFriendConnections(
+      user.id,
+      forceRefresh: forceRefresh,
+    );
+    final notificationsFuture = _repository.loadNotifications(
+      user.id,
+      forceRefresh: forceRefresh,
+    );
 
     _customDrinks = await customDrinksFuture;
     _entries = await entriesFuture;
@@ -1514,6 +1774,36 @@ class AppController extends ChangeNotifier {
     _settings = await settingsFuture;
     _friendConnections = await friendsFuture;
     _notifications = _mergeNotificationReadOverrides(await notificationsFuture);
+  }
+
+  Future<bool> _activateReconciledUser(
+    AppUser refreshedUser,
+    int authSessionEpoch,
+  ) async {
+    final previousUserId = _currentUser?.id;
+    final changedUser = previousUserId != refreshedUser.id;
+    if (changedUser) {
+      _cancelNotificationSubscription();
+      await _unregisterPushTokenBestEffort();
+      if (!_isAuthSessionCurrent(authSessionEpoch)) {
+        return false;
+      }
+      _clearUserScopeState();
+    }
+
+    _currentUser = refreshedUser;
+
+    if (!changedUser) {
+      return false;
+    }
+
+    _subscribeToNotifications();
+    await _registerPushTokenBestEffort();
+    if (!_isCurrentRefreshContext(refreshedUser, authSessionEpoch)) {
+      return false;
+    }
+    notifyListeners();
+    return true;
   }
 
   void _subscribeToNotifications() {
@@ -1548,11 +1838,15 @@ class AppController extends ChangeNotifier {
         .toList(growable: false);
   }
 
-  Future<void> _reloadInitialFeedPosts(String userId) async {
+  Future<void> _reloadInitialFeedPosts(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     _applyFeedPostPage(
       await _repository.loadFeedDrinkPosts(
         userId: userId,
         limit: _feedPageSize,
+        forceRefresh: forceRefresh,
       ),
     );
   }
@@ -1561,6 +1855,19 @@ class AppController extends ChangeNotifier {
     _feedPosts = page.posts;
     _feedCursor = page.cursor;
     _hasMoreFeedPosts = page.hasMore;
+  }
+
+  void _clearUserScopeState() {
+    _settings = UserSettings.defaults();
+    _customDrinks = const <DrinkDefinition>[];
+    _entries = const <DrinkEntry>[];
+    _feedPosts = const <FeedDrinkPost>[];
+    _pendingFeedEntryCheers.clear();
+    _feedCursor = null;
+    _hasMoreFeedPosts = false;
+    _friendConnections = const <FriendConnection>[];
+    _notifications = const <AppNotification>[];
+    _notificationReadOverrides.clear();
   }
 
   void _upsertFeedPost(FeedDrinkPost post) {
@@ -1699,6 +2006,30 @@ class AppController extends ChangeNotifier {
     final pushTokenSubscription = _pushTokenSubscription;
     _pushTokenSubscription = null;
     unawaited(pushTokenSubscription?.cancel());
+  }
+
+  void _markAuthSessionTransition() {
+    _authSessionEpoch++;
+  }
+
+  bool _isAuthSessionCurrent(int authSessionEpoch) {
+    return _authSessionEpoch == authSessionEpoch;
+  }
+
+  bool _isCurrentRefreshContext(AppUser user, int authSessionEpoch) {
+    return _isAuthSessionCurrent(authSessionEpoch) &&
+        _currentUser?.id == user.id;
+  }
+
+  Future<void> _handleReconciliationSessionLoss(int authSessionEpoch) async {
+    _cancelNotificationSubscription();
+    await _unregisterPushTokenBestEffort();
+    if (!_isAuthSessionCurrent(authSessionEpoch)) {
+      return;
+    }
+    _currentUser = null;
+    _clearUserScopeState();
+    notifyListeners();
   }
 
   void _clearAuthenticatedState({

@@ -5,7 +5,7 @@ abstract class AppRepository {
   String get backendLabel;
   bool get usesRemoteBackend;
 
-  Future<AppUser?> restoreSession();
+  Future<AppUser?> restoreSession({bool forceRefresh = false});
 
   Future<AppUser> signUp({
     required String email,
@@ -29,7 +29,10 @@ abstract class AppRepository {
 
   Future<AppUser> updateProfile(AppUser user);
 
-  Future<List<FriendConnection>> loadFriendConnections(String userId);
+  Future<List<FriendConnection>> loadFriendConnections(
+    String userId, {
+    bool forceRefresh = false,
+  });
 
   Future<FriendProfile> getOwnFriendProfile(String userId);
 
@@ -67,7 +70,10 @@ abstract class AppRepository {
     required String friendUserId,
   });
 
-  Future<List<AppNotification>> loadNotifications(String userId);
+  Future<List<AppNotification>> loadNotifications(
+    String userId, {
+    bool forceRefresh = false,
+  });
 
   Future<List<AppNotification>> markNotificationsRead({
     required String userId,
@@ -87,9 +93,12 @@ abstract class AppRepository {
     required String token,
   });
 
-  Future<List<DrinkDefinition>> loadDefaultCatalog();
+  Future<List<DrinkDefinition>> loadDefaultCatalog({bool forceRefresh = false});
 
-  Future<List<DrinkDefinition>> loadCustomDrinks(String userId);
+  Future<List<DrinkDefinition>> loadCustomDrinks(
+    String userId, {
+    bool forceRefresh = false,
+  });
 
   Future<DrinkDefinition> saveCustomDrink({
     required String userId,
@@ -106,12 +115,16 @@ abstract class AppRepository {
     required DrinkDefinition drink,
   });
 
-  Future<List<DrinkEntry>> loadEntries(String userId);
+  Future<List<DrinkEntry>> loadEntries(
+    String userId, {
+    bool forceRefresh = false,
+  });
 
   Future<FeedDrinkPostPage> loadFeedDrinkPosts({
     required String userId,
     FeedDrinkPostCursor? cursor,
     int limit = 20,
+    bool forceRefresh = false,
   });
 
   Future<FeedEntryCheersUpdate> setFeedEntryCheers({
@@ -147,7 +160,7 @@ abstract class AppRepository {
     required DrinkEntry entry,
   });
 
-  Future<UserSettings> loadSettings(String userId);
+  Future<UserSettings> loadSettings(String userId, {bool forceRefresh = false});
 
   Future<UserSettings> saveSettings(String userId, UserSettings settings);
 }
