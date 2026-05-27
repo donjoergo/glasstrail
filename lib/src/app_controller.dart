@@ -496,12 +496,8 @@ class AppController extends ChangeNotifier {
     String fallbackName,
     String localeCode,
   ) {
-    for (final drink in allDrinks) {
-      if (drink.id == drinkId) {
-        return drink.displayName(localeCode);
-      }
-    }
-    return fallbackName;
+    return drinkDefinitionForId(drinkId)?.displayName(localeCode) ??
+        fallbackName;
   }
 
   String localizedEntryDrinkName(DrinkEntry entry, {String? localeCode}) {
@@ -512,17 +508,24 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  DrinkDefinition? drinkDefinitionForId(String drinkId) {
+    final normalized = drinkId.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    for (final drink in allDrinks) {
+      if (drink.id == normalized) {
+        return drink;
+      }
+    }
+    return null;
+  }
+
   double? resolveUpdatedDrinkEntryVolume({
     required DrinkEntry entry,
     required DrinkDefinition replacementDrink,
   }) {
-    DrinkDefinition? originalDrink;
-    for (final drink in allDrinks) {
-      if (drink.id == entry.drinkId) {
-        originalDrink = drink;
-        break;
-      }
-    }
+    final originalDrink = drinkDefinitionForId(entry.drinkId);
     if (originalDrink == null) {
       return entry.volumeMl;
     }
@@ -681,6 +684,7 @@ class AppController extends ChangeNotifier {
     required DrinkCategory category,
     double? volumeMl,
     bool isAlcoholFree = false,
+    String? accentColorHex,
     String? imagePath,
   }) async {
     final user = _currentUser;
@@ -699,6 +703,7 @@ class AppController extends ChangeNotifier {
           DrinkCategory.beer => isAlcoholFree,
           _ => false,
         },
+        accentColorHex: accentColorHex,
         imagePath: imagePath,
       );
 

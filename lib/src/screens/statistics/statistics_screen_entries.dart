@@ -115,6 +115,7 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final drinkDefinition = controller.drinkDefinitionForId(entry.drinkId);
     final locationAddress = _normalizedLocationAddress(entry.locationAddress);
     final metadataLabel = <String>[
       DateFormat.yMMMd(controller.settings.localeCode).format(entry.consumedAt),
@@ -129,7 +130,14 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          Icon(entry.category.icon, color: theme.colorScheme.primary),
+          AppDrinkIcon(
+            key: Key('statistics-history-entry-icon-${entry.id}'),
+            drinkId: entry.drinkId,
+            category: entry.category,
+            accentColorHex: drinkDefinition?.accentColorHex,
+            imagePath: drinkDefinition?.imagePath,
+            size: 24,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

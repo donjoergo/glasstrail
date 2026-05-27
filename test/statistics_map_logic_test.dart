@@ -8,11 +8,12 @@ DrinkEntry _entry({
   required DrinkCategory category,
   required double latitude,
   required double longitude,
+  String? drinkId,
 }) {
   return DrinkEntry(
     id: id,
     userId: 'user-1',
-    drinkId: 'drink-$id',
+    drinkId: drinkId ?? 'drink-$id',
     drinkName: 'Drink $id',
     category: category,
     consumedAt: DateTime.utc(2026, 1, 1),
@@ -136,6 +137,45 @@ void main() {
     expect(properties['category'], DrinkCategory.cocktails.storageValue);
     expect(properties['markerImageId'], isA<String>());
     expect((properties['markerImageId']! as String), isNotEmpty);
+  });
+
+  test('marker asset signatures change when a custom drink accent changes', () {
+    final entry = _entry(
+      id: 'custom-1',
+      drinkId: 'custom-drink-1',
+      category: DrinkCategory.cocktails,
+      latitude: 48.1372,
+      longitude: 11.5756,
+    );
+
+    final pinkSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[entry],
+      drinks: const <DrinkDefinition>[
+        DrinkDefinition(
+          id: 'custom-drink-1',
+          name: 'Sunset Spritz',
+          category: DrinkCategory.cocktails,
+          accentColorHex: '#EC4899',
+          ownerUserId: 'user-1',
+        ),
+      ],
+    );
+    final tealSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[entry],
+      drinks: const <DrinkDefinition>[
+        DrinkDefinition(
+          id: 'custom-drink-1',
+          name: 'Sunset Spritz',
+          category: DrinkCategory.cocktails,
+          accentColorHex: '#14B8A6',
+          ownerUserId: 'user-1',
+        ),
+      ],
+    );
+
+    expect(pinkSignature, isNot(tealSignature));
   });
 
   test('overlapping marker indexes handle invalid tap index', () {

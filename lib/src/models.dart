@@ -827,6 +827,7 @@ class DrinkDefinition {
     this.localizedNameDe,
     this.volumeMl,
     this.isAlcoholFree = false,
+    this.accentColorHex,
     this.imagePath,
     this.ownerUserId,
   });
@@ -837,6 +838,7 @@ class DrinkDefinition {
   final String? localizedNameDe;
   final double? volumeMl;
   final bool isAlcoholFree;
+  final String? accentColorHex;
   final String? imagePath;
   final String? ownerUserId;
 
@@ -864,6 +866,7 @@ class DrinkDefinition {
       'localizedNameDe': localizedNameDe,
       'volumeMl': volumeMl,
       'isAlcoholFree': isAlcoholFree,
+      'accentColorHex': accentColorHex,
       'imagePath': imagePath,
       'ownerUserId': ownerUserId,
     };
@@ -879,6 +882,9 @@ class DrinkDefinition {
           (json['localized_name_de'] as String?),
       volumeMl: (json['volumeMl'] as num?)?.toDouble(),
       isAlcoholFree: _readBool(json, 'isAlcoholFree', 'is_alcohol_free'),
+      accentColorHex: _normalizeAccentColorHex(
+        _readString(json, 'accentColorHex', 'accent_color_hex'),
+      ),
       imagePath: json['imagePath'] as String?,
       ownerUserId: json['ownerUserId'] as String?,
     );
@@ -1311,6 +1317,18 @@ double? _readDouble(
 bool _readBool(Map<String, dynamic> json, String primary, [String? fallback]) {
   final value = json[primary] ?? (fallback == null ? null : json[fallback]);
   return value == true;
+}
+
+String? _normalizeAccentColorHex(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return null;
+  }
+  final match = RegExp(r'^#?([0-9a-fA-F]{6})$').firstMatch(trimmed);
+  if (match == null) {
+    return null;
+  }
+  return '#${match.group(1)!.toUpperCase()}';
 }
 
 List<String> _readStringList(

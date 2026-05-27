@@ -453,6 +453,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     required DrinkCategory category,
     double? volumeMl,
     bool isAlcoholFree = false,
+    String? accentColorHex,
     String? imagePath,
   }) async {
     final drink = await _delegate.saveCustomDrink(
@@ -462,6 +463,7 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       category: category,
       volumeMl: volumeMl,
       isAlcoholFree: isAlcoholFree,
+      accentColorHex: accentColorHex,
       imagePath: imagePath,
     );
     await _updateCache((state) {

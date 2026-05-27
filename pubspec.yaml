@@ -58,6 +58,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/app_icon.png
+    - assets/drink_icons/
     - google_fonts/Manrope-Regular.ttf
   fonts:
     - family: ProfileEmoji

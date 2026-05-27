@@ -103,6 +103,11 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   List<DrinkEntry> get _entries =>
       widget.markers.map((marker) => marker.entry).toList(growable: false);
 
+  Map<String, DrinkDefinition> get _drinkDefinitionsById =>
+      _statisticsMapDrinkDefinitionsById(
+        AppScope.controllerOf(context).allDrinks,
+      );
+
   @override
   void initState() {
     super.initState();
@@ -147,16 +152,17 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     }
 
     final theme = Theme.of(context);
-    final colors = statisticsCategoryColors(theme);
     final markerAssetSignature = _statisticsMapMarkerAssetSignature(
-      colors,
+      widget.markers,
+      theme,
+      drinkDefinitionsById: _drinkDefinitionsById,
       spriteScale: _nativeMarkerSpriteScale,
     );
 
     await _configureNativeLayers(
       controller,
       theme: theme,
-      colors: colors,
+      drinkDefinitionsById: _drinkDefinitionsById,
       markerAssetSignature: markerAssetSignature,
     );
     _attachWebMouseLeaveListener();
@@ -167,7 +173,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   Future<void> _configureNativeLayers(
     maplibre.MapLibreMapController controller, {
     required ThemeData theme,
-    required Map<DrinkCategory, Color> colors,
+    required Map<String, DrinkDefinition> drinkDefinitionsById,
     required String markerAssetSignature,
   }) async {
     final clusterColor = theme.brightness == Brightness.dark
@@ -206,7 +212,9 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
 
     await _configureStatisticsMapMarkerImages(
       controller,
-      colors: colors,
+      theme: theme,
+      entries: _entries,
+      drinkDefinitionsById: drinkDefinitionsById,
       markerAssetSignature: markerAssetSignature,
       spriteScale: _nativeMarkerSpriteScale,
     );
@@ -217,6 +225,8 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         data: statisticsMapClusteredSourceGeoJsonForEntries(
           entries: _entries,
           markerAssetSignature: markerAssetSignature,
+          theme: theme,
+          drinkDefinitionsById: drinkDefinitionsById,
         ),
         cluster: true,
         clusterRadius: _statisticsMapClusterRadius,
@@ -229,6 +239,8 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         data: statisticsMapDetailSourceGeoJsonForEntries(
           entries: _entries,
           markerAssetSignature: markerAssetSignature,
+          theme: theme,
+          drinkDefinitionsById: drinkDefinitionsById,
         ),
       ),
     );
@@ -696,8 +708,11 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       return;
     }
 
-    final colors = statisticsCategoryColors(Theme.of(context));
-    final backgroundColor = colors[marker.entry.category]!;
+    final backgroundColor = _statisticsMapResolvedDrinkIconVisual(
+      theme: Theme.of(context),
+      entry: marker.entry,
+      drinkDefinitionsById: _drinkDefinitionsById,
+    ).backgroundColor;
     await _showStatisticsMapEntrySheet(context, marker, backgroundColor);
   }
 
@@ -706,10 +721,11 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     maplibre_web_registration.ensureMapLibreWebRegistered();
 
     final theme = Theme.of(context);
-    final colors = statisticsCategoryColors(theme);
     final styleString = statisticsMapStyleUrl(theme.brightness);
     final markerAssetSignature = _statisticsMapMarkerAssetSignature(
-      colors,
+      widget.markers,
+      theme,
+      drinkDefinitionsById: _drinkDefinitionsById,
       spriteScale: _nativeMarkerSpriteScale,
     );
     final useMapLibre = runtime_platform.isMapLibrePlatformSupported;
@@ -749,7 +765,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
                 )
               : _StatisticsMapFallbackSurface(
                   markers: widget.markers,
-                  colors: colors,
+                  drinkDefinitionsById: _drinkDefinitionsById,
                 ),
         ),
         if (!useMapLibre)

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../drink_icon_assets.dart';
 import '../friend_stats_profile.dart';
 import '../models.dart';
 import '../stats_calculator.dart';
@@ -594,6 +595,7 @@ class LocalAppRepository implements AppRepository {
     required DrinkCategory category,
     double? volumeMl,
     bool isAlcoholFree = false,
+    String? accentColorHex,
     String? imagePath,
   }) async {
     final map = _readJsonMap(_customDrinksKey);
@@ -618,6 +620,7 @@ class LocalAppRepository implements AppRepository {
       category: category,
       volumeMl: volumeMl,
       isAlcoholFree: _customDrinkAlcoholFreeValue(category, isAlcoholFree),
+      accentColorHex: normalizeDrinkAccentColorHex(accentColorHex),
       imagePath: imagePath,
       ownerUserId: userId,
     );
