@@ -83,6 +83,9 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   late final maplibre.OnFeatureInteractionCallback _featureTapListener;
   late final maplibre.OnFeatureHoverCallback _featureHoverListener;
   late final maplibre.OnMapMouseMoveCallback _mapMouseMoveListener;
+  Map<String, DrinkDefinition> _drinkDefinitionsById =
+      const <String, DrinkDefinition>{};
+  String _markerAssetSignature = '';
 
   double get _nativeMarkerIconSize => 1;
 
@@ -102,11 +105,6 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
 
   List<DrinkEntry> get _entries =>
       widget.markers.map((marker) => marker.entry).toList(growable: false);
-
-  Map<String, DrinkDefinition> get _drinkDefinitionsById =>
-      _statisticsMapDrinkDefinitionsById(
-        AppScope.controllerOf(context).allDrinks,
-      );
 
   @override
   void initState() {
@@ -129,7 +127,25 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
           )) {
         _hoveredMarkerEntryId = null;
       }
+      _updateMarkerAssetCache();
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateMarkerAssetCache();
+  }
+
+  void _updateMarkerAssetCache() {
+    final allDrinks = AppScope.controllerOf(context).allDrinks;
+    _drinkDefinitionsById = _statisticsMapDrinkDefinitionsById(allDrinks);
+    _markerAssetSignature = _statisticsMapMarkerAssetSignature(
+      widget.markers,
+      Theme.of(context),
+      drinkDefinitionsById: _drinkDefinitionsById,
+      spriteScale: _nativeMarkerSpriteScale,
+    );
   }
 
   @override
@@ -152,18 +168,12 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     }
 
     final theme = Theme.of(context);
-    final markerAssetSignature = _statisticsMapMarkerAssetSignature(
-      widget.markers,
-      theme,
-      drinkDefinitionsById: _drinkDefinitionsById,
-      spriteScale: _nativeMarkerSpriteScale,
-    );
 
     await _configureNativeLayers(
       controller,
       theme: theme,
       drinkDefinitionsById: _drinkDefinitionsById,
-      markerAssetSignature: markerAssetSignature,
+      markerAssetSignature: _markerAssetSignature,
     );
     _attachWebMouseLeaveListener();
     _setWebCanvasCursor('');
@@ -722,12 +732,6 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
 
     final theme = Theme.of(context);
     final styleString = statisticsMapStyleUrl(theme.brightness);
-    final markerAssetSignature = _statisticsMapMarkerAssetSignature(
-      widget.markers,
-      theme,
-      drinkDefinitionsById: _drinkDefinitionsById,
-      spriteScale: _nativeMarkerSpriteScale,
-    );
     final useMapLibre = runtime_platform.isMapLibrePlatformSupported;
 
     final content = Stack(
@@ -737,7 +741,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
               ? maplibre.MapLibreMap(
                   key: ValueKey<String>(
                     '${_statisticsMapSignature(widget.markers)}:'
-                    '$styleString:$markerAssetSignature',
+                    '$styleString:$_markerAssetSignature',
                   ),
                   initialCameraPosition: _statisticsMapInitialCameraPosition(
                     widget.markers,

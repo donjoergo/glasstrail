@@ -178,6 +178,39 @@ void main() {
     expect(pinkSignature, isNot(tealSignature));
   });
 
+  test('marker asset signatures only depend on the unique sprite set', () {
+    final firstEntry = _entry(
+      id: 'beer-1',
+      drinkId: 'beer-pils',
+      category: DrinkCategory.beer,
+      latitude: 48.1372,
+      longitude: 11.5756,
+    );
+    final secondEntry = _entry(
+      id: 'beer-2',
+      drinkId: 'beer-pils',
+      category: DrinkCategory.beer,
+      latitude: 52.5200,
+      longitude: 13.4050,
+    );
+
+    final singleSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[firstEntry],
+    );
+    final duplicateSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[firstEntry, secondEntry],
+    );
+    final reversedSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[secondEntry, firstEntry],
+    );
+
+    expect(duplicateSignature, singleSignature);
+    expect(reversedSignature, singleSignature);
+  });
+
   test('overlapping marker indexes handle invalid tap index', () {
     final indexes = statisticsMapOverlappingMarkerIndexes(
       offsets: const <Offset>[Offset(0, 0), Offset(10, 0)],

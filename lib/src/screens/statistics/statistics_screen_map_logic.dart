@@ -51,6 +51,10 @@ const double _statisticsMapFallbackMarkerIconCanvasSize = 32;
 const double _statisticsMapFallbackMarkerAssetScale = 0.82;
 const double _statisticsMapMarkerHoverIconScale = 1.1;
 const latlong2.Distance _statisticsMapDistance = latlong2.Distance();
+final Map<String, Future<ui.Image>> _statisticsMapAssetImageCache =
+    <String, Future<ui.Image>>{};
+final Map<String, Future<Uint8List>> _statisticsMapMarkerSpriteCache =
+    <String, Future<Uint8List>>{};
 
 final Set<Factory<OneSequenceGestureRecognizer>>
 _statisticsMapGestureRecognizers = <Factory<OneSequenceGestureRecognizer>>{
@@ -357,18 +361,15 @@ String _statisticsMapMarkerAssetSignature(
   required Map<String, DrinkDefinition> drinkDefinitionsById,
   double spriteScale = 1,
 }) {
-  return markers
-      .map((marker) {
-        return <Object>[
-          _statisticsMapMarkerSpriteKeyForEntry(
-            marker.entry,
-            theme: theme,
-            drinkDefinitionsById: drinkDefinitionsById,
-          ),
-          spriteScale.toStringAsFixed(2),
-        ].join(':');
-      })
-      .join('|');
+  final spriteKeys = <String>{
+    for (final marker in markers)
+      _statisticsMapMarkerSpriteKeyForEntry(
+        marker.entry,
+        theme: theme,
+        drinkDefinitionsById: drinkDefinitionsById,
+      ),
+  }.toList(growable: false)..sort();
+  return '${spriteScale.toStringAsFixed(2)}:${spriteKeys.join('|')}';
 }
 
 String _statisticsMapMarkerSpriteKeyForEntry(
@@ -621,75 +622,84 @@ Future<Uint8List> _statisticsMapMarkerSpriteBytes({
   required ResolvedDrinkIconVisual visual,
   double spriteScale = 1,
 }) async {
-  const size = _statisticsMapNativeMarkerSpriteSize;
-  const innerCircleRadius = _statisticsMapNativeMarkerInnerCircleSize / 2;
-  const innerCircleTop = 6.0;
-  const innerIconTop = 6.0;
+  final cacheKey = <Object>[
+    visual.builtInAssetPath ?? entry.category.storageValue,
+    entry.category.icon.codePoint,
+    _statisticsMapHexColor(visual.backgroundColor),
+    _statisticsMapHexColor(visual.foregroundColor),
+    spriteScale.toStringAsFixed(2),
+  ].join(':');
+  return _statisticsMapMarkerSpriteCache.putIfAbsent(cacheKey, () async {
+    const size = _statisticsMapNativeMarkerSpriteSize;
+    const innerCircleRadius = _statisticsMapNativeMarkerInnerCircleSize / 2;
+    const innerCircleTop = 6.0;
+    const innerIconTop = 6.0;
 
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
-  if (spriteScale != 1) {
-    canvas.scale(spriteScale, spriteScale);
-  }
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    if (spriteScale != 1) {
+      canvas.scale(spriteScale, spriteScale);
+    }
 
-  _statisticsMapPaintIconGlyph(
-    canvas,
-    icon: Icons.location_on_rounded,
-    color: visual.backgroundColor,
-    size: size,
-    top: 0,
-    width: size,
-  );
-
-  canvas.drawCircle(
-    const Offset(size / 2, innerCircleTop + innerCircleRadius),
-    innerCircleRadius,
-    Paint()..color = visual.backgroundColor,
-  );
-
-  final assetPath = visual.builtInAssetPath;
-  if (assetPath != null) {
-    final drinkImage = await _statisticsMapLoadAssetImage(
-      assetPath,
-      targetLogicalSize: _statisticsMapNativeMarkerInnerIconSize,
-      spriteScale: spriteScale,
-    );
-    canvas.drawImageRect(
-      drinkImage,
-      Rect.fromLTWH(
-        0,
-        0,
-        drinkImage.width.toDouble(),
-        drinkImage.height.toDouble(),
-      ),
-      Rect.fromLTWH(
-        (size - _statisticsMapNativeMarkerInnerIconSize) / 2,
-        innerIconTop,
-        _statisticsMapNativeMarkerInnerIconSize,
-        _statisticsMapNativeMarkerInnerIconSize,
-      ),
-      Paint(),
-    );
-  } else {
     _statisticsMapPaintIconGlyph(
       canvas,
-      icon: entry.category.icon,
-      color: visual.foregroundColor,
-      size: _statisticsMapNativeMarkerInnerIconSize,
-      top: innerIconTop,
+      icon: Icons.location_on_rounded,
+      color: visual.backgroundColor,
+      size: size,
+      top: 0,
       width: size,
     );
-  }
 
-  final image = await recorder.endRecording().toImage(
-    (size * spriteScale).ceil(),
-    (size * spriteScale).ceil(),
-  );
-  final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-  if (byteData == null) {
-    throw StateError('Could not encode statistics map marker sprite.');
-  }
-  return byteData.buffer.asUint8List();
+    canvas.drawCircle(
+      const Offset(size / 2, innerCircleTop + innerCircleRadius),
+      innerCircleRadius,
+      Paint()..color = visual.backgroundColor,
+    );
+
+    final assetPath = visual.builtInAssetPath;
+    if (assetPath != null) {
+      final drinkImage = await _statisticsMapLoadAssetImage(
+        assetPath,
+        targetLogicalSize: _statisticsMapNativeMarkerInnerIconSize,
+        spriteScale: spriteScale,
+      );
+      canvas.drawImageRect(
+        drinkImage,
+        Rect.fromLTWH(
+          0,
+          0,
+          drinkImage.width.toDouble(),
+          drinkImage.height.toDouble(),
+        ),
+        Rect.fromLTWH(
+          (size - _statisticsMapNativeMarkerInnerIconSize) / 2,
+          innerIconTop,
+          _statisticsMapNativeMarkerInnerIconSize,
+          _statisticsMapNativeMarkerInnerIconSize,
+        ),
+        Paint(),
+      );
+    } else {
+      _statisticsMapPaintIconGlyph(
+        canvas,
+        icon: entry.category.icon,
+        color: visual.foregroundColor,
+        size: _statisticsMapNativeMarkerInnerIconSize,
+        top: innerIconTop,
+        width: size,
+      );
+    }
+
+    final image = await recorder.endRecording().toImage(
+      (size * spriteScale).ceil(),
+      (size * spriteScale).ceil(),
+    );
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      throw StateError('Could not encode statistics map marker sprite.');
+    }
+    return byteData.buffer.asUint8List();
+  });
 }
 
 Future<ui.Image> _statisticsMapLoadAssetImage(
@@ -697,14 +707,19 @@ Future<ui.Image> _statisticsMapLoadAssetImage(
   required double targetLogicalSize,
   double spriteScale = 1,
 }) async {
-  final byteData = await rootBundle.load(assetPath);
-  final codec = await ui.instantiateImageCodec(
-    byteData.buffer.asUint8List(),
-    targetWidth: (targetLogicalSize * spriteScale).ceil(),
-    targetHeight: (targetLogicalSize * spriteScale).ceil(),
-  );
-  final frame = await codec.getNextFrame();
-  return frame.image;
+  final targetWidth = (targetLogicalSize * spriteScale).ceil();
+  final targetHeight = (targetLogicalSize * spriteScale).ceil();
+  final cacheKey = '$assetPath:$targetWidth:$targetHeight';
+  return _statisticsMapAssetImageCache.putIfAbsent(cacheKey, () async {
+    final byteData = await rootBundle.load(assetPath);
+    final codec = await ui.instantiateImageCodec(
+      byteData.buffer.asUint8List(),
+      targetWidth: targetWidth,
+      targetHeight: targetHeight,
+    );
+    final frame = await codec.getNextFrame();
+    return frame.image;
+  });
 }
 
 void _statisticsMapPaintIconGlyph(
