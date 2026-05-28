@@ -211,6 +211,46 @@ void main() {
     expect(reversedSignature, singleSignature);
   });
 
+  test('drink visual signatures change when custom drink visuals change', () {
+    const baseDrink = DrinkDefinition(
+      id: 'custom-drink-1',
+      name: 'Sunset Spritz',
+      category: DrinkCategory.cocktails,
+      accentColorHex: '#EC4899',
+      imagePath: '/tmp/custom-drink.png',
+      ownerUserId: 'user-1',
+    );
+
+    final baseSignature = statisticsMapDrinkVisualSignatureForDrinks(
+      const <DrinkDefinition>[baseDrink],
+    );
+    final accentSignature =
+        statisticsMapDrinkVisualSignatureForDrinks(const <DrinkDefinition>[
+          DrinkDefinition(
+            id: 'custom-drink-1',
+            name: 'Sunset Spritz',
+            category: DrinkCategory.cocktails,
+            accentColorHex: '#14B8A6',
+            imagePath: '/tmp/custom-drink.png',
+            ownerUserId: 'user-1',
+          ),
+        ]);
+    final imageSignature =
+        statisticsMapDrinkVisualSignatureForDrinks(const <DrinkDefinition>[
+          DrinkDefinition(
+            id: 'custom-drink-1',
+            name: 'Sunset Spritz',
+            category: DrinkCategory.cocktails,
+            accentColorHex: '#EC4899',
+            imagePath: '/tmp/updated.png',
+            ownerUserId: 'user-1',
+          ),
+        ]);
+
+    expect(accentSignature, isNot(baseSignature));
+    expect(imageSignature, isNot(baseSignature));
+  });
+
   test('overlapping marker indexes handle invalid tap index', () {
     final indexes = statisticsMapOverlappingMarkerIndexes(
       offsets: const <Offset>[Offset(0, 0), Offset(10, 0)],

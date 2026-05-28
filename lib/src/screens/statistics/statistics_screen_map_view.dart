@@ -86,6 +86,10 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   Map<String, DrinkDefinition> _drinkDefinitionsById =
       const <String, DrinkDefinition>{};
   String _markerAssetSignature = '';
+  String? _cachedMarkerSignature;
+  String? _cachedDrinkVisualSignature;
+  String? _cachedThemeIconSignature;
+  double? _cachedSpriteScale;
 
   double get _nativeMarkerIconSize => 1;
 
@@ -127,25 +131,41 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
           )) {
         _hoveredMarkerEntryId = null;
       }
-      _updateMarkerAssetCache();
     }
+    _updateMarkerAssetCacheIfNeeded();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _updateMarkerAssetCache();
+    _updateMarkerAssetCacheIfNeeded();
   }
 
-  void _updateMarkerAssetCache() {
+  void _updateMarkerAssetCacheIfNeeded() {
     final allDrinks = AppScope.controllerOf(context).allDrinks;
+    final markerSignature = _statisticsMapSignature(widget.markers);
+    final drinkVisualSignature = _statisticsMapDrinkVisualSignature(allDrinks);
+    final theme = Theme.of(context);
+    final themeIconSignature = _statisticsMapThemeIconSignature(theme);
+    final spriteScale = _nativeMarkerSpriteScale;
+    if (_cachedMarkerSignature == markerSignature &&
+        _cachedDrinkVisualSignature == drinkVisualSignature &&
+        _cachedThemeIconSignature == themeIconSignature &&
+        _cachedSpriteScale == spriteScale) {
+      return;
+    }
+
     _drinkDefinitionsById = _statisticsMapDrinkDefinitionsById(allDrinks);
     _markerAssetSignature = _statisticsMapMarkerAssetSignature(
       widget.markers,
-      Theme.of(context),
+      theme,
       drinkDefinitionsById: _drinkDefinitionsById,
-      spriteScale: _nativeMarkerSpriteScale,
+      spriteScale: spriteScale,
     );
+    _cachedMarkerSignature = markerSignature;
+    _cachedDrinkVisualSignature = drinkVisualSignature;
+    _cachedThemeIconSignature = themeIconSignature;
+    _cachedSpriteScale = spriteScale;
   }
 
   @override
@@ -729,6 +749,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   @override
   Widget build(BuildContext context) {
     maplibre_web_registration.ensureMapLibreWebRegistered();
+    _updateMarkerAssetCacheIfNeeded();
 
     final theme = Theme.of(context);
     final styleString = statisticsMapStyleUrl(theme.brightness);

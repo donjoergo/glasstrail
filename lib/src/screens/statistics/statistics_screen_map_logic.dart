@@ -96,6 +96,22 @@ Map<String, DrinkDefinition> _statisticsMapDrinkDefinitionsById(
   return <String, DrinkDefinition>{for (final drink in drinks) drink.id: drink};
 }
 
+String _statisticsMapDrinkVisualSignature(Iterable<DrinkDefinition> drinks) {
+  final drinkSignatures =
+      drinks
+          .map((drink) {
+            return <Object?>[
+              drink.id,
+              drink.category.storageValue,
+              normalizeDrinkAccentColorHex(drink.accentColorHex),
+              drink.imagePath,
+            ].join(':');
+          })
+          .toList(growable: false)
+        ..sort();
+  return drinkSignatures.join('|');
+}
+
 DrinkDefinition? _statisticsMapDrinkDefinitionForEntry(
   DrinkEntry entry, {
   required Map<String, DrinkDefinition> drinkDefinitionsById,
@@ -372,6 +388,16 @@ String _statisticsMapMarkerAssetSignature(
   return '${spriteScale.toStringAsFixed(2)}:${spriteKeys.join('|')}';
 }
 
+String _statisticsMapThemeIconSignature(ThemeData theme) {
+  final colors = drinkCategoryAccentColors(theme);
+  return DrinkCategory.values
+      .map((category) {
+        final color = colors[category]!;
+        return '${category.storageValue}:${_statisticsMapHexColor(color)}';
+      })
+      .join('|');
+}
+
 String _statisticsMapMarkerSpriteKeyForEntry(
   DrinkEntry entry, {
   required ThemeData theme,
@@ -495,6 +521,13 @@ String statisticsMapMarkerAssetSignatureForEntries({
     drinkDefinitionsById: _statisticsMapDrinkDefinitionsById(drinks),
     spriteScale: spriteScale,
   );
+}
+
+@visibleForTesting
+String statisticsMapDrinkVisualSignatureForDrinks(
+  Iterable<DrinkDefinition> drinks,
+) {
+  return _statisticsMapDrinkVisualSignature(drinks);
 }
 
 String _statisticsMapHexColor(Color color) {
