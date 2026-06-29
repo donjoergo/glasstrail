@@ -13,15 +13,15 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
 <table>
   <tr>
     <td align="center"><strong>Feed</strong><br><img src="docs/screenshots/feed.jpg" alt="Feed" width="180"></td>
-    <td align="center"><strong>Stats Cards</strong><br><img src="docs/screenshots/statistics_cards.jpg" alt="Statistics cards" width="180"></td>
-    <td align="center"><strong>Drinks by Category</strong><br><img src="docs/screenshots/statistics_piechart.jpg" alt="Statistics pie chart" width="180"></td>
-    <td align="center"><strong>See Drink Locations</strong><br><img src="docs/screenshots/map.jpg" alt="Statistics map" width="180"></td>
+    <td align="center"><strong>Statistics</strong><br><img src="docs/screenshots/statistics_cards.jpg" alt="Statistics cards" width="180"></td>
+    <td align="center"><strong>Pie Chart</strong><br><img src="docs/screenshots/statistics_piechart.jpg" alt="Pie chart" width="180"></td>
+    <td align="center"><strong>Drink Locations</strong><br><img src="docs/screenshots/map.jpg" alt="Drink locations" width="180"></td>
   </tr>
   <tr>
-    <td align="center"><strong>View Drink Gallery</strong><br><img src="docs/screenshots/gallery.jpg" alt="Photo gallery" width="180"></td>
-    <td align="center"><strong>Configure the Bar</strong><br><img src="docs/screenshots/bar_global_drinks.jpg" alt="Global drinks" width="180"></td>
-    <td align="center"><strong>Configure Own Drinks</strong><br><img src="docs/screenshots/bar_own%20drinks.jpg" alt="Own drinks" width="180"></td>
-    <td align="center"><strong>Notifications from your Friends</strong><br><img src="docs/screenshots/notifications.png" alt="Notifications" width="180"></td>
+    <td align="center"><strong>Drink Gallery</strong><br><img src="docs/screenshots/gallery.jpg" alt="Drink gallery" width="180"></td>
+    <td align="center"><strong>Global Drinks</strong><br><img src="docs/screenshots/bar_global_drinks.jpg" alt="Global drinks" width="180"></td>
+    <td align="center"><strong>Custom Drinks</strong><br><img src="docs/screenshots/bar_own%20drinks.jpg" alt="Own drinks" width="180"></td>
+    <td align="center"><strong>Notifications</strong><br><img src="docs/screenshots/notifications.png" alt="Notifications" width="180"></td>
   </tr>
 </table>
 
