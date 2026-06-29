@@ -83,6 +83,13 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   late final maplibre.OnFeatureInteractionCallback _featureTapListener;
   late final maplibre.OnFeatureHoverCallback _featureHoverListener;
   late final maplibre.OnMapMouseMoveCallback _mapMouseMoveListener;
+  Map<String, DrinkDefinition> _drinkDefinitionsById =
+      const <String, DrinkDefinition>{};
+  String _markerAssetSignature = '';
+  String? _cachedMarkerSignature;
+  String? _cachedDrinkVisualSignature;
+  String? _cachedThemeIconSignature;
+  double? _cachedSpriteScale;
 
   double get _nativeMarkerIconSize => 1;
 
@@ -125,6 +132,40 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         _hoveredMarkerEntryId = null;
       }
     }
+    _updateMarkerAssetCacheIfNeeded();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateMarkerAssetCacheIfNeeded();
+  }
+
+  void _updateMarkerAssetCacheIfNeeded() {
+    final allDrinks = AppScope.controllerOf(context).allDrinks;
+    final markerSignature = _statisticsMapSignature(widget.markers);
+    final drinkVisualSignature = _statisticsMapDrinkVisualSignature(allDrinks);
+    final theme = Theme.of(context);
+    final themeIconSignature = _statisticsMapThemeIconSignature(theme);
+    final spriteScale = _nativeMarkerSpriteScale;
+    if (_cachedMarkerSignature == markerSignature &&
+        _cachedDrinkVisualSignature == drinkVisualSignature &&
+        _cachedThemeIconSignature == themeIconSignature &&
+        _cachedSpriteScale == spriteScale) {
+      return;
+    }
+
+    _drinkDefinitionsById = _statisticsMapDrinkDefinitionsById(allDrinks);
+    _markerAssetSignature = _statisticsMapMarkerAssetSignature(
+      widget.markers,
+      theme,
+      drinkDefinitionsById: _drinkDefinitionsById,
+      spriteScale: spriteScale,
+    );
+    _cachedMarkerSignature = markerSignature;
+    _cachedDrinkVisualSignature = drinkVisualSignature;
+    _cachedThemeIconSignature = themeIconSignature;
+    _cachedSpriteScale = spriteScale;
   }
 
   @override
@@ -147,17 +188,12 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     }
 
     final theme = Theme.of(context);
-    final colors = statisticsCategoryColors(theme);
-    final markerAssetSignature = _statisticsMapMarkerAssetSignature(
-      colors,
-      spriteScale: _nativeMarkerSpriteScale,
-    );
 
     await _configureNativeLayers(
       controller,
       theme: theme,
-      colors: colors,
-      markerAssetSignature: markerAssetSignature,
+      drinkDefinitionsById: _drinkDefinitionsById,
+      markerAssetSignature: _markerAssetSignature,
     );
     _attachWebMouseLeaveListener();
     _setWebCanvasCursor('');
@@ -167,7 +203,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   Future<void> _configureNativeLayers(
     maplibre.MapLibreMapController controller, {
     required ThemeData theme,
-    required Map<DrinkCategory, Color> colors,
+    required Map<String, DrinkDefinition> drinkDefinitionsById,
     required String markerAssetSignature,
   }) async {
     final clusterColor = theme.brightness == Brightness.dark
@@ -206,7 +242,9 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
 
     await _configureStatisticsMapMarkerImages(
       controller,
-      colors: colors,
+      theme: theme,
+      entries: _entries,
+      drinkDefinitionsById: drinkDefinitionsById,
       markerAssetSignature: markerAssetSignature,
       spriteScale: _nativeMarkerSpriteScale,
     );
@@ -217,6 +255,8 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         data: statisticsMapClusteredSourceGeoJsonForEntries(
           entries: _entries,
           markerAssetSignature: markerAssetSignature,
+          theme: theme,
+          drinkDefinitionsById: drinkDefinitionsById,
         ),
         cluster: true,
         clusterRadius: _statisticsMapClusterRadius,
@@ -229,6 +269,8 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         data: statisticsMapDetailSourceGeoJsonForEntries(
           entries: _entries,
           markerAssetSignature: markerAssetSignature,
+          theme: theme,
+          drinkDefinitionsById: drinkDefinitionsById,
         ),
       ),
     );
@@ -696,22 +738,21 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       return;
     }
 
-    final colors = statisticsCategoryColors(Theme.of(context));
-    final backgroundColor = colors[marker.entry.category]!;
+    final backgroundColor = _statisticsMapResolvedDrinkIconVisual(
+      theme: Theme.of(context),
+      entry: marker.entry,
+      drinkDefinitionsById: _drinkDefinitionsById,
+    ).backgroundColor;
     await _showStatisticsMapEntrySheet(context, marker, backgroundColor);
   }
 
   @override
   Widget build(BuildContext context) {
     maplibre_web_registration.ensureMapLibreWebRegistered();
+    _updateMarkerAssetCacheIfNeeded();
 
     final theme = Theme.of(context);
-    final colors = statisticsCategoryColors(theme);
     final styleString = statisticsMapStyleUrl(theme.brightness);
-    final markerAssetSignature = _statisticsMapMarkerAssetSignature(
-      colors,
-      spriteScale: _nativeMarkerSpriteScale,
-    );
     final useMapLibre = runtime_platform.isMapLibrePlatformSupported;
 
     final content = Stack(
@@ -721,7 +762,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
               ? maplibre.MapLibreMap(
                   key: ValueKey<String>(
                     '${_statisticsMapSignature(widget.markers)}:'
-                    '$styleString:$markerAssetSignature',
+                    '$styleString:$_markerAssetSignature',
                   ),
                   initialCameraPosition: _statisticsMapInitialCameraPosition(
                     widget.markers,
@@ -749,7 +790,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
                 )
               : _StatisticsMapFallbackSurface(
                   markers: widget.markers,
-                  colors: colors,
+                  drinkDefinitionsById: _drinkDefinitionsById,
                 ),
         ),
         if (!useMapLibre)

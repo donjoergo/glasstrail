@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../birthday.dart';
+import '../drink_icon_assets.dart';
 import '../friend_stats_profile.dart';
 import '../models.dart';
 import '../time_zone_provider.dart';
@@ -662,10 +663,14 @@ class SupabaseAppRepository implements AppRepository {
     required DrinkCategory category,
     double? volumeMl,
     bool isAlcoholFree = false,
+    String? accentColorHex,
     String? imagePath,
   }) async {
     try {
       final id = drinkId ?? _uuid.v4();
+      final normalizedAccentColorHex = normalizeDrinkAccentColorHex(
+        accentColorHex,
+      );
       final previousImagePath = await _loadCustomDrinkImagePath(
         userId: userId,
         drinkId: drinkId,
@@ -688,6 +693,7 @@ class SupabaseAppRepository implements AppRepository {
               category,
               isAlcoholFree,
             ),
+            'accent_color_hex': normalizedAccentColorHex,
             'image_path': finalImagePath,
           }, onConflict: 'id')
           .select()
@@ -1163,6 +1169,9 @@ class SupabaseAppRepository implements AppRepository {
       category: DrinkCategoryX.fromStorage(row['category_slug'] as String),
       volumeMl: (row['volume_ml'] as num?)?.toDouble(),
       isAlcoholFree: row['is_alcohol_free'] == true,
+      accentColorHex: normalizeDrinkAccentColorHex(
+        row['accent_color_hex'] as String?,
+      ),
       imagePath: row['image_path'] as String?,
       ownerUserId: row['user_id'] as String?,
     );

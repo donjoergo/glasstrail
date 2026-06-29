@@ -6,8 +6,11 @@ import '../app_controller.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
+import '../widgets/app_drink_icon.dart';
 import '../widgets/app_empty_state_card.dart';
 import 'custom_drink_dialog.dart';
+
+const double _barListDrinkIconSize = 32;
 
 class BarScreen extends StatefulWidget {
   const BarScreen({
@@ -326,14 +329,13 @@ class _BarCustomDrinksTab extends StatelessWidget {
                   (drink) => ListTile(
                     key: Key('bar-custom-drink-${drink.id}'),
                     contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withValues(
-                        alpha: 0.12,
-                      ),
-                      child: Icon(
-                        drink.category.icon,
-                        color: theme.colorScheme.primary,
-                      ),
+                    leading: AppDrinkIcon(
+                      key: Key('bar-custom-drink-icon-${drink.id}'),
+                      drinkId: drink.id,
+                      category: drink.category,
+                      accentColorHex: drink.accentColorHex,
+                      imagePath: drink.imagePath,
+                      size: _barListDrinkIconSize,
                     ),
                     title: Text(drink.name),
                     subtitle: Text(l10n.drinkDefinitionMetadata(drink, unit)),
@@ -470,9 +472,13 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
                   return ListTile(
                     key: itemKey,
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      drink.category.icon,
-                      color: theme.colorScheme.primary,
+                    leading: AppDrinkIcon(
+                      key: Key('bar-visible-drink-icon-${drink.id}'),
+                      drinkId: drink.id,
+                      category: drink.category,
+                      accentColorHex: drink.accentColorHex,
+                      imagePath: drink.imagePath,
+                      size: _barListDrinkIconSize,
                     ),
                     title: Text(drink.displayName(l10n.locale.languageCode)),
                     subtitle: Text(l10n.drinkDefinitionMetadata(drink, unit)),
@@ -527,9 +533,13 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
                         (drink) => ListTile(
                           key: Key('bar-hidden-global-drink-${drink.id}'),
                           contentPadding: EdgeInsets.zero,
-                          leading: Icon(
-                            Icons.visibility_off_rounded,
-                            color: theme.colorScheme.onSurfaceVariant,
+                          leading: AppDrinkIcon(
+                            key: Key('bar-hidden-drink-icon-${drink.id}'),
+                            drinkId: drink.id,
+                            category: drink.category,
+                            accentColorHex: drink.accentColorHex,
+                            imagePath: drink.imagePath,
+                            size: _barListDrinkIconSize,
                           ),
                           title: Text(
                             drink.displayName(l10n.locale.languageCode),

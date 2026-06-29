@@ -16,6 +16,7 @@ import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../stats_calculator.dart';
+import '../widgets/app_drink_icon.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 import '../widgets/drink_picker_catalog.dart';
@@ -635,6 +636,7 @@ class _DrinkEntryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
+    final drinkDefinition = controller.drinkDefinitionForId(entry.drinkId);
     final cheersPending = controller.isFeedEntryCheersPending(entry.id);
     final cheersEnabled = !post.isOwnEntry && !cheersPending;
     final timeLabel = DateFormat.yMMMd(
@@ -699,10 +701,13 @@ class _DrinkEntryCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Row(
                             children: <Widget>[
-                              Icon(
-                                entry.category.icon,
+                              AppDrinkIcon(
+                                key: Key('feed-entry-drink-icon-${entry.id}'),
+                                drinkId: entry.drinkId,
+                                category: entry.category,
+                                accentColorHex: drinkDefinition?.accentColorHex,
+                                imagePath: drinkDefinition?.imagePath,
                                 size: 16,
-                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(width: 4),
                               Expanded(

@@ -8,11 +8,12 @@ DrinkEntry _entry({
   required DrinkCategory category,
   required double latitude,
   required double longitude,
+  String? drinkId,
 }) {
   return DrinkEntry(
     id: id,
     userId: 'user-1',
-    drinkId: 'drink-$id',
+    drinkId: drinkId ?? 'drink-$id',
     drinkName: 'Drink $id',
     category: category,
     consumedAt: DateTime.utc(2026, 1, 1),
@@ -136,6 +137,118 @@ void main() {
     expect(properties['category'], DrinkCategory.cocktails.storageValue);
     expect(properties['markerImageId'], isA<String>());
     expect((properties['markerImageId']! as String), isNotEmpty);
+  });
+
+  test('marker asset signatures change when a custom drink accent changes', () {
+    final entry = _entry(
+      id: 'custom-1',
+      drinkId: 'custom-drink-1',
+      category: DrinkCategory.cocktails,
+      latitude: 48.1372,
+      longitude: 11.5756,
+    );
+
+    final pinkSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[entry],
+      drinks: const <DrinkDefinition>[
+        DrinkDefinition(
+          id: 'custom-drink-1',
+          name: 'Sunset Spritz',
+          category: DrinkCategory.cocktails,
+          accentColorHex: '#EC4899',
+          ownerUserId: 'user-1',
+        ),
+      ],
+    );
+    final tealSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[entry],
+      drinks: const <DrinkDefinition>[
+        DrinkDefinition(
+          id: 'custom-drink-1',
+          name: 'Sunset Spritz',
+          category: DrinkCategory.cocktails,
+          accentColorHex: '#14B8A6',
+          ownerUserId: 'user-1',
+        ),
+      ],
+    );
+
+    expect(pinkSignature, isNot(tealSignature));
+  });
+
+  test('marker asset signatures only depend on the unique sprite set', () {
+    final firstEntry = _entry(
+      id: 'beer-1',
+      drinkId: 'beer-pils',
+      category: DrinkCategory.beer,
+      latitude: 48.1372,
+      longitude: 11.5756,
+    );
+    final secondEntry = _entry(
+      id: 'beer-2',
+      drinkId: 'beer-pils',
+      category: DrinkCategory.beer,
+      latitude: 52.5200,
+      longitude: 13.4050,
+    );
+
+    final singleSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[firstEntry],
+    );
+    final duplicateSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[firstEntry, secondEntry],
+    );
+    final reversedSignature = statisticsMapMarkerAssetSignatureForEntries(
+      theme: ThemeData.light(),
+      entries: <DrinkEntry>[secondEntry, firstEntry],
+    );
+
+    expect(duplicateSignature, singleSignature);
+    expect(reversedSignature, singleSignature);
+  });
+
+  test('drink visual signatures change when custom drink visuals change', () {
+    const baseDrink = DrinkDefinition(
+      id: 'custom-drink-1',
+      name: 'Sunset Spritz',
+      category: DrinkCategory.cocktails,
+      accentColorHex: '#EC4899',
+      imagePath: '/tmp/custom-drink.png',
+      ownerUserId: 'user-1',
+    );
+
+    final baseSignature = statisticsMapDrinkVisualSignatureForDrinks(
+      const <DrinkDefinition>[baseDrink],
+    );
+    final accentSignature =
+        statisticsMapDrinkVisualSignatureForDrinks(const <DrinkDefinition>[
+          DrinkDefinition(
+            id: 'custom-drink-1',
+            name: 'Sunset Spritz',
+            category: DrinkCategory.cocktails,
+            accentColorHex: '#14B8A6',
+            imagePath: '/tmp/custom-drink.png',
+            ownerUserId: 'user-1',
+          ),
+        ]);
+    final imageSignature =
+        statisticsMapDrinkVisualSignatureForDrinks(const <DrinkDefinition>[
+          DrinkDefinition(
+            id: 'custom-drink-1',
+            name: 'Sunset Spritz',
+            category: DrinkCategory.cocktails,
+            accentColorHex: '#EC4899',
+            imagePath: '/tmp/updated.png',
+            ownerUserId: 'user-1',
+          ),
+        ]);
+
+    expect(accentSignature, isNot(baseSignature));
+    expect(imageSignature, isNot(baseSignature));
   });
 
   test('overlapping marker indexes handle invalid tap index', () {

@@ -9,8 +9,7 @@ String? _normalizedStatisticsText(String? value) {
 }
 
 Color _statisticsMapMarkerForegroundColor(Color backgroundColor) {
-  final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
-  return brightness == Brightness.dark ? Colors.white : Colors.black87;
+  return drinkIconForegroundColor(backgroundColor);
 }
 
 Future<void> _showStatisticsMapEntrySheet(
@@ -32,7 +31,8 @@ List<Widget> _statisticsMapMarkerWidgets({
   required List<_StatisticsMapMarkerData> markers,
   required List<int> markerIndexes,
   required List<Offset> offsets,
-  required Map<DrinkCategory, Color> colors,
+  required ThemeData theme,
+  required Map<String, DrinkDefinition> drinkDefinitionsById,
   required Future<void> Function(int index, _StatisticsMapMarkerData marker)
   onMarkerTap,
 }) {
@@ -40,7 +40,15 @@ List<Widget> _statisticsMapMarkerWidgets({
       .map((markerEntry) {
         final index = markerIndexes[markerEntry.$1];
         final marker = markerEntry.$2;
-        final backgroundColor = colors[marker.entry.category]!;
+        final backgroundColor = _statisticsMapResolvedDrinkIconVisual(
+          theme: theme,
+          entry: marker.entry,
+          drinkDefinitionsById: drinkDefinitionsById,
+        ).backgroundColor;
+        final drinkDefinition = _statisticsMapDrinkDefinitionForEntry(
+          marker.entry,
+          drinkDefinitionsById: drinkDefinitionsById,
+        );
         final offset = offsets[markerEntry.$1];
 
         return Positioned(
@@ -53,10 +61,8 @@ List<Widget> _statisticsMapMarkerWidgets({
             child: Center(
               child: _StatisticsMapMarker(
                 entry: marker.entry,
+                drinkDefinition: drinkDefinition,
                 backgroundColor: backgroundColor,
-                foregroundColor: _statisticsMapMarkerForegroundColor(
-                  backgroundColor,
-                ),
                 onTap: () => onMarkerTap(index, marker),
               ),
             ),
@@ -109,11 +115,11 @@ List<Widget> _statisticsMapAttributionChildren(ThemeData theme) {
 class _StatisticsMapFallbackSurface extends StatelessWidget {
   const _StatisticsMapFallbackSurface({
     required this.markers,
-    required this.colors,
+    required this.drinkDefinitionsById,
   });
 
   final List<_StatisticsMapMarkerData> markers;
-  final Map<DrinkCategory, Color> colors;
+  final Map<String, DrinkDefinition> drinkDefinitionsById;
 
   @override
   Widget build(BuildContext context) {
@@ -158,9 +164,14 @@ class _StatisticsMapFallbackSurface extends StatelessWidget {
                   (index) => index,
                 ),
                 offsets: offsets,
-                colors: colors,
+                theme: theme,
+                drinkDefinitionsById: drinkDefinitionsById,
                 onMarkerTap: (index, marker) async {
-                  final backgroundColor = colors[marker.entry.category]!;
+                  final backgroundColor = _statisticsMapResolvedDrinkIconVisual(
+                    theme: theme,
+                    entry: marker.entry,
+                    drinkDefinitionsById: drinkDefinitionsById,
+                  ).backgroundColor;
                   await _showStatisticsMapEntrySheet(
                     context,
                     marker,
@@ -261,14 +272,14 @@ class _StatisticsMapAttributionCard extends StatelessWidget {
 class _StatisticsMapMarker extends StatelessWidget {
   const _StatisticsMapMarker({
     required this.entry,
+    required this.drinkDefinition,
     required this.backgroundColor,
-    required this.foregroundColor,
     required this.onTap,
   });
 
   final DrinkEntry entry;
+  final DrinkDefinition? drinkDefinition;
   final Color backgroundColor;
-  final Color foregroundColor;
   final VoidCallback onTap;
 
   @override
@@ -292,21 +303,16 @@ class _StatisticsMapMarker extends StatelessWidget {
               ),
               Positioned(
                 top: 6,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: backgroundColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const SizedBox(width: 18, height: 18),
-                ),
-              ),
-              Positioned(
-                top: 12,
-                child: Icon(
-                  entry.category.icon,
+                child: AppDrinkIcon(
                   key: Key('statistics-map-marker-icon-${entry.id}'),
-                  color: foregroundColor,
-                  size: 18,
+                  drinkId: entry.drinkId,
+                  category: entry.category,
+                  accentColorHex: drinkDefinition?.accentColorHex,
+                  imagePath: drinkDefinition?.imagePath,
+                  preferPhoto: false,
+                  size: _statisticsMapFallbackMarkerIconCanvasSize,
+                  iconSize: 20,
+                  assetScale: _statisticsMapFallbackMarkerAssetScale,
                 ),
               ),
             ],
@@ -337,6 +343,7 @@ class _StatisticsMapEntrySheet extends StatelessWidget {
       entry,
       localeCode: localeCode,
     );
+    final drinkDefinition = controller.drinkDefinitionForId(entry.drinkId);
     final categoryLabel = <String>[
       l10n.categoryLabel(entry.category),
       if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
@@ -362,13 +369,16 @@ class _StatisticsMapEntrySheet extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: accentColor.withValues(alpha: 0.16),
-                  foregroundColor: accentColor,
-                  child: Icon(entry.category.icon),
+                AppDrinkIcon(
+                  key: Key('statistics-map-sheet-icon-${entry.id}'),
+                  drinkId: entry.drinkId,
+                  category: entry.category,
+                  accentColorHex: drinkDefinition?.accentColorHex,
+                  imagePath: drinkDefinition?.imagePath,
+                  size: 56,
+                  iconSize: 40,
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

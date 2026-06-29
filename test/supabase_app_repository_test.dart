@@ -315,6 +315,22 @@ void main() {
       expect(server.lastUpsertBody?['is_alcohol_free'], isTrue);
     });
 
+    test('writes and normalizes accent colors for custom drinks', () async {
+      const userId = 'user-123';
+
+      final updated = await repository.saveCustomDrink(
+        userId: userId,
+        drinkId: 'drink-234',
+        name: 'Sunset Spritz',
+        category: DrinkCategory.cocktails,
+        volumeMl: 250,
+        accentColorHex: 'ec4899',
+      );
+
+      expect(updated.accentColorHex, '#EC4899');
+      expect(server.lastUpsertBody?['accent_color_hex'], '#EC4899');
+    });
+
     test('loads global catalog alcohol-free flags', () async {
       server.globalDrinks.addAll(<Map<String, dynamic>>[
         <String, dynamic>{

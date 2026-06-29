@@ -107,6 +107,7 @@ abstract class AppRepository {
     required DrinkCategory category,
     double? volumeMl,
     bool isAlcoholFree = false,
+    String? accentColorHex,
     String? imagePath,
   });
 

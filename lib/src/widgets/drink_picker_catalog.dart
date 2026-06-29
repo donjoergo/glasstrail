@@ -3,6 +3,7 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 
 import '../l10n_extensions.dart';
 import '../models.dart';
+import 'app_drink_icon.dart';
 
 Future<DrinkDefinition?> showDrinkPickerSheet({
   required BuildContext context,
@@ -202,9 +203,12 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
                   (drink) => ChoiceChip(
                     selected: widget.selectedDrink?.id == drink.id,
                     showCheckmark: false,
-                    avatar: Icon(
-                      drink.category.icon,
+                    avatar: AppDrinkIcon(
                       key: Key('recent-drink-icon-${drink.id}'),
+                      drinkId: drink.id,
+                      category: drink.category,
+                      accentColorHex: drink.accentColorHex,
+                      imagePath: drink.imagePath,
                       size: 18,
                     ),
                     label: Text(
@@ -334,7 +338,13 @@ class _DrinkCategorySection extends StatelessWidget {
               ].join(' • ');
               return ListTile(
                 dense: true,
-                leading: Icon(drink.category.icon),
+                leading: AppDrinkIcon(
+                  drinkId: drink.id,
+                  category: drink.category,
+                  accentColorHex: drink.accentColorHex,
+                  imagePath: drink.imagePath,
+                  size: 24,
+                ),
                 title: Text(drink.displayName(localeCode)),
                 subtitle: metadata.isEmpty ? null : Text(metadata),
                 trailing: selectedDrink?.id == drink.id

@@ -94,6 +94,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                 : controller.settings.unit.convertToMl(volume))
           : widget.initialDrink?.volumeMl,
       isAlcoholFree: _category == DrinkCategory.beer && _isAlcoholFree,
+      accentColorHex: widget.initialDrink?.accentColorHex,
       imagePath: _imagePath,
     );
     if (!mounted) {

@@ -3,23 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
+import '../drink_icon_assets.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
 import '../stats_calculator.dart';
-
-Map<DrinkCategory, Color> statisticsCategoryColors(ThemeData theme) {
-  return <DrinkCategory, Color>{
-    DrinkCategory.beer: theme.colorScheme.primary,
-    DrinkCategory.wine: theme.colorScheme.secondary,
-    DrinkCategory.sparklingWines: theme.colorScheme.secondaryContainer,
-    DrinkCategory.longdrinks: theme.colorScheme.tertiaryContainer,
-    DrinkCategory.spirits: theme.colorScheme.tertiary,
-    DrinkCategory.shots: theme.colorScheme.errorContainer,
-    DrinkCategory.cocktails: theme.colorScheme.error,
-    DrinkCategory.appleWines: theme.colorScheme.surfaceContainerHighest,
-    DrinkCategory.nonAlcoholic: theme.colorScheme.primaryContainer,
-  };
-}
 
 class StatisticsOverviewContent extends StatelessWidget {
   const StatisticsOverviewContent({
@@ -35,7 +22,7 @@ class StatisticsOverviewContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final colors = statisticsCategoryColors(theme);
+    final colors = drinkCategoryAccentColors(theme);
 
     return Column(
       children: <Widget>[

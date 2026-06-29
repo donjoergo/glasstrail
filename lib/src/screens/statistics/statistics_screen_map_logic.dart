@@ -45,10 +45,16 @@ const double _statisticsMapFallbackPadding = 56;
 const double _statisticsMapClusterCountTextOffsetY = -0.08;
 const double _statisticsMapNativeMarkerSpriteSize =
     _statisticsMapMarkerVisualSize + 8;
-const double _statisticsMapNativeMarkerInnerCircleSize = 18;
-const double _statisticsMapNativeMarkerInnerIconSize = 18;
+const double _statisticsMapNativeMarkerInnerCircleSize = 32;
+const double _statisticsMapNativeMarkerInnerIconSize = 32;
+const double _statisticsMapFallbackMarkerIconCanvasSize = 32;
+const double _statisticsMapFallbackMarkerAssetScale = 0.82;
 const double _statisticsMapMarkerHoverIconScale = 1.1;
 const latlong2.Distance _statisticsMapDistance = latlong2.Distance();
+final Map<String, Future<ui.Image>> _statisticsMapAssetImageCache =
+    <String, Future<ui.Image>>{};
+final Map<String, Future<Uint8List>> _statisticsMapMarkerSpriteCache =
+    <String, Future<Uint8List>>{};
 
 final Set<Factory<OneSequenceGestureRecognizer>>
 _statisticsMapGestureRecognizers = <Factory<OneSequenceGestureRecognizer>>{
@@ -82,6 +88,52 @@ class _StatisticsMapCoordinateGroup {
 
   final maplibre.LatLng center;
   final List<DrinkEntry> entries;
+}
+
+Map<String, DrinkDefinition> _statisticsMapDrinkDefinitionsById(
+  Iterable<DrinkDefinition> drinks,
+) {
+  return <String, DrinkDefinition>{for (final drink in drinks) drink.id: drink};
+}
+
+String _statisticsMapDrinkVisualSignature(Iterable<DrinkDefinition> drinks) {
+  final drinkSignatures =
+      drinks
+          .map((drink) {
+            return <Object?>[
+              drink.id,
+              drink.category.storageValue,
+              normalizeDrinkAccentColorHex(drink.accentColorHex),
+              drink.imagePath,
+            ].join(':');
+          })
+          .toList(growable: false)
+        ..sort();
+  return drinkSignatures.join('|');
+}
+
+DrinkDefinition? _statisticsMapDrinkDefinitionForEntry(
+  DrinkEntry entry, {
+  required Map<String, DrinkDefinition> drinkDefinitionsById,
+}) {
+  return drinkDefinitionsById[entry.drinkId];
+}
+
+ResolvedDrinkIconVisual _statisticsMapResolvedDrinkIconVisual({
+  required ThemeData theme,
+  required DrinkEntry entry,
+  required Map<String, DrinkDefinition> drinkDefinitionsById,
+}) {
+  final drinkDefinition = _statisticsMapDrinkDefinitionForEntry(
+    entry,
+    drinkDefinitionsById: drinkDefinitionsById,
+  );
+  return resolveDrinkIconVisual(
+    theme: theme,
+    drinkId: entry.drinkId,
+    category: entry.category,
+    accentColorHex: drinkDefinition?.accentColorHex,
+  );
 }
 
 bool _statisticsEntryHasCoordinates(DrinkEntry entry) {
@@ -320,39 +372,68 @@ String _statisticsMapStableHash(String value) {
 }
 
 String _statisticsMapMarkerAssetSignature(
-  Map<DrinkCategory, Color> colors, {
+  List<_StatisticsMapMarkerData> markers,
+  ThemeData theme, {
+  required Map<String, DrinkDefinition> drinkDefinitionsById,
   double spriteScale = 1,
 }) {
+  final spriteKeys = <String>{
+    for (final marker in markers)
+      _statisticsMapMarkerSpriteKeyForEntry(
+        marker.entry,
+        theme: theme,
+        drinkDefinitionsById: drinkDefinitionsById,
+      ),
+  }.toList(growable: false)..sort();
+  return '${spriteScale.toStringAsFixed(2)}:${spriteKeys.join('|')}';
+}
+
+String _statisticsMapThemeIconSignature(ThemeData theme) {
+  final colors = drinkCategoryAccentColors(theme);
   return DrinkCategory.values
       .map((category) {
-        final backgroundColor = colors[category]!;
-        final foregroundColor = _statisticsMapMarkerForegroundColor(
-          backgroundColor,
-        );
-        return <Object>[
-          category.storageValue,
-          category.icon.codePoint,
-          _statisticsMapHexColor(backgroundColor),
-          _statisticsMapHexColor(foregroundColor),
-          spriteScale.toStringAsFixed(2),
-        ].join(':');
+        final color = colors[category]!;
+        return '${category.storageValue}:${_statisticsMapHexColor(color)}';
       })
       .join('|');
 }
 
+String _statisticsMapMarkerSpriteKeyForEntry(
+  DrinkEntry entry, {
+  required ThemeData theme,
+  required Map<String, DrinkDefinition> drinkDefinitionsById,
+}) {
+  final visual = _statisticsMapResolvedDrinkIconVisual(
+    theme: theme,
+    entry: entry,
+    drinkDefinitionsById: drinkDefinitionsById,
+  );
+  final accentHex = _statisticsMapHexColor(visual.backgroundColor);
+  if (visual.builtInAssetPath != null) {
+    return 'drink:${entry.drinkId}:$accentHex';
+  }
+  return 'category:${entry.category.storageValue}:$accentHex';
+}
+
 String _statisticsMapMarkerSpriteId(
-  DrinkCategory category,
+  String spriteKey,
   String markerAssetSignature,
 ) {
-  final assetHash = _statisticsMapStableHash(markerAssetSignature);
-  return 'statistics-map-marker-${category.storageValue}-$assetHash';
+  return 'statistics-map-marker-${_statisticsMapStableHash('$spriteKey:$markerAssetSignature')}';
 }
 
 Map<String, Object> _statisticsMapFeatureForMarker({
   required _StatisticsMapMarkerData marker,
   required String markerAssetSignature,
+  required ThemeData theme,
+  required Map<String, DrinkDefinition> drinkDefinitionsById,
 }) {
   final entry = marker.entry;
+  final spriteKey = _statisticsMapMarkerSpriteKeyForEntry(
+    entry,
+    theme: theme,
+    drinkDefinitionsById: drinkDefinitionsById,
+  );
   return <String, Object>{
     'type': 'Feature',
     'id': entry.id,
@@ -360,7 +441,7 @@ Map<String, Object> _statisticsMapFeatureForMarker({
       'entryId': entry.id,
       'category': entry.category.storageValue,
       'markerImageId': _statisticsMapMarkerSpriteId(
-        entry.category,
+        spriteKey,
         markerAssetSignature,
       ),
     },
@@ -377,6 +458,8 @@ Map<String, Object> _statisticsMapFeatureForMarker({
 Map<String, Object> _statisticsMapSourceGeoJson(
   List<_StatisticsMapMarkerData> markers, {
   required String markerAssetSignature,
+  required ThemeData theme,
+  required Map<String, DrinkDefinition> drinkDefinitionsById,
 }) {
   return <String, Object>{
     'type': 'FeatureCollection',
@@ -385,6 +468,8 @@ Map<String, Object> _statisticsMapSourceGeoJson(
           (marker) => _statisticsMapFeatureForMarker(
             marker: marker,
             markerAssetSignature: markerAssetSignature,
+            theme: theme,
+            drinkDefinitionsById: drinkDefinitionsById,
           ),
         )
         .toList(growable: false),
@@ -395,10 +480,15 @@ Map<String, Object> _statisticsMapSourceGeoJson(
 Map<String, Object> statisticsMapClusteredSourceGeoJsonForEntries({
   required List<DrinkEntry> entries,
   required String markerAssetSignature,
+  ThemeData? theme,
+  Map<String, DrinkDefinition> drinkDefinitionsById =
+      const <String, DrinkDefinition>{},
 }) {
   return _statisticsMapSourceGeoJson(
     _statisticsMapRawMarkersForEntries(entries),
     markerAssetSignature: markerAssetSignature,
+    theme: theme ?? ThemeData.fallback(),
+    drinkDefinitionsById: drinkDefinitionsById,
   );
 }
 
@@ -406,11 +496,38 @@ Map<String, Object> statisticsMapClusteredSourceGeoJsonForEntries({
 Map<String, Object> statisticsMapDetailSourceGeoJsonForEntries({
   required List<DrinkEntry> entries,
   required String markerAssetSignature,
+  ThemeData? theme,
+  Map<String, DrinkDefinition> drinkDefinitionsById =
+      const <String, DrinkDefinition>{},
 }) {
   return _statisticsMapSourceGeoJson(
     _statisticsMapMarkersForEntries(entries),
     markerAssetSignature: markerAssetSignature,
+    theme: theme ?? ThemeData.fallback(),
+    drinkDefinitionsById: drinkDefinitionsById,
   );
+}
+
+@visibleForTesting
+String statisticsMapMarkerAssetSignatureForEntries({
+  required ThemeData theme,
+  required List<DrinkEntry> entries,
+  Iterable<DrinkDefinition> drinks = const <DrinkDefinition>[],
+  double spriteScale = 1,
+}) {
+  return _statisticsMapMarkerAssetSignature(
+    _statisticsMapMarkersForEntries(entries),
+    theme,
+    drinkDefinitionsById: _statisticsMapDrinkDefinitionsById(drinks),
+    spriteScale: spriteScale,
+  );
+}
+
+@visibleForTesting
+String statisticsMapDrinkVisualSignatureForDrinks(
+  Iterable<DrinkDefinition> drinks,
+) {
+  return _statisticsMapDrinkVisualSignature(drinks);
 }
 
 String _statisticsMapHexColor(Color color) {
@@ -488,18 +605,37 @@ maplibre.SymbolLayerProperties statisticsMapClusterCountLayerProperties({
 
 Future<void> _configureStatisticsMapMarkerImages(
   maplibre.MapLibreMapController controller, {
-  required Map<DrinkCategory, Color> colors,
+  required ThemeData theme,
+  required List<DrinkEntry> entries,
+  required Map<String, DrinkDefinition> drinkDefinitionsById,
   required String markerAssetSignature,
   double spriteScale = 1,
 }) async {
+  final entriesBySpriteKey = <String, DrinkEntry>{};
+  for (final entry in entries) {
+    entriesBySpriteKey.putIfAbsent(
+      _statisticsMapMarkerSpriteKeyForEntry(
+        entry,
+        theme: theme,
+        drinkDefinitionsById: drinkDefinitionsById,
+      ),
+      () => entry,
+    );
+  }
+
   final sprites = await Future.wait(
-    DrinkCategory.values.map((category) async {
-      final backgroundColor = colors[category]!;
+    entriesBySpriteKey.entries.map((spriteEntry) async {
+      final entry = spriteEntry.value;
+      final visual = _statisticsMapResolvedDrinkIconVisual(
+        theme: theme,
+        entry: entry,
+        drinkDefinitionsById: drinkDefinitionsById,
+      );
       return MapEntry(
-        category,
+        spriteEntry.key,
         await _statisticsMapMarkerSpriteBytes(
-          category: category,
-          backgroundColor: backgroundColor,
+          entry: entry,
+          visual: visual,
           spriteScale: spriteScale,
         ),
       );
@@ -515,55 +651,108 @@ Future<void> _configureStatisticsMapMarkerImages(
 }
 
 Future<Uint8List> _statisticsMapMarkerSpriteBytes({
-  required DrinkCategory category,
-  required Color backgroundColor,
+  required DrinkEntry entry,
+  required ResolvedDrinkIconVisual visual,
   double spriteScale = 1,
 }) async {
-  const size = _statisticsMapNativeMarkerSpriteSize;
-  const innerCircleRadius = _statisticsMapNativeMarkerInnerCircleSize / 2;
-  const innerCircleTop = 6.0;
-  const innerIconTop = 12.0;
+  final cacheKey = <Object>[
+    visual.builtInAssetPath ?? entry.category.storageValue,
+    entry.category.icon.codePoint,
+    _statisticsMapHexColor(visual.backgroundColor),
+    _statisticsMapHexColor(visual.foregroundColor),
+    spriteScale.toStringAsFixed(2),
+  ].join(':');
+  return _statisticsMapMarkerSpriteCache.putIfAbsent(cacheKey, () async {
+    const size = _statisticsMapNativeMarkerSpriteSize;
+    const innerCircleRadius = _statisticsMapNativeMarkerInnerCircleSize / 2;
+    const innerCircleTop = 6.0;
+    const innerIconTop = 6.0;
 
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
-  if (spriteScale != 1) {
-    canvas.scale(spriteScale, spriteScale);
-  }
-  final foregroundColor = _statisticsMapMarkerForegroundColor(backgroundColor);
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    if (spriteScale != 1) {
+      canvas.scale(spriteScale, spriteScale);
+    }
 
-  _statisticsMapPaintIconGlyph(
-    canvas,
-    icon: Icons.location_on_rounded,
-    color: backgroundColor,
-    size: size,
-    top: 0,
-    width: size,
-  );
+    _statisticsMapPaintIconGlyph(
+      canvas,
+      icon: Icons.location_on_rounded,
+      color: visual.backgroundColor,
+      size: size,
+      top: 0,
+      width: size,
+    );
 
-  canvas.drawCircle(
-    const Offset(size / 2, innerCircleTop + innerCircleRadius),
-    innerCircleRadius,
-    Paint()..color = backgroundColor,
-  );
+    canvas.drawCircle(
+      const Offset(size / 2, innerCircleTop + innerCircleRadius),
+      innerCircleRadius,
+      Paint()..color = visual.backgroundColor,
+    );
 
-  _statisticsMapPaintIconGlyph(
-    canvas,
-    icon: category.icon,
-    color: foregroundColor,
-    size: _statisticsMapNativeMarkerInnerIconSize,
-    top: innerIconTop,
-    width: size,
-  );
+    final assetPath = visual.builtInAssetPath;
+    if (assetPath != null) {
+      final drinkImage = await _statisticsMapLoadAssetImage(
+        assetPath,
+        targetLogicalSize: _statisticsMapNativeMarkerInnerIconSize,
+        spriteScale: spriteScale,
+      );
+      canvas.drawImageRect(
+        drinkImage,
+        Rect.fromLTWH(
+          0,
+          0,
+          drinkImage.width.toDouble(),
+          drinkImage.height.toDouble(),
+        ),
+        Rect.fromLTWH(
+          (size - _statisticsMapNativeMarkerInnerIconSize) / 2,
+          innerIconTop,
+          _statisticsMapNativeMarkerInnerIconSize,
+          _statisticsMapNativeMarkerInnerIconSize,
+        ),
+        Paint(),
+      );
+    } else {
+      _statisticsMapPaintIconGlyph(
+        canvas,
+        icon: entry.category.icon,
+        color: visual.foregroundColor,
+        size: _statisticsMapNativeMarkerInnerIconSize,
+        top: innerIconTop,
+        width: size,
+      );
+    }
 
-  final image = await recorder.endRecording().toImage(
-    (size * spriteScale).ceil(),
-    (size * spriteScale).ceil(),
-  );
-  final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-  if (byteData == null) {
-    throw StateError('Could not encode statistics map marker sprite.');
-  }
-  return byteData.buffer.asUint8List();
+    final image = await recorder.endRecording().toImage(
+      (size * spriteScale).ceil(),
+      (size * spriteScale).ceil(),
+    );
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      throw StateError('Could not encode statistics map marker sprite.');
+    }
+    return byteData.buffer.asUint8List();
+  });
+}
+
+Future<ui.Image> _statisticsMapLoadAssetImage(
+  String assetPath, {
+  required double targetLogicalSize,
+  double spriteScale = 1,
+}) async {
+  final targetWidth = (targetLogicalSize * spriteScale).ceil();
+  final targetHeight = (targetLogicalSize * spriteScale).ceil();
+  final cacheKey = '$assetPath:$targetWidth:$targetHeight';
+  return _statisticsMapAssetImageCache.putIfAbsent(cacheKey, () async {
+    final byteData = await rootBundle.load(assetPath);
+    final codec = await ui.instantiateImageCodec(
+      byteData.buffer.asUint8List(),
+      targetWidth: targetWidth,
+      targetHeight: targetHeight,
+    );
+    final frame = await codec.getNextFrame();
+    return frame.image;
+  });
 }
 
 void _statisticsMapPaintIconGlyph(

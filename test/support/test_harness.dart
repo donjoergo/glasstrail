@@ -247,6 +247,7 @@ class BlockingLocalAppRepository extends LocalAppRepository {
     required DrinkCategory category,
     double? volumeMl,
     bool isAlcoholFree = false,
+    String? accentColorHex,
     String? imagePath,
   }) {
     return _runBlocked(
@@ -258,6 +259,7 @@ class BlockingLocalAppRepository extends LocalAppRepository {
         category: category,
         volumeMl: volumeMl,
         isAlcoholFree: isAlcoholFree,
+        accentColorHex: accentColorHex,
         imagePath: imagePath,
       ),
     );

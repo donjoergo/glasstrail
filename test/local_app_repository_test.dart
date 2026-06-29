@@ -118,6 +118,27 @@ void main() {
       );
     });
 
+    test('persists custom drink accent colors', () async {
+      final user = await repository.signUp(
+        email: 'accent-color@example.com',
+        password: 'secret',
+        displayName: 'Accent Color User',
+      );
+
+      await repository.saveCustomDrink(
+        userId: user.id,
+        name: 'Sunset Spritz',
+        category: DrinkCategory.cocktails,
+        volumeMl: 250,
+        accentColorHex: 'ec4899',
+      );
+
+      final restored = await repository.loadCustomDrinks(user.id);
+
+      expect(restored.single.accentColorHex, '#EC4899');
+      expect(restored.single.toJson()['accentColorHex'], '#EC4899');
+    });
+
     test('persists all settings options for a user', () async {
       final user = await repository.signUp(
         email: 'settings@example.com',

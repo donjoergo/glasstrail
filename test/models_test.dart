@@ -411,23 +411,28 @@ void main() {
   });
 
   group('DrinkDefinition', () {
-    test('reads camelCase and snake_case alcohol-free JSON keys', () {
+    test('reads camelCase and snake_case drink JSON keys', () {
       final camel = DrinkDefinition.fromJson(<String, dynamic>{
         'id': 'custom-beer',
         'name': 'Custom Beer',
         'category': 'beer',
         'isAlcoholFree': true,
+        'accentColorHex': 'd97706',
       });
       final snake = DrinkDefinition.fromJson(<String, dynamic>{
         'id': 'custom-beer-2',
         'name': 'Custom Beer 2',
         'category': 'beer',
         'is_alcohol_free': true,
+        'accent_color_hex': '#0ea5e9',
       });
 
       expect(camel.isAlcoholFree, isTrue);
       expect(snake.isAlcoholFree, isTrue);
+      expect(camel.accentColorHex, '#D97706');
+      expect(snake.accentColorHex, '#0EA5E9');
       expect(camel.toJson()['isAlcoholFree'], isTrue);
+      expect(camel.toJson()['accentColorHex'], '#D97706');
     });
   });
 

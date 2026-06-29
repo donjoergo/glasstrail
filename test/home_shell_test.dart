@@ -27,6 +27,7 @@ import 'package:glasstrail/src/screens/feed_screen.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
+import 'package:glasstrail/src/widgets/app_drink_icon.dart';
 import 'package:glasstrail/src/widgets/app_empty_state_card.dart';
 import 'package:glasstrail/src/widgets/app_media.dart';
 
@@ -4602,6 +4603,17 @@ void main() {
     expect(_statisticsMapMarkers(), findsNWidgets(2));
     expect(_statisticsMapMarker(beerEntry.id), findsOneWidget);
     expect(_statisticsMapMarker(wineEntry.id), findsOneWidget);
+    final beerMarkerImage = tester.widget<Image>(
+      find.descendant(
+        of: find.byKey(Key('statistics-map-marker-icon-${beerEntry.id}')),
+        matching: find.byType(Image),
+      ),
+    );
+    expect(beerMarkerImage.image, isA<AssetImage>());
+    expect(
+      (beerMarkerImage.image as AssetImage).assetName,
+      'assets/drink_icons/beer-pils.png',
+    );
   });
 
   testWidgets('shows CARTO and OpenStreetMap attribution on fallback maps', (
@@ -4876,6 +4888,17 @@ void main() {
         findsOneWidget,
       );
       expect(find.text(entry.locationAddress!), findsOneWidget);
+      final mapSheetIcon = tester.widget<AppDrinkIcon>(
+        find.byKey(Key('statistics-map-sheet-icon-${entry.id}')),
+      );
+      expect(mapSheetIcon.size, 56);
+      expect(
+        find.ancestor(
+          of: find.byKey(Key('statistics-map-sheet-icon-${entry.id}')),
+          matching: find.byType(CircleAvatar),
+        ),
+        findsNothing,
+      );
     },
   );
 
