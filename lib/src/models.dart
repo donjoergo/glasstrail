@@ -1235,6 +1235,9 @@ class UserSettings {
     this.hiddenGlobalDrinkIds = const <String>[],
     this.hiddenGlobalDrinkCategories = const <DrinkCategory>[],
     this.globalDrinkOrderOverrides = const <DrinkCategory, List<String>>{},
+    this.shareAchievements = true,
+    this.achievementRemindersEnabled = true,
+    this.achievementCatalogVersionSeen = 0,
   });
 
   factory UserSettings.defaults() {
@@ -1247,6 +1250,9 @@ class UserSettings {
       hiddenGlobalDrinkIds: <String>[],
       hiddenGlobalDrinkCategories: <DrinkCategory>[],
       globalDrinkOrderOverrides: <DrinkCategory, List<String>>{},
+      shareAchievements: true,
+      achievementRemindersEnabled: true,
+      achievementCatalogVersionSeen: 0,
     );
   }
 
@@ -1259,6 +1265,17 @@ class UserSettings {
   final List<DrinkCategory> hiddenGlobalDrinkCategories;
   final Map<DrinkCategory, List<String>> globalDrinkOrderOverrides;
 
+  /// Independent from [shareStatsWithFriends]. Defaults to `true`.
+  final bool shareAchievements;
+
+  /// Account-level toggle for achievement reminder push notifications.
+  /// Defaults to `true`.
+  final bool achievementRemindersEnabled;
+
+  /// The `catalogVersion` this device/account has already run startup
+  /// backfill evaluation for. Drives idempotent catalog-version backfill.
+  final int achievementCatalogVersionSeen;
+
   UserSettings copyWith({
     AppThemePreference? themePreference,
     String? localeCode,
@@ -1268,6 +1285,9 @@ class UserSettings {
     List<String>? hiddenGlobalDrinkIds,
     List<DrinkCategory>? hiddenGlobalDrinkCategories,
     Map<DrinkCategory, List<String>>? globalDrinkOrderOverrides,
+    bool? shareAchievements,
+    bool? achievementRemindersEnabled,
+    int? achievementCatalogVersionSeen,
   }) {
     return UserSettings(
       themePreference: themePreference ?? this.themePreference,
@@ -1281,6 +1301,11 @@ class UserSettings {
           hiddenGlobalDrinkCategories ?? this.hiddenGlobalDrinkCategories,
       globalDrinkOrderOverrides:
           globalDrinkOrderOverrides ?? this.globalDrinkOrderOverrides,
+      shareAchievements: shareAchievements ?? this.shareAchievements,
+      achievementRemindersEnabled:
+          achievementRemindersEnabled ?? this.achievementRemindersEnabled,
+      achievementCatalogVersionSeen:
+          achievementCatalogVersionSeen ?? this.achievementCatalogVersionSeen,
     );
   }
 
@@ -1299,6 +1324,9 @@ class UserSettings {
         for (final entry in globalDrinkOrderOverrides.entries)
           entry.key.storageValue: entry.value.toList(growable: false),
       },
+      'shareAchievements': shareAchievements,
+      'achievementRemindersEnabled': achievementRemindersEnabled,
+      'achievementCatalogVersionSeen': achievementCatalogVersionSeen,
     };
   }
 
@@ -1330,6 +1358,27 @@ class UserSettings {
         'globalDrinkOrderOverrides',
         'global_drink_order_overrides',
       ),
+      shareAchievements:
+          json.containsKey('shareAchievements') ||
+              json.containsKey('share_achievements')
+          ? _readBool(json, 'shareAchievements', 'share_achievements')
+          : true,
+      achievementRemindersEnabled:
+          json.containsKey('achievementRemindersEnabled') ||
+              json.containsKey('achievement_reminders_enabled')
+          ? _readBool(
+              json,
+              'achievementRemindersEnabled',
+              'achievement_reminders_enabled',
+            )
+          : true,
+      achievementCatalogVersionSeen:
+          _readInt(
+            json,
+            'achievementCatalogVersionSeen',
+            'achievement_catalog_version_seen',
+          ) ??
+          0,
     );
   }
 }

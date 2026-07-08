@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-import '../achievements/catalog_models.dart' show LocationPrecision, LocationPrecisionX;
+import '../achievements/catalog_models.dart';
+import '../achievements/repository_models.dart';
 import '../birthday.dart';
 import '../friend_stats_profile.dart';
 import '../models.dart';
@@ -576,6 +577,8 @@ class SupabaseAppRepository implements AppRepository {
     required String userId,
     required String token,
     required String platform,
+    String? timeZone,
+    int? utcOffsetMinutes,
   }) async {
     try {
       await _client.rpc(
@@ -583,6 +586,8 @@ class SupabaseAppRepository implements AppRepository {
         params: <String, dynamic>{
           'device_token': token.trim(),
           'device_platform': platform.trim(),
+          'device_time_zone': timeZone,
+          'device_utc_offset_minutes': utcOffsetMinutes,
         },
       );
     } on PostgrestException catch (error) {
@@ -1017,6 +1022,11 @@ class SupabaseAppRepository implements AppRepository {
               for (final entry in settings.globalDrinkOrderOverrides.entries)
                 entry.key.storageValue: entry.value.toList(growable: false),
             },
+            'share_achievements': settings.shareAchievements,
+            'achievement_reminders_enabled':
+                settings.achievementRemindersEnabled,
+            'achievement_catalog_version_seen':
+                settings.achievementCatalogVersionSeen,
           }, onConflict: 'user_id')
           .select()
           .single();
@@ -1025,6 +1035,208 @@ class SupabaseAppRepository implements AppRepository {
     } on PostgrestException catch (error) {
       throw AppException(error.message);
     }
+  }
+
+  @override
+  Future<List<AchievementUnlock>> loadAchievementUnlocks(String userId) async {
+    try {
+      final rows = await _client
+          .from('achievement_unlocks')
+          .select()
+          .eq('user_id', userId)
+          .order('granted_at', ascending: false);
+      return (rows as List<dynamic>)
+          .map(
+            (row) => _achievementUnlockFromRow(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList(growable: false);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<AchievementUnlock>> upsertAchievementUnlocks({
+    required String userId,
+    required List<AchievementUnlockGrant> grants,
+  }) async {
+    if (grants.isEmpty) {
+      return const <AchievementUnlock>[];
+    }
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      final rows = await _client.rpc(
+        'upsert_achievement_unlocks',
+        params: <String, dynamic>{
+          'grants': grants
+              .map(
+                (grant) => <String, dynamic>{
+                  'familyId': grant.familyId,
+                  'level': grant.level,
+                  'qualifiedAt': grant.qualifiedAt.toUtc().toIso8601String(),
+                  'grantedAt': now,
+                  'source': grant.source.storageValue,
+                },
+              )
+              .toList(growable: false),
+        },
+      );
+      return (rows as List<dynamic>)
+          .map(
+            (row) => _achievementUnlockFromRow(Map<String, dynamic>.from(row as Map)),
+          )
+          .toList(growable: false);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<void> markAchievementUnlocksSurfaced({
+    required String userId,
+    required List<AchievementUnlockRef> unlocks,
+  }) async {
+    if (unlocks.isEmpty) {
+      return;
+    }
+    try {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await Future.wait(
+        unlocks.map(
+          (ref) => _client
+              .from('achievement_unlocks')
+              .update(<String, dynamic>{'surfaced_at': now})
+              .eq('user_id', userId)
+              .eq('family_id', ref.familyId)
+              .eq('level', ref.level)
+              .filter('surfaced_at', 'is', null),
+        ),
+      );
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<SavedPlace>> loadSavedPlaces({
+    required String userId,
+    SavedPlaceType? placeType,
+  }) async {
+    try {
+      var query = _client.from('saved_places').select().eq('user_id', userId);
+      if (placeType != null) {
+        query = query.eq('place_type', placeType.storageValue);
+      }
+      final rows = await query.order('created_at', ascending: true);
+      return (rows as List<dynamic>)
+          .map((row) => _savedPlaceFromRow(Map<String, dynamic>.from(row as Map)))
+          .toList(growable: false);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<SavedPlace> replaceActiveSavedPlace({
+    required String userId,
+    required SavedPlaceType placeType,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final row = await _client.rpc(
+        'replace_active_saved_place',
+        params: <String, dynamic>{
+          'target_place_type': placeType.storageValue,
+          'target_latitude': latitude,
+          'target_longitude': longitude,
+        },
+      );
+      return _savedPlaceFromRow(Map<String, dynamic>.from(row as Map));
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<void> deleteSavedPlace({
+    required String userId,
+    required String placeId,
+  }) async {
+    try {
+      await _client
+          .from('saved_places')
+          .delete()
+          .eq('user_id', userId)
+          .eq('id', placeId);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  @override
+  Future<List<FriendSharedAchievementFamily>> loadFriendSharedAchievements({
+    required String userId,
+    required String friendUserId,
+  }) async {
+    try {
+      final rows = await _client.rpc(
+        'load_friend_shared_achievements',
+        params: <String, dynamic>{'target_friend_user_id': friendUserId},
+      );
+      final ordered = <String>[];
+      final levelsByFamily = <String, List<int>>{};
+      for (final row in (rows as List<dynamic>)) {
+        final decoded = Map<String, dynamic>.from(row as Map);
+        final familyId = decoded['family_id'] as String;
+        final level = (decoded['level'] as num).toInt();
+        if (!levelsByFamily.containsKey(familyId)) {
+          levelsByFamily[familyId] = <int>[];
+          ordered.add(familyId);
+        }
+        levelsByFamily[familyId]!.add(level);
+      }
+      return ordered
+          .map(
+            (familyId) => FriendSharedAchievementFamily(
+              familyId: familyId,
+              earnedLevels: levelsByFamily[familyId]!,
+            ),
+          )
+          .toList(growable: false);
+    } on PostgrestException catch (error) {
+      throw AppException(error.message);
+    }
+  }
+
+  AchievementUnlock _achievementUnlockFromRow(Map<String, dynamic> row) {
+    return AchievementUnlock(
+      familyId: row['family_id'] as String,
+      level: (row['level'] as num).toInt(),
+      qualifiedAt: DateTime.parse(row['qualified_at'] as String),
+      grantedAt: DateTime.parse(row['granted_at'] as String),
+      source: AchievementUnlockSourceX.maybeFromStorage(row['source'] as String?) ??
+          AchievementUnlockSource.realtimeLog,
+      surfacedAt: row['surfaced_at'] == null
+          ? null
+          : DateTime.parse(row['surfaced_at'] as String),
+    );
+  }
+
+  SavedPlace _savedPlaceFromRow(Map<String, dynamic> row) {
+    return SavedPlace(
+      id: row['id'] as String,
+      placeType: SavedPlaceTypeX.maybeFromStorage(row['place_type'] as String?) ??
+          SavedPlaceType.home,
+      latitude: (row['latitude'] as num).toDouble(),
+      longitude: (row['longitude'] as num).toDouble(),
+      isActive: row['is_active'] == true,
+      createdAt: DateTime.parse(row['created_at'] as String),
+      updatedAt: DateTime.parse(row['updated_at'] as String),
+      archivedAt: row['archived_at'] == null
+          ? null
+          : DateTime.parse(row['archived_at'] as String),
+    );
   }
 
   Future<AppUser> _ensureProfile(

@@ -4,7 +4,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:glasstrail/src/achievements/catalog_models.dart' show LocationPrecision;
+import 'package:glasstrail/src/achievements/catalog_models.dart';
+import 'package:glasstrail/src/achievements/repository_models.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/beer_with_me_import.dart';
 import 'package:glasstrail/src/friend_stats_profile.dart';
@@ -1873,6 +1874,8 @@ class _FailingDeleteAccountLocalRepository
     required String userId,
     required String token,
     required String platform,
+    String? timeZone,
+    int? utcOffsetMinutes,
   }) async {
     registeredTokens.add(
       _TokenCall(userId: userId, token: token, platform: platform),
@@ -2060,6 +2063,8 @@ class _FailingTokenLocalAppRepository extends LocalAppRepository {
     required String userId,
     required String token,
     required String platform,
+    String? timeZone,
+    int? utcOffsetMinutes,
   }) async {
     registerCalls++;
     throw const AppException('Token registration failed.');
@@ -2121,6 +2126,8 @@ class _DelayedTokenLocalAppRepository extends LocalAppRepository {
     required String userId,
     required String token,
     required String platform,
+    String? timeZone,
+    int? utcOffsetMinutes,
   }) {
     registeredTokens.add(
       _TokenCall(userId: userId, token: token, platform: platform),
@@ -2284,6 +2291,8 @@ class _BootstrapProbeRepository implements AppRepository {
     required String userId,
     required String token,
     required String platform,
+    String? timeZone,
+    int? utcOffsetMinutes,
   }) {
     throw UnimplementedError();
   }
@@ -2419,9 +2428,12 @@ class _BootstrapProbeRepository implements AppRepository {
     throw UnimplementedError();
   }
 
+  // Echoed back rather than thrown: AppController._runCatalogVersionBackfillIfNeeded
+  // unconditionally persists the seen-catalog-version marker on every
+  // bootstrap, independent of whatever this probe's callers are testing.
   @override
-  Future<UserSettings> saveSettings(String userId, UserSettings settings) {
-    throw UnimplementedError();
+  Future<UserSettings> saveSettings(String userId, UserSettings settings) async {
+    return settings;
   }
 
   @override
@@ -2472,6 +2484,61 @@ class _BootstrapProbeRepository implements AppRepository {
     double? volumeMl,
     String? comment,
     String? imagePath,
+  }) {
+    throw UnimplementedError();
+  }
+
+  // These achievement methods are exercised indirectly (via
+  // AppController._loadAchievementState) on every bootstrap, so they must
+  // resolve immediately rather than throw -- this probe's job is testing
+  // parallel-load call counts for the *other* repository methods, not
+  // achievement state.
+  @override
+  Future<List<AchievementUnlock>> loadAchievementUnlocks(String userId) async {
+    return const <AchievementUnlock>[];
+  }
+
+  @override
+  Future<List<AchievementUnlock>> upsertAchievementUnlocks({
+    required String userId,
+    required List<AchievementUnlockGrant> grants,
+  }) async {
+    return const <AchievementUnlock>[];
+  }
+
+  @override
+  Future<void> markAchievementUnlocksSurfaced({
+    required String userId,
+    required List<AchievementUnlockRef> unlocks,
+  }) async {}
+
+  @override
+  Future<List<SavedPlace>> loadSavedPlaces({
+    required String userId,
+    SavedPlaceType? placeType,
+  }) async {
+    return const <SavedPlace>[];
+  }
+
+  @override
+  Future<SavedPlace> replaceActiveSavedPlace({
+    required String userId,
+    required SavedPlaceType placeType,
+    required double latitude,
+    required double longitude,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteSavedPlace({required String userId, required String placeId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<FriendSharedAchievementFamily>> loadFriendSharedAchievements({
+    required String userId,
+    required String friendUserId,
   }) {
     throw UnimplementedError();
   }

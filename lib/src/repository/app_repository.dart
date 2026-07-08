@@ -1,4 +1,5 @@
-import '../achievements/catalog_models.dart' show LocationPrecision;
+import '../achievements/catalog_models.dart';
+import '../achievements/repository_models.dart';
 import '../friend_stats_profile.dart';
 import '../models.dart';
 
@@ -87,6 +88,8 @@ abstract class AppRepository {
     required String userId,
     required String token,
     required String platform,
+    String? timeZone,
+    int? utcOffsetMinutes,
   });
 
   Future<void> unregisterNotificationDeviceToken({
@@ -169,4 +172,35 @@ abstract class AppRepository {
   Future<UserSettings> loadSettings(String userId, {bool forceRefresh = false});
 
   Future<UserSettings> saveSettings(String userId, UserSettings settings);
+
+  Future<List<AchievementUnlock>> loadAchievementUnlocks(String userId);
+
+  Future<List<AchievementUnlock>> upsertAchievementUnlocks({
+    required String userId,
+    required List<AchievementUnlockGrant> grants,
+  });
+
+  Future<void> markAchievementUnlocksSurfaced({
+    required String userId,
+    required List<AchievementUnlockRef> unlocks,
+  });
+
+  Future<List<SavedPlace>> loadSavedPlaces({
+    required String userId,
+    SavedPlaceType? placeType,
+  });
+
+  Future<SavedPlace> replaceActiveSavedPlace({
+    required String userId,
+    required SavedPlaceType placeType,
+    required double latitude,
+    required double longitude,
+  });
+
+  Future<void> deleteSavedPlace({required String userId, required String placeId});
+
+  Future<List<FriendSharedAchievementFamily>> loadFriendSharedAchievements({
+    required String userId,
+    required String friendUserId,
+  });
 }

@@ -6,7 +6,9 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'cache/cache_debug_report.dart';
 import 'cache/cache_policy.dart';
-import 'achievements/catalog_models.dart' show LocationPrecision;
+import 'achievements/entry_adapter.dart';
+import 'achievements/evaluator.dart';
+import 'achievements/repository_models.dart';
 import 'app_routes.dart';
 import 'backend_config.dart';
 import 'beer_with_me_import.dart';
@@ -59,6 +61,8 @@ enum AppBusyAction {
   rejectFriendRequest,
   cancelFriendRequest,
   removeFriend,
+  setSavedPlace,
+  deleteSavedPlace,
 }
 
 const double _drinkEntryDefaultVolumeToleranceMl = 0.01;
@@ -163,6 +167,9 @@ class AppController extends ChangeNotifier {
   Future<void>? _bootstrapReconciliationFuture;
   Future<void>? _resumeRevalidationFuture;
   int _authSessionEpoch = 0;
+  List<AchievementUnlock> _achievementUnlocks = const <AchievementUnlock>[];
+  List<SavedPlace> _savedPlaces = const <SavedPlace>[];
+  List<AchievementUnlock> _pendingCelebrationUnlocks = const <AchievementUnlock>[];
 
   static Future<AppController> bootstrap({
     BackendConfig? backendConfig,
@@ -202,6 +209,30 @@ class AppController extends ChangeNotifier {
     ..._customDrinks,
   ]);
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
+
+  /// Every permanently earned unlock, in `grantedAt desc` order.
+  List<AchievementUnlock> get achievementUnlocks =>
+      List.unmodifiable(_achievementUnlocks);
+
+  /// Current saved Home/Work places (active and archived).
+  List<SavedPlace> get savedPlaces => List.unmodifiable(_savedPlaces);
+
+  /// Newly granted unlocks not yet shown in a celebration/summary. The
+  /// celebration UI (Chunk 10) consumes and clears these via
+  /// [markAchievementUnlocksSurfaced].
+  List<AchievementUnlock> get pendingCelebrationUnlocks =>
+      List.unmodifiable(_pendingCelebrationUnlocks);
+
+  /// Live-evaluated progress for the whole catalog, merged with permanent
+  /// earned levels. Recomputed on every access from current in-memory
+  /// state; cheap enough not to cache.
+  List<AchievementFamilyProgress> get achievementProgress {
+    return evaluateCatalog(
+      ctx: _achievementEvaluationContext(),
+      persistedEarnedLevels: _persistedEarnedLevelsByFamily(),
+    );
+  }
+
   List<FeedDrinkPost> get feedPosts => List.unmodifiable(_feedPosts);
   bool get hasMoreFeedPosts => _hasMoreFeedPosts;
   bool get isLoadingMoreFeedPosts => _isLoadingMoreFeedPosts;
@@ -660,6 +691,8 @@ class AppController extends ChangeNotifier {
     if (user == null) {
       return false;
     }
+    final birthdayChanged =
+        normalizeBirthdayOrNull(birthday) != user.birthday || clearBirthday;
     return _guardFor(AppBusyAction.updateProfile, () async {
       _currentUser = await _repository.updateProfile(
         user.copyWith(
@@ -670,6 +703,9 @@ class AppController extends ChangeNotifier {
           clearProfileImage: clearProfileImage,
         ),
       );
+      if (birthdayChanged) {
+        await _evaluateAndGrantAchievements(AchievementUnlockSource.settingsChange);
+      }
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.profileUpdated,
       );
@@ -780,6 +816,7 @@ class AppController extends ChangeNotifier {
           hasCurrentUserCheered: false,
         ),
       );
+      await _evaluateAndGrantAchievements(AchievementUnlockSource.realtimeLog);
       _flashMessage = _FlashMessage.drinkLogged(
         drinkId: entry.drinkId,
         fallbackDrinkName: entry.drinkName,
@@ -968,6 +1005,9 @@ class AppController extends ChangeNotifier {
       );
       _entries = entries;
       await _reloadInitialFeedPosts(user.id);
+      if (importedCount > 0) {
+        await _evaluateAndGrantAchievements(AchievementUnlockSource.import);
+      }
       return BeerWithMeImportResult(
         totalRows: totalRows,
         processedCount: processedCount,
@@ -1040,6 +1080,7 @@ class AppController extends ChangeNotifier {
               )
               .toList(growable: false)
             ..sort(_compareFeedPosts);
+      await _evaluateAndGrantAchievements(AchievementUnlockSource.historyEdit);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.drinkEntryUpdated,
       );
@@ -1059,10 +1100,206 @@ class AppController extends ChangeNotifier {
       _feedPosts = _feedPosts
           .where((post) => post.entry.id != entry.id)
           .toList(growable: false);
+      // Deleting an entry can never revoke an earned level (progress.dart
+      // unions live data with persisted unlocks), but future progress and
+      // the current streak still need to be recomputed for the UI.
+      await _evaluateAndGrantAchievements(AchievementUnlockSource.historyEdit);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.drinkEntryDeleted,
       );
     });
+  }
+
+  /// Sets (or replaces) the caller's active Home/Work place, archiving the
+  /// previous active place of the same type. Re-evaluates achievements
+  /// afterward, since this can retroactively make existing entries qualify.
+  Future<bool> setSavedPlace({
+    required SavedPlaceType placeType,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.setSavedPlace, () async {
+      final newPlace = await _repository.replaceActiveSavedPlace(
+        userId: user.id,
+        placeType: placeType,
+        latitude: latitude,
+        longitude: longitude,
+      );
+      _savedPlaces = await _repository.loadSavedPlaces(userId: user.id);
+      // The freshly-inserted row from replaceActiveSavedPlace might not be
+      // reflected yet if the backend read is eventually consistent; make
+      // sure it's present either way.
+      if (!_savedPlaces.any((place) => place.id == newPlace.id)) {
+        _savedPlaces = <SavedPlace>[..._savedPlaces, newPlace];
+      }
+      await _evaluateAndGrantAchievements(AchievementUnlockSource.settingsChange);
+    });
+  }
+
+  /// Deletes a saved place. Only affects future evaluation; earned levels
+  /// stay permanent.
+  Future<bool> deleteSavedPlace(String placeId) async {
+    final user = _currentUser;
+    if (user == null) {
+      return false;
+    }
+    return _guardFor(AppBusyAction.deleteSavedPlace, () async {
+      await _repository.deleteSavedPlace(userId: user.id, placeId: placeId);
+      _savedPlaces = _savedPlaces
+          .where((place) => place.id != placeId)
+          .toList(growable: false);
+      await _evaluateAndGrantAchievements(AchievementUnlockSource.settingsChange);
+    });
+  }
+
+  /// Marks unlocks as surfaced so they stop appearing in future celebration
+  /// summaries, and clears them from [pendingCelebrationUnlocks].
+  Future<void> markAchievementUnlocksSurfaced(
+    List<AchievementUnlockRef> refs,
+  ) async {
+    final user = _currentUser;
+    if (user == null || refs.isEmpty) {
+      return;
+    }
+    await _repository.markAchievementUnlocksSurfaced(
+      userId: user.id,
+      unlocks: refs,
+    );
+    final refSet = refs.toSet();
+    final now = DateTime.now();
+    _achievementUnlocks = _achievementUnlocks
+        .map(
+          (unlock) => refSet.contains(unlock.ref) && unlock.surfacedAt == null
+              ? unlock.copyWith(surfacedAt: now)
+              : unlock,
+        )
+        .toList(growable: false);
+    _pendingCelebrationUnlocks = _pendingCelebrationUnlocks
+        .where((unlock) => !refSet.contains(unlock.ref))
+        .toList(growable: false);
+    notifyListeners();
+  }
+
+  /// Friends' shared achievements, respecting `shareAchievements` and
+  /// independent of `shareStatsWithFriends`. See spec.md Sharing and
+  /// Privacy.
+  Future<List<FriendSharedAchievementFamily>> loadFriendSharedAchievements(
+    String friendUserId,
+  ) async {
+    final user = _currentUser;
+    if (user == null) {
+      return const <FriendSharedAchievementFamily>[];
+    }
+    return _repository.loadFriendSharedAchievements(
+      userId: user.id,
+      friendUserId: friendUserId,
+    );
+  }
+
+  Future<void> _loadAchievementState(String userId) async {
+    _achievementUnlocks = await _repository.loadAchievementUnlocks(userId);
+    _savedPlaces = await _repository.loadSavedPlaces(userId: userId);
+  }
+
+  /// Idempotent startup backfill: when the built-in catalog version has
+  /// increased since this account last ran evaluation, re-evaluate and
+  /// bump the persisted marker. Safe to call on every startup/resume --
+  /// it is a no-op once the marker catches up.
+  Future<void> _runCatalogVersionBackfillIfNeeded() async {
+    final user = _currentUser;
+    if (user == null) {
+      return;
+    }
+    if (_settings.achievementCatalogVersionSeen >= achievementCatalogVersion) {
+      return;
+    }
+    await _evaluateAndGrantAchievements(AchievementUnlockSource.backfill);
+    _settings = await _repository.saveSettings(
+      user.id,
+      _settings.copyWith(achievementCatalogVersionSeen: achievementCatalogVersion),
+    );
+  }
+
+  AchievementEvaluationContext _achievementEvaluationContext() {
+    return AchievementEvaluationContext(
+      entries: toAchievementEntries(_entries),
+      now: DateTime.now(),
+      birthdayMonthDay: _currentUser?.birthday,
+      savedPlaces: _savedPlaces,
+    );
+  }
+
+  Map<String, Set<int>> _persistedEarnedLevelsByFamily() {
+    final Map<String, Set<int>> result = <String, Set<int>>{};
+    for (final unlock in _achievementUnlocks) {
+      (result[unlock.familyId] ??= <int>{}).add(unlock.level);
+    }
+    return result;
+  }
+
+  /// Runs the pure evaluator against current in-memory data, persists any
+  /// newly-qualifying levels via the repository, and queues them for
+  /// celebration. Safe to call repeatedly (idempotent): already-earned
+  /// levels are never re-granted.
+  Future<void> _evaluateAndGrantAchievements(AchievementUnlockSource source) async {
+    final user = _currentUser;
+    if (user == null) {
+      return;
+    }
+    final persisted = _persistedEarnedLevelsByFamily();
+    final newlyQualifying = evaluateNewlyQualifyingLevels(
+      ctx: _achievementEvaluationContext(),
+      persistedEarnedLevels: persisted,
+    );
+    if (newlyQualifying.isEmpty) {
+      return;
+    }
+
+    final qualifiedAt = DateTime.now();
+    final grants = <AchievementUnlockGrant>[
+      for (final entry in newlyQualifying.entries)
+        for (final level in entry.value)
+          AchievementUnlockGrant(
+            familyId: entry.key,
+            level: level,
+            qualifiedAt: qualifiedAt,
+            source: source,
+          ),
+    ];
+
+    final resultingUnlocks = await _repository.upsertAchievementUnlocks(
+      userId: user.id,
+      grants: grants,
+    );
+
+    final Map<AchievementUnlockRef, AchievementUnlock> byRef = <AchievementUnlockRef, AchievementUnlock>{
+      for (final unlock in _achievementUnlocks) unlock.ref: unlock,
+    };
+    for (final unlock in resultingUnlocks) {
+      byRef[unlock.ref] = unlock;
+    }
+    _achievementUnlocks = byRef.values.toList(growable: false)
+      ..sort((a, b) => b.grantedAt.compareTo(a.grantedAt));
+
+    final grantedRefs = grants
+        .map((grant) => AchievementUnlockRef(familyId: grant.familyId, level: grant.level))
+        .toSet();
+    final newlyGranted = resultingUnlocks
+        .where((unlock) => grantedRefs.contains(unlock.ref))
+        .toList(growable: false);
+    if (newlyGranted.isNotEmpty) {
+      final Map<AchievementUnlockRef, AchievementUnlock> pendingByRef = <AchievementUnlockRef, AchievementUnlock>{
+        for (final unlock in _pendingCelebrationUnlocks) unlock.ref: unlock,
+      };
+      for (final unlock in newlyGranted) {
+        pendingByRef[unlock.ref] = unlock;
+      }
+      _pendingCelebrationUnlocks = pendingByRef.values.toList(growable: false);
+    }
   }
 
   Future<FriendProfile?> loadOwnFriendProfile() async {
@@ -1701,6 +1938,10 @@ class AppController extends ChangeNotifier {
     _currentUser = await currentUserFuture;
     if (_currentUser != null) {
       await _reloadUserScope();
+      // Idempotent catalog-version backfill only needs to run once per
+      // real app cold start, not on every sign-in/resume/reconciliation
+      // reload -- those paths only call _loadAchievementState.
+      await _runCatalogVersionBackfillIfNeeded();
       _subscribeToNotifications();
       await _registerPushTokenBestEffort();
     }
@@ -1751,6 +1992,7 @@ class AppController extends ChangeNotifier {
     _notifications = _mergeNotificationReadOverrides(
       await notificationsFuture!,
     );
+    await _loadAchievementState(user.id);
   }
 
   Future<void> _reloadUserScope({bool forceRefresh = false}) async {
@@ -1790,6 +2032,7 @@ class AppController extends ChangeNotifier {
     _settings = await settingsFuture;
     _friendConnections = await friendsFuture;
     _notifications = _mergeNotificationReadOverrides(await notificationsFuture);
+    await _loadAchievementState(user.id);
   }
 
   Future<bool> _activateReconciledUser(
@@ -1884,6 +2127,9 @@ class AppController extends ChangeNotifier {
     _friendConnections = const <FriendConnection>[];
     _notifications = const <AppNotification>[];
     _notificationReadOverrides.clear();
+    _achievementUnlocks = const <AchievementUnlock>[];
+    _savedPlaces = const <SavedPlace>[];
+    _pendingCelebrationUnlocks = const <AchievementUnlock>[];
   }
 
   void _upsertFeedPost(FeedDrinkPost post) {
@@ -2066,6 +2312,9 @@ class AppController extends ChangeNotifier {
     _notificationReadOverrides.clear();
     _beerWithMeImportProgress = null;
     _cancelBeerWithMeImportRequested = false;
+    _achievementUnlocks = const <AchievementUnlock>[];
+    _savedPlaces = const <SavedPlace>[];
+    _pendingCelebrationUnlocks = const <AchievementUnlock>[];
     if (clearRegisteredPushToken) {
       _registeredPushToken = null;
       _registeredPushTokenUserId = null;

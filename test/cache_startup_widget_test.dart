@@ -524,6 +524,8 @@ class _ReconciliationProbeLocalRepository extends ProbeLocalAppRepository {
     required String userId,
     required String token,
     required String platform,
+    String? timeZone,
+    int? utcOffsetMinutes,
   }) async {
     registeredTokenCalls.add(
       _TokenCall(userId: userId, token: token, platform: platform),

@@ -217,6 +217,31 @@ class AchievementUnlock {
       surfacedAt: clearSurfacedAt ? null : (surfacedAt ?? this.surfacedAt),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'familyId': familyId,
+      'level': level,
+      'qualifiedAt': qualifiedAt.toIso8601String(),
+      'grantedAt': grantedAt.toIso8601String(),
+      'source': source.storageValue,
+      'surfacedAt': surfacedAt?.toIso8601String(),
+    };
+  }
+
+  factory AchievementUnlock.fromJson(Map<String, dynamic> json) {
+    return AchievementUnlock(
+      familyId: json['familyId'] as String,
+      level: (json['level'] as num).toInt(),
+      qualifiedAt: DateTime.parse(json['qualifiedAt'] as String),
+      grantedAt: DateTime.parse(json['grantedAt'] as String),
+      source: AchievementUnlockSourceX.maybeFromStorage(json['source'] as String?) ??
+          AchievementUnlockSource.realtimeLog,
+      surfacedAt: json['surfacedAt'] == null
+          ? null
+          : DateTime.parse(json['surfacedAt'] as String),
+    );
+  }
 }
 
 /// Exact-vs-approximate location confidence for a logged entry.
@@ -319,6 +344,35 @@ class SavedPlace {
       archivedAt: clearArchivedAt ? null : (archivedAt ?? this.archivedAt),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id': id,
+      'placeType': placeType.storageValue,
+      'latitude': latitude,
+      'longitude': longitude,
+      'isActive': isActive,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'archivedAt': archivedAt?.toIso8601String(),
+    };
+  }
+
+  factory SavedPlace.fromJson(Map<String, dynamic> json) {
+    return SavedPlace(
+      id: json['id'] as String,
+      placeType: SavedPlaceTypeX.maybeFromStorage(json['placeType'] as String?) ??
+          SavedPlaceType.home,
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      isActive: json['isActive'] == true,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      archivedAt: json['archivedAt'] == null
+          ? null
+          : DateTime.parse(json['archivedAt'] as String),
+    );
+  }
 }
 
 /// Live-computed progress for a single family, combined with its permanent
@@ -356,11 +410,44 @@ class AchievementFamilyProgress {
   bool get isCompleted => nextLevel == null;
 }
 
+/// Where an achievement detail-sheet open request originated. Distinguishes
+/// push-driven opens (which must survive an auth redirect) from in-app
+/// navigation.
+enum AchievementRouteSource {
+  pushReminder,
+  inApp,
+}
+
+extension AchievementRouteSourceX on AchievementRouteSource {
+  String get storageValue {
+    switch (this) {
+      case AchievementRouteSource.pushReminder:
+        return 'push_reminder';
+      case AchievementRouteSource.inApp:
+        return 'in_app';
+    }
+  }
+
+  static AchievementRouteSource? maybeFromStorage(String? value) {
+    for (final candidate in AchievementRouteSource.values) {
+      if (candidate.storageValue == value) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+}
+
 /// Payload for opening a specific achievement detail sheet, used by both
 /// route restoration and push deep links.
-class AchievementDeepLink {
-  const AchievementDeepLink({required this.familyId, required this.level});
+class AchievementDeepLinkTarget {
+  const AchievementDeepLinkTarget({
+    required this.familyId,
+    this.level,
+    this.source,
+  });
 
   final String familyId;
-  final int level;
+  final int? level;
+  final AchievementRouteSource? source;
 }

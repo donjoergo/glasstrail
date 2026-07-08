@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import '../achievements/catalog_models.dart' show LocationPrecision;
+import '../achievements/catalog_models.dart';
+import '../achievements/repository_models.dart';
 import '../friend_stats_profile.dart';
 import '../cache/bootstrap_cache_store.dart';
 import '../cache/bootstrap_snapshot.dart';
@@ -399,11 +400,15 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     required String userId,
     required String token,
     required String platform,
+    String? timeZone,
+    int? utcOffsetMinutes,
   }) {
     return _delegate.registerNotificationDeviceToken(
       userId: userId,
       token: token,
       platform: platform,
+      timeZone: timeZone,
+      utcOffsetMinutes: utcOffsetMinutes,
     );
   }
 
@@ -749,6 +754,75 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       userScopeId: userId,
     );
     return savedSettings;
+  }
+
+  // Achievement state is not part of the offline bootstrap snapshot: it is
+  // always read fresh from the delegate, same as notification device token
+  // registration above.
+  @override
+  Future<List<AchievementUnlock>> loadAchievementUnlocks(String userId) {
+    return _delegate.loadAchievementUnlocks(userId);
+  }
+
+  @override
+  Future<List<AchievementUnlock>> upsertAchievementUnlocks({
+    required String userId,
+    required List<AchievementUnlockGrant> grants,
+  }) {
+    return _delegate.upsertAchievementUnlocks(userId: userId, grants: grants);
+  }
+
+  @override
+  Future<void> markAchievementUnlocksSurfaced({
+    required String userId,
+    required List<AchievementUnlockRef> unlocks,
+  }) {
+    return _delegate.markAchievementUnlocksSurfaced(
+      userId: userId,
+      unlocks: unlocks,
+    );
+  }
+
+  @override
+  Future<List<SavedPlace>> loadSavedPlaces({
+    required String userId,
+    SavedPlaceType? placeType,
+  }) {
+    return _delegate.loadSavedPlaces(userId: userId, placeType: placeType);
+  }
+
+  @override
+  Future<SavedPlace> replaceActiveSavedPlace({
+    required String userId,
+    required SavedPlaceType placeType,
+    required double latitude,
+    required double longitude,
+  }) {
+    return _delegate.replaceActiveSavedPlace(
+      userId: userId,
+      placeType: placeType,
+      latitude: latitude,
+      longitude: longitude,
+    );
+  }
+
+  @override
+  Future<void> deleteSavedPlace({
+    required String userId,
+    required String placeId,
+  }) {
+    return _delegate.deleteSavedPlace(userId: userId, placeId: placeId);
+  }
+
+  @override
+  Future<List<FriendSharedAchievementFamily>> loadFriendSharedAchievements({
+    required String userId,
+    required String friendUserId,
+  }) {
+    return _delegate.loadFriendSharedAchievements(
+      userId: userId,
+      friendUserId: friendUserId,
+    );
   }
 
   @override

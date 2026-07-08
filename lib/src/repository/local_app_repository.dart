@@ -4,7 +4,8 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-import '../achievements/catalog_models.dart' show LocationPrecision;
+import '../achievements/catalog_models.dart';
+import '../achievements/repository_models.dart';
 import '../friend_stats_profile.dart';
 import '../models.dart';
 import '../stats_calculator.dart';
@@ -22,6 +23,8 @@ class LocalAppRepository implements AppRepository {
   static const _settingsKey = 'glasstrail.settings';
   static const _friendRelationshipsKey = 'glasstrail.friend_relationships';
   static const _notificationsKey = 'glasstrail.notifications';
+  static const _achievementUnlocksKey = 'glasstrail.achievement_unlocks';
+  static const _savedPlacesKey = 'glasstrail.saved_places';
   static const _readNotificationRetention = Duration(days: 30);
   static const _unreadNotificationRetention = Duration(days: 90);
 
@@ -557,6 +560,8 @@ class LocalAppRepository implements AppRepository {
     required String userId,
     required String token,
     required String platform,
+    String? timeZone,
+    int? utcOffsetMinutes,
   }) async {}
 
   @override
@@ -937,6 +942,167 @@ class LocalAppRepository implements AppRepository {
     map[userId] = settings.toJson();
     await _writeJsonMap(_settingsKey, map);
     return settings;
+  }
+
+  @override
+  Future<List<AchievementUnlock>> loadAchievementUnlocks(String userId) async {
+    final map = _readJsonMap(_achievementUnlocksKey);
+    final raw = (map[userId] as List?) ?? const <dynamic>[];
+    return raw
+        .map(
+          (dynamic entry) =>
+              AchievementUnlock.fromJson(Map<String, dynamic>.from(entry as Map)),
+        )
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<AchievementUnlock>> upsertAchievementUnlocks({
+    required String userId,
+    required List<AchievementUnlockGrant> grants,
+  }) async {
+    if (grants.isEmpty) {
+      return loadAchievementUnlocks(userId);
+    }
+    final map = _readJsonMap(_achievementUnlocksKey);
+    final existingRaw = (map[userId] as List?) ?? const <dynamic>[];
+    final existing = <AchievementUnlockRef, AchievementUnlock>{};
+    for (final dynamic entry in existingRaw) {
+      final unlock =
+          AchievementUnlock.fromJson(Map<String, dynamic>.from(entry as Map));
+      existing[unlock.ref] = unlock;
+    }
+
+    final now = DateTime.now();
+    for (final grant in grants) {
+      final ref = AchievementUnlockRef(familyId: grant.familyId, level: grant.level);
+      final current = existing[ref];
+      if (current == null) {
+        existing[ref] = AchievementUnlock(
+          familyId: grant.familyId,
+          level: grant.level,
+          qualifiedAt: grant.qualifiedAt,
+          grantedAt: now,
+          source: grant.source,
+        );
+      } else {
+        existing[ref] = current.copyWith(
+          qualifiedAt: grant.qualifiedAt.isBefore(current.qualifiedAt)
+              ? grant.qualifiedAt
+              : current.qualifiedAt,
+        );
+      }
+    }
+
+    map[userId] = existing.values
+        .map((AchievementUnlock unlock) => unlock.toJson())
+        .toList(growable: false);
+    await _writeJsonMap(_achievementUnlocksKey, map);
+    return existing.values.toList(growable: false);
+  }
+
+  @override
+  Future<void> markAchievementUnlocksSurfaced({
+    required String userId,
+    required List<AchievementUnlockRef> unlocks,
+  }) async {
+    if (unlocks.isEmpty) {
+      return;
+    }
+    final refsToSurface = unlocks.toSet();
+    final map = _readJsonMap(_achievementUnlocksKey);
+    final raw = (map[userId] as List?) ?? const <dynamic>[];
+    final now = DateTime.now();
+    final updated = raw.map((dynamic entry) {
+      final unlock =
+          AchievementUnlock.fromJson(Map<String, dynamic>.from(entry as Map));
+      if (refsToSurface.contains(unlock.ref) && unlock.surfacedAt == null) {
+        return unlock.copyWith(surfacedAt: now).toJson();
+      }
+      return unlock.toJson();
+    }).toList(growable: false);
+    map[userId] = updated;
+    await _writeJsonMap(_achievementUnlocksKey, map);
+  }
+
+  @override
+  Future<List<SavedPlace>> loadSavedPlaces({
+    required String userId,
+    SavedPlaceType? placeType,
+  }) async {
+    final map = _readJsonMap(_savedPlacesKey);
+    final raw = (map[userId] as List?) ?? const <dynamic>[];
+    final places = raw
+        .map(
+          (dynamic entry) =>
+              SavedPlace.fromJson(Map<String, dynamic>.from(entry as Map)),
+        )
+        .where((SavedPlace place) => placeType == null || place.placeType == placeType)
+        .toList(growable: false);
+    return places;
+  }
+
+  @override
+  Future<SavedPlace> replaceActiveSavedPlace({
+    required String userId,
+    required SavedPlaceType placeType,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final map = _readJsonMap(_savedPlacesKey);
+    final raw = (map[userId] as List?) ?? const <dynamic>[];
+    final now = DateTime.now();
+
+    final archived = raw.map((dynamic entry) {
+      final place =
+          SavedPlace.fromJson(Map<String, dynamic>.from(entry as Map));
+      if (place.placeType == placeType && place.isActive) {
+        return place
+            .copyWith(isActive: false, archivedAt: now, updatedAt: now)
+            .toJson();
+      }
+      return place.toJson();
+    }).toList();
+
+    final newPlace = SavedPlace(
+      id: _uuid.v4(),
+      placeType: placeType,
+      latitude: latitude,
+      longitude: longitude,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    );
+    archived.add(newPlace.toJson());
+
+    map[userId] = archived;
+    await _writeJsonMap(_savedPlacesKey, map);
+    return newPlace;
+  }
+
+  @override
+  Future<void> deleteSavedPlace({
+    required String userId,
+    required String placeId,
+  }) async {
+    final map = _readJsonMap(_savedPlacesKey);
+    final raw = (map[userId] as List?) ?? const <dynamic>[];
+    map[userId] = raw.where((dynamic entry) {
+      final place =
+          SavedPlace.fromJson(Map<String, dynamic>.from(entry as Map));
+      return place.id != placeId;
+    }).toList(growable: false);
+    await _writeJsonMap(_savedPlacesKey, map);
+  }
+
+  @override
+  Future<List<FriendSharedAchievementFamily>> loadFriendSharedAchievements({
+    required String userId,
+    required String friendUserId,
+  }) async {
+    // Local mode has no friend graph or cross-user data; achievement
+    // sharing only exists in Supabase mode.
+    return const <FriendSharedAchievementFamily>[];
   }
 
   bool _customDrinkAlcoholFreeValue(
