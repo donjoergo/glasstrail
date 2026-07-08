@@ -1,3 +1,4 @@
+import '../achievements/catalog_models.dart' show LocationPrecision;
 import '../friend_stats_profile.dart';
 import '../models.dart';
 
@@ -144,6 +145,11 @@ abstract class AppRepository {
     DateTime? consumedAt,
     String? importSource,
     String? importSourceId,
+    DateTime? achievementLocalDate,
+    int? achievementUtcOffsetMinutes,
+    String? achievementTimeZone,
+    String? countryCode,
+    LocationPrecision locationPrecision = LocationPrecision.none,
   });
 
   Future<DrinkEntry> updateDrinkEntry({

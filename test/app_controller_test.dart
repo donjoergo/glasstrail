@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:glasstrail/src/achievements/catalog_models.dart' show LocationPrecision;
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/beer_with_me_import.dart';
 import 'package:glasstrail/src/friend_stats_profile.dart';
@@ -2308,6 +2309,11 @@ class _BootstrapProbeRepository implements AppRepository {
     DateTime? consumedAt,
     String? importSource,
     String? importSourceId,
+    DateTime? achievementLocalDate,
+    int? achievementUtcOffsetMinutes,
+    String? achievementTimeZone,
+    String? countryCode,
+    LocationPrecision locationPrecision = LocationPrecision.none,
   }) {
     throw UnimplementedError();
   }

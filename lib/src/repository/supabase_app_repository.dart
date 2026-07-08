@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../achievements/catalog_models.dart' show LocationPrecision, LocationPrecisionX;
 import '../birthday.dart';
 import '../friend_stats_profile.dart';
 import '../models.dart';
@@ -823,6 +824,11 @@ class SupabaseAppRepository implements AppRepository {
     DateTime? consumedAt,
     String? importSource,
     String? importSourceId,
+    DateTime? achievementLocalDate,
+    int? achievementUtcOffsetMinutes,
+    String? achievementTimeZone,
+    String? countryCode,
+    LocationPrecision locationPrecision = LocationPrecision.none,
   }) async {
     try {
       final trimmedImportSource = importSource?.trim();
@@ -832,6 +838,13 @@ class SupabaseAppRepository implements AppRepository {
         imagePath: imagePath,
         folder: 'entries',
       );
+      final resolvedConsumedAt = consumedAt ?? DateTime.now();
+      final resolvedAchievementLocalDate = achievementLocalDate ??
+          DateTime(
+            resolvedConsumedAt.year,
+            resolvedConsumedAt.month,
+            resolvedConsumedAt.day,
+          );
 
       final row = await _client
           .from('drink_entries')
@@ -851,9 +864,12 @@ class SupabaseAppRepository implements AppRepository {
             'location_address': _normalizeLocationAddress(locationAddress),
             'import_source': trimmedImportSource,
             'import_source_id': trimmedImportSourceId,
-            'consumed_at': (consumedAt ?? DateTime.now())
-                .toUtc()
-                .toIso8601String(),
+            'consumed_at': resolvedConsumedAt.toUtc().toIso8601String(),
+            'achievement_local_date': _dateOnlyIso(resolvedAchievementLocalDate),
+            'achievement_utc_offset_minutes': achievementUtcOffsetMinutes,
+            'achievement_time_zone': achievementTimeZone,
+            'country_code': countryCode?.trim().toLowerCase(),
+            'location_precision': locationPrecision.storageValue,
           })
           .select()
           .single();
@@ -1185,7 +1201,24 @@ class SupabaseAppRepository implements AppRepository {
       locationAddress: row['location_address'] as String?,
       importSource: row['import_source'] as String?,
       importSourceId: row['import_source_id'] as String?,
+      achievementLocalDate: row['achievement_local_date'] == null
+          ? null
+          : DateTime.parse(row['achievement_local_date'] as String),
+      achievementUtcOffsetMinutes:
+          (row['achievement_utc_offset_minutes'] as num?)?.toInt(),
+      achievementTimeZone: row['achievement_time_zone'] as String?,
+      countryCode: row['country_code'] as String?,
+      locationPrecision: LocationPrecisionX.maybeFromStorage(
+        row['location_precision'] as String?,
+      ),
     );
+  }
+
+  static String _dateOnlyIso(DateTime value) {
+    final String y = value.year.toString().padLeft(4, '0');
+    final String m = value.month.toString().padLeft(2, '0');
+    final String d = value.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
   }
 
   FeedDrinkPost _feedPostFromRow(Map<String, dynamic> row) {

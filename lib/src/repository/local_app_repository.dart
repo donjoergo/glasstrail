@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../achievements/catalog_models.dart' show LocationPrecision;
 import '../friend_stats_profile.dart';
 import '../models.dart';
 import '../stats_calculator.dart';
@@ -793,12 +794,18 @@ class LocalAppRepository implements AppRepository {
     DateTime? consumedAt,
     String? importSource,
     String? importSourceId,
+    DateTime? achievementLocalDate,
+    int? achievementUtcOffsetMinutes,
+    String? achievementTimeZone,
+    String? countryCode,
+    LocationPrecision locationPrecision = LocationPrecision.none,
   }) async {
     final map = _readJsonMap(_entriesKey);
     final raw = List<dynamic>.from(
       (map[user.id] as List?) ?? const <dynamic>[],
     );
     final trimmedComment = comment?.trim();
+    final resolvedConsumedAt = consumedAt ?? DateTime.now();
 
     final entry = DrinkEntry(
       id: _uuid.v4(),
@@ -806,7 +813,7 @@ class LocalAppRepository implements AppRepository {
       drinkId: drink.id,
       drinkName: drink.name,
       category: drink.category,
-      consumedAt: consumedAt ?? DateTime.now(),
+      consumedAt: resolvedConsumedAt,
       volumeMl: volumeMl,
       isAlcoholFree: drink.isEffectivelyAlcoholFree,
       comment: trimmedComment == null || trimmedComment.isEmpty
@@ -818,6 +825,16 @@ class LocalAppRepository implements AppRepository {
       locationAddress: _normalizeLocationAddress(locationAddress),
       importSource: importSource?.trim(),
       importSourceId: importSourceId?.trim(),
+      achievementLocalDate: achievementLocalDate ??
+          DateTime(
+            resolvedConsumedAt.year,
+            resolvedConsumedAt.month,
+            resolvedConsumedAt.day,
+          ),
+      achievementUtcOffsetMinutes: achievementUtcOffsetMinutes,
+      achievementTimeZone: achievementTimeZone,
+      countryCode: countryCode?.trim().toLowerCase(),
+      locationPrecision: locationPrecision,
     );
 
     raw.add(entry.toJson());

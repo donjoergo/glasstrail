@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import 'achievements/catalog_models.dart' show LocationPrecision, LocationPrecisionX;
 import 'birthday.dart';
 
 class AppException implements Exception {
@@ -902,6 +903,11 @@ class DrinkEntry {
     this.locationAddress,
     this.importSource,
     this.importSourceId,
+    this.achievementLocalDate,
+    this.achievementUtcOffsetMinutes,
+    this.achievementTimeZone,
+    this.countryCode,
+    this.locationPrecision = LocationPrecision.none,
   });
 
   final String id;
@@ -919,6 +925,28 @@ class DrinkEntry {
   final String? locationAddress;
   final String? importSource;
   final String? importSourceId;
+
+  /// Date-only local calendar date this entry counts toward for
+  /// achievement evaluation. `null` for legacy entries predating this
+  /// metadata; achievement evaluation falls back to deriving it from
+  /// [consumedAt] in that case. BeerWithMe import preserves the source
+  /// timestamp's calendar day here rather than the importing device's.
+  final DateTime? achievementLocalDate;
+
+  /// UTC offset in minutes at log time, for debugging/display only.
+  final int? achievementUtcOffsetMinutes;
+
+  /// IANA timezone name at log time, if available.
+  final String? achievementTimeZone;
+
+  /// Lowercase ISO-3166-1 alpha-2 country code, when derivable.
+  final String? countryCode;
+
+  /// Exact-vs-approximate location confidence for [locationLatitude] /
+  /// [locationLongitude]. Defaults to [LocationPrecision.none] for legacy
+  /// entries, which correctly excludes them from home/work matching per
+  /// the locked legacy-evaluation fallback.
+  final LocationPrecision locationPrecision;
 
   DrinkEntry copyWith({
     String? drinkId,
@@ -938,6 +966,15 @@ class DrinkEntry {
     bool clearLocation = false,
     String? importSource,
     String? importSourceId,
+    DateTime? achievementLocalDate,
+    bool clearAchievementLocalDate = false,
+    int? achievementUtcOffsetMinutes,
+    bool clearAchievementUtcOffsetMinutes = false,
+    String? achievementTimeZone,
+    bool clearAchievementTimeZone = false,
+    String? countryCode,
+    bool clearCountryCode = false,
+    LocationPrecision? locationPrecision,
   }) {
     return DrinkEntry(
       id: id,
@@ -961,6 +998,19 @@ class DrinkEntry {
           : locationAddress ?? this.locationAddress,
       importSource: importSource ?? this.importSource,
       importSourceId: importSourceId ?? this.importSourceId,
+      achievementLocalDate: clearAchievementLocalDate
+          ? null
+          : achievementLocalDate ?? this.achievementLocalDate,
+      achievementUtcOffsetMinutes: clearAchievementUtcOffsetMinutes
+          ? null
+          : achievementUtcOffsetMinutes ?? this.achievementUtcOffsetMinutes,
+      achievementTimeZone: clearAchievementTimeZone
+          ? null
+          : achievementTimeZone ?? this.achievementTimeZone,
+      countryCode: clearCountryCode ? null : countryCode ?? this.countryCode,
+      locationPrecision: clearLocation
+          ? LocationPrecision.none
+          : locationPrecision ?? this.locationPrecision,
     );
   }
 
@@ -981,6 +1031,11 @@ class DrinkEntry {
       'locationAddress': locationAddress,
       'importSource': importSource,
       'importSourceId': importSourceId,
+      'achievementLocalDate': _dateOnlyString(achievementLocalDate),
+      'achievementUtcOffsetMinutes': achievementUtcOffsetMinutes,
+      'achievementTimeZone': achievementTimeZone,
+      'countryCode': countryCode,
+      'locationPrecision': locationPrecision.storageValue,
     };
   }
 
@@ -1009,6 +1064,25 @@ class DrinkEntry {
       locationAddress: _readString(json, 'locationAddress', 'location_address'),
       importSource: _readString(json, 'importSource', 'import_source'),
       importSourceId: _readString(json, 'importSourceId', 'import_source_id'),
+      achievementLocalDate: _readDateOnly(
+        json,
+        'achievementLocalDate',
+        'achievement_local_date',
+      ),
+      achievementUtcOffsetMinutes: _readInt(
+        json,
+        'achievementUtcOffsetMinutes',
+        'achievement_utc_offset_minutes',
+      ),
+      achievementTimeZone: _readString(
+        json,
+        'achievementTimeZone',
+        'achievement_time_zone',
+      ),
+      countryCode: _readString(json, 'countryCode', 'country_code'),
+      locationPrecision: LocationPrecisionX.maybeFromStorage(
+        _readString(json, 'locationPrecision', 'location_precision'),
+      ),
     );
   }
 
@@ -1311,6 +1385,39 @@ double? _readDouble(
 bool _readBool(Map<String, dynamic> json, String primary, [String? fallback]) {
   final value = json[primary] ?? (fallback == null ? null : json[fallback]);
   return value == true;
+}
+
+int? _readInt(Map<String, dynamic> json, String primary, [String? fallback]) {
+  final primaryValue = json[primary] as num?;
+  if (primaryValue != null) {
+    return primaryValue.toInt();
+  }
+  if (fallback == null) {
+    return null;
+  }
+  final fallbackValue = json[fallback] as num?;
+  return fallbackValue?.toInt();
+}
+
+/// Formats a date-only value as `yyyy-MM-dd`, matching the Supabase `date`
+/// column contract for `achievement_local_date`. Returns `null` unchanged.
+String? _dateOnlyString(DateTime? value) {
+  if (value == null) return null;
+  final String y = value.year.toString().padLeft(4, '0');
+  final String m = value.month.toString().padLeft(2, '0');
+  final String d = value.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
+}
+
+DateTime? _readDateOnly(
+  Map<String, dynamic> json,
+  String primary, [
+  String? fallback,
+]) {
+  final String? raw = _readString(json, primary, fallback);
+  if (raw == null || raw.isEmpty) return null;
+  final DateTime parsed = DateTime.parse(raw);
+  return DateTime(parsed.year, parsed.month, parsed.day);
 }
 
 List<String> _readStringList(

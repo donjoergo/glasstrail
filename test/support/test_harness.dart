@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:glasstrail/src/achievements/catalog_models.dart' show LocationPrecision;
 import 'package:glasstrail/src/app.dart';
 import 'package:glasstrail/src/app_controller.dart';
 import 'package:glasstrail/src/import_file_service.dart';
@@ -287,6 +288,11 @@ class BlockingLocalAppRepository extends LocalAppRepository {
     DateTime? consumedAt,
     String? importSource,
     String? importSourceId,
+    DateTime? achievementLocalDate,
+    int? achievementUtcOffsetMinutes,
+    String? achievementTimeZone,
+    String? countryCode,
+    LocationPrecision locationPrecision = LocationPrecision.none,
   }) {
     return _runBlocked(
       AppBusyAction.addDrinkEntry,
@@ -302,6 +308,11 @@ class BlockingLocalAppRepository extends LocalAppRepository {
         consumedAt: consumedAt,
         importSource: importSource,
         importSourceId: importSourceId,
+        achievementLocalDate: achievementLocalDate,
+        achievementUtcOffsetMinutes: achievementUtcOffsetMinutes,
+        achievementTimeZone: achievementTimeZone,
+        countryCode: countryCode,
+        locationPrecision: locationPrecision,
       ),
     );
   }

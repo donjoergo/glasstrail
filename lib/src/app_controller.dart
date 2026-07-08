@@ -6,6 +6,7 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 
 import 'cache/cache_debug_report.dart';
 import 'cache/cache_policy.dart';
+import 'achievements/catalog_models.dart' show LocationPrecision;
 import 'app_routes.dart';
 import 'backend_config.dart';
 import 'beer_with_me_import.dart';
@@ -741,12 +742,19 @@ class AppController extends ChangeNotifier {
     double? locationLatitude,
     double? locationLongitude,
     String? locationAddress,
+    String? countryCode,
+    LocationPrecision locationPrecision = LocationPrecision.none,
   }) async {
     final user = _currentUser;
     if (user == null) {
       return false;
     }
     return _guardFor(AppBusyAction.addDrinkEntry, () async {
+      final now = DateTime.now();
+      // achievementTimeZone is optional debug metadata (unlike the
+      // synchronous UTC offset below); it is refreshed opportunistically
+      // by the startup/foreground timezone sync instead of being fetched
+      // from a platform channel on every single drink log.
       final entry = await _repository.addDrinkEntry(
         user: user,
         drink: drink,
@@ -756,6 +764,10 @@ class AppController extends ChangeNotifier {
         locationLatitude: locationLatitude,
         locationLongitude: locationLongitude,
         locationAddress: locationAddress,
+        achievementLocalDate: DateTime(now.year, now.month, now.day),
+        achievementUtcOffsetMinutes: now.timeZoneOffset.inMinutes,
+        countryCode: countryCode,
+        locationPrecision: locationPrecision,
       );
       _entries = [entry, ..._entries]
         ..sort((left, right) => right.consumedAt.compareTo(left.consumedAt));
@@ -912,6 +924,10 @@ class AppController extends ChangeNotifier {
               consumedAt: record.consumedAt,
               importSource: beerWithMeImportSource,
               importSourceId: record.sourceId,
+              achievementLocalDate: record.achievementLocalDate,
+              locationPrecision: record.locationLatitude != null && record.locationLongitude != null
+                  ? LocationPrecision.approximate
+                  : LocationPrecision.none,
             );
             entries.add(entry);
             knownImportIds.add(record.sourceId);

@@ -73,6 +73,7 @@ class BeerWithMeImportRecord {
     required this.sourceId,
     required this.glassType,
     required this.consumedAt,
+    required this.achievementLocalDate,
     this.locationLatitude,
     this.locationLongitude,
     this.locationAddress,
@@ -82,6 +83,13 @@ class BeerWithMeImportRecord {
   final String sourceId;
   final String glassType;
   final DateTime consumedAt;
+
+  /// The calendar day implied by the source export's own timestamp,
+  /// independent of the importing device's timezone. See
+  /// `docs/achievements/spec.md`: "BeerWithMe imports must preserve the
+  /// calendar day implied by the source timestamp, not the importing
+  /// device timezone."
+  final DateTime achievementLocalDate;
   final double? locationLatitude;
   final double? locationLongitude;
   final String? locationAddress;
@@ -179,8 +187,13 @@ BeerWithMeImportRecord decodeBeerWithMeImportRow(BeerWithMeImportRow row) {
     );
   }
 
-  final consumedAt = DateTime.tryParse(timestamp)?.toLocal();
-  if (consumedAt == null) {
+  // Parse without converting to the importing device's current timezone:
+  // the raw parsed value's calendar day is either the naive-local day as
+  // authored (no zone suffix in the string) or the UTC day of the exact
+  // instant (an explicit 'Z'/offset suffix) -- either way, a stable day
+  // that does not depend on which device runs the import.
+  final rawParsed = DateTime.tryParse(timestamp);
+  if (rawParsed == null) {
     throw BeerWithMeImportRowException(
       BeerWithMeImportRowErrorCode.invalidTimestamp,
       rowNumber: row.rowNumber,
@@ -188,6 +201,12 @@ BeerWithMeImportRecord decodeBeerWithMeImportRow(BeerWithMeImportRow row) {
       glassType: glassType,
     );
   }
+  final consumedAt = rawParsed.toLocal();
+  final achievementLocalDate = DateTime(
+    rawParsed.year,
+    rawParsed.month,
+    rawParsed.day,
+  );
 
   final latitude = _readDouble(json['latitude']);
   final longitude = _readDouble(json['longitude']);
@@ -198,6 +217,7 @@ BeerWithMeImportRecord decodeBeerWithMeImportRow(BeerWithMeImportRow row) {
     sourceId: sourceId,
     glassType: glassType,
     consumedAt: consumedAt,
+    achievementLocalDate: achievementLocalDate,
     locationLatitude: latitude != null && longitude != null ? latitude : null,
     locationLongitude: latitude != null && longitude != null ? longitude : null,
     locationAddress: locationAddress,

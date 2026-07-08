@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../achievements/catalog_models.dart' show LocationPrecision;
 import '../app_theme.dart';
 import '../app_controller.dart';
 import '../app_scope.dart';
@@ -196,6 +197,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
       locationLatitude: location?.latitude,
       locationLongitude: location?.longitude,
       locationAddress: location?.address,
+      countryCode: location?.countryCode,
+      locationPrecision: location?.precision ?? LocationPrecision.none,
     );
     if (!mounted) {
       return;

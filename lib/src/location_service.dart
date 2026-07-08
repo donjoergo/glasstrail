@@ -2,16 +2,29 @@ import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'achievements/catalog_models.dart' show LocationPrecision;
+
 class EntryLocationData {
   const EntryLocationData({
     required this.latitude,
     required this.longitude,
     this.address,
+    this.countryCode,
+    this.precision = LocationPrecision.approximate,
   });
 
   final double latitude;
   final double longitude;
   final String? address;
+
+  /// Lowercase ISO-3166-1 alpha-2 country code, when reverse geocoding
+  /// resolves one.
+  final String? countryCode;
+
+  /// Whether the OS granted precise or only reduced/approximate location
+  /// access for this fix. Home/work achievement matching requires
+  /// [LocationPrecision.precise].
+  final LocationPrecision precision;
 }
 
 class LocationFetchResult {
@@ -64,16 +77,24 @@ class PlatformLocationService extends LocationService {
         ),
       );
 
+      final placemark = await _resolvePlacemark(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        localeCode: localeCode,
+      );
+
       return LocationFetchResult(
         accuracyStatus: accuracyStatus,
         location: EntryLocationData(
           latitude: position.latitude,
           longitude: position.longitude,
-          address: await _resolveAddress(
-            latitude: position.latitude,
-            longitude: position.longitude,
-            localeCode: localeCode,
-          ),
+          address: placemark == null ? null : _formatPlacemark(placemark),
+          countryCode: placemark?.isoCountryCode?.trim().isEmpty ?? true
+              ? null
+              : placemark!.isoCountryCode!.trim().toLowerCase(),
+          precision: accuracyStatus == LocationAccuracyStatus.precise
+              ? LocationPrecision.precise
+              : LocationPrecision.approximate,
         ),
       );
     } on LocationServiceDisabledException {
@@ -114,7 +135,7 @@ class PlatformLocationService extends LocationService {
     }
   }
 
-  Future<String?> _resolveAddress({
+  Future<Placemark?> _resolvePlacemark({
     required double latitude,
     required double longitude,
     required String localeCode,
@@ -134,7 +155,7 @@ class PlatformLocationService extends LocationService {
       if (placemarks.isEmpty) {
         return null;
       }
-      return _formatPlacemark(placemarks.first);
+      return placemarks.first;
     } on NoResultFoundException {
       return null;
     } on MissingPluginException {

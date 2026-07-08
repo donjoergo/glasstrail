@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../achievements/catalog_models.dart' show LocationPrecision;
 import '../friend_stats_profile.dart';
 import '../cache/bootstrap_cache_store.dart';
 import '../cache/bootstrap_snapshot.dart';
@@ -597,6 +598,11 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     DateTime? consumedAt,
     String? importSource,
     String? importSourceId,
+    DateTime? achievementLocalDate,
+    int? achievementUtcOffsetMinutes,
+    String? achievementTimeZone,
+    String? countryCode,
+    LocationPrecision locationPrecision = LocationPrecision.none,
   }) async {
     final entry = await _delegate.addDrinkEntry(
       user: user,
@@ -610,6 +616,11 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       consumedAt: consumedAt,
       importSource: importSource,
       importSourceId: importSourceId,
+      achievementLocalDate: achievementLocalDate,
+      achievementUtcOffsetMinutes: achievementUtcOffsetMinutes,
+      achievementTimeZone: achievementTimeZone,
+      countryCode: countryCode,
+      locationPrecision: locationPrecision,
     );
     await _updateCache((state) {
       final entries = <DrinkEntry>[
