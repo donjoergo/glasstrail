@@ -1750,6 +1750,2232 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{day} other{days}}'**
   String dayLabel(num count);
+
+  /// No description provided for @achievementFamilyTotalDrinksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheers Chase'**
+  String get achievementFamilyTotalDrinksTitle;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'First Pour'**
+  String get achievementFamilyTotalDrinksLevel1Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel1Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log your first drink.'**
+  String get achievementFamilyTotalDrinksLevel1Description;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sip Starter'**
+  String get achievementFamilyTotalDrinksLevel10Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 drinks.'**
+  String get achievementFamilyTotalDrinksLevel10Description;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass Gatherer'**
+  String get achievementFamilyTotalDrinksLevel25Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 drinks.'**
+  String get achievementFamilyTotalDrinksLevel25Description;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pour Pacer'**
+  String get achievementFamilyTotalDrinksLevel50Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 drinks.'**
+  String get achievementFamilyTotalDrinksLevel50Description;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheers Charger'**
+  String get achievementFamilyTotalDrinksLevel100Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 drinks.'**
+  String get achievementFamilyTotalDrinksLevel100Description;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pour Pathfinder'**
+  String get achievementFamilyTotalDrinksLevel200Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 drinks.'**
+  String get achievementFamilyTotalDrinksLevel200Description;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Toast Tactician'**
+  String get achievementFamilyTotalDrinksLevel300Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 drinks.'**
+  String get achievementFamilyTotalDrinksLevel300Description;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Celebration Commander'**
+  String get achievementFamilyTotalDrinksLevel400Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 drinks.'**
+  String get achievementFamilyTotalDrinksLevel400Description;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Party Patron'**
+  String get achievementFamilyTotalDrinksLevel500Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 drinks.'**
+  String get achievementFamilyTotalDrinksLevel500Description;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheers Champion'**
+  String get achievementFamilyTotalDrinksLevel1000Title;
+
+  /// No description provided for @achievementFamilyTotalDrinksLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 drinks.'**
+  String get achievementFamilyTotalDrinksLevel1000Description;
+
+  /// No description provided for @achievementFamilyStreaksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Drive'**
+  String get achievementFamilyStreaksTitle;
+
+  /// No description provided for @achievementFamilyStreaksLevel3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak Starter'**
+  String get achievementFamilyStreaksLevel3Title;
+
+  /// No description provided for @achievementFamilyStreaksLevel3Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 3-day streak.'**
+  String get achievementFamilyStreaksLevel3Description;
+
+  /// No description provided for @achievementFamilyStreaksLevel7Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Week Warrior'**
+  String get achievementFamilyStreaksLevel7Title;
+
+  /// No description provided for @achievementFamilyStreaksLevel7Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 7-day streak.'**
+  String get achievementFamilyStreaksLevel7Description;
+
+  /// No description provided for @achievementFamilyStreaksLevel14Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Fortnight Flow'**
+  String get achievementFamilyStreaksLevel14Title;
+
+  /// No description provided for @achievementFamilyStreaksLevel14Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 14-day streak.'**
+  String get achievementFamilyStreaksLevel14Description;
+
+  /// No description provided for @achievementFamilyStreaksLevel30Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Thirty-Day Thunder'**
+  String get achievementFamilyStreaksLevel30Title;
+
+  /// No description provided for @achievementFamilyStreaksLevel30Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 30-day streak.'**
+  String get achievementFamilyStreaksLevel30Description;
+
+  /// No description provided for @achievementFamilyStreaksLevel60Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Stamina Sipper'**
+  String get achievementFamilyStreaksLevel60Title;
+
+  /// No description provided for @achievementFamilyStreaksLevel60Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 60-day streak.'**
+  String get achievementFamilyStreaksLevel60Description;
+
+  /// No description provided for @achievementFamilyStreaksLevel90Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Ninety Navigator'**
+  String get achievementFamilyStreaksLevel90Title;
+
+  /// No description provided for @achievementFamilyStreaksLevel90Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 90-day streak.'**
+  String get achievementFamilyStreaksLevel90Description;
+
+  /// No description provided for @achievementFamilyStreaksLevel180Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Endurance Elite'**
+  String get achievementFamilyStreaksLevel180Title;
+
+  /// No description provided for @achievementFamilyStreaksLevel180Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 180-day streak.'**
+  String get achievementFamilyStreaksLevel180Description;
+
+  /// No description provided for @achievementFamilyStreaksLevel365Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Dynasty'**
+  String get achievementFamilyStreaksLevel365Title;
+
+  /// No description provided for @achievementFamilyStreaksLevel365Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 365-day streak.'**
+  String get achievementFamilyStreaksLevel365Description;
+
+  /// No description provided for @achievementFamilyBeerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Brew Quest'**
+  String get achievementFamilyBeerTitle;
+
+  /// No description provided for @achievementFamilyBeerLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Beer Rookie'**
+  String get achievementFamilyBeerLevel10Title;
+
+  /// No description provided for @achievementFamilyBeerLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 beers.'**
+  String get achievementFamilyBeerLevel10Description;
+
+  /// No description provided for @achievementFamilyBeerLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Foam Friend'**
+  String get achievementFamilyBeerLevel25Title;
+
+  /// No description provided for @achievementFamilyBeerLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 beers.'**
+  String get achievementFamilyBeerLevel25Description;
+
+  /// No description provided for @achievementFamilyBeerLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Brew Browser'**
+  String get achievementFamilyBeerLevel50Title;
+
+  /// No description provided for @achievementFamilyBeerLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 beers.'**
+  String get achievementFamilyBeerLevel50Description;
+
+  /// No description provided for @achievementFamilyBeerLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Hop Hero'**
+  String get achievementFamilyBeerLevel100Title;
+
+  /// No description provided for @achievementFamilyBeerLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 beers.'**
+  String get achievementFamilyBeerLevel100Description;
+
+  /// No description provided for @achievementFamilyBeerLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Brew Boss'**
+  String get achievementFamilyBeerLevel200Title;
+
+  /// No description provided for @achievementFamilyBeerLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 beers.'**
+  String get achievementFamilyBeerLevel200Description;
+
+  /// No description provided for @achievementFamilyBeerLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Hop Honcho'**
+  String get achievementFamilyBeerLevel300Title;
+
+  /// No description provided for @achievementFamilyBeerLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 beers.'**
+  String get achievementFamilyBeerLevel300Description;
+
+  /// No description provided for @achievementFamilyBeerLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Beer Baron'**
+  String get achievementFamilyBeerLevel400Title;
+
+  /// No description provided for @achievementFamilyBeerLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 beers.'**
+  String get achievementFamilyBeerLevel400Description;
+
+  /// No description provided for @achievementFamilyBeerLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Brew Legend'**
+  String get achievementFamilyBeerLevel500Title;
+
+  /// No description provided for @achievementFamilyBeerLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 beers.'**
+  String get achievementFamilyBeerLevel500Description;
+
+  /// No description provided for @achievementFamilyBeerLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Beer Immortal'**
+  String get achievementFamilyBeerLevel1000Title;
+
+  /// No description provided for @achievementFamilyBeerLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 beers.'**
+  String get achievementFamilyBeerLevel1000Description;
+
+  /// No description provided for @achievementFamilyWineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vintage Voyage'**
+  String get achievementFamilyWineTitle;
+
+  /// No description provided for @achievementFamilyWineLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Grape Guest'**
+  String get achievementFamilyWineLevel10Title;
+
+  /// No description provided for @achievementFamilyWineLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 wines.'**
+  String get achievementFamilyWineLevel10Description;
+
+  /// No description provided for @achievementFamilyWineLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Vine Visitor'**
+  String get achievementFamilyWineLevel25Title;
+
+  /// No description provided for @achievementFamilyWineLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 wines.'**
+  String get achievementFamilyWineLevel25Description;
+
+  /// No description provided for @achievementFamilyWineLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Grape Gatherer'**
+  String get achievementFamilyWineLevel50Title;
+
+  /// No description provided for @achievementFamilyWineLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 wines.'**
+  String get achievementFamilyWineLevel50Description;
+
+  /// No description provided for @achievementFamilyWineLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cork Commander'**
+  String get achievementFamilyWineLevel100Title;
+
+  /// No description provided for @achievementFamilyWineLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 wines.'**
+  String get achievementFamilyWineLevel100Description;
+
+  /// No description provided for @achievementFamilyWineLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Vine Virtuoso'**
+  String get achievementFamilyWineLevel200Title;
+
+  /// No description provided for @achievementFamilyWineLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 wines.'**
+  String get achievementFamilyWineLevel200Description;
+
+  /// No description provided for @achievementFamilyWineLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Grape Guru'**
+  String get achievementFamilyWineLevel300Title;
+
+  /// No description provided for @achievementFamilyWineLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 wines.'**
+  String get achievementFamilyWineLevel300Description;
+
+  /// No description provided for @achievementFamilyWineLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Wine Wizard'**
+  String get achievementFamilyWineLevel400Title;
+
+  /// No description provided for @achievementFamilyWineLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 wines.'**
+  String get achievementFamilyWineLevel400Description;
+
+  /// No description provided for @achievementFamilyWineLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Vine VIP'**
+  String get achievementFamilyWineLevel500Title;
+
+  /// No description provided for @achievementFamilyWineLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 wines.'**
+  String get achievementFamilyWineLevel500Description;
+
+  /// No description provided for @achievementFamilyWineLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Wine Wonder'**
+  String get achievementFamilyWineLevel1000Title;
+
+  /// No description provided for @achievementFamilyWineLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 wines.'**
+  String get achievementFamilyWineLevel1000Description;
+
+  /// No description provided for @achievementFamilySparklingWinesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Spark Sprint'**
+  String get achievementFamilySparklingWinesTitle;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spark Starter'**
+  String get achievementFamilySparklingWinesLevel10Title;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 sparkling wines.'**
+  String get achievementFamilySparklingWinesLevel10Description;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Fizz Friend'**
+  String get achievementFamilySparklingWinesLevel25Title;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 sparkling wines.'**
+  String get achievementFamilySparklingWinesLevel25Description;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spark Seeker'**
+  String get achievementFamilySparklingWinesLevel50Title;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 sparkling wines.'**
+  String get achievementFamilySparklingWinesLevel50Description;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Fizz Foreman'**
+  String get achievementFamilySparklingWinesLevel100Title;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 sparkling wines.'**
+  String get achievementFamilySparklingWinesLevel100Description;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cuvée Captain'**
+  String get achievementFamilySparklingWinesLevel200Title;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 sparkling wines.'**
+  String get achievementFamilySparklingWinesLevel200Description;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spark Sovereign'**
+  String get achievementFamilySparklingWinesLevel300Title;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 sparkling wines.'**
+  String get achievementFamilySparklingWinesLevel300Description;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cuvée Conqueror'**
+  String get achievementFamilySparklingWinesLevel400Title;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 sparkling wines.'**
+  String get achievementFamilySparklingWinesLevel400Description;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Fizz Fame'**
+  String get achievementFamilySparklingWinesLevel500Title;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 sparkling wines.'**
+  String get achievementFamilySparklingWinesLevel500Description;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spark Supreme'**
+  String get achievementFamilySparklingWinesLevel1000Title;
+
+  /// No description provided for @achievementFamilySparklingWinesLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 sparkling wines.'**
+  String get achievementFamilySparklingWinesLevel1000Description;
+
+  /// No description provided for @achievementFamilyLongdrinksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixer Marathon'**
+  String get achievementFamilyLongdrinksTitle;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Longdrink Learner'**
+  String get achievementFamilyLongdrinksLevel10Title;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 longdrinks.'**
+  String get achievementFamilyLongdrinksLevel10Description;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixer Mate'**
+  String get achievementFamilyLongdrinksLevel25Title;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 longdrinks.'**
+  String get achievementFamilyLongdrinksLevel25Description;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Longdrink Loyalist'**
+  String get achievementFamilyLongdrinksLevel50Title;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 longdrinks.'**
+  String get achievementFamilyLongdrinksLevel50Description;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixer Master'**
+  String get achievementFamilyLongdrinksLevel100Title;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 longdrinks.'**
+  String get achievementFamilyLongdrinksLevel100Description;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Longdrink Leader'**
+  String get achievementFamilyLongdrinksLevel200Title;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 longdrinks.'**
+  String get achievementFamilyLongdrinksLevel200Description;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mix Monarch'**
+  String get achievementFamilyLongdrinksLevel300Title;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 longdrinks.'**
+  String get achievementFamilyLongdrinksLevel300Description;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixer Mogul'**
+  String get achievementFamilyLongdrinksLevel400Title;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 longdrinks.'**
+  String get achievementFamilyLongdrinksLevel400Description;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pour Prince'**
+  String get achievementFamilyLongdrinksLevel500Title;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 longdrinks.'**
+  String get achievementFamilyLongdrinksLevel500Description;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixer Immortal'**
+  String get achievementFamilyLongdrinksLevel1000Title;
+
+  /// No description provided for @achievementFamilyLongdrinksLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 longdrinks.'**
+  String get achievementFamilyLongdrinksLevel1000Description;
+
+  /// No description provided for @achievementFamilySpiritsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Spirit Sprint'**
+  String get achievementFamilySpiritsTitle;
+
+  /// No description provided for @achievementFamilySpiritsLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spirit Starter'**
+  String get achievementFamilySpiritsLevel10Title;
+
+  /// No description provided for @achievementFamilySpiritsLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 spirits.'**
+  String get achievementFamilySpiritsLevel10Description;
+
+  /// No description provided for @achievementFamilySpiritsLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Dram Dabbler'**
+  String get achievementFamilySpiritsLevel25Title;
+
+  /// No description provided for @achievementFamilySpiritsLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 spirits.'**
+  String get achievementFamilySpiritsLevel25Description;
+
+  /// No description provided for @achievementFamilySpiritsLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pour Pal'**
+  String get achievementFamilySpiritsLevel50Title;
+
+  /// No description provided for @achievementFamilySpiritsLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 spirits.'**
+  String get achievementFamilySpiritsLevel50Description;
+
+  /// No description provided for @achievementFamilySpiritsLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spirit Specialist'**
+  String get achievementFamilySpiritsLevel100Title;
+
+  /// No description provided for @achievementFamilySpiritsLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 spirits.'**
+  String get achievementFamilySpiritsLevel100Description;
+
+  /// No description provided for @achievementFamilySpiritsLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pour Pioneer'**
+  String get achievementFamilySpiritsLevel200Title;
+
+  /// No description provided for @achievementFamilySpiritsLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 spirits.'**
+  String get achievementFamilySpiritsLevel200Description;
+
+  /// No description provided for @achievementFamilySpiritsLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Neat Noble'**
+  String get achievementFamilySpiritsLevel300Title;
+
+  /// No description provided for @achievementFamilySpiritsLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 spirits.'**
+  String get achievementFamilySpiritsLevel300Description;
+
+  /// No description provided for @achievementFamilySpiritsLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spirit Supremo'**
+  String get achievementFamilySpiritsLevel400Title;
+
+  /// No description provided for @achievementFamilySpiritsLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 spirits.'**
+  String get achievementFamilySpiritsLevel400Description;
+
+  /// No description provided for @achievementFamilySpiritsLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pour Prestige'**
+  String get achievementFamilySpiritsLevel500Title;
+
+  /// No description provided for @achievementFamilySpiritsLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 spirits.'**
+  String get achievementFamilySpiritsLevel500Description;
+
+  /// No description provided for @achievementFamilySpiritsLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spirit Immortal'**
+  String get achievementFamilySpiritsLevel1000Title;
+
+  /// No description provided for @achievementFamilySpiritsLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 spirits.'**
+  String get achievementFamilySpiritsLevel1000Description;
+
+  /// No description provided for @achievementFamilyShotsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Kick'**
+  String get achievementFamilyShotsTitle;
+
+  /// No description provided for @achievementFamilyShotsLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Quencher'**
+  String get achievementFamilyShotsLevel10Title;
+
+  /// No description provided for @achievementFamilyShotsLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 shots.'**
+  String get achievementFamilyShotsLevel10Description;
+
+  /// No description provided for @achievementFamilyShotsLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot Scout'**
+  String get achievementFamilyShotsLevel25Title;
+
+  /// No description provided for @achievementFamilyShotsLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 shots.'**
+  String get achievementFamilyShotsLevel25Description;
+
+  /// No description provided for @achievementFamilyShotsLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot Sprinter'**
+  String get achievementFamilyShotsLevel50Title;
+
+  /// No description provided for @achievementFamilyShotsLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 shots.'**
+  String get achievementFamilyShotsLevel50Description;
+
+  /// No description provided for @achievementFamilyShotsLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Commander'**
+  String get achievementFamilyShotsLevel100Title;
+
+  /// No description provided for @achievementFamilyShotsLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 shots.'**
+  String get achievementFamilyShotsLevel100Description;
+
+  /// No description provided for @achievementFamilyShotsLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot Sovereign'**
+  String get achievementFamilyShotsLevel200Title;
+
+  /// No description provided for @achievementFamilyShotsLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 shots.'**
+  String get achievementFamilyShotsLevel200Description;
+
+  /// No description provided for @achievementFamilyShotsLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick King'**
+  String get achievementFamilyShotsLevel300Title;
+
+  /// No description provided for @achievementFamilyShotsLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 shots.'**
+  String get achievementFamilyShotsLevel300Description;
+
+  /// No description provided for @achievementFamilyShotsLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot Supreme'**
+  String get achievementFamilyShotsLevel400Title;
+
+  /// No description provided for @achievementFamilyShotsLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 shots.'**
+  String get achievementFamilyShotsLevel400Description;
+
+  /// No description provided for @achievementFamilyShotsLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Tiny Tornado'**
+  String get achievementFamilyShotsLevel500Title;
+
+  /// No description provided for @achievementFamilyShotsLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 shots.'**
+  String get achievementFamilyShotsLevel500Description;
+
+  /// No description provided for @achievementFamilyShotsLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot Immortal'**
+  String get achievementFamilyShotsLevel1000Title;
+
+  /// No description provided for @achievementFamilyShotsLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 shots.'**
+  String get achievementFamilyShotsLevel1000Description;
+
+  /// No description provided for @achievementFamilyCocktailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cocktail Craze'**
+  String get achievementFamilyCocktailsTitle;
+
+  /// No description provided for @achievementFamilyCocktailsLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cocktail Cadet'**
+  String get achievementFamilyCocktailsLevel10Title;
+
+  /// No description provided for @achievementFamilyCocktailsLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 cocktails.'**
+  String get achievementFamilyCocktailsLevel10Description;
+
+  /// No description provided for @achievementFamilyCocktailsLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixer Muse'**
+  String get achievementFamilyCocktailsLevel25Title;
+
+  /// No description provided for @achievementFamilyCocktailsLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 cocktails.'**
+  String get achievementFamilyCocktailsLevel25Description;
+
+  /// No description provided for @achievementFamilyCocktailsLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass Glam'**
+  String get achievementFamilyCocktailsLevel50Title;
+
+  /// No description provided for @achievementFamilyCocktailsLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 cocktails.'**
+  String get achievementFamilyCocktailsLevel50Description;
+
+  /// No description provided for @achievementFamilyCocktailsLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Shaker Specialist'**
+  String get achievementFamilyCocktailsLevel100Title;
+
+  /// No description provided for @achievementFamilyCocktailsLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 cocktails.'**
+  String get achievementFamilyCocktailsLevel100Description;
+
+  /// No description provided for @achievementFamilyCocktailsLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cocktail Charmer'**
+  String get achievementFamilyCocktailsLevel200Title;
+
+  /// No description provided for @achievementFamilyCocktailsLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 cocktails.'**
+  String get achievementFamilyCocktailsLevel200Description;
+
+  /// No description provided for @achievementFamilyCocktailsLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass Guru'**
+  String get achievementFamilyCocktailsLevel300Title;
+
+  /// No description provided for @achievementFamilyCocktailsLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 cocktails.'**
+  String get achievementFamilyCocktailsLevel300Description;
+
+  /// No description provided for @achievementFamilyCocktailsLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixer Majesty'**
+  String get achievementFamilyCocktailsLevel400Title;
+
+  /// No description provided for @achievementFamilyCocktailsLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 cocktails.'**
+  String get achievementFamilyCocktailsLevel400Description;
+
+  /// No description provided for @achievementFamilyCocktailsLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Shaker Legend'**
+  String get achievementFamilyCocktailsLevel500Title;
+
+  /// No description provided for @achievementFamilyCocktailsLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 cocktails.'**
+  String get achievementFamilyCocktailsLevel500Description;
+
+  /// No description provided for @achievementFamilyCocktailsLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cocktail Icon'**
+  String get achievementFamilyCocktailsLevel1000Title;
+
+  /// No description provided for @achievementFamilyCocktailsLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 cocktails.'**
+  String get achievementFamilyCocktailsLevel1000Description;
+
+  /// No description provided for @achievementFamilyAppleWinesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cider Circuit'**
+  String get achievementFamilyAppleWinesTitle;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Apprentice'**
+  String get achievementFamilyAppleWinesLevel10Title;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 apple wines.'**
+  String get achievementFamilyAppleWinesLevel10Description;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cider Scout'**
+  String get achievementFamilyAppleWinesLevel25Title;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 apple wines.'**
+  String get achievementFamilyAppleWinesLevel25Description;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cider Chaser'**
+  String get achievementFamilyAppleWinesLevel50Title;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 apple wines.'**
+  String get achievementFamilyAppleWinesLevel50Description;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Ace'**
+  String get achievementFamilyAppleWinesLevel100Title;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 apple wines.'**
+  String get achievementFamilyAppleWinesLevel100Description;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cider Captain'**
+  String get achievementFamilyAppleWinesLevel200Title;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 apple wines.'**
+  String get achievementFamilyAppleWinesLevel200Description;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Aristocrat'**
+  String get achievementFamilyAppleWinesLevel300Title;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 apple wines.'**
+  String get achievementFamilyAppleWinesLevel300Description;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cider Crown'**
+  String get achievementFamilyAppleWinesLevel400Title;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 apple wines.'**
+  String get achievementFamilyAppleWinesLevel400Description;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Authority'**
+  String get achievementFamilyAppleWinesLevel500Title;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 apple wines.'**
+  String get achievementFamilyAppleWinesLevel500Description;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Cider Immortal'**
+  String get achievementFamilyAppleWinesLevel1000Title;
+
+  /// No description provided for @achievementFamilyAppleWinesLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 apple wines.'**
+  String get achievementFamilyAppleWinesLevel1000Description;
+
+  /// No description provided for @achievementFamilyNonAlcoholicTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero Zest'**
+  String get achievementFamilyNonAlcoholicTitle;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero Starter'**
+  String get achievementFamilyNonAlcoholicLevel10Title;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 non-alcoholic drinks.'**
+  String get achievementFamilyNonAlcoholicLevel10Description;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Cruiser'**
+  String get achievementFamilyNonAlcoholicLevel25Title;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 non-alcoholic drinks.'**
+  String get achievementFamilyNonAlcoholicLevel25Description;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Hydro Hero'**
+  String get achievementFamilyNonAlcoholicLevel50Title;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 non-alcoholic drinks.'**
+  String get achievementFamilyNonAlcoholicLevel50Description;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero Pro'**
+  String get achievementFamilyNonAlcoholicLevel100Title;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 non-alcoholic drinks.'**
+  String get achievementFamilyNonAlcoholicLevel100Description;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel200Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Commander'**
+  String get achievementFamilyNonAlcoholicLevel200Title;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel200Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 200 non-alcoholic drinks.'**
+  String get achievementFamilyNonAlcoholicLevel200Description;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel300Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero Virtuoso'**
+  String get achievementFamilyNonAlcoholicLevel300Title;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel300Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 300 non-alcoholic drinks.'**
+  String get achievementFamilyNonAlcoholicLevel300Description;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel400Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero Maestro'**
+  String get achievementFamilyNonAlcoholicLevel400Title;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel400Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 400 non-alcoholic drinks.'**
+  String get achievementFamilyNonAlcoholicLevel400Description;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel500Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero Zenith'**
+  String get achievementFamilyNonAlcoholicLevel500Title;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel500Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 500 non-alcoholic drinks.'**
+  String get achievementFamilyNonAlcoholicLevel500Description;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel1000Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero Hero'**
+  String get achievementFamilyNonAlcoholicLevel1000Title;
+
+  /// No description provided for @achievementFamilyNonAlcoholicLevel1000Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 1000 non-alcoholic drinks.'**
+  String get achievementFamilyNonAlcoholicLevel1000Description;
+
+  /// No description provided for @achievementFamilyHomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Home Harmony'**
+  String get achievementFamilyHomeTitle;
+
+  /// No description provided for @achievementFamilyHomeLevel1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Home Hello'**
+  String get achievementFamilyHomeLevel1Title;
+
+  /// No description provided for @achievementFamilyHomeLevel1Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a drink at home.'**
+  String get achievementFamilyHomeLevel1Description;
+
+  /// No description provided for @achievementFamilyHomeLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay Starter'**
+  String get achievementFamilyHomeLevel10Title;
+
+  /// No description provided for @achievementFamilyHomeLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 drinks at home.'**
+  String get achievementFamilyHomeLevel10Description;
+
+  /// No description provided for @achievementFamilyHomeLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Couch Companion'**
+  String get achievementFamilyHomeLevel25Title;
+
+  /// No description provided for @achievementFamilyHomeLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 drinks at home.'**
+  String get achievementFamilyHomeLevel25Description;
+
+  /// No description provided for @achievementFamilyHomeLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Home Hero'**
+  String get achievementFamilyHomeLevel50Title;
+
+  /// No description provided for @achievementFamilyHomeLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 drinks at home.'**
+  String get achievementFamilyHomeLevel50Description;
+
+  /// No description provided for @achievementFamilyHomeLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay Sovereign'**
+  String get achievementFamilyHomeLevel100Title;
+
+  /// No description provided for @achievementFamilyHomeLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 drinks at home.'**
+  String get achievementFamilyHomeLevel100Description;
+
+  /// No description provided for @achievementFamilyWorkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Office Odyssey'**
+  String get achievementFamilyWorkTitle;
+
+  /// No description provided for @achievementFamilyWorkLevel1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Work Welcome'**
+  String get achievementFamilyWorkLevel1Title;
+
+  /// No description provided for @achievementFamilyWorkLevel1Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a drink at work.'**
+  String get achievementFamilyWorkLevel1Description;
+
+  /// No description provided for @achievementFamilyWorkLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Office Operative'**
+  String get achievementFamilyWorkLevel10Title;
+
+  /// No description provided for @achievementFamilyWorkLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 10 drinks at work.'**
+  String get achievementFamilyWorkLevel10Description;
+
+  /// No description provided for @achievementFamilyWorkLevel25Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Office Officer'**
+  String get achievementFamilyWorkLevel25Title;
+
+  /// No description provided for @achievementFamilyWorkLevel25Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 25 drinks at work.'**
+  String get achievementFamilyWorkLevel25Description;
+
+  /// No description provided for @achievementFamilyWorkLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Work Warrior'**
+  String get achievementFamilyWorkLevel50Title;
+
+  /// No description provided for @achievementFamilyWorkLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 50 drinks at work.'**
+  String get achievementFamilyWorkLevel50Description;
+
+  /// No description provided for @achievementFamilyWorkLevel100Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Office Icon'**
+  String get achievementFamilyWorkLevel100Title;
+
+  /// No description provided for @achievementFamilyWorkLevel100Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log 100 drinks at work.'**
+  String get achievementFamilyWorkLevel100Description;
+
+  /// No description provided for @achievementFamilyTravelCountriesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Passport Pursuit'**
+  String get achievementFamilyTravelCountriesTitle;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Passport Pioneer'**
+  String get achievementFamilyTravelCountriesLevel3Title;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel3Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log drinks in 3 countries.'**
+  String get achievementFamilyTravelCountriesLevel3Description;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel5Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Border Buddy'**
+  String get achievementFamilyTravelCountriesLevel5Title;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel5Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log drinks in 5 countries.'**
+  String get achievementFamilyTravelCountriesLevel5Description;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel10Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Country Cruiser'**
+  String get achievementFamilyTravelCountriesLevel10Title;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel10Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log drinks in 10 countries.'**
+  String get achievementFamilyTravelCountriesLevel10Description;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel15Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Map Maverick'**
+  String get achievementFamilyTravelCountriesLevel15Title;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel15Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log drinks in 15 countries.'**
+  String get achievementFamilyTravelCountriesLevel15Description;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel20Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Trailblazer'**
+  String get achievementFamilyTravelCountriesLevel20Title;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel20Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log drinks in 20 countries.'**
+  String get achievementFamilyTravelCountriesLevel20Description;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel30Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Global Galloper'**
+  String get achievementFamilyTravelCountriesLevel30Title;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel30Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log drinks in 30 countries.'**
+  String get achievementFamilyTravelCountriesLevel30Description;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel50Title.
+  ///
+  /// In en, this message translates to:
+  /// **'World Whirl'**
+  String get achievementFamilyTravelCountriesLevel50Title;
+
+  /// No description provided for @achievementFamilyTravelCountriesLevel50Description.
+  ///
+  /// In en, this message translates to:
+  /// **'Log drinks in 50 countries.'**
+  String get achievementFamilyTravelCountriesLevel50Description;
+
+  /// No description provided for @achievementOccasionBirthdayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Birthday Bash'**
+  String get achievementOccasionBirthdayTitle;
+
+  /// No description provided for @achievementOccasionBirthdayDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink on your birthday.'**
+  String get achievementOccasionBirthdayDescription;
+
+  /// No description provided for @achievementOccasionFirstSipAnniversaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'First Sip Anniversary'**
+  String get achievementOccasionFirstSipAnniversaryTitle;
+
+  /// No description provided for @achievementOccasionFirstSipAnniversaryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink on the anniversary of your first known drink.'**
+  String get achievementOccasionFirstSipAnniversaryDescription;
+
+  /// No description provided for @achievementOccasionNewYearTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Year, New Cheers'**
+  String get achievementOccasionNewYearTitle;
+
+  /// No description provided for @achievementOccasionNewYearDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink on New Year\'s Eve or New Year\'s Day.'**
+  String get achievementOccasionNewYearDescription;
+
+  /// No description provided for @achievementOccasionChristmasTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Christmas Clink'**
+  String get achievementOccasionChristmasTitle;
+
+  /// No description provided for @achievementOccasionChristmasDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink between December 24 and 26.'**
+  String get achievementOccasionChristmasDescription;
+
+  /// No description provided for @achievementOccasionEasterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Easter Cheers'**
+  String get achievementOccasionEasterTitle;
+
+  /// No description provided for @achievementOccasionEasterDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink between Good Friday and Easter Monday.'**
+  String get achievementOccasionEasterDescription;
+
+  /// No description provided for @achievementOccasionHalloweenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Spooky Sip'**
+  String get achievementOccasionHalloweenTitle;
+
+  /// No description provided for @achievementOccasionHalloweenDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink on Halloween.'**
+  String get achievementOccasionHalloweenDescription;
+
+  /// No description provided for @achievementOccasionStPatricksDayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lucky Lager'**
+  String get achievementOccasionStPatricksDayTitle;
+
+  /// No description provided for @achievementOccasionStPatricksDayDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a beer on March 17.'**
+  String get achievementOccasionStPatricksDayDescription;
+
+  /// No description provided for @achievementOccasionOktoberfestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Festbier Fever'**
+  String get achievementOccasionOktoberfestTitle;
+
+  /// No description provided for @achievementOccasionOktoberfestDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a beer during Oktoberfest.'**
+  String get achievementOccasionOktoberfestDescription;
+
+  /// No description provided for @achievementOccasionCarnivalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confetti Cheers'**
+  String get achievementOccasionCarnivalTitle;
+
+  /// No description provided for @achievementOccasionCarnivalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink during Carnival.'**
+  String get achievementOccasionCarnivalDescription;
+
+  /// No description provided for @achievementCountryDeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Beergarten Bound'**
+  String get achievementCountryDeTitle;
+
+  /// No description provided for @achievementCountryDeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Germany'**
+  String get achievementCountryDeLabel;
+
+  /// No description provided for @achievementCountryDeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Germany.'**
+  String get achievementCountryDeDescription;
+
+  /// No description provided for @achievementCountryNlTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Canal Clink'**
+  String get achievementCountryNlTitle;
+
+  /// No description provided for @achievementCountryNlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Netherlands'**
+  String get achievementCountryNlLabel;
+
+  /// No description provided for @achievementCountryNlDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in the Netherlands.'**
+  String get achievementCountryNlDescription;
+
+  /// No description provided for @achievementCountryBeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Belgian Buzz'**
+  String get achievementCountryBeTitle;
+
+  /// No description provided for @achievementCountryBeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Belgium'**
+  String get achievementCountryBeLabel;
+
+  /// No description provided for @achievementCountryBeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Belgium.'**
+  String get achievementCountryBeDescription;
+
+  /// No description provided for @achievementCountryLuTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Grand Duchy Glow'**
+  String get achievementCountryLuTitle;
+
+  /// No description provided for @achievementCountryLuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Luxembourg'**
+  String get achievementCountryLuLabel;
+
+  /// No description provided for @achievementCountryLuDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Luxembourg.'**
+  String get achievementCountryLuDescription;
+
+  /// No description provided for @achievementCountryFrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'French Fizz'**
+  String get achievementCountryFrTitle;
+
+  /// No description provided for @achievementCountryFrLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'France'**
+  String get achievementCountryFrLabel;
+
+  /// No description provided for @achievementCountryFrDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in France.'**
+  String get achievementCountryFrDescription;
+
+  /// No description provided for @achievementCountryEsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fiesta Flow'**
+  String get achievementCountryEsTitle;
+
+  /// No description provided for @achievementCountryEsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Spain'**
+  String get achievementCountryEsLabel;
+
+  /// No description provided for @achievementCountryEsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Spain.'**
+  String get achievementCountryEsDescription;
+
+  /// No description provided for @achievementCountryPtTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Portuguese Pour'**
+  String get achievementCountryPtTitle;
+
+  /// No description provided for @achievementCountryPtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Portugal'**
+  String get achievementCountryPtLabel;
+
+  /// No description provided for @achievementCountryPtDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Portugal.'**
+  String get achievementCountryPtDescription;
+
+  /// No description provided for @achievementCountryItTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Aperitivo Arrival'**
+  String get achievementCountryItTitle;
+
+  /// No description provided for @achievementCountryItLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Italy'**
+  String get achievementCountryItLabel;
+
+  /// No description provided for @achievementCountryItDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Italy.'**
+  String get achievementCountryItDescription;
+
+  /// No description provided for @achievementCountryAtTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Alpine Cheers'**
+  String get achievementCountryAtTitle;
+
+  /// No description provided for @achievementCountryAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Austria'**
+  String get achievementCountryAtLabel;
+
+  /// No description provided for @achievementCountryAtDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Austria.'**
+  String get achievementCountryAtDescription;
+
+  /// No description provided for @achievementCountryChTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Peak Pour'**
+  String get achievementCountryChTitle;
+
+  /// No description provided for @achievementCountryChLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Switzerland'**
+  String get achievementCountryChLabel;
+
+  /// No description provided for @achievementCountryChDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Switzerland.'**
+  String get achievementCountryChDescription;
+
+  /// No description provided for @achievementCountryPlTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Polish Pour'**
+  String get achievementCountryPlTitle;
+
+  /// No description provided for @achievementCountryPlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Poland'**
+  String get achievementCountryPlLabel;
+
+  /// No description provided for @achievementCountryPlDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Poland.'**
+  String get achievementCountryPlDescription;
+
+  /// No description provided for @achievementCountryCzTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Czech Cheers'**
+  String get achievementCountryCzTitle;
+
+  /// No description provided for @achievementCountryCzLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Czech Republic'**
+  String get achievementCountryCzLabel;
+
+  /// No description provided for @achievementCountryCzDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in the Czech Republic.'**
+  String get achievementCountryCzDescription;
+
+  /// No description provided for @achievementCountryIeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Emerald Cheers'**
+  String get achievementCountryIeTitle;
+
+  /// No description provided for @achievementCountryIeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ireland'**
+  String get achievementCountryIeLabel;
+
+  /// No description provided for @achievementCountryIeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Ireland.'**
+  String get achievementCountryIeDescription;
+
+  /// No description provided for @achievementCountryGbTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kingdom Clink'**
+  String get achievementCountryGbTitle;
+
+  /// No description provided for @achievementCountryGbLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'United Kingdom'**
+  String get achievementCountryGbLabel;
+
+  /// No description provided for @achievementCountryGbDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in the United Kingdom.'**
+  String get achievementCountryGbDescription;
+
+  /// No description provided for @achievementCountryDkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Danish Draft'**
+  String get achievementCountryDkTitle;
+
+  /// No description provided for @achievementCountryDkLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Denmark'**
+  String get achievementCountryDkLabel;
+
+  /// No description provided for @achievementCountryDkDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Denmark.'**
+  String get achievementCountryDkDescription;
+
+  /// No description provided for @achievementCountrySeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scandi Spark'**
+  String get achievementCountrySeTitle;
+
+  /// No description provided for @achievementCountrySeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sweden'**
+  String get achievementCountrySeLabel;
+
+  /// No description provided for @achievementCountrySeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Sweden.'**
+  String get achievementCountrySeDescription;
+
+  /// No description provided for @achievementCountryNoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fjord Flow'**
+  String get achievementCountryNoTitle;
+
+  /// No description provided for @achievementCountryNoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Norway'**
+  String get achievementCountryNoLabel;
+
+  /// No description provided for @achievementCountryNoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Norway.'**
+  String get achievementCountryNoDescription;
+
+  /// No description provided for @achievementCountryFiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sauna Sip'**
+  String get achievementCountryFiTitle;
+
+  /// No description provided for @achievementCountryFiLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Finland'**
+  String get achievementCountryFiLabel;
+
+  /// No description provided for @achievementCountryFiDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Finland.'**
+  String get achievementCountryFiDescription;
+
+  /// No description provided for @achievementCountryGrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Aegean Cheers'**
+  String get achievementCountryGrTitle;
+
+  /// No description provided for @achievementCountryGrLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Greece'**
+  String get achievementCountryGrLabel;
+
+  /// No description provided for @achievementCountryGrDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Greece.'**
+  String get achievementCountryGrDescription;
+
+  /// No description provided for @achievementCountryHrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Adriatic Uplift'**
+  String get achievementCountryHrTitle;
+
+  /// No description provided for @achievementCountryHrLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Croatia'**
+  String get achievementCountryHrLabel;
+
+  /// No description provided for @achievementCountryHrDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Croatia.'**
+  String get achievementCountryHrDescription;
+
+  /// No description provided for @achievementCountryHuTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Danube Draft'**
+  String get achievementCountryHuTitle;
+
+  /// No description provided for @achievementCountryHuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hungary'**
+  String get achievementCountryHuLabel;
+
+  /// No description provided for @achievementCountryHuDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Hungary.'**
+  String get achievementCountryHuDescription;
+
+  /// No description provided for @achievementCountryRoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Carpathian Clink'**
+  String get achievementCountryRoTitle;
+
+  /// No description provided for @achievementCountryRoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Romania'**
+  String get achievementCountryRoLabel;
+
+  /// No description provided for @achievementCountryRoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Romania.'**
+  String get achievementCountryRoDescription;
+
+  /// No description provided for @achievementCountryTrTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bosphorus Buzz'**
+  String get achievementCountryTrTitle;
+
+  /// No description provided for @achievementCountryTrLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkey'**
+  String get achievementCountryTrLabel;
+
+  /// No description provided for @achievementCountryTrDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Turkey.'**
+  String get achievementCountryTrDescription;
+
+  /// No description provided for @achievementCountryUsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stars & Sips'**
+  String get achievementCountryUsTitle;
+
+  /// No description provided for @achievementCountryUsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'United States'**
+  String get achievementCountryUsLabel;
+
+  /// No description provided for @achievementCountryUsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in the United States.'**
+  String get achievementCountryUsDescription;
+
+  /// No description provided for @achievementCountryJpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sakura Sip'**
+  String get achievementCountryJpTitle;
+
+  /// No description provided for @achievementCountryJpLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Japan'**
+  String get achievementCountryJpLabel;
+
+  /// No description provided for @achievementCountryJpDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Japan.'**
+  String get achievementCountryJpDescription;
+
+  /// No description provided for @achievementCountrySiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dragon Draft'**
+  String get achievementCountrySiTitle;
+
+  /// No description provided for @achievementCountrySiLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Slovenia'**
+  String get achievementCountrySiLabel;
+
+  /// No description provided for @achievementCountrySiDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Slovenia.'**
+  String get achievementCountrySiDescription;
+
+  /// No description provided for @achievementCountryMcTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Monaco Mood'**
+  String get achievementCountryMcTitle;
+
+  /// No description provided for @achievementCountryMcLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Monaco'**
+  String get achievementCountryMcLabel;
+
+  /// No description provided for @achievementCountryMcDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Log any drink in Monaco.'**
+  String get achievementCountryMcDescription;
+
+  /// No description provided for @achievementsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get achievementsTab;
+
+  /// No description provided for @achievementsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get achievementsTitle;
+
+  /// No description provided for @achievementsBadgesEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'Badges earned'**
+  String get achievementsBadgesEarned;
+
+  /// No description provided for @achievementsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get achievementsFilterAll;
+
+  /// No description provided for @achievementsFilterUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked'**
+  String get achievementsFilterUnlocked;
+
+  /// No description provided for @achievementsFilterLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get achievementsFilterLocked;
+
+  /// No description provided for @achievementsRecentlyUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently unlocked'**
+  String get achievementsRecentlyUnlocked;
+
+  /// No description provided for @achievementsViewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View all'**
+  String get achievementsViewAll;
+
+  /// No description provided for @achievementsSetupRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup required'**
+  String get achievementsSetupRequired;
+
+  /// No description provided for @achievementsSetUpNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up now'**
+  String get achievementsSetUpNow;
+
+  /// No description provided for @achievementsEarnableToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Earnable today'**
+  String get achievementsEarnableToday;
+
+  /// No description provided for @achievementsNextEligible.
+  ///
+  /// In en, this message translates to:
+  /// **'Next eligible'**
+  String get achievementsNextEligible;
+
+  /// No description provided for @achievementsUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked'**
+  String get achievementsUnlocked;
+
+  /// No description provided for @achievementsLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get achievementsLocked;
+
+  /// No description provided for @achievementsCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get achievementsCompleted;
+
+  /// No description provided for @achievementsSummaryBackfillTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements unlocked'**
+  String get achievementsSummaryBackfillTitle;
+
+  /// No description provided for @shareAchievements.
+  ///
+  /// In en, this message translates to:
+  /// **'Share achievements with friends'**
+  String get shareAchievements;
+
+  /// No description provided for @shareAchievementsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted friends can see your earned badges inside the app.'**
+  String get shareAchievementsBody;
+
+  /// No description provided for @achievementReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievement reminders'**
+  String get achievementReminders;
+
+  /// No description provided for @achievementRemindersBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Get push reminders for annual and occasion-based badges.'**
+  String get achievementRemindersBody;
+
+  /// No description provided for @savedPlacesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Places'**
+  String get savedPlacesTitle;
+
+  /// No description provided for @savedPlacesHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get savedPlacesHome;
+
+  /// No description provided for @savedPlacesWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get savedPlacesWork;
+
+  /// No description provided for @savedPlacesArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous places'**
+  String get savedPlacesArchived;
+
+  /// No description provided for @achievementsSummaryBackfillBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You unlocked {count} badges from your history.'**
+  String achievementsSummaryBackfillBody(int count);
+
+  /// No description provided for @achievementsOverflowUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more unlocked'**
+  String achievementsOverflowUnlocked(int count);
 }
 
 class _AppLocalizationsDelegate

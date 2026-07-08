@@ -961,4 +961,1243 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get achievementFamilyTotalDrinksTitle => 'Prosit-Parade';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel1Title => 'Erster Einschenk';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel1Description =>
+      'Logge dein erstes Getränk.';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel10Title => 'Schluckstarter';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel10Description =>
+      'Logge 10 Getränke.';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel25Title => 'Gläsersammler';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel25Description =>
+      'Logge 25 Getränke.';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel50Title => 'Schluckstratege';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel50Description =>
+      'Logge 50 Getränke.';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel100Title => 'Prositprofi';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel100Description =>
+      'Logge 100 Getränke.';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel200Title => 'Pegelpfadfinder';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel200Description =>
+      'Logge 200 Getränke.';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel300Title => 'Prosttaktiker';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel300Description =>
+      'Logge 300 Getränke.';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel400Title => 'Feierfürst';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel400Description =>
+      'Logge 400 Getränke.';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel500Title => 'Partypatron';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel500Description =>
+      'Logge 500 Getränke.';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel1000Title => 'Prositlegende';
+
+  @override
+  String get achievementFamilyTotalDrinksLevel1000Description =>
+      'Logge 1000 Getränke.';
+
+  @override
+  String get achievementFamilyStreaksTitle => 'Dauerdurst';
+
+  @override
+  String get achievementFamilyStreaksLevel3Title => 'Serienstart';
+
+  @override
+  String get achievementFamilyStreaksLevel3Description =>
+      'Erreiche eine 3-Tage-Serie.';
+
+  @override
+  String get achievementFamilyStreaksLevel7Title => 'Wochenwunder';
+
+  @override
+  String get achievementFamilyStreaksLevel7Description =>
+      'Erreiche eine 7-Tage-Serie.';
+
+  @override
+  String get achievementFamilyStreaksLevel14Title => 'Zweiwochenzauber';
+
+  @override
+  String get achievementFamilyStreaksLevel14Description =>
+      'Erreiche eine 14-Tage-Serie.';
+
+  @override
+  String get achievementFamilyStreaksLevel30Title => 'Dreißig-Tage-Drang';
+
+  @override
+  String get achievementFamilyStreaksLevel30Description =>
+      'Erreiche eine 30-Tage-Serie.';
+
+  @override
+  String get achievementFamilyStreaksLevel60Title => 'Ausdauer-Ass';
+
+  @override
+  String get achievementFamilyStreaksLevel60Description =>
+      'Erreiche eine 60-Tage-Serie.';
+
+  @override
+  String get achievementFamilyStreaksLevel90Title => 'Neunziger-Navigator';
+
+  @override
+  String get achievementFamilyStreaksLevel90Description =>
+      'Erreiche eine 90-Tage-Serie.';
+
+  @override
+  String get achievementFamilyStreaksLevel180Title => 'Ausdauer-Experte';
+
+  @override
+  String get achievementFamilyStreaksLevel180Description =>
+      'Erreiche eine 180-Tage-Serie.';
+
+  @override
+  String get achievementFamilyStreaksLevel365Title => 'Dauerlegende';
+
+  @override
+  String get achievementFamilyStreaksLevel365Description =>
+      'Erreiche eine 365-Tage-Serie.';
+
+  @override
+  String get achievementFamilyBeerTitle => 'Bierjagd';
+
+  @override
+  String get achievementFamilyBeerLevel10Title => 'Bierneuling';
+
+  @override
+  String get achievementFamilyBeerLevel10Description => 'Logge 10 Biere.';
+
+  @override
+  String get achievementFamilyBeerLevel25Title => 'Schaumfreund';
+
+  @override
+  String get achievementFamilyBeerLevel25Description => 'Logge 25 Biere.';
+
+  @override
+  String get achievementFamilyBeerLevel50Title => 'Bierblicker';
+
+  @override
+  String get achievementFamilyBeerLevel50Description => 'Logge 50 Biere.';
+
+  @override
+  String get achievementFamilyBeerLevel100Title => 'Hopfenheld';
+
+  @override
+  String get achievementFamilyBeerLevel100Description => 'Logge 100 Biere.';
+
+  @override
+  String get achievementFamilyBeerLevel200Title => 'Bierboss';
+
+  @override
+  String get achievementFamilyBeerLevel200Description => 'Logge 200 Biere.';
+
+  @override
+  String get achievementFamilyBeerLevel300Title => 'Hopfenhauptmann';
+
+  @override
+  String get achievementFamilyBeerLevel300Description => 'Logge 300 Biere.';
+
+  @override
+  String get achievementFamilyBeerLevel400Title => 'Bierbaron';
+
+  @override
+  String get achievementFamilyBeerLevel400Description => 'Logge 400 Biere.';
+
+  @override
+  String get achievementFamilyBeerLevel500Title => 'Bierlegende';
+
+  @override
+  String get achievementFamilyBeerLevel500Description => 'Logge 500 Biere.';
+
+  @override
+  String get achievementFamilyBeerLevel1000Title => 'Bierunsterblich';
+
+  @override
+  String get achievementFamilyBeerLevel1000Description => 'Logge 1000 Biere.';
+
+  @override
+  String get achievementFamilyWineTitle => 'Vino-Voyage';
+
+  @override
+  String get achievementFamilyWineLevel10Title => 'Traubengast';
+
+  @override
+  String get achievementFamilyWineLevel10Description => 'Logge 10 Weine.';
+
+  @override
+  String get achievementFamilyWineLevel25Title => 'Vino-Visitor';
+
+  @override
+  String get achievementFamilyWineLevel25Description => 'Logge 25 Weine.';
+
+  @override
+  String get achievementFamilyWineLevel50Title => 'Traubensammler';
+
+  @override
+  String get achievementFamilyWineLevel50Description => 'Logge 50 Weine.';
+
+  @override
+  String get achievementFamilyWineLevel100Title => 'Korkkapitän';
+
+  @override
+  String get achievementFamilyWineLevel100Description => 'Logge 100 Weine.';
+
+  @override
+  String get achievementFamilyWineLevel200Title => 'Vino-Virtuose';
+
+  @override
+  String get achievementFamilyWineLevel200Description => 'Logge 200 Weine.';
+
+  @override
+  String get achievementFamilyWineLevel300Title => 'Traubenguru';
+
+  @override
+  String get achievementFamilyWineLevel300Description => 'Logge 300 Weine.';
+
+  @override
+  String get achievementFamilyWineLevel400Title => 'Weinzauberer';
+
+  @override
+  String get achievementFamilyWineLevel400Description => 'Logge 400 Weine.';
+
+  @override
+  String get achievementFamilyWineLevel500Title => 'Vino-VIP';
+
+  @override
+  String get achievementFamilyWineLevel500Description => 'Logge 500 Weine.';
+
+  @override
+  String get achievementFamilyWineLevel1000Title => 'Weinwunder';
+
+  @override
+  String get achievementFamilyWineLevel1000Description => 'Logge 1000 Weine.';
+
+  @override
+  String get achievementFamilySparklingWinesTitle => 'Perlparade';
+
+  @override
+  String get achievementFamilySparklingWinesLevel10Title => 'Perlenstarter';
+
+  @override
+  String get achievementFamilySparklingWinesLevel10Description =>
+      'Logge 10 Schaumweine.';
+
+  @override
+  String get achievementFamilySparklingWinesLevel25Title => 'Prickelfreund';
+
+  @override
+  String get achievementFamilySparklingWinesLevel25Description =>
+      'Logge 25 Schaumweine.';
+
+  @override
+  String get achievementFamilySparklingWinesLevel50Title => 'Perlensucher';
+
+  @override
+  String get achievementFamilySparklingWinesLevel50Description =>
+      'Logge 50 Schaumweine.';
+
+  @override
+  String get achievementFamilySparklingWinesLevel100Title => 'Korkkommandant';
+
+  @override
+  String get achievementFamilySparklingWinesLevel100Description =>
+      'Logge 100 Schaumweine.';
+
+  @override
+  String get achievementFamilySparklingWinesLevel200Title => 'Cuvée-Kapitän';
+
+  @override
+  String get achievementFamilySparklingWinesLevel200Description =>
+      'Logge 200 Schaumweine.';
+
+  @override
+  String get achievementFamilySparklingWinesLevel300Title => 'Perlenfürst';
+
+  @override
+  String get achievementFamilySparklingWinesLevel300Description =>
+      'Logge 300 Schaumweine.';
+
+  @override
+  String get achievementFamilySparklingWinesLevel400Title => 'Cuvée-Könner';
+
+  @override
+  String get achievementFamilySparklingWinesLevel400Description =>
+      'Logge 400 Schaumweine.';
+
+  @override
+  String get achievementFamilySparklingWinesLevel500Title => 'Prickelruhm';
+
+  @override
+  String get achievementFamilySparklingWinesLevel500Description =>
+      'Logge 500 Schaumweine.';
+
+  @override
+  String get achievementFamilySparklingWinesLevel1000Title => 'Perlenlegende';
+
+  @override
+  String get achievementFamilySparklingWinesLevel1000Description =>
+      'Logge 1000 Schaumweine.';
+
+  @override
+  String get achievementFamilyLongdrinksTitle => 'Mixmeister-Marsch';
+
+  @override
+  String get achievementFamilyLongdrinksLevel10Title => 'Longdrink-Lehrling';
+
+  @override
+  String get achievementFamilyLongdrinksLevel10Description =>
+      'Logge 10 Longdrinks.';
+
+  @override
+  String get achievementFamilyLongdrinksLevel25Title => 'Mixkumpel';
+
+  @override
+  String get achievementFamilyLongdrinksLevel25Description =>
+      'Logge 25 Longdrinks.';
+
+  @override
+  String get achievementFamilyLongdrinksLevel50Title => 'Longdrink-Loyalist';
+
+  @override
+  String get achievementFamilyLongdrinksLevel50Description =>
+      'Logge 50 Longdrinks.';
+
+  @override
+  String get achievementFamilyLongdrinksLevel100Title => 'Mixmeister';
+
+  @override
+  String get achievementFamilyLongdrinksLevel100Description =>
+      'Logge 100 Longdrinks.';
+
+  @override
+  String get achievementFamilyLongdrinksLevel200Title => 'Longdrink-Lotse';
+
+  @override
+  String get achievementFamilyLongdrinksLevel200Description =>
+      'Logge 200 Longdrinks.';
+
+  @override
+  String get achievementFamilyLongdrinksLevel300Title => 'Mixmonarch';
+
+  @override
+  String get achievementFamilyLongdrinksLevel300Description =>
+      'Logge 300 Longdrinks.';
+
+  @override
+  String get achievementFamilyLongdrinksLevel400Title => 'Mixmogul';
+
+  @override
+  String get achievementFamilyLongdrinksLevel400Description =>
+      'Logge 400 Longdrinks.';
+
+  @override
+  String get achievementFamilyLongdrinksLevel500Title => 'Gießgraf';
+
+  @override
+  String get achievementFamilyLongdrinksLevel500Description =>
+      'Logge 500 Longdrinks.';
+
+  @override
+  String get achievementFamilyLongdrinksLevel1000Title => 'Mixlegende';
+
+  @override
+  String get achievementFamilyLongdrinksLevel1000Description =>
+      'Logge 1000 Longdrinks.';
+
+  @override
+  String get achievementFamilySpiritsTitle => 'Spirituosen-Spurt';
+
+  @override
+  String get achievementFamilySpiritsLevel10Title => 'Spirituosenstarter';
+
+  @override
+  String get achievementFamilySpiritsLevel10Description =>
+      'Logge 10 Spirituosen.';
+
+  @override
+  String get achievementFamilySpiritsLevel25Title => 'Pegelpirat';
+
+  @override
+  String get achievementFamilySpiritsLevel25Description =>
+      'Logge 25 Spirituosen.';
+
+  @override
+  String get achievementFamilySpiritsLevel50Title => 'Pegelpartner';
+
+  @override
+  String get achievementFamilySpiritsLevel50Description =>
+      'Logge 50 Spirituosen.';
+
+  @override
+  String get achievementFamilySpiritsLevel100Title => 'Spirituosenprofi';
+
+  @override
+  String get achievementFamilySpiritsLevel100Description =>
+      'Logge 100 Spirituosen.';
+
+  @override
+  String get achievementFamilySpiritsLevel200Title => 'Pegelpionier';
+
+  @override
+  String get achievementFamilySpiritsLevel200Description =>
+      'Logge 200 Spirituosen.';
+
+  @override
+  String get achievementFamilySpiritsLevel300Title => 'Purprinz';
+
+  @override
+  String get achievementFamilySpiritsLevel300Description =>
+      'Logge 300 Spirituosen.';
+
+  @override
+  String get achievementFamilySpiritsLevel400Title => 'Spirituosenstar';
+
+  @override
+  String get achievementFamilySpiritsLevel400Description =>
+      'Logge 400 Spirituosen.';
+
+  @override
+  String get achievementFamilySpiritsLevel500Title => 'Pegelprestige';
+
+  @override
+  String get achievementFamilySpiritsLevel500Description =>
+      'Logge 500 Spirituosen.';
+
+  @override
+  String get achievementFamilySpiritsLevel1000Title => 'Spirituosenlegende';
+
+  @override
+  String get achievementFamilySpiritsLevel1000Description =>
+      'Logge 1000 Spirituosen.';
+
+  @override
+  String get achievementFamilyShotsTitle => 'Kurzer-Kick';
+
+  @override
+  String get achievementFamilyShotsLevel10Title => 'Kurzer-Könner';
+
+  @override
+  String get achievementFamilyShotsLevel10Description => 'Logge 10 Shots.';
+
+  @override
+  String get achievementFamilyShotsLevel25Title => 'Shotspäher';
+
+  @override
+  String get achievementFamilyShotsLevel25Description => 'Logge 25 Shots.';
+
+  @override
+  String get achievementFamilyShotsLevel50Title => 'Shotsprinter';
+
+  @override
+  String get achievementFamilyShotsLevel50Description => 'Logge 50 Shots.';
+
+  @override
+  String get achievementFamilyShotsLevel100Title => 'Kurzer-Kapitän';
+
+  @override
+  String get achievementFamilyShotsLevel100Description => 'Logge 100 Shots.';
+
+  @override
+  String get achievementFamilyShotsLevel200Title => 'Shotfürst';
+
+  @override
+  String get achievementFamilyShotsLevel200Description => 'Logge 200 Shots.';
+
+  @override
+  String get achievementFamilyShotsLevel300Title => 'Kurzer-König';
+
+  @override
+  String get achievementFamilyShotsLevel300Description => 'Logge 300 Shots.';
+
+  @override
+  String get achievementFamilyShotsLevel400Title => 'Shotstar';
+
+  @override
+  String get achievementFamilyShotsLevel400Description => 'Logge 400 Shots.';
+
+  @override
+  String get achievementFamilyShotsLevel500Title => 'Mini-Wirbel';
+
+  @override
+  String get achievementFamilyShotsLevel500Description => 'Logge 500 Shots.';
+
+  @override
+  String get achievementFamilyShotsLevel1000Title => 'Shotunsterblich';
+
+  @override
+  String get achievementFamilyShotsLevel1000Description => 'Logge 1000 Shots.';
+
+  @override
+  String get achievementFamilyCocktailsTitle => 'Cocktail-Karussell';
+
+  @override
+  String get achievementFamilyCocktailsLevel10Title => 'Cocktail-Cadet';
+
+  @override
+  String get achievementFamilyCocktailsLevel10Description =>
+      'Logge 10 Cocktails.';
+
+  @override
+  String get achievementFamilyCocktailsLevel25Title => 'Mix-Muse';
+
+  @override
+  String get achievementFamilyCocktailsLevel25Description =>
+      'Logge 25 Cocktails.';
+
+  @override
+  String get achievementFamilyCocktailsLevel50Title => 'Glasglanz';
+
+  @override
+  String get achievementFamilyCocktailsLevel50Description =>
+      'Logge 50 Cocktails.';
+
+  @override
+  String get achievementFamilyCocktailsLevel100Title => 'Shakerprofi';
+
+  @override
+  String get achievementFamilyCocktailsLevel100Description =>
+      'Logge 100 Cocktails.';
+
+  @override
+  String get achievementFamilyCocktailsLevel200Title => 'Cocktail-Charmeur';
+
+  @override
+  String get achievementFamilyCocktailsLevel200Description =>
+      'Logge 200 Cocktails.';
+
+  @override
+  String get achievementFamilyCocktailsLevel300Title => 'Glasguru';
+
+  @override
+  String get achievementFamilyCocktailsLevel300Description =>
+      'Logge 300 Cocktails.';
+
+  @override
+  String get achievementFamilyCocktailsLevel400Title => 'Mixmajestät';
+
+  @override
+  String get achievementFamilyCocktailsLevel400Description =>
+      'Logge 400 Cocktails.';
+
+  @override
+  String get achievementFamilyCocktailsLevel500Title => 'Shakerlegende';
+
+  @override
+  String get achievementFamilyCocktailsLevel500Description =>
+      'Logge 500 Cocktails.';
+
+  @override
+  String get achievementFamilyCocktailsLevel1000Title => 'Cocktail-Ikone';
+
+  @override
+  String get achievementFamilyCocktailsLevel1000Description =>
+      'Logge 1000 Cocktails.';
+
+  @override
+  String get achievementFamilyAppleWinesTitle => 'Cider-Club';
+
+  @override
+  String get achievementFamilyAppleWinesLevel10Title => 'Apfelazubi';
+
+  @override
+  String get achievementFamilyAppleWinesLevel10Description =>
+      'Logge 10 Apfelweine.';
+
+  @override
+  String get achievementFamilyAppleWinesLevel25Title => 'Ciderspäher';
+
+  @override
+  String get achievementFamilyAppleWinesLevel25Description =>
+      'Logge 25 Apfelweine.';
+
+  @override
+  String get achievementFamilyAppleWinesLevel50Title => 'Ciderjäger';
+
+  @override
+  String get achievementFamilyAppleWinesLevel50Description =>
+      'Logge 50 Apfelweine.';
+
+  @override
+  String get achievementFamilyAppleWinesLevel100Title => 'Apfel-Ass';
+
+  @override
+  String get achievementFamilyAppleWinesLevel100Description =>
+      'Logge 100 Apfelweine.';
+
+  @override
+  String get achievementFamilyAppleWinesLevel200Title => 'Ciderkapitän';
+
+  @override
+  String get achievementFamilyAppleWinesLevel200Description =>
+      'Logge 200 Apfelweine.';
+
+  @override
+  String get achievementFamilyAppleWinesLevel300Title => 'Apfelaristokrat';
+
+  @override
+  String get achievementFamilyAppleWinesLevel300Description =>
+      'Logge 300 Apfelweine.';
+
+  @override
+  String get achievementFamilyAppleWinesLevel400Title => 'Ciderkrone';
+
+  @override
+  String get achievementFamilyAppleWinesLevel400Description =>
+      'Logge 400 Apfelweine.';
+
+  @override
+  String get achievementFamilyAppleWinesLevel500Title => 'Apfelautorität';
+
+  @override
+  String get achievementFamilyAppleWinesLevel500Description =>
+      'Logge 500 Apfelweine.';
+
+  @override
+  String get achievementFamilyAppleWinesLevel1000Title => 'Cider-Ikone';
+
+  @override
+  String get achievementFamilyAppleWinesLevel1000Description =>
+      'Logge 1000 Apfelweine.';
+
+  @override
+  String get achievementFamilyNonAlcoholicTitle => 'Promillefrei-Parade';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel10Title => 'Alkoholfrei-Auftakt';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel10Description =>
+      'Logge 10 alkoholfreie Getränke.';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel25Title =>
+      'Null-Pegel-Navigator';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel25Description =>
+      'Logge 25 alkoholfreie Getränke.';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel50Title => 'Hydroheld';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel50Description =>
+      'Logge 50 alkoholfreie Getränke.';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel100Title => 'Promillefrei-Profi';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel100Description =>
+      'Logge 100 alkoholfreie Getränke.';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel200Title => 'Null-Kapitän';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel200Description =>
+      'Logge 200 alkoholfreie Getränke.';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel300Title => 'Alkoholfrei-Artist';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel300Description =>
+      'Logge 300 alkoholfreie Getränke.';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel400Title => 'Null-Meister';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel400Description =>
+      'Logge 400 alkoholfreie Getränke.';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel500Title => 'Null-Promille-Star';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel500Description =>
+      'Logge 500 alkoholfreie Getränke.';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel1000Title =>
+      'Alkoholfrei-Allstar';
+
+  @override
+  String get achievementFamilyNonAlcoholicLevel1000Description =>
+      'Logge 1000 alkoholfreie Getränke.';
+
+  @override
+  String get achievementFamilyHomeTitle => 'Heimspiel';
+
+  @override
+  String get achievementFamilyHomeLevel1Title => 'Heimauftakt';
+
+  @override
+  String get achievementFamilyHomeLevel1Description =>
+      'Logge ein Getränk zu Hause.';
+
+  @override
+  String get achievementFamilyHomeLevel10Title => 'Daheimstarter';
+
+  @override
+  String get achievementFamilyHomeLevel10Description =>
+      'Logge 10 Getränke zu Hause.';
+
+  @override
+  String get achievementFamilyHomeLevel25Title => 'Sofakumpel';
+
+  @override
+  String get achievementFamilyHomeLevel25Description =>
+      'Logge 25 Getränke zu Hause.';
+
+  @override
+  String get achievementFamilyHomeLevel50Title => 'Heimheld';
+
+  @override
+  String get achievementFamilyHomeLevel50Description =>
+      'Logge 50 Getränke zu Hause.';
+
+  @override
+  String get achievementFamilyHomeLevel100Title => 'Daheimfürst';
+
+  @override
+  String get achievementFamilyHomeLevel100Description =>
+      'Logge 100 Getränke zu Hause.';
+
+  @override
+  String get achievementFamilyWorkTitle => 'Büro-Bilanz';
+
+  @override
+  String get achievementFamilyWorkLevel1Title => 'Arbeitsauftakt';
+
+  @override
+  String get achievementFamilyWorkLevel1Description =>
+      'Logge ein Getränk bei der Arbeit.';
+
+  @override
+  String get achievementFamilyWorkLevel10Title => 'Bürobeginner';
+
+  @override
+  String get achievementFamilyWorkLevel10Description =>
+      'Logge 10 Getränke bei der Arbeit.';
+
+  @override
+  String get achievementFamilyWorkLevel25Title => 'Bürooffizier';
+
+  @override
+  String get achievementFamilyWorkLevel25Description =>
+      'Logge 25 Getränke bei der Arbeit.';
+
+  @override
+  String get achievementFamilyWorkLevel50Title => 'Arbeitsass';
+
+  @override
+  String get achievementFamilyWorkLevel50Description =>
+      'Logge 50 Getränke bei der Arbeit.';
+
+  @override
+  String get achievementFamilyWorkLevel100Title => 'Büroikone';
+
+  @override
+  String get achievementFamilyWorkLevel100Description =>
+      'Logge 100 Getränke bei der Arbeit.';
+
+  @override
+  String get achievementFamilyTravelCountriesTitle => 'Pässeparade';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel3Title => 'Passpionier';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel3Description =>
+      'Logge Drinks in 3 Ländern.';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel5Title => 'Grenzfreund';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel5Description =>
+      'Logge Drinks in 5 Ländern.';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel10Title => 'Länderläufer';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel10Description =>
+      'Logge Drinks in 10 Ländern.';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel15Title => 'Kartenkönner';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel15Description =>
+      'Logge Drinks in 15 Ländern.';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel20Title => 'Spurensucher';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel20Description =>
+      'Logge Drinks in 20 Ländern.';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel30Title => 'Weltwanderer';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel30Description =>
+      'Logge Drinks in 30 Ländern.';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel50Title =>
+      'Weltenbummler-Legende';
+
+  @override
+  String get achievementFamilyTravelCountriesLevel50Description =>
+      'Logge Drinks in 50 Ländern.';
+
+  @override
+  String get achievementOccasionBirthdayTitle => 'Geburtstagsglanz';
+
+  @override
+  String get achievementOccasionBirthdayDescription =>
+      'Logge ein Getränk an deinem Geburtstag.';
+
+  @override
+  String get achievementOccasionFirstSipAnniversaryTitle => 'Jubiläumsschluck';
+
+  @override
+  String get achievementOccasionFirstSipAnniversaryDescription =>
+      'Logge ein Getränk am Jahrestag deines ersten bekannten Drinks.';
+
+  @override
+  String get achievementOccasionNewYearTitle => 'Neujahrs-Nachschlag';
+
+  @override
+  String get achievementOccasionNewYearDescription =>
+      'Logge ein Getränk an Silvester oder Neujahr.';
+
+  @override
+  String get achievementOccasionChristmasTitle => 'Weihnachtsklang';
+
+  @override
+  String get achievementOccasionChristmasDescription =>
+      'Logge ein Getränk zwischen dem 24. und 26. Dezember.';
+
+  @override
+  String get achievementOccasionEasterTitle => 'Oster-Prosit';
+
+  @override
+  String get achievementOccasionEasterDescription =>
+      'Logge ein Getränk zwischen Karfreitag und Ostermontag.';
+
+  @override
+  String get achievementOccasionHalloweenTitle => 'Schreckensschluck';
+
+  @override
+  String get achievementOccasionHalloweenDescription =>
+      'Logge ein Getränk an Halloween.';
+
+  @override
+  String get achievementOccasionStPatricksDayTitle => 'Glücksgerste';
+
+  @override
+  String get achievementOccasionStPatricksDayDescription =>
+      'Logge am 17. März ein Bier.';
+
+  @override
+  String get achievementOccasionOktoberfestTitle => 'Festbierfieber';
+
+  @override
+  String get achievementOccasionOktoberfestDescription =>
+      'Logge während des Oktoberfests ein Bier.';
+
+  @override
+  String get achievementOccasionCarnivalTitle => 'Konfetti-Klirren';
+
+  @override
+  String get achievementOccasionCarnivalDescription =>
+      'Logge während des Karnevals ein Getränk.';
+
+  @override
+  String get achievementCountryDeTitle => 'Biergarten-Bingo';
+
+  @override
+  String get achievementCountryDeLabel => 'Deutschland';
+
+  @override
+  String get achievementCountryDeDescription =>
+      'Logge ein Getränk in Deutschland.';
+
+  @override
+  String get achievementCountryNlTitle => 'Grachtenklirren';
+
+  @override
+  String get achievementCountryNlLabel => 'Niederlande';
+
+  @override
+  String get achievementCountryNlDescription =>
+      'Logge ein Getränk in den Niederlanden.';
+
+  @override
+  String get achievementCountryBeTitle => 'Belgien-Boost';
+
+  @override
+  String get achievementCountryBeLabel => 'Belgien';
+
+  @override
+  String get achievementCountryBeDescription => 'Logge ein Getränk in Belgien.';
+
+  @override
+  String get achievementCountryLuTitle => 'Großherzog-Glanz';
+
+  @override
+  String get achievementCountryLuLabel => 'Luxemburg';
+
+  @override
+  String get achievementCountryLuDescription =>
+      'Logge ein Getränk in Luxemburg.';
+
+  @override
+  String get achievementCountryFrTitle => 'Frankreich-Flair';
+
+  @override
+  String get achievementCountryFrLabel => 'Frankreich';
+
+  @override
+  String get achievementCountryFrDescription =>
+      'Logge ein Getränk in Frankreich.';
+
+  @override
+  String get achievementCountryEsTitle => 'Fiesta-Fieber';
+
+  @override
+  String get achievementCountryEsLabel => 'Spanien';
+
+  @override
+  String get achievementCountryEsDescription => 'Logge ein Getränk in Spanien.';
+
+  @override
+  String get achievementCountryPtTitle => 'Portugal-Prost';
+
+  @override
+  String get achievementCountryPtLabel => 'Portugal';
+
+  @override
+  String get achievementCountryPtDescription =>
+      'Logge ein Getränk in Portugal.';
+
+  @override
+  String get achievementCountryItTitle => 'Aperitivo-Ankunft';
+
+  @override
+  String get achievementCountryItLabel => 'Italien';
+
+  @override
+  String get achievementCountryItDescription => 'Logge ein Getränk in Italien.';
+
+  @override
+  String get achievementCountryAtTitle => 'Alpenglühen';
+
+  @override
+  String get achievementCountryAtLabel => 'Österreich';
+
+  @override
+  String get achievementCountryAtDescription =>
+      'Logge ein Getränk in Österreich.';
+
+  @override
+  String get achievementCountryChTitle => 'Gipfel-Prost';
+
+  @override
+  String get achievementCountryChLabel => 'Schweiz';
+
+  @override
+  String get achievementCountryChDescription =>
+      'Logge ein Getränk in der Schweiz.';
+
+  @override
+  String get achievementCountryPlTitle => 'Polen-Prost';
+
+  @override
+  String get achievementCountryPlLabel => 'Polen';
+
+  @override
+  String get achievementCountryPlDescription => 'Logge ein Getränk in Polen.';
+
+  @override
+  String get achievementCountryCzTitle => 'Tschechien-Toast';
+
+  @override
+  String get achievementCountryCzLabel => 'Tschechien';
+
+  @override
+  String get achievementCountryCzDescription =>
+      'Logge ein Getränk in Tschechien.';
+
+  @override
+  String get achievementCountryIeTitle => 'Smaragdschluck';
+
+  @override
+  String get achievementCountryIeLabel => 'Irland';
+
+  @override
+  String get achievementCountryIeDescription => 'Logge ein Getränk in Irland.';
+
+  @override
+  String get achievementCountryGbTitle => 'Königreich-Klirren';
+
+  @override
+  String get achievementCountryGbLabel => 'Vereinigtes Königreich';
+
+  @override
+  String get achievementCountryGbDescription =>
+      'Logge ein Getränk im Vereinigten Königreich.';
+
+  @override
+  String get achievementCountryDkTitle => 'Dänen-Durst';
+
+  @override
+  String get achievementCountryDkLabel => 'Dänemark';
+
+  @override
+  String get achievementCountryDkDescription =>
+      'Logge ein Getränk in Dänemark.';
+
+  @override
+  String get achievementCountrySeTitle => 'Skandi-Schwung';
+
+  @override
+  String get achievementCountrySeLabel => 'Schweden';
+
+  @override
+  String get achievementCountrySeDescription =>
+      'Logge ein Getränk in Schweden.';
+
+  @override
+  String get achievementCountryNoTitle => 'Fjord-Fieber';
+
+  @override
+  String get achievementCountryNoLabel => 'Norwegen';
+
+  @override
+  String get achievementCountryNoDescription =>
+      'Logge ein Getränk in Norwegen.';
+
+  @override
+  String get achievementCountryFiTitle => 'Sauna-Schluck';
+
+  @override
+  String get achievementCountryFiLabel => 'Finnland';
+
+  @override
+  String get achievementCountryFiDescription =>
+      'Logge ein Getränk in Finnland.';
+
+  @override
+  String get achievementCountryGrTitle => 'Ägäis-Anstoß';
+
+  @override
+  String get achievementCountryGrLabel => 'Griechenland';
+
+  @override
+  String get achievementCountryGrDescription =>
+      'Logge ein Getränk in Griechenland.';
+
+  @override
+  String get achievementCountryHrTitle => 'Adria-Anstoß';
+
+  @override
+  String get achievementCountryHrLabel => 'Kroatien';
+
+  @override
+  String get achievementCountryHrDescription =>
+      'Logge ein Getränk in Kroatien.';
+
+  @override
+  String get achievementCountryHuTitle => 'Donau-Durst';
+
+  @override
+  String get achievementCountryHuLabel => 'Ungarn';
+
+  @override
+  String get achievementCountryHuDescription => 'Logge ein Getränk in Ungarn.';
+
+  @override
+  String get achievementCountryRoTitle => 'Karpaten-Klirren';
+
+  @override
+  String get achievementCountryRoLabel => 'Rumänien';
+
+  @override
+  String get achievementCountryRoDescription =>
+      'Logge ein Getränk in Rumänien.';
+
+  @override
+  String get achievementCountryTrTitle => 'Bosporus-Boost';
+
+  @override
+  String get achievementCountryTrLabel => 'Türkei';
+
+  @override
+  String get achievementCountryTrDescription =>
+      'Logge ein Getränk in der Türkei.';
+
+  @override
+  String get achievementCountryUsTitle => 'Sterne & Schluck';
+
+  @override
+  String get achievementCountryUsLabel => 'Vereinigte Staaten';
+
+  @override
+  String get achievementCountryUsDescription =>
+      'Logge ein Getränk in den Vereinigten Staaten.';
+
+  @override
+  String get achievementCountryJpTitle => 'Sakura-Schluck';
+
+  @override
+  String get achievementCountryJpLabel => 'Japan';
+
+  @override
+  String get achievementCountryJpDescription => 'Logge ein Getränk in Japan.';
+
+  @override
+  String get achievementCountrySiTitle => 'Drachen-Durst';
+
+  @override
+  String get achievementCountrySiLabel => 'Slowenien';
+
+  @override
+  String get achievementCountrySiDescription =>
+      'Logge ein Getränk in Slowenien.';
+
+  @override
+  String get achievementCountryMcTitle => 'Monaco-Moment';
+
+  @override
+  String get achievementCountryMcLabel => 'Monaco';
+
+  @override
+  String get achievementCountryMcDescription => 'Logge ein Getränk in Monaco.';
+
+  @override
+  String get achievementsTab => 'Achievements';
+
+  @override
+  String get achievementsTitle => 'Achievements';
+
+  @override
+  String get achievementsBadgesEarned => 'Badges verdient';
+
+  @override
+  String get achievementsFilterAll => 'Alle';
+
+  @override
+  String get achievementsFilterUnlocked => 'Freigeschaltet';
+
+  @override
+  String get achievementsFilterLocked => 'Gesperrt';
+
+  @override
+  String get achievementsRecentlyUnlocked => 'Kürzlich freigeschaltet';
+
+  @override
+  String get achievementsViewAll => 'Alle ansehen';
+
+  @override
+  String get achievementsSetupRequired => 'Einrichtung erforderlich';
+
+  @override
+  String get achievementsSetUpNow => 'Jetzt einrichten';
+
+  @override
+  String get achievementsEarnableToday => 'Heute erreichbar';
+
+  @override
+  String get achievementsNextEligible => 'Nächstes Zeitfenster';
+
+  @override
+  String get achievementsUnlocked => 'Freigeschaltet';
+
+  @override
+  String get achievementsLocked => 'Gesperrt';
+
+  @override
+  String get achievementsCompleted => 'Abgeschlossen';
+
+  @override
+  String get achievementsSummaryBackfillTitle => 'Achievements freigeschaltet';
+
+  @override
+  String get shareAchievements => 'Achievements mit Freunden teilen';
+
+  @override
+  String get shareAchievementsBody =>
+      'Bestätigte Freunde können deine verdienten Badges in der App sehen.';
+
+  @override
+  String get achievementReminders => 'Achievement-Erinnerungen';
+
+  @override
+  String get achievementRemindersBody =>
+      'Erhalte Push-Erinnerungen für jährliche und anlassbezogene Badges.';
+
+  @override
+  String get savedPlacesTitle => 'Orte';
+
+  @override
+  String get savedPlacesHome => 'Zuhause';
+
+  @override
+  String get savedPlacesWork => 'Arbeit';
+
+  @override
+  String get savedPlacesArchived => 'Frühere Orte';
+
+  @override
+  String achievementsSummaryBackfillBody(int count) {
+    return 'Du hast $count Badges aus deinem Verlauf freigeschaltet.';
+  }
+
+  @override
+  String achievementsOverflowUnlocked(int count) {
+    return '+$count weitere freigeschaltet';
+  }
 }
