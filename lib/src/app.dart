@@ -266,6 +266,7 @@ class _GlassTrailAppState extends State<GlassTrailApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(widget.controller.revalidateHotDomainsOnResume());
+      unawaited(widget.controller.refreshDeviceTimeZone());
       unawaited(_warmVisibleMedia());
     }
   }
@@ -680,6 +681,7 @@ class _AppRouteScreen extends StatelessWidget {
         AppRoutes.isStatisticsRoute(normalizedRoute) ||
         AppRoutes.isBarRoute(normalizedRoute) ||
         normalizedRoute == AppRoutes.achievements ||
+        AppRoutes.isAchievementDetailRoute(normalizedRoute) ||
         normalizedRoute == AppRoutes.profile) {
       return _wrapAuthenticatedScreen(
         HomeShell(routeName: normalizedRoute),

@@ -43,6 +43,51 @@ const messages: Record<string, Record<string, NotificationMessage>> = {
       "title": "{name} trinkt {drink}",
       "body": "{commentLine}\n{locationAddressLine}",
     },
+    "achievement_reminder_occasion_birthday": {
+      "title": "Alles Gute zum Geburtstag! 🎉",
+      "body":
+        "Logge heute ein Getränk, um dein Geburtstags-Badge zu verdienen.",
+    },
+    "achievement_reminder_occasion_first_sip_anniversary": {
+      "title": "{years} Jahre Getränke erfasst 🥂",
+      "body": "Logge heute ein Getränk, um dein Jubiläums-Badge zu verdienen.",
+    },
+    "achievement_reminder_occasion_new_year": {
+      "title": "Frohes neues Jahr! 🥂",
+      "body": "Logge heute ein Getränk, um dein Neujahrs-Badge zu verdienen.",
+    },
+    "achievement_reminder_occasion_christmas": {
+      "title": "Frohe Weihnachten! 🎄",
+      "body": "Logge heute ein Getränk, um dein Weihnachts-Badge zu verdienen.",
+    },
+    "achievement_reminder_occasion_easter": {
+      "title": "Frohe Ostern! 🐣",
+      "body":
+        "Logge an diesem Osterwochenende ein Getränk, um dieses Badge zu verdienen.",
+    },
+    "achievement_reminder_occasion_halloween": {
+      "title": "Es ist Halloween! 🎃",
+      "body": "Logge heute ein Getränk, um dein Halloween-Badge zu verdienen.",
+    },
+    "achievement_reminder_occasion_st_patricks_day": {
+      "title": "Heute ist St. Patrick's Day! 🍀",
+      "body":
+        "Logge heute ein Bier, um dein St.-Patrick's-Day-Badge zu verdienen.",
+    },
+    "achievement_reminder_occasion_oktoberfest": {
+      "title": "Oktoberfest läuft! 🍺",
+      "body":
+        "Logge während des Oktoberfests ein Bier, um dieses Badge zu verdienen.",
+    },
+    "achievement_reminder_occasion_carnival": {
+      "title": "Karneval läuft! 🎊",
+      "body":
+        "Logge während des Karnevals ein Getränk, um dieses Badge zu verdienen.",
+    },
+    "achievement_reminder_generic": {
+      "title": "Achievement-Erinnerung",
+      "body": "Öffne GlassTrail, um dir das heutige Achievement anzusehen.",
+    },
   },
   "en": {
     "friend_request_sent": {
@@ -68,6 +113,46 @@ const messages: Record<string, Record<string, NotificationMessage>> = {
     "friend_drink_logged": {
       "title": "{name} drinks {drink}",
       "body": "{commentLine}\n{locationAddressLine}",
+    },
+    "achievement_reminder_occasion_birthday": {
+      "title": "Happy birthday! 🎉",
+      "body": "Log a drink today to earn your birthday badge.",
+    },
+    "achievement_reminder_occasion_first_sip_anniversary": {
+      "title": "{years} years of drinks logged 🥂",
+      "body": "Log a drink today to earn your anniversary badge.",
+    },
+    "achievement_reminder_occasion_new_year": {
+      "title": "Happy New Year! 🥂",
+      "body": "Log a drink today to earn your New Year badge.",
+    },
+    "achievement_reminder_occasion_christmas": {
+      "title": "Merry Christmas! 🎄",
+      "body": "Log a drink today to earn your Christmas badge.",
+    },
+    "achievement_reminder_occasion_easter": {
+      "title": "Happy Easter! 🐣",
+      "body": "Log a drink this Easter weekend to earn this badge.",
+    },
+    "achievement_reminder_occasion_halloween": {
+      "title": "It's Halloween! 🎃",
+      "body": "Log a drink today to earn your Halloween badge.",
+    },
+    "achievement_reminder_occasion_st_patricks_day": {
+      "title": "It's St. Patrick's Day! 🍀",
+      "body": "Log a beer today to earn your St. Patrick's Day badge.",
+    },
+    "achievement_reminder_occasion_oktoberfest": {
+      "title": "Oktoberfest is on! 🍺",
+      "body": "Log a beer during Oktoberfest to earn this badge.",
+    },
+    "achievement_reminder_occasion_carnival": {
+      "title": "Carnival is on! 🎊",
+      "body": "Log a drink during Carnival to earn this badge.",
+    },
+    "achievement_reminder_generic": {
+      "title": "Achievement reminder",
+      "body": "Open GlassTrail to check today's achievement.",
     },
   },
 };
@@ -240,7 +325,8 @@ function formatTemplate(
     .replaceAll(
       "{locationAddress}",
       templateString(input, "locationAddress", "location_address"),
-    );
+    )
+    .replaceAll("{years}", templateString(input, "years"));
 }
 
 function senderDisplayName(input: NotificationPushInput): string {

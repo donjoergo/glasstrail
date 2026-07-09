@@ -891,5 +891,32 @@
   "achievementsCategoryTravel": "Travel",
   "achievementsCategoryCountries": "Countries",
   "savedPlacesReplaceConfirmBody": "Replacing this place archives the old one. Your earned badges stay unlocked either way.",
-  "savedPlacesReplaceConfirmAction": "Replace"
+  "savedPlacesReplaceConfirmAction": "Replace",
+  "achievementReminderBirthdayTitle": "Happy birthday! 🎉",
+  "achievementReminderBirthdayBody": "Log a drink today to earn your birthday badge.",
+  "achievementReminderNewYearTitle": "Happy New Year! 🥂",
+  "achievementReminderNewYearBody": "Log a drink today to earn your New Year badge.",
+  "achievementReminderChristmasTitle": "Merry Christmas! 🎄",
+  "achievementReminderChristmasBody": "Log a drink today to earn your Christmas badge.",
+  "achievementReminderEasterTitle": "Happy Easter! 🐣",
+  "achievementReminderEasterBody": "Log a drink this Easter weekend to earn this badge.",
+  "achievementReminderHalloweenTitle": "It's Halloween! 🎃",
+  "achievementReminderHalloweenBody": "Log a drink today to earn your Halloween badge.",
+  "achievementReminderStPatricksDayTitle": "It's St. Patrick's Day! 🍀",
+  "achievementReminderStPatricksDayBody": "Log a beer today to earn your St. Patrick's Day badge.",
+  "achievementReminderOktoberfestTitle": "Oktoberfest is on! 🍺",
+  "achievementReminderOktoberfestBody": "Log a beer during Oktoberfest to earn this badge.",
+  "achievementReminderCarnivalTitle": "Carnival is on! 🎊",
+  "achievementReminderCarnivalBody": "Log a drink during Carnival to earn this badge.",
+  "achievementReminderGenericTitle": "Achievement reminder",
+  "achievementReminderGenericBody": "Open GlassTrail to check today's achievement.",
+  "achievementReminderFirstSipAnniversaryBody": "Log a drink today to earn your anniversary badge.",
+  "achievementReminderFirstSipAnniversaryTitle": "{years} years of drinks logged 🥂",
+  "@achievementReminderFirstSipAnniversaryTitle": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  }
 }

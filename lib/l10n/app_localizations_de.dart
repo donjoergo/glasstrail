@@ -2228,4 +2228,78 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get savedPlacesReplaceConfirmAction => 'Ersetzen';
+
+  @override
+  String get achievementReminderBirthdayTitle =>
+      'Alles Gute zum Geburtstag! 🎉';
+
+  @override
+  String get achievementReminderBirthdayBody =>
+      'Logge heute ein Getränk, um dein Geburtstags-Badge zu verdienen.';
+
+  @override
+  String get achievementReminderNewYearTitle => 'Frohes neues Jahr! 🥂';
+
+  @override
+  String get achievementReminderNewYearBody =>
+      'Logge heute ein Getränk, um dein Neujahrs-Badge zu verdienen.';
+
+  @override
+  String get achievementReminderChristmasTitle => 'Frohe Weihnachten! 🎄';
+
+  @override
+  String get achievementReminderChristmasBody =>
+      'Logge heute ein Getränk, um dein Weihnachts-Badge zu verdienen.';
+
+  @override
+  String get achievementReminderEasterTitle => 'Frohe Ostern! 🐣';
+
+  @override
+  String get achievementReminderEasterBody =>
+      'Logge an diesem Osterwochenende ein Getränk, um dieses Badge zu verdienen.';
+
+  @override
+  String get achievementReminderHalloweenTitle => 'Es ist Halloween! 🎃';
+
+  @override
+  String get achievementReminderHalloweenBody =>
+      'Logge heute ein Getränk, um dein Halloween-Badge zu verdienen.';
+
+  @override
+  String get achievementReminderStPatricksDayTitle =>
+      'Heute ist St. Patrick\'s Day! 🍀';
+
+  @override
+  String get achievementReminderStPatricksDayBody =>
+      'Logge heute ein Bier, um dein St.-Patrick\'s-Day-Badge zu verdienen.';
+
+  @override
+  String get achievementReminderOktoberfestTitle => 'Oktoberfest läuft! 🍺';
+
+  @override
+  String get achievementReminderOktoberfestBody =>
+      'Logge während des Oktoberfests ein Bier, um dieses Badge zu verdienen.';
+
+  @override
+  String get achievementReminderCarnivalTitle => 'Karneval läuft! 🎊';
+
+  @override
+  String get achievementReminderCarnivalBody =>
+      'Logge während des Karnevals ein Getränk, um dieses Badge zu verdienen.';
+
+  @override
+  String get achievementReminderGenericTitle => 'Achievement-Erinnerung';
+
+  @override
+  String get achievementReminderGenericBody =>
+      'Öffne GlassTrail, um dir das heutige Achievement anzusehen.';
+
+  @override
+  String get achievementReminderFirstSipAnniversaryBody =>
+      'Logge heute ein Getränk, um dein Jubiläums-Badge zu verdienen.';
+
+  @override
+  String achievementReminderFirstSipAnniversaryTitle(int years) {
+    return '$years Jahre Getränke erfasst 🥂';
+  }
 }

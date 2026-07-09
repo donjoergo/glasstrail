@@ -31,6 +31,46 @@ const _notificationTemplateKeys = <String, Map<String, String>>{
     'title': 'notificationFriendDrinkLoggedTitle',
     'body': 'notificationFriendDrinkLoggedBody',
   },
+  'achievement_reminder_occasion_birthday': <String, String>{
+    'title': 'achievementReminderBirthdayTitle',
+    'body': 'achievementReminderBirthdayBody',
+  },
+  'achievement_reminder_occasion_first_sip_anniversary': <String, String>{
+    'title': 'achievementReminderFirstSipAnniversaryTitle',
+    'body': 'achievementReminderFirstSipAnniversaryBody',
+  },
+  'achievement_reminder_occasion_new_year': <String, String>{
+    'title': 'achievementReminderNewYearTitle',
+    'body': 'achievementReminderNewYearBody',
+  },
+  'achievement_reminder_occasion_christmas': <String, String>{
+    'title': 'achievementReminderChristmasTitle',
+    'body': 'achievementReminderChristmasBody',
+  },
+  'achievement_reminder_occasion_easter': <String, String>{
+    'title': 'achievementReminderEasterTitle',
+    'body': 'achievementReminderEasterBody',
+  },
+  'achievement_reminder_occasion_halloween': <String, String>{
+    'title': 'achievementReminderHalloweenTitle',
+    'body': 'achievementReminderHalloweenBody',
+  },
+  'achievement_reminder_occasion_st_patricks_day': <String, String>{
+    'title': 'achievementReminderStPatricksDayTitle',
+    'body': 'achievementReminderStPatricksDayBody',
+  },
+  'achievement_reminder_occasion_oktoberfest': <String, String>{
+    'title': 'achievementReminderOktoberfestTitle',
+    'body': 'achievementReminderOktoberfestBody',
+  },
+  'achievement_reminder_occasion_carnival': <String, String>{
+    'title': 'achievementReminderCarnivalTitle',
+    'body': 'achievementReminderCarnivalBody',
+  },
+  'achievement_reminder_generic': <String, String>{
+    'title': 'achievementReminderGenericTitle',
+    'body': 'achievementReminderGenericBody',
+  },
 };
 
 void main() {
@@ -184,7 +224,8 @@ function formatTemplate(template: string, input: NotificationPushInput): string 
       ),
     )
     .replaceAll("{comment}", templateString(input, "comment"))
-    .replaceAll("{locationAddress}", templateString(input, "locationAddress", "location_address"));
+    .replaceAll("{locationAddress}", templateString(input, "locationAddress", "location_address"))
+    .replaceAll("{years}", templateString(input, "years"));
 }
 
 function senderDisplayName(input: NotificationPushInput): string {

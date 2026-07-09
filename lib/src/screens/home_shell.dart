@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../achievements/catalog_models.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';
@@ -108,10 +109,25 @@ class _HomeShellState extends State<HomeShell> {
         routeName: _currentRouteName,
         onRouteSelected: _updateHomeSubroute,
       ),
-      AppRoutes.achievements => const AchievementsScreen(),
+      AppRoutes.achievements => AchievementsScreen(
+        initialDeepLink: _achievementDeepLinkFromCurrentRoute(),
+      ),
       AppRoutes.profile => const ProfileScreen(),
       _ => const FeedScreen(),
     };
+  }
+
+  AchievementDeepLinkTarget? _achievementDeepLinkFromCurrentRoute() {
+    final familyId = AppRoutes.achievementDetailFamilyId(_currentRouteName);
+    if (familyId == null) {
+      return null;
+    }
+    final sourceRaw = AppRoutes.achievementDetailSource(_currentRouteName);
+    return AchievementDeepLinkTarget(
+      familyId: familyId,
+      level: AppRoutes.achievementDetailLevel(_currentRouteName),
+      source: AchievementRouteSourceX.maybeFromStorage(sourceRaw),
+    );
   }
 
   @override

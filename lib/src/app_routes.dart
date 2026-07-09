@@ -176,6 +176,7 @@ class AppRoutes {
       _ when isStatisticsRoute(normalized) => statistics,
       _ when isBarRoute(normalized) => bar,
       achievements => achievements,
+      _ when isAchievementDetailRoute(normalized) => achievements,
       profile => profile,
       _ => feed,
     };
@@ -185,6 +186,7 @@ class AppRoutes {
     final normalized = normalize(routeName);
     return switch (normalized) {
       feed || profile || achievements => true,
+      _ when isAchievementDetailRoute(normalized) => true,
       _ when isStatisticsRoute(normalized) => true,
       _ when isBarRoute(normalized) => true,
       _ => false,

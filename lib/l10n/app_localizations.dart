@@ -4030,6 +4030,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Replace'**
   String get savedPlacesReplaceConfirmAction;
+
+  /// No description provided for @achievementReminderBirthdayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Happy birthday! 🎉'**
+  String get achievementReminderBirthdayTitle;
+
+  /// No description provided for @achievementReminderBirthdayBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a drink today to earn your birthday badge.'**
+  String get achievementReminderBirthdayBody;
+
+  /// No description provided for @achievementReminderNewYearTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Happy New Year! 🥂'**
+  String get achievementReminderNewYearTitle;
+
+  /// No description provided for @achievementReminderNewYearBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a drink today to earn your New Year badge.'**
+  String get achievementReminderNewYearBody;
+
+  /// No description provided for @achievementReminderChristmasTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Merry Christmas! 🎄'**
+  String get achievementReminderChristmasTitle;
+
+  /// No description provided for @achievementReminderChristmasBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a drink today to earn your Christmas badge.'**
+  String get achievementReminderChristmasBody;
+
+  /// No description provided for @achievementReminderEasterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Happy Easter! 🐣'**
+  String get achievementReminderEasterTitle;
+
+  /// No description provided for @achievementReminderEasterBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a drink this Easter weekend to earn this badge.'**
+  String get achievementReminderEasterBody;
+
+  /// No description provided for @achievementReminderHalloweenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s Halloween! 🎃'**
+  String get achievementReminderHalloweenTitle;
+
+  /// No description provided for @achievementReminderHalloweenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a drink today to earn your Halloween badge.'**
+  String get achievementReminderHalloweenBody;
+
+  /// No description provided for @achievementReminderStPatricksDayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s St. Patrick\'s Day! 🍀'**
+  String get achievementReminderStPatricksDayTitle;
+
+  /// No description provided for @achievementReminderStPatricksDayBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a beer today to earn your St. Patrick\'s Day badge.'**
+  String get achievementReminderStPatricksDayBody;
+
+  /// No description provided for @achievementReminderOktoberfestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Oktoberfest is on! 🍺'**
+  String get achievementReminderOktoberfestTitle;
+
+  /// No description provided for @achievementReminderOktoberfestBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a beer during Oktoberfest to earn this badge.'**
+  String get achievementReminderOktoberfestBody;
+
+  /// No description provided for @achievementReminderCarnivalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Carnival is on! 🎊'**
+  String get achievementReminderCarnivalTitle;
+
+  /// No description provided for @achievementReminderCarnivalBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a drink during Carnival to earn this badge.'**
+  String get achievementReminderCarnivalBody;
+
+  /// No description provided for @achievementReminderGenericTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievement reminder'**
+  String get achievementReminderGenericTitle;
+
+  /// No description provided for @achievementReminderGenericBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open GlassTrail to check today\'s achievement.'**
+  String get achievementReminderGenericBody;
+
+  /// No description provided for @achievementReminderFirstSipAnniversaryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a drink today to earn your anniversary badge.'**
+  String get achievementReminderFirstSipAnniversaryBody;
+
+  /// No description provided for @achievementReminderFirstSipAnniversaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{years} years of drinks logged 🥂'**
+  String achievementReminderFirstSipAnniversaryTitle(int years);
 }
 
 class _AppLocalizationsDelegate

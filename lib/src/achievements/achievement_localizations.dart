@@ -750,6 +750,44 @@ String resolveAchievementString(AppLocalizations l10n, String key) {
       return l10n.achievementsCategoryTravel;
     case 'achievementsCategoryCountries':
       return l10n.achievementsCategoryCountries;
+    case 'achievementReminderBirthdayTitle':
+      return l10n.achievementReminderBirthdayTitle;
+    case 'achievementReminderBirthdayBody':
+      return l10n.achievementReminderBirthdayBody;
+    case 'achievementReminderNewYearTitle':
+      return l10n.achievementReminderNewYearTitle;
+    case 'achievementReminderNewYearBody':
+      return l10n.achievementReminderNewYearBody;
+    case 'achievementReminderChristmasTitle':
+      return l10n.achievementReminderChristmasTitle;
+    case 'achievementReminderChristmasBody':
+      return l10n.achievementReminderChristmasBody;
+    case 'achievementReminderEasterTitle':
+      return l10n.achievementReminderEasterTitle;
+    case 'achievementReminderEasterBody':
+      return l10n.achievementReminderEasterBody;
+    case 'achievementReminderHalloweenTitle':
+      return l10n.achievementReminderHalloweenTitle;
+    case 'achievementReminderHalloweenBody':
+      return l10n.achievementReminderHalloweenBody;
+    case 'achievementReminderStPatricksDayTitle':
+      return l10n.achievementReminderStPatricksDayTitle;
+    case 'achievementReminderStPatricksDayBody':
+      return l10n.achievementReminderStPatricksDayBody;
+    case 'achievementReminderOktoberfestTitle':
+      return l10n.achievementReminderOktoberfestTitle;
+    case 'achievementReminderOktoberfestBody':
+      return l10n.achievementReminderOktoberfestBody;
+    case 'achievementReminderCarnivalTitle':
+      return l10n.achievementReminderCarnivalTitle;
+    case 'achievementReminderCarnivalBody':
+      return l10n.achievementReminderCarnivalBody;
+    case 'achievementReminderGenericTitle':
+      return l10n.achievementReminderGenericTitle;
+    case 'achievementReminderGenericBody':
+      return l10n.achievementReminderGenericBody;
+    case 'achievementReminderFirstSipAnniversaryBody':
+      return l10n.achievementReminderFirstSipAnniversaryBody;
     default:
       return key;
   }

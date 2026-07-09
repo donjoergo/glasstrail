@@ -891,5 +891,32 @@
   "achievementsCategoryTravel": "Reisen",
   "achievementsCategoryCountries": "Länder",
   "savedPlacesReplaceConfirmBody": "Das Ersetzen dieses Ortes archiviert den alten. Deine verdienten Badges bleiben in jedem Fall freigeschaltet.",
-  "savedPlacesReplaceConfirmAction": "Ersetzen"
+  "savedPlacesReplaceConfirmAction": "Ersetzen",
+  "achievementReminderBirthdayTitle": "Alles Gute zum Geburtstag! 🎉",
+  "achievementReminderBirthdayBody": "Logge heute ein Getränk, um dein Geburtstags-Badge zu verdienen.",
+  "achievementReminderNewYearTitle": "Frohes neues Jahr! 🥂",
+  "achievementReminderNewYearBody": "Logge heute ein Getränk, um dein Neujahrs-Badge zu verdienen.",
+  "achievementReminderChristmasTitle": "Frohe Weihnachten! 🎄",
+  "achievementReminderChristmasBody": "Logge heute ein Getränk, um dein Weihnachts-Badge zu verdienen.",
+  "achievementReminderEasterTitle": "Frohe Ostern! 🐣",
+  "achievementReminderEasterBody": "Logge an diesem Osterwochenende ein Getränk, um dieses Badge zu verdienen.",
+  "achievementReminderHalloweenTitle": "Es ist Halloween! 🎃",
+  "achievementReminderHalloweenBody": "Logge heute ein Getränk, um dein Halloween-Badge zu verdienen.",
+  "achievementReminderStPatricksDayTitle": "Heute ist St. Patrick's Day! 🍀",
+  "achievementReminderStPatricksDayBody": "Logge heute ein Bier, um dein St.-Patrick's-Day-Badge zu verdienen.",
+  "achievementReminderOktoberfestTitle": "Oktoberfest läuft! 🍺",
+  "achievementReminderOktoberfestBody": "Logge während des Oktoberfests ein Bier, um dieses Badge zu verdienen.",
+  "achievementReminderCarnivalTitle": "Karneval läuft! 🎊",
+  "achievementReminderCarnivalBody": "Logge während des Karnevals ein Getränk, um dieses Badge zu verdienen.",
+  "achievementReminderGenericTitle": "Achievement-Erinnerung",
+  "achievementReminderGenericBody": "Öffne GlassTrail, um dir das heutige Achievement anzusehen.",
+  "achievementReminderFirstSipAnniversaryBody": "Logge heute ein Getränk, um dein Jubiläums-Badge zu verdienen.",
+  "achievementReminderFirstSipAnniversaryTitle": "{years} Jahre Getränke erfasst 🥂",
+  "@achievementReminderFirstSipAnniversaryTitle": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  }
 }

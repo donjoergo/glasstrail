@@ -1113,7 +1113,10 @@ void main() {
       pushNotificationService.emitToken(
         const PushDeviceToken(token: 'refreshed-token', platform: 'android'),
       );
-      await Future<void>.delayed(Duration.zero);
+      // Registration now awaits a best-effort (short-timeout) platform
+      // timezone lookup before calling the repository; give it enough
+      // real time to settle instead of a single Duration.zero tick.
+      await Future<void>.delayed(const Duration(milliseconds: 600));
       expect(
         repository.registeredTokens.map((call) => call.token),
         contains('refreshed-token'),

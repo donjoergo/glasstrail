@@ -2189,4 +2189,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get savedPlacesReplaceConfirmAction => 'Replace';
+
+  @override
+  String get achievementReminderBirthdayTitle => 'Happy birthday! 🎉';
+
+  @override
+  String get achievementReminderBirthdayBody =>
+      'Log a drink today to earn your birthday badge.';
+
+  @override
+  String get achievementReminderNewYearTitle => 'Happy New Year! 🥂';
+
+  @override
+  String get achievementReminderNewYearBody =>
+      'Log a drink today to earn your New Year badge.';
+
+  @override
+  String get achievementReminderChristmasTitle => 'Merry Christmas! 🎄';
+
+  @override
+  String get achievementReminderChristmasBody =>
+      'Log a drink today to earn your Christmas badge.';
+
+  @override
+  String get achievementReminderEasterTitle => 'Happy Easter! 🐣';
+
+  @override
+  String get achievementReminderEasterBody =>
+      'Log a drink this Easter weekend to earn this badge.';
+
+  @override
+  String get achievementReminderHalloweenTitle => 'It\'s Halloween! 🎃';
+
+  @override
+  String get achievementReminderHalloweenBody =>
+      'Log a drink today to earn your Halloween badge.';
+
+  @override
+  String get achievementReminderStPatricksDayTitle =>
+      'It\'s St. Patrick\'s Day! 🍀';
+
+  @override
+  String get achievementReminderStPatricksDayBody =>
+      'Log a beer today to earn your St. Patrick\'s Day badge.';
+
+  @override
+  String get achievementReminderOktoberfestTitle => 'Oktoberfest is on! 🍺';
+
+  @override
+  String get achievementReminderOktoberfestBody =>
+      'Log a beer during Oktoberfest to earn this badge.';
+
+  @override
+  String get achievementReminderCarnivalTitle => 'Carnival is on! 🎊';
+
+  @override
+  String get achievementReminderCarnivalBody =>
+      'Log a drink during Carnival to earn this badge.';
+
+  @override
+  String get achievementReminderGenericTitle => 'Achievement reminder';
+
+  @override
+  String get achievementReminderGenericBody =>
+      'Open GlassTrail to check today\'s achievement.';
+
+  @override
+  String get achievementReminderFirstSipAnniversaryBody =>
+      'Log a drink today to earn your anniversary badge.';
+
+  @override
+  String achievementReminderFirstSipAnniversaryTitle(int years) {
+    return '$years years of drinks logged 🥂';
+  }
 }

@@ -21,6 +21,7 @@ import 'repository/app_repository.dart';
 import 'repository/cached_app_repository.dart';
 import 'repository/repository_factory.dart';
 import 'stats_calculator.dart';
+import 'time_zone_provider.dart';
 
 enum _FlashMessageKind {
   welcomeToGlassTrail,
@@ -134,12 +135,15 @@ class AppController extends ChangeNotifier {
     this._repository, {
     PushNotificationService pushNotificationService =
         const DisabledPushNotificationService(),
-  }) : _pushNotificationService = pushNotificationService;
+    TimeZoneProvider timeZoneProvider = const PlatformTimeZoneProvider(),
+  }) : _pushNotificationService = pushNotificationService,
+       _timeZoneProvider = timeZoneProvider;
 
   static const _feedPageSize = 20;
 
   final AppRepository _repository;
   final PushNotificationService _pushNotificationService;
+  final TimeZoneProvider _timeZoneProvider;
 
   AppUser? _currentUser;
   UserSettings _settings = UserSettings.defaults();
@@ -2211,6 +2215,19 @@ class AppController extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Re-syncs the current device's timezone metadata for achievement
+  /// reminder delivery. Call on app startup and foreground resume, per
+  /// spec.md: "Timezone changes should be re-synced on app startup and
+  /// foreground refresh." A no-op if no push token is currently
+  /// registered (e.g. push disabled, or registration hasn't completed).
+  Future<void> refreshDeviceTimeZone() async {
+    final token = _registeredPushToken;
+    if (token == null || _currentUser == null) {
+      return;
+    }
+    await _registerPushTokenForCurrentUser(token);
+  }
+
   Future<void> _registerPushTokenForCurrentUser(PushDeviceToken token) async {
     final user = _currentUser;
     if (user == null || token.token.trim().isEmpty) {
@@ -2220,10 +2237,19 @@ class AppController extends ChangeNotifier {
     final previousToken = _registeredPushToken;
     final previousUserId = _registeredPushTokenUserId;
     try {
+      final now = DateTime.now();
+      // Best-effort only: never let a slow/unresponsive platform channel
+      // delay token registration (achievementTimeZone is refreshed again
+      // on every foreground resume via refreshDeviceTimeZone()).
+      final timeZone = await _timeZoneProvider
+          .getLocalTimeZoneIdentifier()
+          .timeout(const Duration(milliseconds: 500), onTimeout: () => null);
       await _repository.registerNotificationDeviceToken(
         userId: user.id,
         token: token.token,
         platform: token.platform,
+        timeZone: timeZone,
+        utcOffsetMinutes: now.timeZoneOffset.inMinutes,
       );
       if (_currentUser?.id != user.id) {
         await _unregisterPushToken(token: token, userId: user.id);
