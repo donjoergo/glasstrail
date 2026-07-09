@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../achievements/achievement_localizations.dart';
+import '../achievements/catalog.dart';
+import '../achievements/repository_models.dart';
 import '../app_scope.dart';
 import '../friend_stats_profile.dart';
 import '../widgets/app_empty_state_card.dart';
@@ -131,6 +134,8 @@ class _FriendStatsProfileScreenState extends State<FriendStatsProfileScreen> {
                       stats: profile.statistics!,
                       localeCode: controller.settings.localeCode,
                     ),
+                  const SizedBox(height: 20),
+                  _FriendSharedAchievementsSection(friendUserId: widget.friendUserId),
                 ],
               ),
             );
@@ -198,6 +203,150 @@ class _FriendStatsProfileHeader extends StatelessWidget {
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Friend-shared achievements, lazy-loaded only once this section is
+/// opened. `loadFriendSharedAchievements` already gates on the target's
+/// `shareAchievements` flag server-side, so an empty/null result (not
+/// shared, or shared with nothing earned yet) simply renders nothing.
+class _FriendSharedAchievementsSection extends StatefulWidget {
+  const _FriendSharedAchievementsSection({required this.friendUserId});
+
+  final String friendUserId;
+
+  @override
+  State<_FriendSharedAchievementsSection> createState() =>
+      _FriendSharedAchievementsSectionState();
+}
+
+class _FriendSharedAchievementsSectionState
+    extends State<_FriendSharedAchievementsSection> {
+  Future<List<FriendSharedAchievementFamily>>? _future;
+
+  void _open() {
+    setState(() {
+      _future ??= AppScope.controllerOf(
+        context,
+      ).loadFriendSharedAchievements(widget.friendUserId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    if (_future == null) {
+      return Material(
+        key: const Key('friend-achievements-open-button'),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          onTap: _open,
+          leading: const Icon(Icons.emoji_events_outlined),
+          title: Text(l10n.achievementsTab),
+          trailing: const Icon(Icons.chevron_right_rounded),
+        ),
+      );
+    }
+
+    return FutureBuilder<List<FriendSharedAchievementFamily>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: CircularProgressIndicator(
+                key: Key('friend-achievements-loading'),
+              ),
+            ),
+          );
+        }
+
+        final families = snapshot.data ?? const <FriendSharedAchievementFamily>[];
+        if (families.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          key: const Key('friend-achievements-section'),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                l10n.achievementsTab,
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              for (final family in families) _FriendAchievementFamilyRow(family: family),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FriendAchievementFamilyRow extends StatelessWidget {
+  const _FriendAchievementFamilyRow({required this.family});
+
+  final FriendSharedAchievementFamily family;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final catalogFamily = achievementFamilyById(family.familyId);
+    if (catalogFamily == null) {
+      return const SizedBox.shrink();
+    }
+
+    final earnedTitles = family.earnedLevels
+        .map((level) {
+          final def = catalogFamily.levels.where((l) => l.level == level).cast<AchievementLevelDef?>().firstWhere(
+                (_) => true,
+                orElse: () => null,
+              );
+          return def == null ? null : resolveAchievementString(l10n, def.titleKey);
+        })
+        .whereType<String>()
+        .toList(growable: false);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(Icons.emoji_events_rounded, color: theme.colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  resolveAchievementString(l10n, catalogFamily.familyTitleKey),
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  earnedTitles.join(', '),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

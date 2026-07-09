@@ -1102,9 +1102,32 @@ class LocalAppRepository implements AppRepository {
     required String userId,
     required String friendUserId,
   }) async {
-    // Local mode has no friend graph or cross-user data; achievement
-    // sharing only exists in Supabase mode.
-    return const <FriendSharedAchievementFamily>[];
+    if (!_areAcceptedFriends(userId: userId, friendUserId: friendUserId)) {
+      return const <FriendSharedAchievementFamily>[];
+    }
+    final settings = await loadSettings(friendUserId);
+    if (!settings.shareAchievements) {
+      return const <FriendSharedAchievementFamily>[];
+    }
+
+    final unlocks = await loadAchievementUnlocks(friendUserId);
+    final ordered = <String>[];
+    final levelsByFamily = <String, List<int>>{};
+    for (final unlock in unlocks) {
+      if (!levelsByFamily.containsKey(unlock.familyId)) {
+        levelsByFamily[unlock.familyId] = <int>[];
+        ordered.add(unlock.familyId);
+      }
+      levelsByFamily[unlock.familyId]!.add(unlock.level);
+    }
+    return ordered
+        .map(
+          (familyId) => FriendSharedAchievementFamily(
+            familyId: familyId,
+            earnedLevels: levelsByFamily[familyId]!,
+          ),
+        )
+        .toList(growable: false);
   }
 
   bool _customDrinkAlcoholFreeValue(
