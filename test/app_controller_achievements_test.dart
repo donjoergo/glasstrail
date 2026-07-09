@@ -153,6 +153,71 @@ void main() {
       );
     });
 
+    test('occasion_birthday is setup-required until a birthday is set', () async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'setup-required@example.com',
+        password: 'password123',
+        displayName: 'Setup Required',
+      );
+
+      final birthdayFamily = achievementFamilyById(
+        AchievementFamilyIds.occasionBirthday,
+      )!;
+      expect(
+        controller.achievementProgress
+            .firstWhere((p) => p.familyId == birthdayFamily.familyId)
+            .setupRequired,
+        isTrue,
+      );
+
+      await controller.updateProfile(
+        displayName: 'Setup Required',
+        birthday: DateTime(1990, 6, 15),
+      );
+
+      expect(
+        controller.achievementProgress
+            .firstWhere((p) => p.familyId == birthdayFamily.familyId)
+            .setupRequired,
+        isFalse,
+      );
+    });
+
+    test('isAchievementFamilyEarnableToday tracks the birthday window and stops once earned', () async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'earnable@example.com',
+        password: 'password123',
+        displayName: 'Earnable',
+      );
+
+      final birthdayFamily = achievementFamilyById(
+        AchievementFamilyIds.occasionBirthday,
+      )!;
+      expect(controller.isAchievementFamilyEarnableToday(birthdayFamily), isFalse);
+
+      final today = DateTime.now();
+      await controller.updateProfile(
+        displayName: 'Earnable',
+        birthday: DateTime(1990, today.month, today.day),
+      );
+      expect(controller.isAchievementFamilyEarnableToday(birthdayFamily), isTrue);
+
+      final beer = controller.availableDrinks.firstWhere(
+        (drink) => drink.id == 'beer-classic',
+      );
+      await controller.addDrinkEntry(drink: beer, volumeMl: beer.volumeMl);
+
+      expect(
+        controller.achievementUnlocks.any(
+          (u) => u.familyId == birthdayFamily.familyId,
+        ),
+        isTrue,
+      );
+      expect(controller.isAchievementFamilyEarnableToday(birthdayFamily), isFalse);
+    });
+
     test('catalog-version backfill runs once on cold start and persists the seen version', () async {
       // Backfill only needs to run at true app cold start (session
       // restore), not on every sign-up/sign-in -- those already trigger

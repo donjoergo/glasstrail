@@ -59,6 +59,39 @@ void main() {
     expect(controller.savedPlaces.where((p) => !p.isActive), hasLength(1));
   });
 
+  testWidgets('cancelling the replace confirmation keeps the existing active place', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'places-cancel@example.com',
+      password: 'password123',
+      displayName: 'Places Cancel',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        locationService: const TestLocationService(result: _homeLocation),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _openPlacesScreen(tester);
+
+    await tester.tap(find.byIcon(Icons.my_location_rounded).first);
+    await tester.pumpAndSettle();
+    expect(controller.savedPlaces, hasLength(1));
+
+    // Attempt to replace, then cancel the confirmation dialog.
+    await tester.tap(find.byIcon(Icons.my_location_rounded).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Replace'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(controller.savedPlaces, hasLength(1));
+    expect(controller.savedPlaces.single.isActive, isTrue);
+  });
+
   testWidgets('deleting a saved place removes it from the list', (tester) async {
     final controller = await buildTestController();
     await controller.signUp(

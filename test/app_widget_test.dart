@@ -15,6 +15,7 @@ import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/push_notification_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/route_memory.dart';
+import 'package:glasstrail/src/screens/achievements_screen.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
 import 'package:glasstrail/src/widgets/app_media.dart';
@@ -860,6 +861,109 @@ void main() {
     expect(controller.unreadNotificationCount, 0);
     expect(controller.notifications.single.isRead, isTrue);
   });
+
+  testWidgets(
+    'opens the Achievements tab with the deep-linked detail sheet from a reminder push',
+    (tester) async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'achievement-push@example.com',
+        password: 'password123',
+        displayName: 'Achievement Push',
+      );
+
+      final pushNotificationService = _FakePushNotificationService(
+        initialOpen: PushNotificationOpen(
+          routeName: AppRoutes.achievementDetailRoute(
+            'occasion_halloween',
+            level: 1,
+            source: 'push_reminder',
+          ),
+        ),
+      );
+      addTearDown(pushNotificationService.dispose);
+
+      await tester.pumpWidget(
+        GlassTrailBootstrapApp(
+          controllerFuture: Future<AppController>.value(controller),
+          photoService: const TestPhotoService(),
+          pushNotificationService: pushNotificationService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AchievementsScreen), findsOneWidget);
+      final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+      expect(
+        route?.settings.name,
+        AppRoutes.achievementDetailRoute(
+          'occasion_halloween',
+          level: 1,
+          source: 'push_reminder',
+        ),
+      );
+      // The detail sheet for the deep-linked family opened automatically.
+      expect(find.text('Spooky Sip'), findsWidgets);
+    },
+  );
+
+  testWidgets(
+    'returns to the deep-linked achievement detail after a required post-auth sign-in',
+    (tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final repository = LocalAppRepository(
+        await SharedPreferences.getInstance(),
+      );
+      await repository.signUp(
+        email: 'achievement-post-auth@example.com',
+        password: 'password123',
+        displayName: 'Achievement Post Auth',
+      );
+      await repository.signOut();
+      final controller = await AppController.bootstrapWithRepository(
+        repository,
+      );
+      expect(controller.currentUser, isNull);
+
+      final targetRoute = AppRoutes.achievementDetailRoute(
+        'occasion_halloween',
+        level: 1,
+        source: 'push_reminder',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+          initialRoute: targetRoute,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Not authenticated yet: lands on sign-in, not the achievement detail.
+      expect(find.byKey(const Key('auth-submit-button')), findsOneWidget);
+      expect(find.byType(AchievementsScreen), findsNothing);
+
+      await tester.enterText(
+        find.byKey(const Key('signin-email-field')),
+        'achievement-post-auth@example.com',
+      );
+      await tester.enterText(
+        find.byKey(const Key('signin-password-field')),
+        'password123',
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('auth-submit-button')).last,
+      );
+      await tester.tap(find.byKey(const Key('auth-submit-button')).last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AchievementsScreen), findsOneWidget);
+      final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+      expect(route?.settings.name, targetRoute);
+      expect(find.text('Spooky Sip'), findsWidgets);
+    },
+  );
 
   testWidgets(
     'opens friendship push notification routes and refreshes friends',

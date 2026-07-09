@@ -1,6 +1,7 @@
 import {
   type DeviceEligibilityInput,
   eligibleRemindersForDevice,
+  staleDeviceCutoffIso,
 } from "./index.ts";
 
 function assertEqual(actual: unknown, expected: unknown, label: string) {
@@ -44,6 +45,24 @@ Deno.test("sends a Halloween reminder within the retry window", () => {
   );
   assertEqual(result.length, 1, "one candidate");
   assertEqual(result[0].familyId, "occasion_halloween", "family");
+});
+
+Deno.test("is eligible exactly at the 09:00 first-attempt hour", () => {
+  const input = baseInput({});
+  const result = eligibleRemindersForDevice(
+    input,
+    new Date(Date.UTC(2026, 9, 31, 9, 0)),
+  );
+  assertEqual(result.length, 1, "eligible at exactly 09:00");
+});
+
+Deno.test("is still eligible at the 23:00 end of the retry window", () => {
+  const input = baseInput({});
+  const result = eligibleRemindersForDevice(
+    input,
+    new Date(Date.UTC(2026, 9, 31, 23, 0)),
+  );
+  assertEqual(result.length, 1, "eligible at 23:00");
 });
 
 Deno.test("skips a family already earned (one-time badge)", () => {
@@ -105,6 +124,24 @@ Deno.test("computes {years} for the first-sip-anniversary reminder", () => {
   );
   assertEqual(result.length, 1, "one candidate");
   assertEqual(result[0].years, 6, "years since first sip");
+});
+
+Deno.test("staleDeviceCutoffIso excludes devices unseen for 30+ days", () => {
+  const utcNow = new Date(Date.UTC(2026, 9, 31, 12, 0));
+  const cutoff = new Date(staleDeviceCutoffIso(utcNow));
+  const justInsideWindow = new Date(utcNow.getTime() - 29 * 86_400_000);
+  const justOutsideWindow = new Date(utcNow.getTime() - 31 * 86_400_000);
+
+  assertEqual(
+    justInsideWindow.getTime() >= cutoff.getTime(),
+    true,
+    "29 days ago is still within the active window",
+  );
+  assertEqual(
+    justOutsideWindow.getTime() >= cutoff.getTime(),
+    false,
+    "31 days ago is stale and excluded",
+  );
 });
 
 Deno.test("missing utc offset falls back to UTC", () => {

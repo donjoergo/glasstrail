@@ -236,5 +236,60 @@ void main() {
       final AchievementFamily halloween = achievementFamilyById(AchievementFamilyIds.occasionHalloween)!;
       expect(evaluateFamily(halloween, ctx).liveValue, 1);
     });
+
+    test('firstSipAnniversaryAnchor recomputes from the earliest entry after import and deletion', () {
+      // Anchor starts at the only entry's date.
+      final DateTime original = DateTime(2022, 5, 1);
+      final List<AchievementEntry> afterFirstLog = <AchievementEntry>[_entry(original)];
+      expect(firstSipAnniversaryAnchor(afterFirstLog), original);
+
+      // Importing older history moves the anchor earlier, regardless of
+      // list order.
+      final DateTime imported = DateTime(2018, 3, 10);
+      final List<AchievementEntry> afterImport = <AchievementEntry>[
+        _entry(original),
+        _entry(imported),
+      ];
+      expect(firstSipAnniversaryAnchor(afterImport), imported);
+
+      // Deleting the earliest (imported) entry re-anchors to the next
+      // earliest remaining entry, not the original first-ever anchor.
+      final List<AchievementEntry> afterDeletingImport = <AchievementEntry>[_entry(original)];
+      expect(firstSipAnniversaryAnchor(afterDeletingImport), original);
+
+      // Deleting every entry leaves no anchor at all.
+      expect(firstSipAnniversaryAnchor(const <AchievementEntry>[]), isNull);
+    });
+
+    test('isEarnableToday for the anniversary badge tracks the re-anchored date after deletion', () {
+      // With the imported Mar 10 entry present, the anchor is Mar 10, so
+      // "today" being Mar 10 makes the (already-earned-by-definition, but
+      // still occasion-window-matching) badge earnable.
+      final AchievementFamily anniversary =
+          achievementFamilyById(AchievementFamilyIds.occasionFirstSipAnniversary)!;
+      final AchievementEvaluationContext beforeDeletion = AchievementEvaluationContext(
+        entries: <AchievementEntry>[
+          _entry(DateTime(2022, 5, 1)),
+          _entry(DateTime(2018, 3, 10)),
+        ],
+        now: DateTime(2026, 3, 10),
+      );
+      expect(
+        isEarnableToday(family: anniversary, ctx: beforeDeletion, alreadyEarned: false),
+        isTrue,
+      );
+
+      // After deleting the imported entry, the anchor moves to May 1, so
+      // the same March 10 "now" no longer matches the (re-anchored)
+      // occasion window.
+      final AchievementEvaluationContext afterDeletion = AchievementEvaluationContext(
+        entries: <AchievementEntry>[_entry(DateTime(2022, 5, 1))],
+        now: DateTime(2026, 3, 10),
+      );
+      expect(
+        isEarnableToday(family: anniversary, ctx: afterDeletion, alreadyEarned: false),
+        isFalse,
+      );
+    });
   });
 }

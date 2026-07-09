@@ -251,6 +251,19 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  /// True when [family] is qualifiable today and not already earned at its
+  /// first level -- drives the "Earnable today" pill on the detail sheet.
+  bool isAchievementFamilyEarnableToday(AchievementFamily family) {
+    final bool alreadyEarned = _achievementUnlocks.any(
+      (unlock) => unlock.familyId == family.familyId,
+    );
+    return isEarnableToday(
+      family: family,
+      ctx: _achievementEvaluationContext(),
+      alreadyEarned: alreadyEarned,
+    );
+  }
+
   List<FeedDrinkPost> get feedPosts => List.unmodifiable(_feedPosts);
   bool get hasMoreFeedPosts => _hasMoreFeedPosts;
   bool get isLoadingMoreFeedPosts => _isLoadingMoreFeedPosts;

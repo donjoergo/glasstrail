@@ -441,6 +441,18 @@ class _AchievementDetailOverlay extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (controller.isAchievementFamilyEarnableToday(family))
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Chip(
+                                label: Text(l10n.achievementsEarnableToday),
+                                visualDensity: VisualDensity.compact,
+                                backgroundColor: theme.colorScheme.tertiaryContainer,
+                                labelStyle: TextStyle(
+                                  color: theme.colorScheme.onTertiaryContainer,
+                                ),
+                              ),
+                            ),
                           IconButton(
                             onPressed: onClose,
                             icon: const Icon(Icons.close_rounded),

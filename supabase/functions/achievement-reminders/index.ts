@@ -249,13 +249,20 @@ function isServiceRoleRequest(
   return authorization === `Bearer ${serviceRoleKey}`;
 }
 
+/** Devices with `last_seen_at` older than this are excluded as stale --
+ * exported so the 30-day window boundary itself is unit-testable without a
+ * live DB (the `.gte` filter it feeds is I/O and stays untested here). */
+export function staleDeviceCutoffIso(utcNow: Date): string {
+  return new Date(
+    utcNow.getTime() - activeDeviceWindowDays * 24 * 60 * 60 * 1000,
+  ).toISOString();
+}
+
 async function loadEligibleDeviceRows(
   client: AppSupabaseClient,
   utcNow: Date,
 ): Promise<DeviceTokenRow[]> {
-  const cutoff = new Date(
-    utcNow.getTime() - activeDeviceWindowDays * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  const cutoff = staleDeviceCutoffIso(utcNow);
 
   const { data, error } = await client
     .from("notification_device_tokens")

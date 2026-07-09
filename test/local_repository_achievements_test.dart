@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/src/achievements/catalog_models.dart';
 import 'package:glasstrail/src/achievements/repository_models.dart';
+import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -199,6 +200,34 @@ void main() {
       );
       expect(homes, hasLength(1));
       expect(works, hasLength(1));
+    });
+
+    test('persists the achievement settings flags independently of each other', () async {
+      final repository = await _buildRepository();
+      final defaults = UserSettings.defaults();
+      expect(defaults.shareAchievements, isTrue);
+      expect(defaults.achievementRemindersEnabled, isTrue);
+      expect(defaults.achievementCatalogVersionSeen, 0);
+
+      final saved = await repository.saveSettings(
+        'user-1',
+        defaults.copyWith(
+          shareAchievements: false,
+          shareStatsWithFriends: true,
+          achievementRemindersEnabled: false,
+          achievementCatalogVersionSeen: 3,
+        ),
+      );
+      expect(saved.shareAchievements, isFalse);
+      expect(saved.shareStatsWithFriends, isTrue);
+      expect(saved.achievementRemindersEnabled, isFalse);
+      expect(saved.achievementCatalogVersionSeen, 3);
+
+      final reloaded = await repository.loadSettings('user-1');
+      expect(reloaded.shareAchievements, isFalse);
+      expect(reloaded.shareStatsWithFriends, isTrue);
+      expect(reloaded.achievementRemindersEnabled, isFalse);
+      expect(reloaded.achievementCatalogVersionSeen, 3);
     });
   });
 }

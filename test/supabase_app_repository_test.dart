@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:glasstrail/src/achievements/catalog_models.dart';
+import 'package:glasstrail/src/achievements/repository_models.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/repository/supabase_app_repository.dart';
 import 'package:glasstrail/src/time_zone_provider.dart';
@@ -570,6 +572,186 @@ void main() {
       },
     );
   });
+
+  group('SupabaseAppRepository achievements', () {
+    late _MockSupabaseServer server;
+    late SupabaseClient client;
+    late SupabaseAppRepository repository;
+
+    setUp(() async {
+      server = await _MockSupabaseServer.start();
+      client = SupabaseClient(
+        server.baseUrl,
+        'test-key',
+        accessToken: () async => 'test-token',
+        headers: const <String, String>{'X-Client-Info': 'glasstrail-test'},
+      );
+      repository = SupabaseAppRepository(client);
+    });
+
+    tearDown(() async {
+      await client.dispose();
+      await server.close();
+    });
+
+    test('loadAchievementUnlocks maps stored rows into AchievementUnlock', () async {
+      server.achievementUnlocksByKey['total_drinks|1'] = <String, dynamic>{
+        'family_id': 'total_drinks',
+        'level': 1,
+        'qualified_at': '2026-01-01T00:00:00Z',
+        'granted_at': '2026-01-01T00:00:05Z',
+        'source': 'realtime_log',
+        'surfaced_at': null,
+      };
+
+      final unlocks = await repository.loadAchievementUnlocks('user-123');
+
+      expect(unlocks.single.familyId, 'total_drinks');
+      expect(unlocks.single.level, 1);
+      expect(unlocks.single.source, AchievementUnlockSource.realtimeLog);
+      expect(unlocks.single.surfacedAt, isNull);
+    });
+
+    test('upsertAchievementUnlocks sends the grants RPC and keeps the earliest qualifiedAt/grantedAt on conflict', () async {
+      final first = await repository.upsertAchievementUnlocks(
+        userId: 'user-123',
+        grants: <AchievementUnlockGrant>[
+          AchievementUnlockGrant(
+            familyId: 'total_drinks',
+            level: 1,
+            qualifiedAt: DateTime.utc(2026, 3, 5),
+            source: AchievementUnlockSource.realtimeLog,
+          ),
+        ],
+      );
+      expect(server.lastRpcName, 'upsert_achievement_unlocks');
+      expect(first.single.qualifiedAt, DateTime.utc(2026, 3, 5));
+
+      // A later, redundant grant for the same family/level (e.g. from a
+      // second device's backfill) must not push qualifiedAt forward.
+      final second = await repository.upsertAchievementUnlocks(
+        userId: 'user-123',
+        grants: <AchievementUnlockGrant>[
+          AchievementUnlockGrant(
+            familyId: 'total_drinks',
+            level: 1,
+            qualifiedAt: DateTime.utc(2026, 3, 10),
+            source: AchievementUnlockSource.backfill,
+          ),
+        ],
+      );
+
+      expect(second.single.qualifiedAt, DateTime.utc(2026, 3, 5));
+      expect(
+        await repository.loadAchievementUnlocks('user-123'),
+        hasLength(1),
+      );
+    });
+
+    test('markAchievementUnlocksSurfaced only updates rows not already surfaced', () async {
+      server.achievementUnlocksByKey['total_drinks|1'] = <String, dynamic>{
+        'family_id': 'total_drinks',
+        'level': 1,
+        'qualified_at': '2026-01-01T00:00:00Z',
+        'granted_at': '2026-01-01T00:00:05Z',
+        'source': 'realtime_log',
+        'surfaced_at': null,
+      };
+      server.achievementUnlocksByKey['type_beer|10'] = <String, dynamic>{
+        'family_id': 'type_beer',
+        'level': 10,
+        'qualified_at': '2026-01-02T00:00:00Z',
+        'granted_at': '2026-01-02T00:00:05Z',
+        'source': 'realtime_log',
+        'surfaced_at': '2026-01-02T01:00:00Z',
+      };
+
+      await repository.markAchievementUnlocksSurfaced(
+        userId: 'user-123',
+        unlocks: const <AchievementUnlockRef>[
+          AchievementUnlockRef(familyId: 'total_drinks', level: 1),
+          AchievementUnlockRef(familyId: 'type_beer', level: 10),
+        ],
+      );
+
+      final unlocks = await repository.loadAchievementUnlocks('user-123');
+      final totalDrinks = unlocks.firstWhere(
+        (u) => u.familyId == 'total_drinks',
+      );
+      final typeBeer = unlocks.firstWhere((u) => u.familyId == 'type_beer');
+      expect(totalDrinks.surfacedAt, isNotNull);
+      // Already-surfaced row's original surfaced_at is untouched, not
+      // overwritten with a later timestamp.
+      expect(typeBeer.surfacedAt, DateTime.parse('2026-01-02T01:00:00Z'));
+    });
+
+    test('loadFriendSharedAchievements groups levels by family in first-seen order', () async {
+      server.friendSharedAchievementRows = <Map<String, dynamic>>[
+        <String, dynamic>{'family_id': 'total_drinks', 'level': 1},
+        <String, dynamic>{'family_id': 'total_drinks', 'level': 10},
+        <String, dynamic>{'family_id': 'type_beer', 'level': 1},
+      ];
+
+      final families = await repository.loadFriendSharedAchievements(
+        userId: 'user-123',
+        friendUserId: 'friend-456',
+      );
+
+      expect(server.lastRpcName, 'load_friend_shared_achievements');
+      expect(server.lastRpcBody?['target_friend_user_id'], 'friend-456');
+      expect(families.map((f) => f.familyId), <String>[
+        'total_drinks',
+        'type_beer',
+      ]);
+      expect(
+        families.firstWhere((f) => f.familyId == 'total_drinks').earnedLevels,
+        <int>[1, 10],
+      );
+    });
+
+    test('saveSettings persists shareAchievements independently from shareStatsWithFriends', () async {
+      const settings = UserSettings(
+        themePreference: AppThemePreference.system,
+        localeCode: 'en',
+        unit: AppUnit.ml,
+        handedness: AppHandedness.right,
+        shareStatsWithFriends: false,
+        shareAchievements: true,
+      );
+
+      await repository.saveSettings('user-123', settings);
+
+      expect(server.userSettingsByUserId['user-123']?['share_stats_with_friends'], isFalse);
+      expect(server.userSettingsByUserId['user-123']?['share_achievements'], isTrue);
+    });
+
+    test('replaceActiveSavedPlace archives the previous active place and loadSavedPlaces/deleteSavedPlace round-trip', () async {
+      final first = await repository.replaceActiveSavedPlace(
+        userId: 'user-123',
+        placeType: SavedPlaceType.home,
+        latitude: 52.52,
+        longitude: 13.405,
+      );
+      expect(server.lastRpcName, 'replace_active_saved_place');
+
+      final second = await repository.replaceActiveSavedPlace(
+        userId: 'user-123',
+        placeType: SavedPlaceType.home,
+        latitude: 48.13,
+        longitude: 11.58,
+      );
+
+      final places = await repository.loadSavedPlaces(userId: 'user-123');
+      final archivedFirst = places.firstWhere((p) => p.id == first.id);
+      expect(archivedFirst.isActive, isFalse);
+      expect(archivedFirst.archivedAt, isNotNull);
+      expect(places.firstWhere((p) => p.id == second.id).isActive, isTrue);
+
+      await repository.deleteSavedPlace(userId: 'user-123', placeId: first.id);
+      final afterDelete = await repository.loadSavedPlaces(userId: 'user-123');
+      expect(afterDelete.map((p) => p.id), <String>[second.id]);
+    });
+  });
 }
 
 class _MockSupabaseServer {
@@ -599,6 +781,17 @@ class _MockSupabaseServer {
   final Map<String, Map<String, dynamic>> entryRowsById =
       <String, Map<String, dynamic>>{};
   final List<String> deletedPrefixes = <String>[];
+  // Keyed by "familyId|level" -- the mock only ever serves one implicit
+  // signed-in user per test, mirroring `upsert_achievement_unlocks`
+  // inferring `auth.uid()` server-side rather than taking a userId param.
+  final Map<String, Map<String, dynamic>> achievementUnlocksByKey =
+      <String, Map<String, dynamic>>{};
+  final Map<String, Map<String, dynamic>> savedPlacesById =
+      <String, Map<String, dynamic>>{};
+  List<Map<String, dynamic>> friendSharedAchievementRows =
+      const <Map<String, dynamic>>[];
+  Map<String, dynamic>? lastRpcBody;
+  String? lastRpcName;
   bool failPasswordReauth = false;
   bool failRefreshSession = false;
   bool failLogout = false;
@@ -799,6 +992,134 @@ class _MockSupabaseServer {
       return;
     }
 
+    if (request.method == 'GET' && path == '/rest/v1/achievement_unlocks') {
+      final rows = achievementUnlocksByKey.values.toList(growable: false)
+        ..sort(
+          (a, b) => (b['granted_at'] as String).compareTo(
+            a['granted_at'] as String,
+          ),
+        );
+      await _writeJson(request.response, rows);
+      return;
+    }
+
+    if (request.method == 'PATCH' && path == '/rest/v1/achievement_unlocks') {
+      final familyId = _stripEqPrefix(
+        request.uri.queryParameters['family_id'],
+      );
+      final level = _stripEqPrefix(request.uri.queryParameters['level']);
+      final body = await _readJsonMap(request);
+      final key = '$familyId|$level';
+      final existing = achievementUnlocksByKey[key];
+      if (existing != null && existing['surfaced_at'] == null) {
+        achievementUnlocksByKey[key] = Map<String, dynamic>.from(existing)
+          ..addAll(body);
+      }
+      await _writeJson(request.response, <Map<String, dynamic>>[]);
+      return;
+    }
+
+    if (request.method == 'POST' &&
+        path == '/rest/v1/rpc/upsert_achievement_unlocks') {
+      final body = await _readJsonMap(request);
+      lastRpcName = 'upsert_achievement_unlocks';
+      lastRpcBody = body;
+      final grants = List<Map<String, dynamic>>.from(
+        (body['grants'] as List<dynamic>).map(
+          (g) => Map<String, dynamic>.from(g as Map),
+        ),
+      );
+      final returned = <Map<String, dynamic>>[];
+      for (final grant in grants) {
+        final familyId = grant['familyId'] as String;
+        final level = grant['level'];
+        final key = '$familyId|$level';
+        final existing = achievementUnlocksByKey[key];
+        final row = <String, dynamic>{
+          'family_id': familyId,
+          'level': level,
+          'qualified_at': existing == null
+              ? grant['qualifiedAt']
+              : _earlierIso(
+                  existing['qualified_at'] as String,
+                  grant['qualifiedAt'] as String,
+                ),
+          'granted_at': existing == null
+              ? grant['grantedAt']
+              : _earlierIso(
+                  existing['granted_at'] as String,
+                  grant['grantedAt'] as String,
+                ),
+          'source': existing?['source'] ?? grant['source'],
+          'surfaced_at': existing?['surfaced_at'],
+        };
+        achievementUnlocksByKey[key] = row;
+        returned.add(row);
+      }
+      await _writeJson(request.response, returned);
+      return;
+    }
+
+    if (request.method == 'POST' &&
+        path == '/rest/v1/rpc/load_friend_shared_achievements') {
+      lastRpcName = 'load_friend_shared_achievements';
+      lastRpcBody = await _readJsonMap(request);
+      await _writeJson(request.response, friendSharedAchievementRows);
+      return;
+    }
+
+    if (request.method == 'GET' && path == '/rest/v1/saved_places') {
+      final userId = _stripEqPrefix(request.uri.queryParameters['user_id']);
+      final placeType = _stripEqPrefix(
+        request.uri.queryParameters['place_type'],
+      );
+      final rows = savedPlacesById.values
+          .where((row) => row['user_id'] == userId)
+          .where((row) => placeType == null || row['place_type'] == placeType)
+          .toList(growable: false);
+      await _writeJson(request.response, rows);
+      return;
+    }
+
+    if (request.method == 'DELETE' && path == '/rest/v1/saved_places') {
+      final placeId = _stripEqPrefix(request.uri.queryParameters['id']);
+      savedPlacesById.remove(placeId);
+      await _writeJson(request.response, <Map<String, dynamic>>[]);
+      return;
+    }
+
+    if (request.method == 'POST' &&
+        path == '/rest/v1/rpc/replace_active_saved_place') {
+      final body = await _readJsonMap(request);
+      lastRpcName = 'replace_active_saved_place';
+      lastRpcBody = body;
+      final placeType = body['target_place_type'] as String;
+      final now = DateTime.now().toUtc().toIso8601String();
+      for (final entry in savedPlacesById.entries.toList()) {
+        if (entry.value['place_type'] == placeType &&
+            entry.value['is_active'] == true) {
+          savedPlacesById[entry.key] = Map<String, dynamic>.from(entry.value)
+            ..['is_active'] = false
+            ..['archived_at'] = now;
+        }
+      }
+      final id = 'place-${savedPlacesById.length + 1}';
+      final row = <String, dynamic>{
+        'id': id,
+        'user_id': 'user-123',
+        'place_type': placeType,
+        'latitude': body['target_latitude'],
+        'longitude': body['target_longitude'],
+        'is_active': true,
+        'created_at': now,
+        'updated_at': now,
+        'archived_at': null,
+      };
+      savedPlacesById[id] = row;
+      await _writeJson(request.response, row);
+      return;
+    }
+
     if (request.method == 'POST' &&
         path == '/functions/v1/friend-shared-profile') {
       final body = await _readJsonMap(request);
@@ -875,6 +1196,10 @@ class _MockSupabaseServer {
     response.headers.contentType = ContentType.json;
     response.write(jsonEncode(<String, dynamic>{'message': message}));
     await response.close();
+  }
+
+  String _earlierIso(String a, String b) {
+    return DateTime.parse(a).isBefore(DateTime.parse(b)) ? a : b;
   }
 
   String? _stripEqPrefix(String? value) {
