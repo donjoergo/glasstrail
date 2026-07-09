@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:glasstrail/src/achievements/catalog_models.dart';
 import 'package:glasstrail/src/app.dart';
+import 'package:glasstrail/src/screens/places_screen.dart';
 
 import 'support/test_harness.dart';
 
@@ -164,6 +166,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Earnable today'), findsOneWidget);
+  });
+
+  testWidgets('Set up now from the Work badge deep-links to Places focused on the Work section', (
+    tester,
+  ) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'work-setup@example.com',
+      password: 'password123',
+      displayName: 'Work Setup',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(controller: controller, photoService: const TestPhotoService()),
+    );
+    await tester.pumpAndSettle();
+
+    await _openAchievementsTab(tester);
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Office Odyssey'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Office Odyssey'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Set up now'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PlacesScreen), findsOneWidget);
+    expect(
+      tester.widget<PlacesScreen>(find.byType(PlacesScreen)).focusPlaceType,
+      SavedPlaceType.work,
+    );
   });
 
   testWidgets('profile preview shows the earned count and latest badge, and opens the Achievements tab', (

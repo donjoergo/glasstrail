@@ -201,6 +201,7 @@ Deno.serve(async (request) => {
   let sent = 0;
   let failed = 0;
   let evaluated = 0;
+  let noDateMatch = 0;
 
   try {
     const devices = await loadEligibleDeviceRows(client, utcNow);
@@ -208,6 +209,9 @@ Deno.serve(async (request) => {
       evaluated++;
       const eligibility = await loadDeviceEligibilityContext(client, device);
       const candidates = eligibleRemindersForDevice(eligibility, utcNow);
+      if (candidates.length === 0) {
+        noDateMatch++;
+      }
 
       for (const candidate of candidates) {
         const accessToken = await fcmAccessToken(fcmConfig);
@@ -236,6 +240,12 @@ Deno.serve(async (request) => {
     }
   } catch (error) {
     console.error("achievement-reminders evaluation failed", error);
+  }
+
+  if (noDateMatch > 0) {
+    console.info(
+      `achievement-reminders: ${noDateMatch} device(s) evaluated with no date-eligible reminder`,
+    );
   }
 
   return jsonResponse({ ok: true, evaluated, sent, failed }, 202);
@@ -298,7 +308,20 @@ async function loadEligibleDeviceRows(
       .map((row) => row.user_id),
   );
 
-  return rows.filter((row) => enabledUserIds.has(row.user_id));
+  const eligible = rows.filter((row) => enabledUserIds.has(row.user_id));
+  const remindersDisabledExcluded = rows.length - eligible.length;
+  if (remindersDisabledExcluded > 0) {
+    // Stale-token exclusion already happened in the `.gte` filter above;
+    // logging its count would need a second, unfiltered count query purely
+    // for observability, which isn't worth the extra DB load on an hourly
+    // job. Reminders-disabled exclusions are free since we already loaded
+    // both sets.
+    console.info(
+      `achievement-reminders: ${remindersDisabledExcluded} device(s) excluded (reminders disabled)`,
+    );
+  }
+
+  return eligible;
 }
 
 async function loadDeviceEligibilityContext(

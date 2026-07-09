@@ -7,6 +7,7 @@ import '../achievements/catalog.dart';
 import '../achievements/occasion_rules.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
+import 'places_screen.dart';
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key, this.initialDeepLink});
@@ -503,10 +504,19 @@ class _SetupRequiredCard extends StatelessWidget {
         trailing: FilledButton(
           onPressed: () {
             onClose();
-            final route = family.familyId == AchievementFamilyIds.occasionBirthday
-                ? AppRoutes.editProfile
-                : AppRoutes.places;
-            Navigator.of(context).pushNamed(route);
+            if (family.familyId == AchievementFamilyIds.occasionBirthday) {
+              Navigator.of(context).pushNamed(AppRoutes.editProfile);
+              return;
+            }
+            final focusPlaceType = family.familyId == AchievementFamilyIds.placeWork
+                ? SavedPlaceType.work
+                : SavedPlaceType.home;
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                settings: const RouteSettings(name: AppRoutes.places),
+                builder: (_) => PlacesScreen(focusPlaceType: focusPlaceType),
+              ),
+            );
           },
           child: Text(l10n.achievementsSetUpNow),
         ),

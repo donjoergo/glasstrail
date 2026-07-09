@@ -6,7 +6,11 @@ import '../achievements/catalog_models.dart';
 import '../app_scope.dart';
 
 class PlacesScreen extends StatefulWidget {
-  const PlacesScreen({super.key});
+  const PlacesScreen({super.key, this.focusPlaceType});
+
+  /// Set when opened from the achievements Setup-Required deep link, so the
+  /// relevant Home/Work section is scrolled into view and highlighted.
+  final SavedPlaceType? focusPlaceType;
 
   @override
   State<PlacesScreen> createState() => _PlacesScreenState();
@@ -14,6 +18,28 @@ class PlacesScreen extends StatefulWidget {
 
 class _PlacesScreenState extends State<PlacesScreen> {
   bool _isCapturing = false;
+  final GlobalKey _homeSectionKey = GlobalKey();
+  final GlobalKey _workSectionKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.focusPlaceType != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final key = widget.focusPlaceType == SavedPlaceType.home
+            ? _homeSectionKey
+            : _workSectionKey;
+        final context = key.currentContext;
+        if (context != null) {
+          Scrollable.ensureVisible(
+            context,
+            duration: const Duration(milliseconds: 250),
+            alignment: 0.1,
+          );
+        }
+      });
+    }
+  }
 
   Future<void> _setPlace(SavedPlaceType placeType) async {
     final controller = AppScope.controllerOf(context);
@@ -103,16 +129,20 @@ class _PlacesScreenState extends State<PlacesScreen> {
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             _PlaceSection(
+              key: _homeSectionKey,
               title: l10n.savedPlacesHome,
               place: activeHome,
               isCapturing: _isCapturing,
+              isFocused: widget.focusPlaceType == SavedPlaceType.home,
               onSet: () => _setPlace(SavedPlaceType.home),
             ),
             const SizedBox(height: 16),
             _PlaceSection(
+              key: _workSectionKey,
               title: l10n.savedPlacesWork,
               place: activeWork,
               isCapturing: _isCapturing,
+              isFocused: widget.focusPlaceType == SavedPlaceType.work,
               onSet: () => _setPlace(SavedPlaceType.work),
             ),
             if (archived.isNotEmpty) ...<Widget>[
@@ -159,15 +189,18 @@ class _PlacesScreenState extends State<PlacesScreen> {
 
 class _PlaceSection extends StatelessWidget {
   const _PlaceSection({
+    super.key,
     required this.title,
     required this.place,
     required this.isCapturing,
     required this.onSet,
+    this.isFocused = false,
   });
 
   final String title;
   final SavedPlace? place;
   final bool isCapturing;
+  final bool isFocused;
   final VoidCallback onSet;
 
   @override
@@ -177,6 +210,12 @@ class _PlaceSection extends StatelessWidget {
     final formatter = NumberFormat.decimalPattern();
 
     return Card(
+      shape: isFocused
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: theme.colorScheme.primary, width: 2),
+            )
+          : null,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
