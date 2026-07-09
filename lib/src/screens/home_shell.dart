@@ -7,6 +7,7 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';
+import '../widgets/achievement_celebration_overlay.dart';
 import 'achievements_screen.dart';
 import 'bar_screen.dart';
 import 'feed_screen.dart';
@@ -200,7 +201,9 @@ class _HomeShellState extends State<HomeShell> {
                     ],
                   ),
                 ),
-                Expanded(child: currentPage),
+                Expanded(
+                  child: AchievementCelebrationOverlay(child: currentPage),
+                ),
               ],
             ),
             PositionedDirectional(
@@ -219,7 +222,7 @@ class _HomeShellState extends State<HomeShell> {
         title: Text(titles[currentIndex], style: appBarTitleStyle),
         actions: appBarActions,
       ),
-      body: currentPage,
+      body: AchievementCelebrationOverlay(child: currentPage),
       floatingActionButton: fab,
       floatingActionButtonLocation: isLeftHanded
           ? FloatingActionButtonLocation.startFloat

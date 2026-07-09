@@ -9,6 +9,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../achievements/achievement_localizations.dart';
+import '../achievements/catalog.dart';
 import '../app_controller.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
@@ -561,6 +563,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 20),
+          _AchievementsPreviewCard(controller: controller),
           const SizedBox(height: 20),
           _buildFriendsSection(theme, l10n, controller, isBusy),
           const SizedBox(height: 20),
@@ -1232,6 +1236,66 @@ class _FriendConnectionTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: child,
+      ),
+    );
+  }
+}
+
+/// Compact achievements preview, derived entirely from already-loaded
+/// in-memory controller state -- never triggers its own load.
+class _AchievementsPreviewCard extends StatelessWidget {
+  const _AchievementsPreviewCard({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final unlocks = controller.achievementUnlocks;
+    final latest = unlocks.isEmpty ? null : unlocks.first;
+    final latestFamily = latest == null ? null : achievementFamilyById(latest.familyId);
+    final latestLevel = latestFamily?.levels
+        .where((level) => level.level == latest!.level)
+        .cast<AchievementLevelDef?>()
+        .firstWhere((_) => true, orElse: () => null);
+
+    return Material(
+      key: const Key('profile-achievements-preview'),
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).pushReplacementNamed(AppRoutes.achievements),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: <Widget>[
+              Icon(Icons.emoji_events_rounded, color: theme.colorScheme.primary, size: 32),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      l10n.achievementsTab,
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${unlocks.length} ${l10n.achievementsBadgesEarned}'
+                      '${latestLevel == null ? '' : ' · ${resolveAchievementString(l10n, latestLevel.titleKey)}'}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
       ),
     );
   }

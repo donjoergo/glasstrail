@@ -2820,6 +2820,12 @@ void main() {
       );
       await controller.addDrinkEntry(drink: pils, volumeMl: pils.volumeMl);
       await controller.hideGlobalDrink(pils.id);
+      // Seeded before the widget tree mounts; surface the resulting
+      // celebration now so it doesn't cover the bar screen on the first
+      // frame (unrelated to what this test verifies).
+      await controller.markAchievementUnlocksSurfaced(
+        controller.pendingCelebrationUnlocks.map((u) => u.ref).toList(),
+      );
 
       await tester.pumpWidget(
         GlassTrailApp(

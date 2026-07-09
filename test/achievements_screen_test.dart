@@ -71,6 +71,13 @@ void main() {
     );
     final beer = controller.availableDrinks.firstWhere((d) => d.id == 'beer-classic');
     await controller.addDrinkEntry(drink: beer, volumeMl: beer.volumeMl);
+    // This test seeds history before the widget tree even mounts; surface
+    // the resulting celebration now so it doesn't cover the achievements
+    // grid on the very first frame (a separate concern from what this test
+    // actually verifies).
+    await controller.markAchievementUnlocksSurfaced(
+      controller.pendingCelebrationUnlocks.map((u) => u.ref).toList(),
+    );
 
     await tester.pumpWidget(
       GlassTrailApp(controller: controller, photoService: const TestPhotoService()),
