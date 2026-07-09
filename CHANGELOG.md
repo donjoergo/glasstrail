@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Achievements: a new tab with badges for drink totals, streaks, drink types, home/work, travel, countries visited, and seasonal occasions, with unlock celebrations, a profile preview, friend sharing, and reminder push notifications for time-limited badges
 - Startup and media caching for faster signed-in launches
 
 ### Fixed
