@@ -2182,4 +2182,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get achievementsCategoryCountries => 'Countries';
+
+  @override
+  String get savedPlacesReplaceConfirmBody =>
+      'Replacing this place archives the old one. Your earned badges stay unlocked either way.';
+
+  @override
+  String get savedPlacesReplaceConfirmAction => 'Replace';
 }

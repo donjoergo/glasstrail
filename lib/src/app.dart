@@ -29,6 +29,7 @@ import 'screens/friend_profile_screen.dart';
 import 'screens/friend_stats_profile_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/places_screen.dart';
 import 'widgets/app_media.dart';
 
 const _appDisplayTitle = 'Glass Trail';
@@ -690,6 +691,7 @@ class _AppRouteScreen extends StatelessWidget {
       AppRoutes.addDrink => const AddDrinkScreen(),
       AppRoutes.editProfile => const EditProfileScreen(),
       AppRoutes.notifications => const NotificationsScreen(),
+      AppRoutes.places => const PlacesScreen(),
       AppRoutes.auth => const HomeShell(routeName: AppRoutes.feed),
       _ => const HomeShell(routeName: AppRoutes.feed),
     }, routeName: normalizedRoute);

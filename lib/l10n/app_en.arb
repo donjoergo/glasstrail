@@ -889,5 +889,7 @@
   "achievementsCategoryOccasions": "Occasions",
   "achievementsCategoryPlaces": "Places",
   "achievementsCategoryTravel": "Travel",
-  "achievementsCategoryCountries": "Countries"
+  "achievementsCategoryCountries": "Countries",
+  "savedPlacesReplaceConfirmBody": "Replacing this place archives the old one. Your earned badges stay unlocked either way.",
+  "savedPlacesReplaceConfirmAction": "Replace"
 }

@@ -889,5 +889,7 @@
   "achievementsCategoryOccasions": "Anlässe",
   "achievementsCategoryPlaces": "Orte",
   "achievementsCategoryTravel": "Reisen",
-  "achievementsCategoryCountries": "Länder"
+  "achievementsCategoryCountries": "Länder",
+  "savedPlacesReplaceConfirmBody": "Das Ersetzen dieses Ortes archiviert den alten. Deine verdienten Badges bleiben in jedem Fall freigeschaltet.",
+  "savedPlacesReplaceConfirmAction": "Ersetzen"
 }

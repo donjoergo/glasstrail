@@ -26,6 +26,8 @@ enum _ProfilePendingSetting {
   unit,
   handedness,
   shareStatsWithFriends,
+  shareAchievements,
+  achievementReminders,
 }
 
 class ProfileScreen extends StatefulWidget {
@@ -765,6 +767,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onChanged: (value) => _updateSettings(
                     _ProfilePendingSetting.shareStatsWithFriends,
                     settings.copyWith(shareStatsWithFriends: value),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _SettingsSwitchField(
+                  key: const Key('share-achievements-settings-tile'),
+                  label: l10n.shareAchievements,
+                  description: l10n.shareAchievementsBody,
+                  value: settings.shareAchievements,
+                  enabled: !isBusy,
+                  isLoading:
+                      _pendingSetting ==
+                          _ProfilePendingSetting.shareAchievements &&
+                      controller.isBusyFor(AppBusyAction.updateSettings),
+                  switchKey: const Key('share-achievements-settings-switch'),
+                  loadingIndicatorKey: const Key(
+                    'share-achievements-settings-loading',
+                  ),
+                  onChanged: (value) => _updateSettings(
+                    _ProfilePendingSetting.shareAchievements,
+                    settings.copyWith(shareAchievements: value),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _SettingsSwitchField(
+                  key: const Key('achievement-reminders-settings-tile'),
+                  label: l10n.achievementReminders,
+                  description: l10n.achievementRemindersBody,
+                  value: settings.achievementRemindersEnabled,
+                  enabled: !isBusy,
+                  isLoading:
+                      _pendingSetting ==
+                          _ProfilePendingSetting.achievementReminders &&
+                      controller.isBusyFor(AppBusyAction.updateSettings),
+                  switchKey: const Key(
+                    'achievement-reminders-settings-switch',
+                  ),
+                  loadingIndicatorKey: const Key(
+                    'achievement-reminders-settings-loading',
+                  ),
+                  onChanged: (value) => _updateSettings(
+                    _ProfilePendingSetting.achievementReminders,
+                    settings.copyWith(achievementRemindersEnabled: value),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Material(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(18),
+                  clipBehavior: Clip.antiAlias,
+                  child: ListTile(
+                    key: const Key('profile-places-button'),
+                    onTap: () => Navigator.of(context).pushNamed(AppRoutes.places),
+                    leading: const Icon(Icons.home_outlined),
+                    title: Text(l10n.savedPlacesTitle),
+                    trailing: const Icon(Icons.chevron_right_rounded),
                   ),
                 ),
               ],

@@ -4018,6 +4018,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Countries'**
   String get achievementsCategoryCountries;
+
+  /// No description provided for @savedPlacesReplaceConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Replacing this place archives the old one. Your earned badges stay unlocked either way.'**
+  String get savedPlacesReplaceConfirmBody;
+
+  /// No description provided for @savedPlacesReplaceConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get savedPlacesReplaceConfirmAction;
 }
 
 class _AppLocalizationsDelegate
