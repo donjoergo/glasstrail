@@ -2161,4 +2161,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String achievementsOverflowUnlocked(int count) {
     return '+$count more unlocked';
   }
+
+  @override
+  String get achievementsCategoryTotals => 'Totals';
+
+  @override
+  String get achievementsCategoryStreaks => 'Streaks';
+
+  @override
+  String get achievementsCategoryDrinkTypes => 'Drink Types';
+
+  @override
+  String get achievementsCategoryOccasions => 'Occasions';
+
+  @override
+  String get achievementsCategoryPlaces => 'Places';
+
+  @override
+  String get achievementsCategoryTravel => 'Travel';
+
+  @override
+  String get achievementsCategoryCountries => 'Countries';
 }

@@ -16,6 +16,9 @@ class AppRoutes {
   static const friendStatsProfilePrefix = '/friends/view/';
   static const addDrink = '/add-drink';
   static const editProfile = '/profile/edit';
+  static const achievements = '/achievements';
+  static const achievementDetailPrefix = '/achievements/detail/';
+  static const places = '/profile/places';
 
   static String normalize(String? routeName) {
     final candidate = routeName == null || routeName.isEmpty
@@ -24,6 +27,12 @@ class AppRoutes {
     if (isFriendProfileRoute(candidate) ||
         isFriendStatsProfileRoute(candidate)) {
       return candidate;
+    }
+    if (isAchievementDetailRoute(candidate)) {
+      // Unlike friend routes, the query string (level/source) is part of
+      // the canonical achievement detail route contract and must survive
+      // normalization.
+      return routeName!;
     }
     return switch (routeName) {
       null || '' => root,
@@ -41,7 +50,9 @@ class AppRoutes {
       profile ||
       notifications ||
       addDrink ||
-      editProfile => routeName,
+      editProfile ||
+      achievements ||
+      places => routeName,
       _ => root,
     };
   }
@@ -69,7 +80,8 @@ class AppRoutes {
   static bool isExplicitPostAuthRedirectRoute(String? routeName) {
     final normalized = normalize(routeName);
     return isFriendProfileRoute(normalized) ||
-        isFriendStatsProfileRoute(normalized);
+        isFriendStatsProfileRoute(normalized) ||
+        isAchievementDetailRoute(normalized);
   }
 
   static String? friendProfileShareCode(String? routeName) {
@@ -90,6 +102,51 @@ class AppRoutes {
     return Uri.decodeComponent(
       normalized.substring(friendStatsProfilePrefix.length),
     );
+  }
+
+  /// Canonical achievement detail route: `/achievements/detail/<familyId>?level=<int>&source=<string>`.
+  static String achievementDetailRoute(
+    String familyId, {
+    int? level,
+    String? source,
+  }) {
+    final params = <String>[
+      if (level != null) 'level=$level',
+      if (source != null) 'source=${Uri.encodeComponent(source)}',
+    ];
+    final path = '$achievementDetailPrefix${Uri.encodeComponent(familyId)}';
+    return params.isEmpty ? path : '$path?${params.join('&')}';
+  }
+
+  static bool isAchievementDetailRoute(String? routeName) {
+    final normalized = routeName?.split('?').first ?? '';
+    return normalized.startsWith(achievementDetailPrefix) &&
+        normalized.length > achievementDetailPrefix.length;
+  }
+
+  static String? achievementDetailFamilyId(String? routeName) {
+    final path = routeName?.split('?').first;
+    if (path == null || !isAchievementDetailRoute(path)) {
+      return null;
+    }
+    return Uri.decodeComponent(path.substring(achievementDetailPrefix.length));
+  }
+
+  static int? achievementDetailLevel(String? routeName) {
+    if (!isAchievementDetailRoute(routeName)) {
+      return null;
+    }
+    final query = Uri.tryParse(routeName!)?.queryParameters;
+    final raw = query?['level'];
+    return raw == null ? null : int.tryParse(raw);
+  }
+
+  static String? achievementDetailSource(String? routeName) {
+    if (!isAchievementDetailRoute(routeName)) {
+      return null;
+    }
+    final query = Uri.tryParse(routeName!)?.queryParameters;
+    return query?['source'];
   }
 
   static bool isStatisticsRoute(String? routeName) {
@@ -118,6 +175,7 @@ class AppRoutes {
       root || feed => feed,
       _ when isStatisticsRoute(normalized) => statistics,
       _ when isBarRoute(normalized) => bar,
+      achievements => achievements,
       profile => profile,
       _ => feed,
     };
@@ -126,7 +184,7 @@ class AppRoutes {
   static bool isHomeShellRoute(String? routeName) {
     final normalized = normalize(routeName);
     return switch (normalized) {
-      feed || profile => true,
+      feed || profile || achievements => true,
       _ when isStatisticsRoute(normalized) => true,
       _ when isBarRoute(normalized) => true,
       _ => false,
@@ -136,7 +194,8 @@ class AppRoutes {
   static String postAuthRoute(String? routeName) {
     final normalized = normalize(routeName);
     if (isFriendProfileRoute(normalized) ||
-        isFriendStatsProfileRoute(normalized)) {
+        isFriendStatsProfileRoute(normalized) ||
+        isAchievementDetailRoute(normalized)) {
       return normalized;
     }
     return switch (normalized) {
@@ -152,11 +211,16 @@ class AppRoutes {
       profile ||
       notifications ||
       addDrink ||
-      editProfile => normalized,
+      editProfile ||
+      achievements ||
+      places => normalized,
       _ => feed,
     };
   }
 
+  /// Normal app restoration restores only the Achievements tab root, never
+  /// a previously open detail sheet -- detail routes are reopened only via
+  /// push or explicit post-auth redirect.
   static bool isRestorable(String? routeName) {
     final normalized = normalize(routeName);
     if (isFriendProfileRoute(normalized) ||
@@ -173,7 +237,8 @@ class AppRoutes {
       bar ||
       barSorting ||
       barCustom ||
-      profile => true,
+      profile ||
+      achievements => true,
       _ => false,
     };
   }
@@ -181,7 +246,8 @@ class AppRoutes {
   static bool isPostAuthRoute(String? routeName) {
     final normalized = normalize(routeName);
     if (isFriendProfileRoute(normalized) ||
-        isFriendStatsProfileRoute(normalized)) {
+        isFriendStatsProfileRoute(normalized) ||
+        isAchievementDetailRoute(normalized)) {
       return true;
     }
     return switch (normalized) {
@@ -197,7 +263,9 @@ class AppRoutes {
       profile ||
       notifications ||
       addDrink ||
-      editProfile => true,
+      editProfile ||
+      achievements ||
+      places => true,
       _ => false,
     };
   }
@@ -245,7 +313,8 @@ class AppRoutes {
       feed => 0,
       statistics => 1,
       bar => 2,
-      profile => 3,
+      achievements => 3,
+      profile => 4,
       _ => 0,
     };
   }
@@ -255,8 +324,10 @@ class AppRoutes {
       0 => feed,
       1 => statistics,
       2 => bar,
-      3 => profile,
+      3 => achievements,
+      4 => profile,
       _ => feed,
     };
   }
+
 }

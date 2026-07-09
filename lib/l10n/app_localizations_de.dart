@@ -2200,4 +2200,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String achievementsOverflowUnlocked(int count) {
     return '+$count weitere freigeschaltet';
   }
+
+  @override
+  String get achievementsCategoryTotals => 'Gesamt';
+
+  @override
+  String get achievementsCategoryStreaks => 'Serien';
+
+  @override
+  String get achievementsCategoryDrinkTypes => 'Getränkearten';
+
+  @override
+  String get achievementsCategoryOccasions => 'Anlässe';
+
+  @override
+  String get achievementsCategoryPlaces => 'Orte';
+
+  @override
+  String get achievementsCategoryTravel => 'Reisen';
+
+  @override
+  String get achievementsCategoryCountries => 'Länder';
 }

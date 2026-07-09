@@ -678,6 +678,7 @@ class _AppRouteScreen extends StatelessWidget {
     if (normalizedRoute == AppRoutes.feed ||
         AppRoutes.isStatisticsRoute(normalizedRoute) ||
         AppRoutes.isBarRoute(normalizedRoute) ||
+        normalizedRoute == AppRoutes.achievements ||
         normalizedRoute == AppRoutes.profile) {
       return _wrapAuthenticatedScreen(
         HomeShell(routeName: normalizedRoute),

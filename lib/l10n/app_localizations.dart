@@ -3976,6 +3976,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'+{count} more unlocked'**
   String achievementsOverflowUnlocked(int count);
+
+  /// No description provided for @achievementsCategoryTotals.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals'**
+  String get achievementsCategoryTotals;
+
+  /// No description provided for @achievementsCategoryStreaks.
+  ///
+  /// In en, this message translates to:
+  /// **'Streaks'**
+  String get achievementsCategoryStreaks;
+
+  /// No description provided for @achievementsCategoryDrinkTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'Drink Types'**
+  String get achievementsCategoryDrinkTypes;
+
+  /// No description provided for @achievementsCategoryOccasions.
+  ///
+  /// In en, this message translates to:
+  /// **'Occasions'**
+  String get achievementsCategoryOccasions;
+
+  /// No description provided for @achievementsCategoryPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Places'**
+  String get achievementsCategoryPlaces;
+
+  /// No description provided for @achievementsCategoryTravel.
+  ///
+  /// In en, this message translates to:
+  /// **'Travel'**
+  String get achievementsCategoryTravel;
+
+  /// No description provided for @achievementsCategoryCountries.
+  ///
+  /// In en, this message translates to:
+  /// **'Countries'**
+  String get achievementsCategoryCountries;
 }
 
 class _AppLocalizationsDelegate

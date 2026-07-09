@@ -451,3 +451,12 @@ class AchievementDeepLinkTarget {
   final int? level;
   final AchievementRouteSource? source;
 }
+
+/// The Achievements tab's top-level visibility filter. Held on
+/// `AppController` (not screen state) so it survives tab switches for the
+/// life of the app process, and resets on cold restart.
+enum AchievementsFilter {
+  all,
+  unlocked,
+  locked,
+}

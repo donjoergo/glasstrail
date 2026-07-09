@@ -7,6 +7,7 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';
+import 'achievements_screen.dart';
 import 'bar_screen.dart';
 import 'feed_screen.dart';
 import 'profile_screen.dart';
@@ -60,7 +61,8 @@ class _HomeShellState extends State<HomeShell> {
             ? routeMemory
             : AppRoutes.statistics,
       2 => AppRoutes.isBarRoute(routeMemory) ? routeMemory : AppRoutes.bar,
-      3 => AppRoutes.profile,
+      3 => AppRoutes.achievements,
+      4 => AppRoutes.profile,
       _ => AppRoutes.feed,
     };
   }
@@ -105,6 +107,7 @@ class _HomeShellState extends State<HomeShell> {
         routeName: _currentRouteName,
         onRouteSelected: _updateHomeSubroute,
       ),
+      AppRoutes.achievements => const AchievementsScreen(),
       AppRoutes.profile => const ProfileScreen(),
       _ => const FeedScreen(),
     };
@@ -118,7 +121,13 @@ class _HomeShellState extends State<HomeShell> {
     final theme = Theme.of(context);
     final handedness = controller.settings.handedness;
     final isLeftHanded = handedness == AppHandedness.left;
-    final titles = <String>[l10n.feed, l10n.statistics, l10n.bar, l10n.profile];
+    final titles = <String>[
+      l10n.feed,
+      l10n.statistics,
+      l10n.bar,
+      l10n.achievementsTab,
+      l10n.profile,
+    ];
     final currentPage = _buildCurrentPage();
     final appBarActions = <Widget>[
       _NotificationsAppBarButton(
@@ -179,6 +188,11 @@ class _HomeShellState extends State<HomeShell> {
                         label: Text(l10n.bar),
                       ),
                       NavigationRailDestination(
+                        icon: const Icon(Icons.emoji_events_outlined),
+                        selectedIcon: const Icon(Icons.emoji_events_rounded),
+                        label: Text(l10n.achievementsTab),
+                      ),
+                      NavigationRailDestination(
                         icon: const Icon(Icons.person_outline_rounded),
                         selectedIcon: const Icon(Icons.person_rounded),
                         label: Text(l10n.profile),
@@ -228,6 +242,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: const Icon(Icons.local_bar_outlined),
             selectedIcon: const Icon(Icons.local_bar_rounded),
             label: l10n.bar,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.emoji_events_outlined),
+            selectedIcon: const Icon(Icons.emoji_events_rounded),
+            label: l10n.achievementsTab,
           ),
           NavigationDestination(
             icon: const Icon(Icons.person_outline_rounded),

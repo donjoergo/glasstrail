@@ -882,5 +882,12 @@
         "type": "int"
       }
     }
-  }
+  },
+  "achievementsCategoryTotals": "Gesamt",
+  "achievementsCategoryStreaks": "Serien",
+  "achievementsCategoryDrinkTypes": "Getränkearten",
+  "achievementsCategoryOccasions": "Anlässe",
+  "achievementsCategoryPlaces": "Orte",
+  "achievementsCategoryTravel": "Reisen",
+  "achievementsCategoryCountries": "Länder"
 }

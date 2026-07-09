@@ -948,12 +948,14 @@ class LocalAppRepository implements AppRepository {
   Future<List<AchievementUnlock>> loadAchievementUnlocks(String userId) async {
     final map = _readJsonMap(_achievementUnlocksKey);
     final raw = (map[userId] as List?) ?? const <dynamic>[];
-    return raw
+    final unlocks = raw
         .map(
           (dynamic entry) =>
               AchievementUnlock.fromJson(Map<String, dynamic>.from(entry as Map)),
         )
-        .toList(growable: false);
+        .toList(growable: false)
+      ..sort((a, b) => b.grantedAt.compareTo(a.grantedAt));
+    return unlocks;
   }
 
   @override

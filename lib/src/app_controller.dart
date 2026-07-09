@@ -170,6 +170,7 @@ class AppController extends ChangeNotifier {
   List<AchievementUnlock> _achievementUnlocks = const <AchievementUnlock>[];
   List<SavedPlace> _savedPlaces = const <SavedPlace>[];
   List<AchievementUnlock> _pendingCelebrationUnlocks = const <AchievementUnlock>[];
+  AchievementsFilter _achievementsFilter = AchievementsFilter.all;
 
   static Future<AppController> bootstrap({
     BackendConfig? backendConfig,
@@ -222,6 +223,19 @@ class AppController extends ChangeNotifier {
   /// [markAchievementUnlocksSurfaced].
   List<AchievementUnlock> get pendingCelebrationUnlocks =>
       List.unmodifiable(_pendingCelebrationUnlocks);
+
+  /// Achievements-tab filter. Lives on the controller (not screen state)
+  /// so it survives tab switches for the app process lifetime and resets
+  /// on cold restart.
+  AchievementsFilter get achievementsFilter => _achievementsFilter;
+
+  void setAchievementsFilter(AchievementsFilter filter) {
+    if (_achievementsFilter == filter) {
+      return;
+    }
+    _achievementsFilter = filter;
+    notifyListeners();
+  }
 
   /// Live-evaluated progress for the whole catalog, merged with permanent
   /// earned levels. Recomputed on every access from current in-memory
