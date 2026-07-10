@@ -5121,7 +5121,7 @@ void main() {
   );
 
   testWidgets(
-    'keeps the statistics map bottom sheet below the large breakpoint',
+    'shows the statistics map entry as a dialog between 840 and 1200',
     (tester) async {
       _setSurfaceSize(tester, const Size(1100, 900));
       addTearDown(() {
@@ -5167,6 +5167,8 @@ void main() {
         find.byKey(Key('statistics-map-sheet-${beerEntry.id}')),
         findsOneWidget,
       );
+      expect(find.byType(Dialog), findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing);
       expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
     },
   );

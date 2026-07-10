@@ -10,10 +10,9 @@ Future<void> _showStatisticsMapEntrySheet(
   _StatisticsMapMarkerData marker,
   Color accentColor,
 ) async {
-  await showModalBottomSheet<void>(
+  await showAdaptiveSheetOrDialog<void>(
     context: context,
     showDragHandle: true,
-    useSafeArea: true,
     isScrollControlled: true,
     builder: (_) =>
         _StatisticsMapEntrySheet(entry: marker.entry, accentColor: accentColor),

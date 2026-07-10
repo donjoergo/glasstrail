@@ -19,6 +19,7 @@ import '../l10n_extensions.dart';
 import '../maplibre_web_registration.dart' as maplibre_web_registration;
 import '../models.dart';
 import '../runtime_platform.dart' as runtime_platform;
+import '../widgets/adaptive_modal.dart';
 import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
