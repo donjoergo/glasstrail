@@ -295,6 +295,63 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
   }
 }
 
+List<AppGalleryViewerItem> _statisticsGalleryViewerItems({
+  required AppController controller,
+  required AppLocalizations l10n,
+  required List<DrinkEntry> entries,
+}) {
+  final localeCode = controller.settings.localeCode;
+  final unit = controller.settings.unit;
+  return entries
+      .map(
+        (entry) => AppGalleryViewerItem(
+          imagePath: entry.imagePath!.trim(),
+          drinkName: controller.localizedEntryDrinkName(
+            entry,
+            localeCode: localeCode,
+          ),
+          metadata: <String>[
+            l10n.categoryLabel(entry.category),
+            if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
+            DateFormat.yMMMd(localeCode).add_Hm().format(entry.consumedAt),
+            if (entry.volumeMl != null) unit.formatVolume(entry.volumeMl),
+            if (normalizeLocationAddress(entry.locationAddress) != null)
+              normalizeLocationAddress(entry.locationAddress)!,
+          ],
+          comment: _normalizedStatisticsGalleryComment(entry.comment),
+        ),
+      )
+      .toList(growable: false);
+}
+
+String? _normalizedStatisticsGalleryComment(String? comment) {
+  final normalized = comment?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  return normalized;
+}
+
+Widget _statisticsGalleryTileFor({
+  required BuildContext context,
+  required List<DrinkEntry> entries,
+  required List<AppGalleryViewerItem> galleryItems,
+  required int index,
+}) {
+  final entry = entries[index];
+  return _StatisticsGalleryTile(
+    key: Key('statistics-gallery-tile-${entry.id}'),
+    imagePath: galleryItems[index].imagePath,
+    onTap: () {
+      showAppGalleryViewerDialog(
+        context,
+        items: galleryItems,
+        initialIndex: index,
+      );
+    },
+  );
+}
+
 class _StatisticsGalleryPage extends StatelessWidget {
   const _StatisticsGalleryPage();
 
@@ -302,31 +359,14 @@ class _StatisticsGalleryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
-    final localeCode = controller.settings.localeCode;
-    final unit = controller.settings.unit;
     final entries = controller.entries
         .where(_statisticsGalleryHasImage)
         .toList(growable: false);
-    final galleryItems = entries
-        .map(
-          (entry) => AppGalleryViewerItem(
-            imagePath: entry.imagePath!.trim(),
-            drinkName: controller.localizedEntryDrinkName(
-              entry,
-              localeCode: localeCode,
-            ),
-            metadata: <String>[
-              l10n.categoryLabel(entry.category),
-              if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
-              DateFormat.yMMMd(localeCode).add_Hm().format(entry.consumedAt),
-              if (entry.volumeMl != null) unit.formatVolume(entry.volumeMl),
-              if (_normalizedLocationAddress(entry.locationAddress) != null)
-                _normalizedLocationAddress(entry.locationAddress)!,
-            ],
-            comment: _normalizedGalleryComment(entry.comment),
-          ),
-        )
-        .toList(growable: false);
+    final galleryItems = _statisticsGalleryViewerItems(
+      controller: controller,
+      l10n: l10n,
+      entries: entries,
+    );
 
     if (entries.isEmpty) {
       return RefreshIndicator(
@@ -365,38 +405,16 @@ class _StatisticsGalleryPage extends StatelessWidget {
               mainAxisSpacing: 4,
             ),
             itemCount: entries.length,
-            itemBuilder: (context, index) {
-              final entry = entries[index];
-              final galleryItem = galleryItems[index];
-
-              return _StatisticsGalleryTile(
-                key: Key('statistics-gallery-tile-${entry.id}'),
-                imagePath: galleryItem.imagePath,
-                onTap: () {
-                  showAppGalleryViewerDialog(
-                    context,
-                    items: galleryItems,
-                    initialIndex: index,
-                  );
-                },
-              );
-            },
+            itemBuilder: (context, index) => _statisticsGalleryTileFor(
+              context: context,
+              entries: entries,
+              galleryItems: galleryItems,
+              index: index,
+            ),
           );
         },
       ),
     );
-  }
-
-  String? _normalizedGalleryComment(String? comment) {
-    final normalized = comment?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    return normalized;
-  }
-
-  String? _normalizedLocationAddress(String? value) {
-    return normalizeLocationAddress(value);
   }
 }
 

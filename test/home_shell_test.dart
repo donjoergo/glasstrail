@@ -119,6 +119,18 @@ Future<void> _openBarCustomDrinksTab(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _openStatisticsWideSection(
+  WidgetTester tester,
+  String label,
+) async {
+  final segment = find.descendant(
+    of: find.byKey(const Key('statistics-wide-section-switcher')),
+    matching: find.text(label),
+  );
+  await tester.tap(segment);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _openStatisticsSection(WidgetTester tester, String label) async {
   final tab = find.descendant(
     of: find.byKey(const Key('statistics-tab-bar')),
@@ -5014,7 +5026,6 @@ void main() {
     await tester.pumpAndSettle();
 
     await _openStatisticsTab(tester);
-    await _openStatisticsSection(tester, 'Map');
 
     expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
 
@@ -5097,7 +5108,6 @@ void main() {
       await tester.pumpAndSettle();
 
       await _openStatisticsTab(tester);
-      await _openStatisticsSection(tester, 'Map');
 
       await tester.tap(_statisticsMapMarker(beerEntry.id));
       await tester.pumpAndSettle();
@@ -5287,7 +5297,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await _openStatisticsTab(tester);
-    await _openStatisticsSection(tester, 'History');
+    await _openStatisticsWideSection(tester, 'History');
 
     expect(
       find.byKey(const Key('statistics-history-detail-empty-state')),
@@ -5303,6 +5313,185 @@ void main() {
     );
     expect(
       find.byKey(Key('statistics-history-detail-${entry.id}')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('replaces statistics tabs with a dashboard on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-dashboard@example.com',
+      password: 'password123',
+      displayName: 'Stats Dashboard',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      imagePath: _transparentPngDataUrl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+    );
+    final entry = controller.entries.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-tab-bar')), findsNothing);
+    expect(
+      find.byKey(const Key('statistics-wide-section-switcher')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('statistics-map-card')), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(Key('statistics-gallery-tile-${entry.id}')),
+      300,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('statistics-dashboard-scroll')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(
+      find.byKey(Key('statistics-gallery-tile-${entry.id}')),
+      findsOneWidget,
+    );
+
+    await _openStatisticsWideSection(tester, 'History');
+
+    expect(
+      find.byKey(const Key('statistics-history-list-view')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('statistics-map-card')), findsNothing);
+    expect(_rememberedRoute(tester), AppRoutes.statisticsHistory);
+
+    await _openStatisticsWideSection(tester, 'Dashboard');
+
+    expect(find.byKey(const Key('statistics-map-card')), findsOneWidget);
+    expect(_rememberedRoute(tester), isNot(AppRoutes.statisticsHistory));
+  });
+
+  testWidgets('renders the dashboard for statistics deep links when large', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-deep-link@example.com',
+      password: 'password123',
+      displayName: 'Stats Deep Link',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statisticsGallery,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-tab-bar')), findsNothing);
+    expect(
+      find.byKey(const Key('statistics-wide-section-switcher')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('statistics-map-card')), findsNothing);
+    expect(find.byKey(const Key('statistics-list-view')), findsNothing);
+    expect(
+      find.byKey(const Key('statistics-dashboard-scroll')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('renders history for its deep link when large', (tester) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-history-link@example.com',
+      password: 'password123',
+      displayName: 'Stats History Link',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statisticsHistory,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('statistics-history-list-view')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('restores the statistics tab bar when resizing below 1200', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-resize@example.com',
+      password: 'password123',
+      displayName: 'Stats Resize',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-tab-bar')), findsNothing);
+
+    await _openStatisticsWideSection(tester, 'History');
+    expect(_rememberedRoute(tester), AppRoutes.statisticsHistory);
+
+    _setSurfaceSize(tester, const Size(800, 900));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-tab-bar')), findsOneWidget);
+    expect(
+      find.byKey(const Key('statistics-history-list-view')),
       findsOneWidget,
     );
   });
@@ -5623,7 +5812,7 @@ void main() {
   testWidgets('uses five columns for gallery layouts on wider screens', (
     tester,
   ) async {
-    _setSurfaceSize(tester, const Size(1200, 1366));
+    _setSurfaceSize(tester, const Size(1100, 1366));
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();

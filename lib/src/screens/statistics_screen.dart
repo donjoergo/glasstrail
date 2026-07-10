@@ -13,6 +13,7 @@ import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_breakpoints.dart';
+import '../app_controller.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
@@ -137,6 +138,60 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+
+    if (AppBreakpoints.isLarge(context)) {
+      final isHistory =
+          AppRoutes.normalize(widget.routeName) == AppRoutes.statisticsHistory;
+
+      return Column(
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: SegmentedButton<bool>(
+              key: const Key('statistics-wide-section-switcher'),
+              showSelectedIcon: false,
+              // A state-independent text style keeps the label layout stable
+              // across selection changes; state-dependent styles trip a
+              // TextPainter relayout assert inside _RenderSegmentedButton.
+              style: ButtonStyle(
+                textStyle: WidgetStatePropertyAll<TextStyle?>(
+                  theme.textTheme.labelLarge,
+                ),
+              ),
+              segments: <ButtonSegment<bool>>[
+                ButtonSegment<bool>(
+                  value: false,
+                  label: Text(l10n.statisticsDashboard, softWrap: false),
+                  icon: const Icon(Icons.dashboard_outlined),
+                ),
+                ButtonSegment<bool>(
+                  value: true,
+                  label: Text(l10n.history, softWrap: false),
+                  icon: const Icon(Icons.history_rounded),
+                ),
+              ],
+              selected: <bool>{isHistory},
+              onSelectionChanged: (selection) {
+                final wantsHistory = selection.single;
+                if (wantsHistory == isHistory) {
+                  return;
+                }
+                widget.onRouteSelected(
+                  wantsHistory
+                      ? AppRoutes.statisticsHistory
+                      : AppRoutes.statistics,
+                );
+              },
+            ),
+          ),
+          Expanded(
+            child: isHistory
+                ? const _StatisticsHistoryPage()
+                : const _StatisticsDashboardPage(),
+          ),
+        ],
+      );
+    }
 
     return Column(
       children: <Widget>[
