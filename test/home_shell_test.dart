@@ -5173,6 +5173,140 @@ void main() {
     },
   );
 
+  testWidgets('shows a feed master-detail layout on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'feed-master-detail@example.com',
+      password: 'password123',
+      displayName: 'Feed Master Detail',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      comment: 'Detail pane comment',
+    );
+    final entry = controller.entries.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-detail-empty-state')), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('feed-post-${entry.id}')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-detail-empty-state')), findsNothing);
+    expect(find.byKey(Key('feed-detail-${entry.id}')), findsOneWidget);
+    expect(find.byKey(Key('feed-detail-edit-${entry.id}')), findsOneWidget);
+    expect(find.byKey(Key('feed-detail-delete-${entry.id}')), findsOneWidget);
+  });
+
+  testWidgets('keeps the feed single-column below the large breakpoint', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1100, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'feed-single-column@example.com',
+      password: 'password123',
+      displayName: 'Feed Single Column',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(drink: beer, volumeMl: beer.volumeMl);
+    final entry = controller.entries.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-detail-empty-state')), findsNothing);
+    expect(find.byKey(Key('feed-post-${entry.id}')), findsOneWidget);
+  });
+
+  testWidgets('shows a history master-detail layout on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'history-master-detail@example.com',
+      password: 'password123',
+      displayName: 'History Master Detail',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      comment: 'History detail comment',
+    );
+    final entry = controller.entries.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'History');
+
+    expect(
+      find.byKey(const Key('statistics-history-detail-empty-state')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(Key('statistics-history-entry-${entry.id}')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('statistics-history-detail-empty-state')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(Key('statistics-history-detail-${entry.id}')),
+      findsOneWidget,
+    );
+  });
+
   test('resolves overlapping statistics map markers to zoom in', () {
     final resolution = resolveStatisticsMapMarkerTap(
       offsets: const <Offset>[

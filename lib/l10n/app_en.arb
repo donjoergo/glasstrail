@@ -132,6 +132,11 @@
       }
     }
   },
+  "feedDetailEmptyTitle": "No drink selected",
+  "feedDetailEmptyBody": "Select a drink from the feed to see its details here.",
+  "historyDetailEmptyTitle": "No entry selected",
+  "historyDetailEmptyBody": "Select an entry from the history to see its details here.",
+  "statisticsDashboard": "Dashboard",
   "statisticsGalleryEmptyTitle": "No drink photos yet",
   "statisticsGalleryEmptyBody": "Photos from logged drinks will appear here automatically.",
   "totalDrinks": "Total drinks",

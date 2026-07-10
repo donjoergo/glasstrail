@@ -330,6 +330,23 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get feedDetailEmptyTitle => 'No drink selected';
+
+  @override
+  String get feedDetailEmptyBody =>
+      'Select a drink from the feed to see its details here.';
+
+  @override
+  String get historyDetailEmptyTitle => 'No entry selected';
+
+  @override
+  String get historyDetailEmptyBody =>
+      'Select an entry from the history to see its details here.';
+
+  @override
+  String get statisticsDashboard => 'Dashboard';
+
+  @override
   String get statisticsGalleryEmptyTitle => 'No drink photos yet';
 
   @override

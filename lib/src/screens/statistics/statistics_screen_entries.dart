@@ -9,6 +9,7 @@ class _StatisticsHistoryPage extends StatefulWidget {
 
 class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
   DrinkCategory? _selectedCategory;
+  String? _selectedEntryId;
 
   @override
   Widget build(BuildContext context) {
@@ -21,8 +22,9 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
         : allEntries
               .where((entry) => entry.category == _selectedCategory)
               .toList();
+    final isLarge = AppBreakpoints.isLarge(context);
 
-    return RefreshIndicator(
+    final historyList = RefreshIndicator(
       key: const Key('statistics-history-refresh-indicator'),
       onRefresh: () => _refreshStatistics(context),
       child: AppConstrainedContent(
@@ -99,7 +101,17 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
                 ...entries.map(
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _StatisticsHistoryEntryCard(entry: entry),
+                    child: _StatisticsHistoryEntryCard(
+                      entry: entry,
+                      isSelected: isLarge && _selectedEntryId == entry.id,
+                      onTap: isLarge
+                          ? () {
+                              setState(() {
+                                _selectedEntryId = entry.id;
+                              });
+                            }
+                          : null,
+                    ),
                   ),
                 ),
             ],
@@ -107,13 +119,88 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
         ),
       ),
     );
+
+    if (!isLarge) {
+      return historyList;
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        SizedBox(width: AppBreakpoints.masterPaneWidth, child: historyList),
+        Expanded(child: _buildDetailPane(context, theme, l10n, entries)),
+      ],
+    );
+  }
+
+  Widget _buildDetailPane(
+    BuildContext context,
+    ThemeData theme,
+    AppLocalizations l10n,
+    List<DrinkEntry> visibleEntries,
+  ) {
+    DrinkEntry? selectedEntry;
+    final selectedEntryId = _selectedEntryId;
+    if (selectedEntryId != null) {
+      final entryIndex = visibleEntries.indexWhere(
+        (entry) => entry.id == selectedEntryId,
+      );
+      if (entryIndex != -1) {
+        selectedEntry = visibleEntries[entryIndex];
+      }
+    }
+
+    if (selectedEntry == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: AppEmptyStateCard(
+              key: const Key('statistics-history-detail-empty-state'),
+              icon: Icons.history_rounded,
+              title: l10n.historyDetailEmptyTitle,
+              body: l10n.historyDetailEmptyBody,
+              compact: true,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final accentColor = statisticsCategoryColors(
+      theme,
+    )[selectedEntry.category]!;
+
+    return SingleChildScrollView(
+      key: const Key('statistics-history-detail-pane'),
+      padding: const EdgeInsets.fromLTRB(0, 8, 20, 120),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: DrinkEntryDetailContent(
+          entry: selectedEntry,
+          accentColor: accentColor,
+          keyPrefix: 'statistics-history-detail',
+        ),
+      ),
+    );
   }
 }
 
 class _StatisticsHistoryEntryCard extends StatelessWidget {
-  const _StatisticsHistoryEntryCard({required this.entry});
+  const _StatisticsHistoryEntryCard({
+    required this.entry,
+    this.isSelected = false,
+    this.onTap,
+  });
 
   final DrinkEntry entry;
+  final bool isSelected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -126,11 +213,15 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
       if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
     ].join(' • ');
 
-    return Container(
+    final card = Container(
+      key: Key('statistics-history-entry-${entry.id}'),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
+        border: isSelected
+            ? Border.all(color: theme.colorScheme.primary, width: 2)
+            : null,
       ),
       child: Row(
         children: <Widget>[
@@ -182,6 +273,19 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
           ),
           Text(controller.settings.unit.formatVolume(entry.volumeMl)),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return card;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: card,
       ),
     );
   }

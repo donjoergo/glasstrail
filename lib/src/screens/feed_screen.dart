@@ -16,8 +16,11 @@ import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../stats_calculator.dart';
+import '../app_breakpoints.dart';
 import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
+import '../widgets/drink_entry_detail_content.dart';
+import '../widgets/statistics_overview_content.dart';
 import '../widgets/app_media.dart';
 import '../widgets/drink_picker_catalog.dart';
 
@@ -43,6 +46,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   _UpdateNoticeData? _updateNotice;
   bool _isHandlingUpdateNotice = false;
+  String? _selectedEntryId;
 
   LaunchMode get _changelogLaunchMode {
     return switch (defaultTargetPlatform) {
@@ -203,8 +207,9 @@ class _FeedScreenState extends State<FeedScreen> {
     final posts = controller.feedPosts;
     final stats = controller.statistics;
     final locale = controller.settings.localeCode;
+    final isLarge = AppBreakpoints.isLarge(context);
 
-    return RefreshIndicator(
+    final feedList = RefreshIndicator(
       key: const Key('feed-refresh-indicator'),
       onRefresh: _refresh,
       child: NotificationListener<ScrollNotification>(
@@ -273,6 +278,15 @@ class _FeedScreenState extends State<FeedScreen> {
                           categoryLabel: l10n.categoryLabel(
                             post.entry.category,
                           ),
+                          isSelected:
+                              isLarge && _selectedEntryId == post.entry.id,
+                          onTap: isLarge
+                              ? () {
+                                  setState(() {
+                                    _selectedEntryId = post.entry.id;
+                                  });
+                                }
+                              : null,
                         ),
                       );
                     }, childCount: posts.length),
@@ -294,6 +308,209 @@ class _FeedScreenState extends State<FeedScreen> {
               const SliverToBoxAdapter(child: SizedBox(height: 120)),
             ],
           ),
+        ),
+      ),
+    );
+
+    if (!isLarge) {
+      return feedList;
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        SizedBox(width: 480, child: feedList),
+        Expanded(
+          child: _FeedDetailPane(
+            selectedEntryId: _selectedEntryId,
+            locale: locale,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeedDetailPane extends StatelessWidget {
+  const _FeedDetailPane({required this.selectedEntryId, required this.locale});
+
+  final String? selectedEntryId;
+  final String locale;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.controllerOf(context);
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    FeedDrinkPost? post;
+    if (selectedEntryId != null) {
+      final postIndex = controller.feedPosts.indexWhere(
+        (candidate) => candidate.entry.id == selectedEntryId,
+      );
+      if (postIndex != -1) {
+        post = controller.feedPosts[postIndex];
+      }
+    }
+
+    if (post == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: AppEmptyStateCard(
+              key: const Key('feed-detail-empty-state'),
+              icon: Icons.local_bar_outlined,
+              title: l10n.feedDetailEmptyTitle,
+              body: l10n.feedDetailEmptyBody,
+              compact: true,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final entry = post.entry;
+    final accentColor = statisticsCategoryColors(theme)[entry.category]!;
+    final drinkName = controller.localizedFeedPostDrinkName(post);
+    final categoryLabel = l10n.categoryLabel(entry.category);
+    final unit = controller.settings.unit;
+    final cheersPending = controller.isFeedEntryCheersPending(entry.id);
+    final cheersEnabled = !post.isOwnEntry && !cheersPending;
+    final resolvedPost = post;
+
+    return SingleChildScrollView(
+      key: const Key('feed-detail-pane'),
+      padding: const EdgeInsets.fromLTRB(4, 20, 20, 120),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                AppAvatar(
+                  imagePath: post.authorImagePath,
+                  radius: 20,
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.12,
+                  ),
+                  fallback: Text(
+                    post.authorInitials,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    post.authorDisplayName,
+                    key: Key('feed-detail-author-${entry.id}'),
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            DrinkEntryDetailContent(
+              entry: entry,
+              accentColor: accentColor,
+              keyPrefix: 'feed-detail',
+            ),
+            const SizedBox(height: 12),
+            Divider(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+            if (post.isOwnEntry)
+              Row(
+                children: <Widget>[
+                  TextButton.icon(
+                    key: Key('feed-detail-edit-${entry.id}'),
+                    onPressed: controller.isBusy
+                        ? null
+                        : () {
+                            showDialog<void>(
+                              context: context,
+                              builder: (_) => _EditDrinkEntryDialog(
+                                entry: entry,
+                                drinkName: drinkName,
+                                categoryLabel: categoryLabel,
+                                locale: locale,
+                                unit: unit,
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.edit_rounded, size: 18),
+                    label: Text(l10n.editEntry),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    key: Key('feed-detail-delete-${entry.id}'),
+                    onPressed: controller.isBusy
+                        ? null
+                        : () {
+                            showDialog<void>(
+                              context: context,
+                              builder: (_) => _DeleteDrinkEntryDialog(
+                                entry: entry,
+                                parentContext: context,
+                              ),
+                            );
+                          },
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                    ),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: Text(l10n.deleteEntry),
+                  ),
+                ],
+              )
+            else
+              Row(
+                children: <Widget>[
+                  TextButton.icon(
+                    key: Key('feed-detail-cheers-${entry.id}'),
+                    onPressed: cheersEnabled
+                        ? () => unawaited(
+                            controller.toggleFeedEntryCheers(resolvedPost),
+                          )
+                        : null,
+                    icon: cheersPending
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            post.hasCurrentUserCheered
+                                ? Icons.sports_bar_rounded
+                                : Icons.sports_bar_outlined,
+                            size: 18,
+                          ),
+                    label: Text(l10n.feedCheersAction),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${post.cheersCount}',
+                    key: Key('feed-detail-cheers-count-${entry.id}'),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: post.hasCurrentUserCheered
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );
@@ -598,6 +815,8 @@ class _DrinkEntryCard extends StatelessWidget {
     required this.locale,
     required this.unit,
     required this.categoryLabel,
+    this.isSelected = false,
+    this.onTap,
   });
 
   final FeedDrinkPost post;
@@ -605,6 +824,8 @@ class _DrinkEntryCard extends StatelessWidget {
   final String locale;
   final AppUnit unit;
   final String categoryLabel;
+  final bool isSelected;
+  final VoidCallback? onTap;
 
   DrinkEntry get entry => post.entry;
 
@@ -656,11 +877,14 @@ class _DrinkEntryCard extends StatelessWidget {
       timeLabel,
     ].join(' • ');
     final locationAddress = _normalizedLocationAddress(entry.locationAddress);
-    return Container(
+    final card = Container(
       key: Key('feed-post-${entry.id}'),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
+        border: isSelected
+            ? Border.all(color: theme.colorScheme.primary, width: 2)
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -878,6 +1102,19 @@ class _DrinkEntryCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return card;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: card,
       ),
     );
   }
