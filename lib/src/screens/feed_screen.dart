@@ -16,6 +16,7 @@ import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../stats_calculator.dart';
+import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 import '../widgets/drink_picker_catalog.dart';
@@ -208,82 +209,91 @@ class _FeedScreenState extends State<FeedScreen> {
       onRefresh: _refresh,
       child: NotificationListener<ScrollNotification>(
         onNotification: _handleScrollNotification,
-        child: CustomScrollView(
-          key: const Key('feed-list-view'),
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: <Widget>[
-            if (_updateNotice case final notice?) ...<Widget>[
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _FeedUpdateCard(
-                    version: notice.version,
-                    isBusy: _isHandlingUpdateNotice,
-                    onClose: () =>
-                        _acknowledgeUpdateNotice(openChangelog: false),
-                    onOpenChangelog: () =>
-                        _acknowledgeUpdateNotice(openChangelog: true),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            ],
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                _updateNotice == null ? 20 : 0,
-                20,
-                0,
-              ),
-              sliver: SliverToBoxAdapter(child: _FeedStreakCard(stats: stats)),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            if (posts.isEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverToBoxAdapter(
-                  child: AppEmptyStateCard(
-                    key: const Key('feed-empty-state'),
-                    icon: Icons.hourglass_empty_rounded,
-                    title: l10n.noEntries,
-                    body: l10n.startLogging,
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final post = posts[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _DrinkEntryCard(
-                        post: post,
-                        drinkName: controller.localizedFeedPostDrinkName(post),
-                        locale: locale,
-                        unit: controller.settings.unit,
-                        categoryLabel: l10n.categoryLabel(post.entry.category),
-                      ),
-                    );
-                  }, childCount: posts.length),
-                ),
-              ),
-            if (controller.isLoadingMoreFeedPosts)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: Center(
-                    child: SizedBox.square(
-                      key: Key('feed-loading-more'),
-                      dimension: 28,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+        child: AppConstrainedContent(
+          maxWidth: 720,
+          child: CustomScrollView(
+            key: const Key('feed-list-view'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: <Widget>[
+              if (_updateNotice case final notice?) ...<Widget>[
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: _FeedUpdateCard(
+                      version: notice.version,
+                      isBusy: _isHandlingUpdateNotice,
+                      onClose: () =>
+                          _acknowledgeUpdateNotice(openChangelog: false),
+                      onOpenChangelog: () =>
+                          _acknowledgeUpdateNotice(openChangelog: true),
                     ),
                   ),
                 ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  _updateNotice == null ? 20 : 0,
+                  20,
+                  0,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: _FeedStreakCard(stats: stats),
+                ),
               ),
-            const SliverToBoxAdapter(child: SizedBox(height: 120)),
-          ],
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              if (posts.isEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverToBoxAdapter(
+                    child: AppEmptyStateCard(
+                      key: const Key('feed-empty-state'),
+                      icon: Icons.hourglass_empty_rounded,
+                      title: l10n.noEntries,
+                      body: l10n.startLogging,
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final post = posts[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _DrinkEntryCard(
+                          post: post,
+                          drinkName: controller.localizedFeedPostDrinkName(
+                            post,
+                          ),
+                          locale: locale,
+                          unit: controller.settings.unit,
+                          categoryLabel: l10n.categoryLabel(
+                            post.entry.category,
+                          ),
+                        ),
+                      );
+                    }, childCount: posts.length),
+                  ),
+                ),
+              if (controller.isLoadingMoreFeedPosts)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Center(
+                      child: SizedBox.square(
+                        key: Key('feed-loading-more'),
+                        dimension: 28,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 120)),
+            ],
+          ),
         ),
       ),
     );

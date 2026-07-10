@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_breakpoints.dart';
 import '../app_routes.dart';
 import '../app_controller.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
+import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
 import 'custom_drink_dialog.dart';
 
@@ -181,77 +183,82 @@ class _BarDrinkSortingTab extends StatelessWidget {
       AppBusyAction.updateSettings,
     );
 
-    return ListView(
-      key: const Key('bar-sort-list-view'),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-      children: <Widget>[
-        Container(
-          key: const Key('bar-global-section'),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                l10n.barDrinkSortingTab,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
+    return AppConstrainedContent(
+      maxWidth: AppBreakpoints.listContentMaxWidth,
+      child: ListView(
+        key: const Key('bar-sort-list-view'),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+        children: <Widget>[
+          Container(
+            key: const Key('bar-global-section'),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  l10n.barDrinkSortingTab,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l10n.barGlobalDrinksBody,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                const SizedBox(height: 8),
+                Text(
+                  l10n.barGlobalDrinksBody,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              if (isUpdatingCatalog) ...<Widget>[
-                const SizedBox(height: 16),
-                const LinearProgressIndicator(),
-              ],
-              const SizedBox(height: 20),
-              ...DrinkCategory.values.map(
-                (category) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _GlobalDrinkCategoryCard(
-                    category: category,
-                    categoryHidden: controller.isGlobalCategoryHidden(category),
-                    sortableDrinks: controller.sortableDrinksForCategory(
-                      category,
-                    ),
-                    hiddenDrinks: controller.hiddenGlobalDrinksForCategory(
-                      category,
-                    ),
-                    enabled: !isBusy,
-                    unit: unit,
-                    onHideDrink: (drinkId) => runCatalogAction(
-                      (controller) => controller.hideGlobalDrink(drinkId),
-                    ),
-                    onShowDrink: (drinkId) => runCatalogAction(
-                      (controller) => controller.showGlobalDrink(drinkId),
-                    ),
-                    onHideCategory: () => runCatalogAction(
-                      (controller) => controller.hideGlobalCategory(category),
-                    ),
-                    onShowCategory: () => runCatalogAction(
-                      (controller) => controller.showGlobalCategory(category),
-                    ),
-                    onReorder: (orderedDrinkIds) => runCatalogAction(
-                      (controller) => controller.reorderGlobalDrinks(
-                        category: category,
-                        orderedDrinkIds: orderedDrinkIds,
+                if (isUpdatingCatalog) ...<Widget>[
+                  const SizedBox(height: 16),
+                  const LinearProgressIndicator(),
+                ],
+                const SizedBox(height: 20),
+                ...DrinkCategory.values.map(
+                  (category) => Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _GlobalDrinkCategoryCard(
+                      category: category,
+                      categoryHidden: controller.isGlobalCategoryHidden(
+                        category,
+                      ),
+                      sortableDrinks: controller.sortableDrinksForCategory(
+                        category,
+                      ),
+                      hiddenDrinks: controller.hiddenGlobalDrinksForCategory(
+                        category,
+                      ),
+                      enabled: !isBusy,
+                      unit: unit,
+                      onHideDrink: (drinkId) => runCatalogAction(
+                        (controller) => controller.hideGlobalDrink(drinkId),
+                      ),
+                      onShowDrink: (drinkId) => runCatalogAction(
+                        (controller) => controller.showGlobalDrink(drinkId),
+                      ),
+                      onHideCategory: () => runCatalogAction(
+                        (controller) => controller.hideGlobalCategory(category),
+                      ),
+                      onShowCategory: () => runCatalogAction(
+                        (controller) => controller.showGlobalCategory(category),
+                      ),
+                      onReorder: (orderedDrinkIds) => runCatalogAction(
+                        (controller) => controller.reorderGlobalDrinks(
+                          category: category,
+                          orderedDrinkIds: orderedDrinkIds,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -269,87 +276,90 @@ class _BarCustomDrinksTab extends StatelessWidget {
     final unit = controller.settings.unit;
     final isBusy = controller.isBusy;
 
-    return ListView(
-      key: const Key('bar-custom-list-view'),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-      children: <Widget>[
-        Container(
-          key: const Key('bar-custom-drinks-section'),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      l10n.customDrinks,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+    return AppConstrainedContent(
+      maxWidth: AppBreakpoints.listContentMaxWidth,
+      child: ListView(
+        key: const Key('bar-custom-list-view'),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+        children: <Widget>[
+          Container(
+            key: const Key('bar-custom-drinks-section'),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        l10n.customDrinks,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                  FilledButton.tonal(
-                    key: const Key('bar-add-custom-drink-button'),
-                    onPressed: isBusy ? null : () => showCustomDrinkDialog(),
-                    child: Text(l10n.addCustomDrinkAction),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l10n.barCustomDrinksBody,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                    FilledButton.tonal(
+                      key: const Key('bar-add-custom-drink-button'),
+                      onPressed: isBusy ? null : () => showCustomDrinkDialog(),
+                      child: Text(l10n.addCustomDrinkAction),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              if (controller.customDrinks.isEmpty)
-                Align(
-                  alignment: Alignment.center,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 360),
-                    child: AppEmptyStateCard(
-                      key: const Key('bar-custom-empty-state'),
-                      icon: Icons.local_bar_outlined,
-                      title: l10n.customDrinksEmptyTitle,
-                      body: l10n.customDrinksEmptyBody,
-                    ),
-                  ),
-                )
-              else
-                ...controller.customDrinks.map(
-                  (drink) => ListTile(
-                    key: Key('bar-custom-drink-${drink.id}'),
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withValues(
-                        alpha: 0.12,
-                      ),
-                      child: Icon(
-                        drink.category.icon,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    title: Text(drink.name),
-                    subtitle: Text(l10n.drinkDefinitionMetadata(drink, unit)),
-                    trailing: IconButton(
-                      key: Key('bar-edit-custom-drink-${drink.id}'),
-                      onPressed: isBusy
-                          ? null
-                          : () => showCustomDrinkDialog(drink),
-                      icon: const Icon(Icons.edit_rounded),
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.barCustomDrinksBody,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-            ],
+                const SizedBox(height: 20),
+                if (controller.customDrinks.isEmpty)
+                  Align(
+                    alignment: Alignment.center,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: AppEmptyStateCard(
+                        key: const Key('bar-custom-empty-state'),
+                        icon: Icons.local_bar_outlined,
+                        title: l10n.customDrinksEmptyTitle,
+                        body: l10n.customDrinksEmptyBody,
+                      ),
+                    ),
+                  )
+                else
+                  ...controller.customDrinks.map(
+                    (drink) => ListTile(
+                      key: Key('bar-custom-drink-${drink.id}'),
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.12,
+                        ),
+                        child: Icon(
+                          drink.category.icon,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      title: Text(drink.name),
+                      subtitle: Text(l10n.drinkDefinitionMetadata(drink, unit)),
+                      trailing: IconButton(
+                        key: Key('bar-edit-custom-drink-${drink.id}'),
+                        onPressed: isBusy
+                            ? null
+                            : () => showCustomDrinkDialog(drink),
+                        icon: const Icon(Icons.edit_rounded),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

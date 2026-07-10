@@ -123,6 +123,7 @@
   "history": "Historie",
   "statisticsMapEmptyTitle": "Noch keine Drinks mit Standort",
   "statisticsMapEmptyBody": "Aktiviere beim Loggen den Standort, damit Drinks hier auf der Karte erscheinen.",
+  "statisticsMapClusterTitle": "{count, plural, =1{1 Drink hier} other{{count} Drinks hier}}",
   "statisticsGalleryEmptyTitle": "Noch keine Drink-Fotos",
   "statisticsGalleryEmptyBody": "Fotos aus deinen Log-Einträgen erscheinen hier automatisch.",
   "totalDrinks": "Getränke gesamt",

@@ -5,26 +5,31 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app_breakpoints.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
 import '../maplibre_web_registration.dart' as maplibre_web_registration;
 import '../models.dart';
 import '../runtime_platform.dart' as runtime_platform;
+import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
+import '../widgets/drink_entry_detail_content.dart';
 import '../widgets/statistics_overview_content.dart';
 import 'statistics/statistics_map_web_cursor.dart' as statistics_map_web_cursor;
 
 part 'statistics/statistics_screen_overview.dart';
 part 'statistics/statistics_screen_map_logic.dart';
 part 'statistics/statistics_screen_map_widgets.dart';
+part 'statistics/statistics_screen_map_panel.dart';
 part 'statistics/statistics_screen_map_view.dart';
 part 'statistics/statistics_screen_entries.dart';
 
@@ -136,21 +141,24 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       children: <Widget>[
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: TabBar(
-              key: const Key('statistics-tab-bar'),
-              controller: _tabController,
-              dividerColor: Colors.transparent,
-              tabs: <Widget>[
-                Tab(text: l10n.statisticsOverview),
-                Tab(text: l10n.statisticsMap),
-                Tab(text: l10n.statisticsGallery),
-                Tab(text: l10n.history),
-              ],
+          child: AppConstrainedContent(
+            maxWidth: AppBreakpoints.listContentMaxWidth,
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: TabBar(
+                key: const Key('statistics-tab-bar'),
+                controller: _tabController,
+                dividerColor: Colors.transparent,
+                tabs: <Widget>[
+                  Tab(text: l10n.statisticsOverview),
+                  Tab(text: l10n.statisticsMap),
+                  Tab(text: l10n.statisticsGallery),
+                  Tab(text: l10n.history),
+                ],
+              ),
             ),
           ),
         ),

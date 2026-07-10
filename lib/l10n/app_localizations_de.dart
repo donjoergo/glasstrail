@@ -321,6 +321,17 @@ class AppLocalizationsDe extends AppLocalizations {
       'Aktiviere beim Loggen den Standort, damit Drinks hier auf der Karte erscheinen.';
 
   @override
+  String statisticsMapClusterTitle(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Drinks hier',
+      one: '1 Drink hier',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get statisticsGalleryEmptyTitle => 'Noch keine Drink-Fotos';
 
   @override

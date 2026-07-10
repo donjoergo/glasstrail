@@ -10,16 +10,19 @@ class _StatisticsOverviewPage extends StatelessWidget {
     return RefreshIndicator(
       key: const Key('statistics-refresh-indicator'),
       onRefresh: () => _refreshStatistics(context),
-      child: ListView(
-        key: const Key('statistics-list-view'),
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-        children: <Widget>[
-          StatisticsOverviewContent(
-            stats: controller.statistics,
-            localeCode: controller.settings.localeCode,
-          ),
-        ],
+      child: AppConstrainedContent(
+        maxWidth: AppBreakpoints.listContentMaxWidth,
+        child: ListView(
+          key: const Key('statistics-list-view'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+          children: <Widget>[
+            StatisticsOverviewContent(
+              stats: controller.statistics,
+              localeCode: controller.settings.localeCode,
+            ),
+          ],
+        ),
       ),
     );
   }

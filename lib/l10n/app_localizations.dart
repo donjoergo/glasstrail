@@ -686,6 +686,12 @@ abstract class AppLocalizations {
   /// **'Enable location while logging drinks so they can appear here on the map.'**
   String get statisticsMapEmptyBody;
 
+  /// Title of the map overlay panel listing the drinks inside a tapped cluster
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 drink here} other{{count} drinks here}}'**
+  String statisticsMapClusterTitle(num count);
+
   /// No description provided for @statisticsGalleryEmptyTitle.
   ///
   /// In en, this message translates to:

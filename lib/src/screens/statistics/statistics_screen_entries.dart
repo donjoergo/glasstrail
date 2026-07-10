@@ -25,81 +25,86 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
     return RefreshIndicator(
       key: const Key('statistics-history-refresh-indicator'),
       onRefresh: () => _refreshStatistics(context),
-      child: ListView(
-        key: const Key('statistics-history-list-view'),
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-        children: <Widget>[
-          if (allEntries.isEmpty)
-            AppEmptyStateCard(
-              key: const Key('statistics-history-empty-state'),
-              icon: Icons.history_rounded,
-              title: l10n.statisticsHistoryEmptyTitle,
-              body: l10n.statisticsHistoryEmptyBody,
-            )
-          else ...<Widget>[
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: DrinkCategory.values
-                    .where(
-                      (category) =>
-                          (controller.statistics.categoryCounts[category] ??
-                                  0) >
-                              0 ||
-                          _selectedCategory == category,
-                    )
-                    .map((category) {
-                      final count =
-                          controller.statistics.categoryCounts[category] ?? 0;
-                      return FilterChip(
-                        selected: _selectedCategory == category,
-                        showCheckmark: false,
-                        avatar: Icon(
-                          category.icon,
-                          key: Key(
-                            'statistics-history-category-chip-icon-${category.storageValue}',
-                          ),
-                          size: 18,
-                        ),
-                        label: Text('${l10n.categoryLabel(category)} ($count)'),
-                        onSelected: (_) {
-                          setState(() {
-                            _selectedCategory = _selectedCategory == category
-                                ? null
-                                : category;
-                          });
-                        },
-                      );
-                    })
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 24),
-            if (entries.isEmpty)
+      child: AppConstrainedContent(
+        maxWidth: 720,
+        child: ListView(
+          key: const Key('statistics-history-list-view'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+          children: <Widget>[
+            if (allEntries.isEmpty)
+              AppEmptyStateCard(
+                key: const Key('statistics-history-empty-state'),
+                icon: Icons.history_rounded,
+                title: l10n.statisticsHistoryEmptyTitle,
+                body: l10n.statisticsHistoryEmptyBody,
+              )
+            else ...<Widget>[
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                child: Text(l10n.emptyFilter),
-              )
-            else
-              ...entries.map(
-                (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _StatisticsHistoryEntryCard(entry: entry),
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: DrinkCategory.values
+                      .where(
+                        (category) =>
+                            (controller.statistics.categoryCounts[category] ??
+                                    0) >
+                                0 ||
+                            _selectedCategory == category,
+                      )
+                      .map((category) {
+                        final count =
+                            controller.statistics.categoryCounts[category] ?? 0;
+                        return FilterChip(
+                          selected: _selectedCategory == category,
+                          showCheckmark: false,
+                          avatar: Icon(
+                            category.icon,
+                            key: Key(
+                              'statistics-history-category-chip-icon-${category.storageValue}',
+                            ),
+                            size: 18,
+                          ),
+                          label: Text(
+                            '${l10n.categoryLabel(category)} ($count)',
+                          ),
+                          onSelected: (_) {
+                            setState(() {
+                              _selectedCategory = _selectedCategory == category
+                                  ? null
+                                  : category;
+                            });
+                          },
+                        );
+                      })
+                      .toList(),
                 ),
               ),
+              const SizedBox(height: 24),
+              if (entries.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(l10n.emptyFilter),
+                )
+              else
+                ...entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _StatisticsHistoryEntryCard(entry: entry),
+                  ),
+                ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

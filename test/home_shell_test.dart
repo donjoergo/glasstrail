@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -4963,6 +4964,213 @@ void main() {
     );
   });
 
+  testWidgets('shows the statistics map detail panel on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-panel@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Panel',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final wine = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+    );
+    final beerEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == beer.id,
+    );
+    await controller.addDrinkEntry(
+      drink: wine,
+      volumeMl: wine.volumeMl,
+      locationLatitude: 48.1372,
+      locationLongitude: 11.5756,
+    );
+    final wineEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == wine.id,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+
+    await tester.tap(_statisticsMapMarker(beerEntry.id));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-map-panel')), findsOneWidget);
+    expect(
+      find.byKey(Key('statistics-map-panel-${beerEntry.id}')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(Key('statistics-map-sheet-${beerEntry.id}')),
+      findsNothing,
+    );
+
+    await tester.tap(_statisticsMapMarker(wineEntry.id));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-map-panel')), findsOneWidget);
+    expect(
+      find.byKey(Key('statistics-map-panel-${wineEntry.id}')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(Key('statistics-map-panel-${beerEntry.id}')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('statistics-map-panel-close')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+  });
+
+  testWidgets(
+    'closes the statistics map panel with escape and empty map taps',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1300, 900));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'stats-map-panel-close@example.com',
+        password: 'password123',
+        displayName: 'Stats Map Panel Close',
+      );
+
+      final beer = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final wine = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'wine-red-wine',
+      );
+      await controller.addDrinkEntry(
+        drink: beer,
+        volumeMl: beer.volumeMl,
+        locationLatitude: 52.52,
+        locationLongitude: 13.405,
+      );
+      final beerEntry = controller.entries.firstWhere(
+        (entry) => entry.drinkId == beer.id,
+      );
+      await controller.addDrinkEntry(
+        drink: wine,
+        volumeMl: wine.volumeMl,
+        locationLatitude: 48.1372,
+        locationLongitude: 11.5756,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openStatisticsTab(tester);
+      await _openStatisticsSection(tester, 'Map');
+
+      await tester.tap(_statisticsMapMarker(beerEntry.id));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('statistics-map-panel')), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+
+      await tester.tap(_statisticsMapMarker(beerEntry.id));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('statistics-map-panel')), findsOneWidget);
+
+      final mapCard = tester.getRect(
+        find.byKey(const Key('statistics-map-card')),
+      );
+      await tester.tapAt(mapCard.center);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'keeps the statistics map bottom sheet below the large breakpoint',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1100, 900));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'stats-map-sheet-medium@example.com',
+        password: 'password123',
+        displayName: 'Stats Map Sheet Medium',
+      );
+
+      final beer = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      await controller.addDrinkEntry(
+        drink: beer,
+        volumeMl: beer.volumeMl,
+        locationLatitude: 52.52,
+        locationLongitude: 13.405,
+      );
+      final beerEntry = controller.entries.firstWhere(
+        (entry) => entry.drinkId == beer.id,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openStatisticsTab(tester);
+      await _openStatisticsSection(tester, 'Map');
+
+      await tester.tap(_statisticsMapMarker(beerEntry.id));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(Key('statistics-map-sheet-${beerEntry.id}')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+    },
+  );
+
   test('resolves overlapping statistics map markers to zoom in', () {
     final resolution = resolveStatisticsMapMarkerTap(
       offsets: const <Offset>[
@@ -5359,6 +5567,62 @@ void main() {
     );
     expect(railContainer.decoration, isNull);
     expect(railContainer.color, isNotNull);
+  });
+
+  testWidgets('shows the navigation rail from the expanded breakpoint', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(850, 1200));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'rail-edge@example.com',
+      password: 'password123',
+      displayName: 'Rail Edge',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
+
+  testWidgets('keeps the bottom navigation bar below the expanded breakpoint', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(830, 1200));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-edge@example.com',
+      password: 'password123',
+      displayName: 'Bar Edge',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(NavigationRail), findsNothing);
   });
 
   testWidgets(
