@@ -624,9 +624,9 @@ class _DrinkEntryCard extends StatelessWidget {
       child: InkWell(
         key: Key('feed-entry-avatar-tap-${entry.id}'),
         customBorder: const CircleBorder(),
-        onTap: () => Navigator.of(context).pushNamed(
-          AppRoutes.friendStatsProfileRoute(post.authorProfile.id),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).pushNamed(AppRoutes.friendStatsProfileRoute(post.authorProfile.id)),
         child: AppAvatar(
           imagePath: post.authorImagePath,
           radius: 20,
