@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';
+import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 
@@ -96,26 +97,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                 ),
               )
-            : ListView.separated(
-                key: const Key('notifications-list'),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                itemCount: notifications.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final notification = notifications[index];
-                  return _NotificationTile(
-                    key: Key('notification-${notification.id}'),
-                    notification: notification,
-                    title: controller.localizedNotificationTitle(
-                      notification,
-                      l10n,
-                    ),
-                    dateLabel: DateFormat.yMMMd(
-                      l10n.localeName,
-                    ).add_Hm().format(notification.createdAt),
-                    onTap: () => _openNotification(notification),
-                  );
-                },
+            : AppConstrainedContent(
+                child: ListView.separated(
+                  key: const Key('notifications-list'),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  itemCount: notifications.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final notification = notifications[index];
+                    return _NotificationTile(
+                      key: Key('notification-${notification.id}'),
+                      notification: notification,
+                      title: controller.localizedNotificationTitle(
+                        notification,
+                        l10n,
+                      ),
+                      dateLabel: DateFormat.yMMMd(
+                        l10n.localeName,
+                      ).add_Hm().format(notification.createdAt),
+                      onTap: () => _openNotification(notification),
+                    );
+                  },
+                ),
               ),
       ),
       backgroundColor: theme.colorScheme.surfaceContainerLowest,

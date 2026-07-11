@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+- Full desktop mode: adaptive widescreen layouts with resizable master-detail views, a floating map detail panel, dialogs instead of sheets, and multi-pane statistics and bar screens
+
 ## [2.2.0] - 2026-07-11
 ### Added
 - Startup and media caching for faster signed-in launches
@@ -124,6 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - settings
   - login
 
+[Unreleased]: https://github.com/donjoergo/glasstrail/compare/2.2.0...HEAD
 [2.2.0]: https://github.com/donjoergo/glasstrail/compare/2.1.0...2.2.0
 [2.1.0]: https://github.com/donjoergo/glasstrail/compare/2.0.0...2.1.0
 [2.0.0]: https://github.com/donjoergo/glasstrail/compare/1.2.1...2.0.0

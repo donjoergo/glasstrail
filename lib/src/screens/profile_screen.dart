@@ -9,6 +9,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app_breakpoints.dart';
 import '../app_controller.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
@@ -18,6 +19,7 @@ import '../birthday.dart';
 import '../friend_profile_links.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
+import '../widgets/app_constrained_content.dart';
 import '../widgets/app_media.dart';
 
 enum _ProfilePendingSetting {
@@ -502,435 +504,445 @@ class _ProfileScreenState extends State<ProfileScreen> {
       label: Text(l10n.beerWithMeImportAction),
     );
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Container(
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          AppAvatar(
-                            key: const Key('profile-avatar'),
-                            imagePath: user.profileImagePath,
-                            radius: 30,
-                            enableFullscreenOnTap: true,
-                            backgroundColor: theme.colorScheme.primary
-                                .withValues(alpha: 0.14),
-                            fallback: Text(
-                              user.initials,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.w800,
+    return AppConstrainedContent(
+      maxWidth: AppBreakpoints.listContentMaxWidth,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            AppAvatar(
+                              key: const Key('profile-avatar'),
+                              imagePath: user.profileImagePath,
+                              radius: 30,
+                              enableFullscreenOnTap: true,
+                              backgroundColor: theme.colorScheme.primary
+                                  .withValues(alpha: 0.14),
+                              fallback: Text(
+                                user.initials,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                  user.displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w800,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    user.displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (user.birthday != null) ...<Widget>[
+                              const SizedBox(width: 12),
+                              DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      Icon(
+                                        Icons.cake_outlined,
+                                        size: 18,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        formatBirthdayMonthDay(
+                                          user.birthday!,
+                                          settings.localeCode,
+                                        ),
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          if (user.birthday != null) ...<Widget>[
-                            const SizedBox(width: 12),
-                            DecoratedBox(
-                              decoration: BoxDecoration(
-                                color:
-                                    theme.colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(16),
                               ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    Icon(
-                                      Icons.cake_outlined,
-                                      size: 18,
-                                      color: theme.colorScheme.primary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      formatBirthdayMonthDay(
-                                        user.birthday!,
-                                        settings.localeCode,
-                                      ),
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                            ],
                           ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: double.infinity, child: editProfileButton),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildFriendsSection(theme, l10n, controller, isBusy),
-          const SizedBox(height: 20),
-          Container(
-            key: const Key('profile-import-section'),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  l10n.beerWithMeImport,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(l10n.beerWithMeImportBody),
-                const SizedBox(height: 16),
-                SizedBox(width: double.infinity, child: beerWithMeImportButton),
-                if (isImporting && importProgress != null) ...<Widget>[
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.beerWithMeImportProgress(
-                      importProgress.processedCount,
-                      importProgress.totalCount,
+                        ),
+                      ],
                     ),
-                    key: const Key('profile-import-progress-label'),
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                  ),
+                  SizedBox(width: double.infinity, child: editProfileButton),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildFriendsSection(theme, l10n, controller, isBusy),
+            const SizedBox(height: 20),
+            Container(
+              key: const Key('profile-import-section'),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    l10n.beerWithMeImport,
+                    style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  LinearProgressIndicator(
-                    key: const Key('profile-import-progress-indicator'),
-                    value: importProgress.progressValue,
-                    minHeight: 8,
+                  Text(l10n.beerWithMeImportBody),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: beerWithMeImportButton,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n.beerWithMeImportProgressDetails(
-                      importProgress.importedCount,
-                      importProgress.skippedDuplicateCount,
-                      importProgress.errorCount,
-                    ),
-                    key: const Key('profile-import-progress-details'),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.tonalIcon(
-                    key: const Key('profile-import-cancel-button'),
-                    style: FilledButton.styleFrom(
-                      foregroundColor: theme.colorScheme.onErrorContainer,
-                      backgroundColor: theme.colorScheme.errorContainer,
-                    ),
-                    onPressed: isImportCancellationRequested
-                        ? null
-                        : () {
-                            controller.requestBeerWithMeImportCancellation();
-                          },
-                    icon: const Icon(Icons.stop_circle_outlined),
-                    label: Text(
-                      isImportCancellationRequested
-                          ? l10n.beerWithMeImportCancelling
-                          : l10n.beerWithMeImportCancelAction,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  l10n.settings,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _SettingsSegmentedField<AppThemePreference>(
-                  label: l10n.theme,
-                  value: settings.themePreference,
-                  enabled: !isBusy,
-                  isLoading:
-                      _pendingSetting == _ProfilePendingSetting.theme &&
-                      controller.isBusyFor(AppBusyAction.updateSettings),
-                  loadingIndicatorKey: const Key('theme-settings-loading'),
-                  key: const Key('theme-segmented-control'),
-                  segments: AppThemePreference.values
-                      .map(
-                        (preference) => ButtonSegment<AppThemePreference>(
-                          value: preference,
-                          label: Text(l10n.themeLabel(preference)),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (value) => _updateSettings(
-                    _ProfilePendingSetting.theme,
-                    settings.copyWith(themePreference: value),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _SettingsSegmentedField<String>(
-                  label: l10n.language,
-                  value: settings.localeCode,
-                  enabled: !isBusy,
-                  isLoading:
-                      _pendingSetting == _ProfilePendingSetting.language &&
-                      controller.isBusyFor(AppBusyAction.updateSettings),
-                  loadingIndicatorKey: const Key('language-settings-loading'),
-                  key: const Key('language-segmented-control'),
-                  segments: <ButtonSegment<String>>[
-                    ButtonSegment<String>(
-                      value: 'en',
-                      label: Text(l10n.english),
-                    ),
-                    ButtonSegment<String>(
-                      value: 'de',
-                      label: Text(l10n.german),
-                    ),
-                  ],
-                  onChanged: (value) => _updateSettings(
-                    _ProfilePendingSetting.language,
-                    settings.copyWith(localeCode: value),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _SettingsSegmentedField<AppUnit>(
-                  label: l10n.units,
-                  value: settings.unit,
-                  enabled: !isBusy,
-                  isLoading:
-                      _pendingSetting == _ProfilePendingSetting.unit &&
-                      controller.isBusyFor(AppBusyAction.updateSettings),
-                  loadingIndicatorKey: const Key('unit-settings-loading'),
-                  key: const Key('unit-segmented-control'),
-                  segments: AppUnit.values
-                      .map(
-                        (unit) => ButtonSegment<AppUnit>(
-                          value: unit,
-                          label: Text(l10n.unitLabel(unit)),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (value) => _updateSettings(
-                    _ProfilePendingSetting.unit,
-                    settings.copyWith(unit: value),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _SettingsSegmentedField<AppHandedness>(
-                  label: l10n.handedness,
-                  value: settings.handedness,
-                  enabled: !isBusy,
-                  isLoading:
-                      _pendingSetting == _ProfilePendingSetting.handedness &&
-                      controller.isBusyFor(AppBusyAction.updateSettings),
-                  loadingIndicatorKey: const Key('handedness-settings-loading'),
-                  key: const Key('handedness-segmented-control'),
-                  segments: <ButtonSegment<AppHandedness>>[
-                    ButtonSegment<AppHandedness>(
-                      value: AppHandedness.left,
-                      label: Text(l10n.handednessLabel(AppHandedness.left)),
-                    ),
-                    ButtonSegment<AppHandedness>(
-                      value: AppHandedness.right,
-                      label: Text(l10n.handednessLabel(AppHandedness.right)),
-                    ),
-                  ],
-                  onChanged: (value) => _updateSettings(
-                    _ProfilePendingSetting.handedness,
-                    settings.copyWith(handedness: value),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _SettingsSwitchField(
-                  key: const Key('share-stats-settings-tile'),
-                  label: l10n.shareStatsWithFriends,
-                  description: l10n.shareStatsWithFriendsBody,
-                  value: settings.shareStatsWithFriends,
-                  enabled: !isBusy,
-                  isLoading:
-                      _pendingSetting ==
-                          _ProfilePendingSetting.shareStatsWithFriends &&
-                      controller.isBusyFor(AppBusyAction.updateSettings),
-                  switchKey: const Key('share-stats-settings-switch'),
-                  loadingIndicatorKey: const Key(
-                    'share-stats-settings-loading',
-                  ),
-                  onChanged: (value) => _updateSettings(
-                    _ProfilePendingSetting.shareStatsWithFriends,
-                    settings.copyWith(shareStatsWithFriends: value),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(width: double.infinity, child: logoutButton),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  l10n.roadmap,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(l10n.roadmapBody),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            key: const Key('profile-about-section'),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  l10n.about,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FutureBuilder<String?>(
-                  future: _appVersionFuture,
-                  builder: (context, snapshot) {
-                    return Material(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(18),
-                      clipBehavior: Clip.antiAlias,
-                      child: ListTile(
-                        key: const Key('profile-about-version-button'),
-                        onTap: _openChangelog,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        leading: Icon(
-                          Icons.article_outlined,
-                          color: theme.colorScheme.primary,
-                        ),
-                        title: Text(
-                          _formatAppVersionLabel(l10n, snapshot.data),
-                          key: const Key('profile-about-version'),
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        subtitle: Text(
-                          _changelogUri.toString(),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        trailing: const Icon(Icons.open_in_new_rounded),
+                  if (isImporting && importProgress != null) ...<Widget>[
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.beerWithMeImportProgress(
+                        importProgress.processedCount,
+                        importProgress.totalCount,
                       ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                Material(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(18),
-                  clipBehavior: Clip.antiAlias,
-                  child: ListTile(
-                    key: const Key('profile-about-github-button'),
-                    onTap: _openGitHubRepository,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    minVerticalPadding: 0,
-                    visualDensity: const VisualDensity(vertical: -2),
-                    leading: Icon(
-                      Icons.code_rounded,
-                      color: theme.colorScheme.primary,
-                    ),
-                    title: Text(
-                      l10n.github,
-                      style: theme.textTheme.titleSmall?.copyWith(
+                      key: const Key('profile-import-progress-label'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    subtitle: Text(
-                      _gitHubRepositoryUri.toString(),
-                      style: theme.textTheme.bodySmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(
+                      key: const Key('profile-import-progress-indicator'),
+                      value: importProgress.progressValue,
+                      minHeight: 8,
                     ),
-                    trailing: const Icon(Icons.open_in_new_rounded),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text.rich(
-                  TextSpan(
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.beerWithMeImportProgressDetails(
+                        importProgress.importedCount,
+                        importProgress.skippedDuplicateCount,
+                        importProgress.errorCount,
+                      ),
+                      key: const Key('profile-import-progress-details'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                    children: _buildAttributionSpans(theme, l10n),
-                  ),
-                  key: const Key('profile-about-attribution'),
-                ),
-              ],
+                    const SizedBox(height: 12),
+                    FilledButton.tonalIcon(
+                      key: const Key('profile-import-cancel-button'),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: theme.colorScheme.onErrorContainer,
+                        backgroundColor: theme.colorScheme.errorContainer,
+                      ),
+                      onPressed: isImportCancellationRequested
+                          ? null
+                          : () {
+                              controller.requestBeerWithMeImportCancellation();
+                            },
+                      icon: const Icon(Icons.stop_circle_outlined),
+                      label: Text(
+                        isImportCancellationRequested
+                            ? l10n.beerWithMeImportCancelling
+                            : l10n.beerWithMeImportCancelAction,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    l10n.settings,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _SettingsSegmentedField<AppThemePreference>(
+                    label: l10n.theme,
+                    value: settings.themePreference,
+                    enabled: !isBusy,
+                    isLoading:
+                        _pendingSetting == _ProfilePendingSetting.theme &&
+                        controller.isBusyFor(AppBusyAction.updateSettings),
+                    loadingIndicatorKey: const Key('theme-settings-loading'),
+                    key: const Key('theme-segmented-control'),
+                    segments: AppThemePreference.values
+                        .map(
+                          (preference) => ButtonSegment<AppThemePreference>(
+                            value: preference,
+                            label: Text(l10n.themeLabel(preference)),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (value) => _updateSettings(
+                      _ProfilePendingSetting.theme,
+                      settings.copyWith(themePreference: value),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SettingsSegmentedField<String>(
+                    label: l10n.language,
+                    value: settings.localeCode,
+                    enabled: !isBusy,
+                    isLoading:
+                        _pendingSetting == _ProfilePendingSetting.language &&
+                        controller.isBusyFor(AppBusyAction.updateSettings),
+                    loadingIndicatorKey: const Key('language-settings-loading'),
+                    key: const Key('language-segmented-control'),
+                    segments: <ButtonSegment<String>>[
+                      ButtonSegment<String>(
+                        value: 'en',
+                        label: Text(l10n.english),
+                      ),
+                      ButtonSegment<String>(
+                        value: 'de',
+                        label: Text(l10n.german),
+                      ),
+                    ],
+                    onChanged: (value) => _updateSettings(
+                      _ProfilePendingSetting.language,
+                      settings.copyWith(localeCode: value),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SettingsSegmentedField<AppUnit>(
+                    label: l10n.units,
+                    value: settings.unit,
+                    enabled: !isBusy,
+                    isLoading:
+                        _pendingSetting == _ProfilePendingSetting.unit &&
+                        controller.isBusyFor(AppBusyAction.updateSettings),
+                    loadingIndicatorKey: const Key('unit-settings-loading'),
+                    key: const Key('unit-segmented-control'),
+                    segments: AppUnit.values
+                        .map(
+                          (unit) => ButtonSegment<AppUnit>(
+                            value: unit,
+                            label: Text(l10n.unitLabel(unit)),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (value) => _updateSettings(
+                      _ProfilePendingSetting.unit,
+                      settings.copyWith(unit: value),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SettingsSegmentedField<AppHandedness>(
+                    label: l10n.handedness,
+                    value: settings.handedness,
+                    enabled: !isBusy,
+                    isLoading:
+                        _pendingSetting == _ProfilePendingSetting.handedness &&
+                        controller.isBusyFor(AppBusyAction.updateSettings),
+                    loadingIndicatorKey: const Key(
+                      'handedness-settings-loading',
+                    ),
+                    key: const Key('handedness-segmented-control'),
+                    segments: <ButtonSegment<AppHandedness>>[
+                      ButtonSegment<AppHandedness>(
+                        value: AppHandedness.left,
+                        label: Text(l10n.handednessLabel(AppHandedness.left)),
+                      ),
+                      ButtonSegment<AppHandedness>(
+                        value: AppHandedness.right,
+                        label: Text(l10n.handednessLabel(AppHandedness.right)),
+                      ),
+                    ],
+                    onChanged: (value) => _updateSettings(
+                      _ProfilePendingSetting.handedness,
+                      settings.copyWith(handedness: value),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SettingsSwitchField(
+                    key: const Key('share-stats-settings-tile'),
+                    label: l10n.shareStatsWithFriends,
+                    description: l10n.shareStatsWithFriendsBody,
+                    value: settings.shareStatsWithFriends,
+                    enabled: !isBusy,
+                    isLoading:
+                        _pendingSetting ==
+                            _ProfilePendingSetting.shareStatsWithFriends &&
+                        controller.isBusyFor(AppBusyAction.updateSettings),
+                    switchKey: const Key('share-stats-settings-switch'),
+                    loadingIndicatorKey: const Key(
+                      'share-stats-settings-loading',
+                    ),
+                    onChanged: (value) => _updateSettings(
+                      _ProfilePendingSetting.shareStatsWithFriends,
+                      settings.copyWith(shareStatsWithFriends: value),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(width: double.infinity, child: logoutButton),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    l10n.roadmap,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(l10n.roadmapBody),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              key: const Key('profile-about-section'),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    l10n.about,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FutureBuilder<String?>(
+                    future: _appVersionFuture,
+                    builder: (context, snapshot) {
+                      return Material(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(18),
+                        clipBehavior: Clip.antiAlias,
+                        child: ListTile(
+                          key: const Key('profile-about-version-button'),
+                          onTap: _openChangelog,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          leading: Icon(
+                            Icons.article_outlined,
+                            color: theme.colorScheme.primary,
+                          ),
+                          title: Text(
+                            _formatAppVersionLabel(l10n, snapshot.data),
+                            key: const Key('profile-about-version'),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          subtitle: Text(
+                            _changelogUri.toString(),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                          trailing: const Icon(Icons.open_in_new_rounded),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Material(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(18),
+                    clipBehavior: Clip.antiAlias,
+                    child: ListTile(
+                      key: const Key('profile-about-github-button'),
+                      onTap: _openGitHubRepository,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      minVerticalPadding: 0,
+                      visualDensity: const VisualDensity(vertical: -2),
+                      leading: Icon(
+                        Icons.code_rounded,
+                        color: theme.colorScheme.primary,
+                      ),
+                      title: Text(
+                        l10n.github,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: Text(
+                        _gitHubRepositoryUri.toString(),
+                        style: theme.textTheme.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.open_in_new_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text.rich(
+                    TextSpan(
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      children: _buildAttributionSpans(theme, l10n),
+                    ),
+                    key: const Key('profile-about-attribution'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

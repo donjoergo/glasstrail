@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_breakpoints.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
+import 'adaptive_modal.dart';
 
 Future<DrinkDefinition?> showDrinkPickerSheet({
   required BuildContext context,
@@ -15,58 +17,63 @@ Future<DrinkDefinition?> showDrinkPickerSheet({
   bool enabled = true,
   VoidCallback? onCreateCustomDrink,
 }) {
-  return showModalBottomSheet<DrinkDefinition>(
+  return showAdaptiveSheetOrDialog<DrinkDefinition>(
     context: context,
     isScrollControlled: true,
-    useSafeArea: true,
     showDragHandle: true,
+    dialogMaxHeightFactor: 0.9,
     builder: (context) {
       final theme = Theme.of(context);
+      final content = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  key: const Key('drink-picker-close-button'),
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: DrinkPickerCatalog(
+                availableDrinks: availableDrinks,
+                recentDrinks: recentDrinks,
+                localeCode: localeCode,
+                unit: unit,
+                selectedDrink: selectedDrink,
+                enabled: enabled,
+                onCreateCustomDrink: onCreateCustomDrink,
+                onSelect: (drink) => Navigator.of(context).pop(drink),
+              ),
+            ),
+          ),
+        ],
+      );
+
+      if (AppBreakpoints.isExpanded(context)) {
+        return content;
+      }
+
+      // Sheet-only chrome: keyboard insets and the 90% height factor.
       final viewInsets = MediaQuery.viewInsetsOf(context);
       return Padding(
         padding: EdgeInsets.only(bottom: viewInsets.bottom),
-        child: FractionallySizedBox(
-          heightFactor: 0.9,
-          child: Column(
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      key: const Key('drink-picker-close-button'),
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                  child: DrinkPickerCatalog(
-                    availableDrinks: availableDrinks,
-                    recentDrinks: recentDrinks,
-                    localeCode: localeCode,
-                    unit: unit,
-                    selectedDrink: selectedDrink,
-                    enabled: enabled,
-                    onCreateCustomDrink: onCreateCustomDrink,
-                    onSelect: (drink) => Navigator.of(context).pop(drink),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: FractionallySizedBox(heightFactor: 0.9, child: content),
       );
     },
   );

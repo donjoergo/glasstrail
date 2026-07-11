@@ -1,13 +1,5 @@
 part of '../statistics_screen.dart';
 
-String? _normalizedStatisticsText(String? value) {
-  final normalized = value?.trim();
-  if (normalized == null || normalized.isEmpty) {
-    return null;
-  }
-  return normalized;
-}
-
 Color _statisticsMapMarkerForegroundColor(Color backgroundColor) {
   final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
   return brightness == Brightness.dark ? Colors.white : Colors.black87;
@@ -18,10 +10,9 @@ Future<void> _showStatisticsMapEntrySheet(
   _StatisticsMapMarkerData marker,
   Color accentColor,
 ) async {
-  await showModalBottomSheet<void>(
+  await showAdaptiveSheetOrDialog<void>(
     context: context,
     showDragHandle: true,
-    useSafeArea: true,
     isScrollControlled: true,
     builder: (_) =>
         _StatisticsMapEntrySheet(entry: marker.entry, accentColor: accentColor),
@@ -110,10 +101,14 @@ class _StatisticsMapFallbackSurface extends StatelessWidget {
   const _StatisticsMapFallbackSurface({
     required this.markers,
     required this.colors,
+    required this.onMarkerTap,
+    this.onBackgroundTap,
   });
 
   final List<_StatisticsMapMarkerData> markers;
   final Map<DrinkCategory, Color> colors;
+  final Future<void> Function(_StatisticsMapMarkerData marker) onMarkerTap;
+  final VoidCallback? onBackgroundTap;
 
   @override
   Widget build(BuildContext context) {
@@ -132,43 +127,39 @@ class _StatisticsMapFallbackSurface extends StatelessWidget {
             )
             .toList(growable: false);
 
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[
-                theme.colorScheme.surfaceContainerHigh,
-                theme.colorScheme.surface,
-                theme.colorScheme.primaryContainer.withValues(alpha: 0.42),
+        return GestureDetector(
+          onTap: onBackgroundTap,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  theme.colorScheme.surfaceContainerHigh,
+                  theme.colorScheme.surface,
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.42),
+                ],
+              ),
+            ),
+            child: Stack(
+              children: <Widget>[
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _StatisticsMapFallbackPainter(theme: theme),
+                  ),
+                ),
+                ..._statisticsMapMarkerWidgets(
+                  markers: markers,
+                  markerIndexes: List<int>.generate(
+                    markers.length,
+                    (index) => index,
+                  ),
+                  offsets: offsets,
+                  colors: colors,
+                  onMarkerTap: (index, marker) => onMarkerTap(marker),
+                ),
               ],
             ),
-          ),
-          child: Stack(
-            children: <Widget>[
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _StatisticsMapFallbackPainter(theme: theme),
-                ),
-              ),
-              ..._statisticsMapMarkerWidgets(
-                markers: markers,
-                markerIndexes: List<int>.generate(
-                  markers.length,
-                  (index) => index,
-                ),
-                offsets: offsets,
-                colors: colors,
-                onMarkerTap: (index, marker) async {
-                  final backgroundColor = colors[marker.entry.category]!;
-                  await _showStatisticsMapEntrySheet(
-                    context,
-                    marker,
-                    backgroundColor,
-                  );
-                },
-              ),
-            ],
           ),
         );
       },
@@ -328,143 +319,44 @@ class _StatisticsMapEntrySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = AppScope.controllerOf(context);
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final localeCode = controller.settings.localeCode;
-    final unit = controller.settings.unit;
-    final drinkName = controller.localizedEntryDrinkName(
-      entry,
-      localeCode: localeCode,
+    final content = DrinkEntryDetailContent(
+      entry: entry,
+      accentColor: accentColor,
     );
-    final categoryLabel = <String>[
-      l10n.categoryLabel(entry.category),
-      if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
-    ].join(' • ');
-    final timeLabel = DateFormat.yMMMd(
-      localeCode,
-    ).add_Hm().format(entry.consumedAt);
-    final volumeLabel = entry.volumeMl == null
-        ? null
-        : unit.formatVolume(entry.volumeMl);
-    final locationAddress = _normalizedStatisticsText(entry.locationAddress);
-    final comment = _normalizedStatisticsText(entry.comment);
-    final imagePath = _normalizedStatisticsText(entry.imagePath);
+
+    if (AppBreakpoints.isExpanded(context)) {
+      // Dialog presentation: no drag handle exists here, so provide a
+      // close button and breathing room at the top instead.
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: <Widget>[
+                IconButton(
+                  key: const Key('statistics-map-dialog-close'),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              child: content,
+            ),
+          ),
+        ],
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      child: SingleChildScrollView(
-        child: Column(
-          key: Key('statistics-map-sheet-${entry.id}'),
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: accentColor.withValues(alpha: 0.16),
-                  foregroundColor: accentColor,
-                  child: Icon(entry.category.icon),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        drinkName,
-                        key: Key('statistics-map-sheet-name-${entry.id}'),
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        categoryLabel,
-                        key: Key('statistics-map-sheet-category-${entry.id}'),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        timeLabel,
-                        key: Key('statistics-map-sheet-time-${entry.id}'),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (volumeLabel != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      volumeLabel,
-                      key: Key('statistics-map-sheet-volume-${entry.id}'),
-                    ),
-                  ),
-              ],
-            ),
-            if (locationAddress != null) ...<Widget>[
-              const SizedBox(height: 18),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Icon(
-                    Icons.location_on_outlined,
-                    size: 18,
-                    color: accentColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      locationAddress,
-                      key: Key('statistics-map-sheet-location-${entry.id}'),
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (comment != null) ...<Widget>[
-              const SizedBox(height: 18),
-              Text(
-                l10n.comment,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                comment,
-                key: Key('statistics-map-sheet-comment-${entry.id}'),
-              ),
-            ],
-            if (imagePath != null) ...<Widget>[
-              const SizedBox(height: 18),
-              AppPhotoPreview(
-                key: Key('statistics-map-sheet-image-${entry.id}'),
-                imagePath: imagePath,
-                cropPortraitToSquare: true,
-                enableFullscreenOnTap: true,
-              ),
-            ],
-          ],
-        ),
-      ),
+      child: SingleChildScrollView(child: content),
     );
   }
 }

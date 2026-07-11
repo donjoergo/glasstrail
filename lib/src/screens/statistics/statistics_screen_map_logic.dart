@@ -227,6 +227,53 @@ StatisticsMapTapResolution resolveStatisticsMapMarkerTap({
   return StatisticsMapTapResolution.openSheet;
 }
 
+/// Resolves the marker indexes belonging to a tapped cluster by screen-space
+/// proximity, since maplibre_gl 0.26.1 exposes no cluster-leaves API.
+///
+/// Collects markers within [baseRadius] of [clusterOffset] and widens the
+/// search (x1.5, x2, capped at x2.5) until [expectedCount] markers are found.
+/// When more markers match than expected, only the nearest [expectedCount]
+/// are kept. Returns fewer indexes when the cap is reached without a full
+/// match — callers should fall back to zooming in that case.
+@visibleForTesting
+List<int> statisticsMapClusterLeafIndexes({
+  required List<Offset> offsets,
+  required Offset clusterOffset,
+  required int expectedCount,
+  double baseRadius = _statisticsMapClusterRadius,
+}) {
+  if (offsets.isEmpty || expectedCount <= 0) {
+    return const <int>[];
+  }
+
+  final distances = offsets
+      .map((offset) => (offset - clusterOffset).distance)
+      .toList(growable: false);
+
+  List<int> withinRadius(double radius) {
+    return List<int>.generate(
+      offsets.length,
+      (index) => index,
+    ).where((index) => distances[index] <= radius).toList(growable: false);
+  }
+
+  var matches = const <int>[];
+  for (final radiusFactor in const <double>[1, 1.5, 2, 2.5]) {
+    matches = withinRadius(baseRadius * radiusFactor);
+    if (matches.length >= expectedCount) {
+      break;
+    }
+  }
+
+  if (matches.length > expectedCount) {
+    final sorted = matches.toList()
+      ..sort((a, b) => distances[a].compareTo(distances[b]));
+    matches = sorted.sublist(0, expectedCount)..sort();
+  }
+
+  return matches;
+}
+
 @visibleForTesting
 List<List<int>> statisticsMapClusterGroups({
   required List<Offset> offsets,

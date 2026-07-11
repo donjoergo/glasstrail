@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_breakpoints.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';
@@ -127,7 +128,7 @@ class _HomeShellState extends State<HomeShell> {
         onPressed: () => _openNotifications(context),
       ),
     ];
-    final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final isWide = AppBreakpoints.isExpanded(context);
     final appBarTitleStyle = theme.textTheme.headlineSmall?.copyWith(
       fontSize: isWide ? 24 : 20,
       fontWeight: FontWeight.w800,
