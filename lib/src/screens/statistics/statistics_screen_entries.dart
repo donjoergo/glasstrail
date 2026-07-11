@@ -62,9 +62,15 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
                       .map((category) {
                         final count =
                             controller.statistics.categoryCounts[category] ?? 0;
+                        final isSelected = _selectedCategory == category;
                         return FilterChip(
-                          selected: _selectedCategory == category,
+                          selected: isSelected,
                           showCheckmark: false,
+                          side: _selectableChipBorder(theme, isSelected),
+                          labelStyle: _selectableChipLabelStyle(
+                            theme,
+                            isSelected,
+                          ),
                           avatar: Icon(
                             category.icon,
                             key: Key(

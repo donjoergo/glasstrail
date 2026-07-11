@@ -319,6 +319,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enable location while logging drinks so they can appear here on the map.';
 
   @override
+  String get statisticsMapClusterFilterLabel => 'Cluster';
+
+  @override
   String statisticsMapClusterTitle(num count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -328,6 +331,12 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get statisticsMapLocateMeTooltip => 'Show my location';
+
+  @override
+  String get statisticsMapPhotoFilterLabel => 'With photo';
 
   @override
   String get feedDetailEmptyTitle => 'No drink selected';

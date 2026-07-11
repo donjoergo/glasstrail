@@ -4812,6 +4812,85 @@ void main() {
     },
   );
 
+  testWidgets('filters statistics map markers to entries with a photo', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-photo-filter@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Photo Filter',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final wine = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+      imagePath: '/tmp/beer.jpg',
+    );
+    final photoEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == beer.id,
+    );
+    await controller.addDrinkEntry(
+      drink: wine,
+      volumeMl: wine.volumeMl,
+      locationLatitude: 48.1372,
+      locationLongitude: 11.5756,
+    );
+    final noPhotoEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == wine.id,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    expect(find.byKey(const Key('statistics-map-filter-bar')), findsOneWidget);
+    expect(_statisticsMapMarkers(), findsNWidgets(2));
+
+    final photoOnlyChip = find.byKey(
+      const Key('statistics-map-filter-photo-only'),
+    );
+    expect(tester.widget<FilterChip>(photoOnlyChip).selected, isFalse);
+
+    await tester.tap(photoOnlyChip);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<FilterChip>(photoOnlyChip).selected, isTrue);
+    expect(_statisticsMapMarkers(), findsOneWidget);
+    expect(_statisticsMapMarker(photoEntry.id), findsOneWidget);
+    expect(_statisticsMapMarker(noPhotoEntry.id), findsNothing);
+
+    final clusterChip = find.byKey(const Key('statistics-map-filter-cluster'));
+    expect(tester.widget<FilterChip>(clusterChip).selected, isTrue);
+
+    await tester.tap(clusterChip);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<FilterChip>(clusterChip).selected, isFalse);
+  });
+
   testWidgets(
     'opens a statistics map sheet with localized name, time, volume and address',
     (tester) async {

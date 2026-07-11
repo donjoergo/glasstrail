@@ -37,6 +37,20 @@ part 'statistics/statistics_screen_map_panel.dart';
 part 'statistics/statistics_screen_map_view.dart';
 part 'statistics/statistics_screen_entries.dart';
 
+BorderSide _selectableChipBorder(ThemeData theme, bool selected) {
+  final scheme = theme.colorScheme;
+  return selected
+      ? BorderSide(color: scheme.primary, width: 1.5)
+      : BorderSide(color: scheme.outline.withValues(alpha: 0.45));
+}
+
+TextStyle? _selectableChipLabelStyle(ThemeData theme, bool selected) {
+  return theme.textTheme.labelLarge?.copyWith(
+    color: selected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+    fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+  );
+}
+
 Future<void> _refreshStatistics(BuildContext context) async {
   final l10n = AppLocalizations.of(context);
   final controller = AppScope.controllerOf(context);
