@@ -315,6 +315,7 @@
   "roadmap": "Als Nächstes geplant",
   "about": "Über die App",
   "github": "GitHub",
+  "profileAttribution": "Erstellt mit {heart}, {coffee} und {beer} von Jörg Dorlach",
   "roadmapBody": "Als Nächstes kommen Erfolge.",
   "beerWithMeImport": "Beer With Me-Import",
   "beerWithMeImportBody": "Importiere einen Beer With Me-Export in deine GlassTrail-Historie. Bereits importierte Beer With Me-Einträge werden automatisch erkannt und übersprungen.",
