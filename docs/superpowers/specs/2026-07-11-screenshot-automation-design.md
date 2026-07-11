@@ -45,8 +45,9 @@ Seeding, using the Supabase **service-role key**:
   populate the "your bar" screens.
 - `drink_entries` — a spread of ~2–3 weeks of varied-category entries with
   photos uploaded to the `user-media` storage bucket from a small fixed set
-  of royalty-free stock images, plus location data for the map screen and
-  comments for the feed.
+  of royalty-free stock images committed to the repo (e.g.
+  `tool/seed_assets/stock_photos/`), plus location data for the map screen
+  and comments for the feed.
 - `notifications` — a few friend-request/new-friend/new-drink notifications
   from the friend account.
 - `drink_entry_cheers` — a couple of cheers on feed entries.
@@ -73,9 +74,9 @@ Flow:
 1. Launch Chromium, emulate a phone viewport matching the current asset
    aspect ratio (1440×3000-equivalent device pixel ratio).
 2. Log into `glasstrail.vercel.app` as `demo@glasstrail.app`.
-3. For each of the 11 real feature screens (feed, statistics cards, pie
+3. For each of the 10 in-scope feature screens (feed, statistics cards, pie
    chart, map, gallery, history list, add-drink, bar — global, bar — own,
-   account settings, notifications):
+   account settings):
    - Navigate to the screen.
    - Toggle `data-theme` to `light`, wait for content/animations to settle,
      screenshot.
@@ -91,13 +92,22 @@ with real captures — including regenerating the dark-mode shots that exist
 today, since those came from the author's personal account (the exact
 privacy problem this whole pipeline exists to fix).
 
-The interactive theme-slider demo (feature 11) needs its own `theme-demo-
-light.jpg` / `theme-demo-dark.jpg` pair like any other feature — captured
-from whichever single screen it's demoing (e.g. the feed), same as the rest.
+The interactive theme-slider demo (feature 11) reuses the feed capture: the
+script copies the freshly-captured `feed-light.jpg` / `feed-dark.jpg` to
+`theme-demo-light.jpg` / `theme-demo-dark.jpg` rather than capturing a
+separate screen.
 
-The desktop-mode placeholder (feature 12) is the only exception: desktop
-mode isn't built yet, so it keeps its generated placeholder images,
-untouched by this script.
+Two features are explicitly out of scope for this script, left untouched:
+- **Feature 12 (desktop mode)** — TODO: desktop mode is still being built.
+  Keeps its generated placeholder images until the real desktop UI exists,
+  then this needs a follow-up capture pass (likely a wider viewport, no
+  phone-frame).
+- **Notifications** — `notifications-light.png` / `notifications-dark.png`
+  depict the native Android push-notification banner (OS chrome), not the
+  in-app `#/notifications` screen. Playwright only drives the web page, not
+  Android's notification shade, so this can't be captured by this script.
+  TODO: deferred to a manual/emulator-based follow-up; existing assets stay
+  as-is for now.
 
 ## 3. Asset pipeline — single source of truth
 
@@ -133,11 +143,16 @@ present):
 | Custom Drinks | `bar-own` |
 | Notifications | `notifications` |
 
-## Open questions / risks
+## Resolved
 
-- Stock photo set for seeded drink photos needs sourcing (royalty-free,
-  small fixed set, checked into the repo or fetched at seed time) — deferred
-  to implementation planning.
-- Playwright login as the demo account assumes the web build's auth flow
-  works headlessly (no CAPTCHA/email verification blocking it) — needs
-  verification during implementation.
+- Stock photos: a small royalty-free set, committed into the repo (not
+  fetched at seed time).
+- Login: the web build's auth flow has no CAPTCHA blocking headless
+  Playwright login.
+
+## Deferred (tracked as TODOs, not part of this pass)
+
+- Desktop-mode screenshots (feature 12) — desktop mode is still being built;
+  add real capture once it exists.
+- Native Android push-notification screenshot — OS-level UI, needs a
+  manual/emulator-based capture, not Playwright-automatable.
