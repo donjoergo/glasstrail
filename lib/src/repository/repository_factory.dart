@@ -16,7 +16,7 @@ Future<AppRepository> createRepository({BackendConfig? backendConfig}) async {
 
   await Supabase.initialize(
     url: config.supabaseUrl,
-    anonKey: config.supabaseAnonKey,
+    publishableKey: config.supabaseAnonKey,
   );
 
   final cacheStore = await BootstrapCacheStore.create();
