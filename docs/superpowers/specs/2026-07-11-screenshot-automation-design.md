@@ -72,7 +72,9 @@ similar).
 
 Flow:
 1. Launch Chromium, emulate a phone viewport matching the current asset
-   aspect ratio (1440×3000-equivalent device pixel ratio).
+   aspect ratio (1440×3000-equivalent device pixel ratio), locale set to
+   English (`en`) — the app's `data-lang`/locale must be forced to English
+   so every capture is in English regardless of the machine's default.
 2. Log into `glasstrail.vercel.app` as `demo@glasstrail.app`.
 3. For each of the 10 in-scope feature screens (feed, statistics cards, pie
    chart, map, gallery, history list, add-drink, bar — global, bar — own,
