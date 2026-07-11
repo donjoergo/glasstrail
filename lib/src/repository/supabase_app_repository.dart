@@ -11,6 +11,11 @@ import '../models.dart';
 import '../time_zone_provider.dart';
 import 'app_repository.dart';
 
+// AppRepository backed by Supabase (Postgres + Auth + Storage + Realtime +
+// Edge Functions). Business logic that must be trusted/consistent (friend
+// graph mutations, cheers, feed assembly) is pushed into Postgres RPCs
+// rather than done client-side, so it stays correct under concurrent
+// clients and enforced by RLS instead of duplicated/trusted here.
 class SupabaseAppRepository implements AppRepository {
   SupabaseAppRepository(
     this._client, {
@@ -25,6 +30,10 @@ class SupabaseAppRepository implements AppRepository {
   final Uuid _uuid;
   final TimeZoneProvider _timeZoneProvider;
 
+  // Shared/constant stack trace for realtime subscription errors: there is
+  // no meaningful call stack to report for an async channel-status callback,
+  // and using a fixed empty trace makes these errors easy to assert on in
+  // tests without generating a real stack.
   @visibleForTesting
   static const notificationSubscriptionErrorStackTrace = StackTrace.empty;
 
@@ -43,6 +52,10 @@ class SupabaseAppRepository implements AppRepository {
       }
       return await _ensureProfile(authUser);
     } on AuthException catch (error) {
+      // Only swallow "no/invalid session" as a normal signed-out result
+      // when the caller explicitly asked to force a refresh — a refresh
+      // failing because the session is gone just means the user isn't
+      // signed in anymore, not an error to surface.
       if (forceRefresh && _isMissingOrInvalidSession(error)) {
         return null;
       }
@@ -70,6 +83,9 @@ class SupabaseAppRepository implements AppRepository {
         data: <String, dynamic>{
           'display_name': displayName.trim(),
           if (birthday != null) 'birthday': _toDateString(birthday),
+          // Local file paths/data URIs can't be stored in auth metadata
+          // (only meaningful once uploaded to Storage below), so only a
+          // path that's already a remote URL is worth persisting here.
           if (_shouldPersistAuthMetadataImagePath(trimmedProfileImagePath))
             'profile_image_path': trimmedProfileImagePath,
         },
@@ -80,6 +96,10 @@ class SupabaseAppRepository implements AppRepository {
         throw const AppException('Sign-up did not return a user.');
       }
 
+      // With email confirmation enabled, Supabase returns a user but no
+      // session until the email link is clicked — surface that distinctly
+      // so the UI can prompt to check email instead of treating this as a
+      // generic sign-up failure.
       if (response.session == null) {
         throw const AppException(
           'Supabase sign-up succeeded, but email confirmation is enabled. Confirm the email first, then sign in.',
@@ -92,6 +112,10 @@ class SupabaseAppRepository implements AppRepository {
         preferredBirthday: birthday,
         preferredProfileImagePath: trimmedProfileImagePath,
       );
+      // If a local image was supplied, it still needs to be uploaded to
+      // Storage via updateProfile (which _ensureProfile can't do, since it
+      // only writes DB rows) — only do this extra round trip when the image
+      // actually needs uploading or didn't already match what was saved.
       if (trimmedProfileImagePath != null &&
           trimmedProfileImagePath.isNotEmpty &&
           (_looksLikeLocalFile(trimmedProfileImagePath) ||
@@ -147,6 +171,10 @@ class SupabaseAppRepository implements AppRepository {
     required String currentPassword,
     required String newPassword,
   }) async {
+    // Supabase's updateUser doesn't require re-authentication, so the
+    // current password is verified explicitly via a fresh sign-in first —
+    // otherwise anyone with a live session (e.g. an unlocked device) could
+    // change the password without knowing the old one.
     try {
       final response = await _client.auth.signInWithPassword(
         email: user.email.trim(),
@@ -172,6 +200,10 @@ class SupabaseAppRepository implements AppRepository {
   @override
   Future<AppUser> updateProfile(AppUser user) async {
     try {
+      // Captured before overwriting so the old image can be cleaned up
+      // afterwards — but only once the new profile row has been committed,
+      // so a failure partway through never leaves the profile pointing at
+      // an image that was already deleted.
       final previousProfile = await _loadProfile(
         user.id,
         fallbackEmail: user.email,
@@ -182,6 +214,10 @@ class SupabaseAppRepository implements AppRepository {
         folder: 'profiles',
       );
 
+      // Auth metadata is updated in addition to the profiles table so that
+      // display name/image are available immediately from the JWT/session
+      // (e.g. right after sign-up, before a profiles row read) without an
+      // extra DB round trip.
       await _client.auth.updateUser(
         UserAttributes(
           data: <String, dynamic>{
@@ -213,6 +249,9 @@ class SupabaseAppRepository implements AppRepository {
         userId: user.id,
         email: user.email,
       );
+      // Delete the old image only after the new profile is durably saved,
+      // and only if it actually changed — deleting eagerly could orphan the
+      // profile pointing at a missing image if the upsert above had failed.
       if (previousProfile?.profileImagePath != finalImagePath) {
         await _deleteMediaPathIfOwned(
           previousProfile?.profileImagePath,
@@ -231,6 +270,10 @@ class SupabaseAppRepository implements AppRepository {
 
   @override
   Future<void> deleteAccount(AppUser user) async {
+    // Account deletion (auth user + all owned rows/storage) requires the
+    // service role, which the client can never hold, so it's delegated to
+    // a server-side Edge Function instead of being expressed as client
+    // calls here.
     try {
       await _client.functions.invoke('delete-account', method: HttpMethod.post);
     } on FunctionException catch (error) {
@@ -242,6 +285,10 @@ class SupabaseAppRepository implements AppRepository {
     try {
       await _client.auth.signOut();
     } on AuthException catch (error) {
+      // The Edge Function likely already invalidated the session as part of
+      // deleting the account, so signOut failing is expected/harmless in
+      // that case; only treat it as a real error if a session is still
+      // present (meaning something else went wrong).
       if (_client.auth.currentSession != null) {
         throw AppException(error.message);
       }
@@ -253,6 +300,11 @@ class SupabaseAppRepository implements AppRepository {
     String userId, {
     bool forceRefresh = false,
   }) async {
+    // An RPC (not a direct table select) because each relationship row must
+    // be joined against whichever side ISN'T the caller and have its
+    // direction (incoming/outgoing) computed relative to the caller — logic
+    // that's awkward/unsafe to express as a client-side filtered select
+    // under RLS, so it's centralized in Postgres.
     try {
       final rows = await _client.rpc('load_friend_connections');
       return (rows as List<dynamic>)
@@ -286,6 +338,10 @@ class SupabaseAppRepository implements AppRepository {
     required String friendUserId,
   }) async {
     try {
+      // Stats must be bucketed into the *viewer's* local days/timezone
+      // (e.g. "drinks today"), which Postgres can't infer on its own, so
+      // the client's offset/timezone are sent explicitly to the function
+      // doing the aggregation.
       final utcOffsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
       final timeZone = await _timeZoneProvider.getLocalTimeZoneIdentifier();
       final response = await _client.functions.invoke(
@@ -303,6 +359,10 @@ class SupabaseAppRepository implements AppRepository {
       }
       return FriendStatsProfile.fromJson(Map<String, dynamic>.from(data));
     } on FunctionException catch (error) {
+      // 404 (no such friend) and 403 (not actually friends / stats sharing
+      // disabled) are collapsed to the same generic message deliberately —
+      // distinguishing them would leak whether a user id/relationship
+      // exists to someone who isn't authorized to know.
       if (error.status == 404) {
         throw const AppException('This friend profile is unavailable.');
       }
@@ -325,6 +385,10 @@ class SupabaseAppRepository implements AppRepository {
     }
 
     try {
+      // GET (rather than the RPC used by resolveFriendProfileLink) because
+      // this same Edge Function endpoint also serves HTML/OpenGraph
+      // previews for unauthenticated link shares (crawlers, chat unfurls);
+      // format=json asks it for the same data this client needs instead.
       final response = await _client.functions.invoke(
         'friend-profile-preview/${Uri.encodeComponent(normalizedCode)}',
         method: HttpMethod.get,
@@ -362,6 +426,12 @@ class SupabaseAppRepository implements AppRepository {
     }
   }
 
+  // This and the friend-request mutation RPCs below (accept/reject/cancel/
+  // remove) all re-fetch the full connection list afterwards instead of
+  // patching a local copy: the RPC is the only place that knows the
+  // resulting status/direction for every affected row (including the other
+  // party's), so refetching is simpler and less error-prone than trying to
+  // predict server-side effects client-side.
   @override
   Future<List<FriendConnection>> sendFriendRequestToProfile({
     required String userId,
@@ -489,8 +559,15 @@ class SupabaseAppRepository implements AppRepository {
   Stream<List<AppNotification>> watchNotifications(String userId) {
     late final StreamController<List<AppNotification>> controller;
     Future<void> Function()? stopWatchingNotifications;
+    // Guards every async callback (realtime events, in-flight loads) from
+    // touching the controller after onCancel has run, since those
+    // callbacks can still fire after cancellation due to network latency.
     var isClosed = false;
 
+    // Realtime only tells us *that* something changed on the notifications
+    // table, not the resulting row (it's filtered/RLS-shaped server-side),
+    // so each change event triggers a full reload via the RPC rather than
+    // trying to apply a diff from the raw postgres_changes payload.
     Future<void> publishSnapshot() async {
       if (isClosed) {
         return;
@@ -530,6 +607,9 @@ class SupabaseAppRepository implements AppRepository {
     return controller.stream;
   }
 
+  // Extracted as its own (testable) method so tests can drive the
+  // subscribe callback/publishSnapshot without needing a real Supabase
+  // realtime connection.
   @visibleForTesting
   Future<void> Function() startWatchingNotifications({
     required String userId,
@@ -542,6 +622,11 @@ class SupabaseAppRepository implements AppRepository {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'notifications',
+          // Filtered server-side to this recipient even though RLS would
+          // already prevent seeing other users' rows — without this filter
+          // every notifications-table change on the server would still
+          // trigger a reload here, wastefully re-fetching on unrelated
+          // activity.
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'recipient_user_id',
@@ -553,6 +638,9 @@ class SupabaseAppRepository implements AppRepository {
     channel.subscribe((status, [error]) {
       switch (status) {
         case RealtimeSubscribeStatus.subscribed:
+          // Fetch once immediately on subscribe: postgres_changes only
+          // reports changes that happen *after* subscribing, so without
+          // this the stream would stay empty until the next mutation.
           unawaited(publishSnapshot());
           break;
         case RealtimeSubscribeStatus.channelError:
@@ -622,6 +710,10 @@ class SupabaseAppRepository implements AppRepository {
           )
           .toList();
 
+      // Falls back to the bundled catalog both on query failure and on an
+      // empty (but successful) result — the latter covers a freshly seeded
+      // or misconfigured `global_drinks` table, so the app never shows an
+      // empty drink picker.
       if (drinks.isEmpty) {
         return buildDefaultDrinkCatalog();
       }
@@ -665,6 +757,9 @@ class SupabaseAppRepository implements AppRepository {
     String? imagePath,
   }) async {
     try {
+      // drinkId is only present when editing an existing custom drink; a
+      // fresh uuid means this is a create, so there's no previous image to
+      // look up or later clean up.
       final id = drinkId ?? _uuid.v4();
       final previousImagePath = await _loadCustomDrinkImagePath(
         userId: userId,
@@ -840,6 +935,10 @@ class SupabaseAppRepository implements AppRepository {
             'user_id': user.id,
             'source_type': drink.isCustom ? 'custom' : 'global',
             'source_drink_id': drink.id,
+            // drink_name/category_slug are denormalized (copied) onto the
+            // entry rather than only referenced by source_drink_id, so a
+            // logged entry keeps showing its original drink even if the
+            // custom drink it pointed to is later renamed or deleted.
             'drink_name': drink.name,
             'category_slug': drink.category.storageValue,
             'volume_ml': volumeMl,
@@ -862,6 +961,10 @@ class SupabaseAppRepository implements AppRepository {
     } on StorageException catch (error) {
       throw AppException(error.message);
     } on PostgrestException catch (error) {
+      // A DB-level unique constraint on (import_source, import_source_id)
+      // prevents re-importing the same external entry twice (e.g. retrying
+      // a bulk import); surface that specific case with a clearer message
+      // instead of a generic constraint-violation error.
       if (_isDuplicateImportConflict(
         error,
         importSource: importSource,
@@ -1011,6 +1114,12 @@ class SupabaseAppRepository implements AppRepository {
     }
   }
 
+  // Bridges Supabase Auth (which knows the user exists) and the app's own
+  // `profiles`/`user_settings` tables (which may not have rows yet — e.g.
+  // first sign-in after a new auth user was created, or a profile row
+  // that's missing for any other reason). Called on every sign-in/sign-up/
+  // restore so the app never has to special-case "authenticated but no
+  // profile row yet".
   Future<AppUser> _ensureProfile(
     User authUser, {
     String? preferredDisplayName,
@@ -1040,6 +1149,10 @@ class SupabaseAppRepository implements AppRepository {
         .insert(<String, dynamic>{
           'id': authUser.id,
           'email': authUser.email,
+          // Falls back through explicit sign-up input, then whatever a
+          // third-party auth provider (e.g. OAuth) may have put in
+          // metadata, and finally derives something from the email so a
+          // profile is never created with a blank name.
           'display_name':
               preferredDisplayName ??
               (metadata['display_name'] as String?) ??
@@ -1063,6 +1176,10 @@ class SupabaseAppRepository implements AppRepository {
     );
   }
 
+  // ignoreDuplicates makes this safe to call unconditionally on every
+  // sign-in (see _ensureProfile) without overwriting settings a returning
+  // user has already customized — it only inserts defaults the first time
+  // a settings row doesn't exist.
   Future<void> _ensureSettingsRow(String userId) async {
     await _client
         .from('user_settings')
@@ -1227,6 +1344,11 @@ class SupabaseAppRepository implements AppRepository {
     };
   }
 
+  // Postgrest doesn't expose which unique constraint was violated in a
+  // structured way, so this checks the Postgres unique_violation code
+  // (23505) plus a substring match on the constraint name that Postgres
+  // includes in the message/details — the only reliable way to distinguish
+  // "duplicate import" from any other unique-constraint conflict.
   bool _isDuplicateImportConflict(
     PostgrestException error, {
     required String? importSource,
@@ -1248,6 +1370,10 @@ class SupabaseAppRepository implements AppRepository {
             details.contains('import_source'));
   }
 
+  // GoTrue doesn't expose a typed "wrong password" error, so this matches
+  // on the known message text to distinguish it from other auth failures
+  // (network errors, rate limiting, etc.) that shouldn't be reported as
+  // "incorrect password".
   bool _isInvalidLoginCredentials(AuthException error) {
     final message = error.message.toLowerCase();
     return message.contains('invalid login credentials') ||
@@ -1258,6 +1384,9 @@ class SupabaseAppRepository implements AppRepository {
     if (!forceRefresh) {
       return _client.auth.currentUser;
     }
+    // Avoid calling refreshSession without a session present: it throws
+    // rather than returning null, so this checks first to make "signed
+    // out" a normal (non-exceptional) code path.
     if (_client.auth.currentSession == null) {
       return null;
     }
@@ -1265,6 +1394,10 @@ class SupabaseAppRepository implements AppRepository {
     return response.user ?? response.session?.user ?? _client.auth.currentUser;
   }
 
+  // Used by restoreSession to decide whether a refresh failure means
+  // "cleanly signed out" (expected, return null) vs. a real error worth
+  // surfacing (e.g. network failure, which is excluded below via
+  // AuthRetryableFetchException).
   bool _isMissingOrInvalidSession(AuthException error) {
     if (error is AuthSessionMissingException ||
         error is AuthInvalidJwtException) {
@@ -1304,6 +1437,12 @@ class SupabaseAppRepository implements AppRepository {
     return imagePath;
   }
 
+  // Callers pass whatever image path the UI currently has, which may
+  // already be a remote Storage path (nothing to do) or a local file/blob/
+  // data URI selected from the device that still needs uploading; this is
+  // the single place that decides which case applies and performs the
+  // upload so every entry point (profile, custom drink, drink entry) stays
+  // consistent.
   Future<String?> _resolveMediaPath({
     required String userId,
     required String? imagePath,
@@ -1320,8 +1459,14 @@ class SupabaseAppRepository implements AppRepository {
     final bytes = await _readUploadBytes(normalized);
     final mimeType = _guessMimeTypeFromSource(normalized);
     final fileName = _storageFileNameForSource(normalized, mimeType);
+    // Timestamp-prefixed filename avoids collisions when the same file name
+    // is picked twice (e.g. re-selecting "IMG_0001.jpg"), without needing a
+    // server round trip to check existence first.
     final sanitized =
         '${DateTime.now().millisecondsSinceEpoch}-${fileName.replaceAll(' ', '-')}';
+    // Storage path is namespaced by userId/folder so bucket-level storage
+    // policies can scope access per-user without per-object ACLs, and so
+    // ownership can be checked later by prefix (see _isOwnedStoragePath).
     final storagePath = '$userId/$folder/$sanitized';
 
     await _client.storage
@@ -1335,6 +1480,11 @@ class SupabaseAppRepository implements AppRepository {
     return storagePath;
   }
 
+  // Distinguishes "already uploaded" (http(s) Storage/CDN URL) from
+  // "still on device" (blob/data URI on web, absolute path or file:// on
+  // native, Windows drive path) so _resolveMediaPath knows whether an
+  // upload is needed. Order matters: http(s) is checked first since a
+  // remote URL could otherwise be misidentified by later checks.
   bool _looksLikeLocalFile(String path) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return false;
@@ -1351,6 +1501,10 @@ class SupabaseAppRepository implements AppRepository {
     return path.startsWith('file://');
   }
 
+  // data: URIs (typical on web, e.g. from an <input type=file> read as a
+  // data URL) are decoded directly since there's no filesystem to read
+  // from; everything else goes through XFile, which works across native
+  // file paths and web blob: URLs alike.
   Future<Uint8List> _readUploadBytes(String source) async {
     if (source.startsWith('data:')) {
       final bytes = Uri.parse(source).data?.contentAsBytes();
@@ -1362,6 +1516,9 @@ class SupabaseAppRepository implements AppRepository {
     return XFile(source).readAsBytes();
   }
 
+  // data:/blob: sources have no meaningful original filename to reuse, so a
+  // generic name is derived from the detected mime type instead of trying
+  // to extract one from the URI.
   String _storageFileNameForSource(String source, String mimeType) {
     if (source.startsWith('data:') || source.startsWith('blob:')) {
       return 'upload${_extensionForMimeType(mimeType)}';
@@ -1369,6 +1526,11 @@ class SupabaseAppRepository implements AppRepository {
     return source.split(RegExp(r'[\\/]')).last;
   }
 
+  // Auth metadata (unlike the profiles table) isn't updated as part of the
+  // same transaction that uploads a new image, so it must never be given a
+  // not-yet-uploaded local path — only an already-remote path is safe to
+  // persist there (see signUp/_ensureProfile, which read this metadata as
+  // a fallback before a profiles row exists).
   bool _shouldPersistAuthMetadataImagePath(String? imagePath) {
     final normalized = imagePath?.trim();
     if (normalized == null || normalized.isEmpty) {
@@ -1389,6 +1551,11 @@ class SupabaseAppRepository implements AppRepository {
     }
   }
 
+  // Guards against ever deleting a path that isn't actually a Storage
+  // object owned by this user: a still-local path (never uploaded) or one
+  // whose userId/ prefix doesn't match must not be passed to storage
+  // .remove, since deleting an arbitrary/foreign path would be a data-loss
+  // bug rather than cleanup.
   bool _isOwnedStoragePath(String? imagePath, String userId) {
     if (imagePath == null || imagePath.isEmpty) {
       return false;

@@ -4,6 +4,11 @@ import 'models.dart';
 
 const String beerWithMeImportSource = 'beer_with_me';
 
+// Maps the "Beer With Me" app's internal glass-type identifiers (fixed,
+// English, camel-case strings baked into their export format) onto our own
+// drink catalog ids. Keys must match their export exactly, including odd
+// casing/pairings (e.g. "Weinschorle" and "Spritzer" both map to the same
+// wine-spritzer drink) since we have no control over how their app names them.
 const Map<String, String> beerWithMeGlassTypeToDrinkId = <String, String>{
   'Beer': 'beer-classic',
   'BeerCan': 'beer-can',
@@ -133,6 +138,8 @@ BeerWithMeImportFile parseBeerWithMeExportFile(String source) {
         .entries
         .map(
           (entry) => BeerWithMeImportRow(
+            // 1-indexed so row numbers shown in error/result UI match what a
+            // user would count if they opened the export file themselves.
             rowNumber: entry.key + 1,
             payload: entry.value,
           ),
@@ -151,6 +158,9 @@ BeerWithMeImportRecord decodeBeerWithMeImportRow(BeerWithMeImportRow row) {
   }
 
   final json = Map<String, dynamic>.from(payload);
+  // Validation order matters: id is checked first because it's what we use
+  // to detect duplicates on re-import, so a row without it can't be deduped
+  // or safely skipped even if the rest of its data looks fine.
   final sourceId = _readRequiredStringishId(json['id']);
   if (sourceId == null) {
     throw BeerWithMeImportRowException(
@@ -179,6 +189,9 @@ BeerWithMeImportRecord decodeBeerWithMeImportRow(BeerWithMeImportRow row) {
     );
   }
 
+  // Export timestamps are ISO-8601; converting to local time keeps imported
+  // entries consistent with drinks logged directly in this app, which are
+  // always stored/displayed in the device's local time.
   final consumedAt = DateTime.tryParse(timestamp)?.toLocal();
   if (consumedAt == null) {
     throw BeerWithMeImportRowException(
@@ -198,6 +211,9 @@ BeerWithMeImportRecord decodeBeerWithMeImportRow(BeerWithMeImportRow row) {
     sourceId: sourceId,
     glassType: glassType,
     consumedAt: consumedAt,
+    // A lone lat or lon is useless (and the source app can emit one without
+    // the other for rows with partial location data), so we drop both
+    // rather than store a half-valid coordinate.
     locationLatitude: latitude != null && longitude != null ? latitude : null,
     locationLongitude: latitude != null && longitude != null ? longitude : null,
     locationAddress: locationAddress,
@@ -208,6 +224,9 @@ String? _readRequiredStringishId(Object? value) {
   if (value == null) {
     return null;
   }
+  // The source export isn't guaranteed to encode ids as JSON strings (some
+  // rows carry numeric ids), so we coerce via toString() rather than
+  // requiring a String type, then treat blank/whitespace-only as absent.
   final normalized = value.toString().trim();
   return normalized.isEmpty ? null : normalized;
 }
@@ -229,6 +248,8 @@ double? _readDouble(Object? value) {
 
 String? _normalizeAddress(Object? value) {
   final normalized = _readTrimmedString(value);
+  // 'no_address' is the literal sentinel the source app writes for entries
+  // without a resolved address, rather than omitting the field or using null.
   if (normalized == null || normalized == 'no_address') {
     return null;
   }

@@ -25,6 +25,9 @@ class _FriendStatsProfileScreenState extends State<FriendStatsProfileScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // ??= so repeated didChangeDependencies calls (theme/locale changes)
+    // don't restart the load; Duration.zero defers the request past the
+    // current build/frame.
     _profileFuture ??= Future<FriendStatsProfile?>.delayed(
       Duration.zero,
       _loadProfile,
@@ -38,6 +41,10 @@ class _FriendStatsProfileScreenState extends State<FriendStatsProfileScreen> {
   }
 
   Future<void> _refreshProfile() async {
+    // Pull-to-refresh needs a *new* future each time (unlike the memoized
+    // initial load) so FutureBuilder actually rebuilds instead of reusing
+    // the already-resolved one; RefreshIndicator awaits this to know when
+    // to stop spinning.
     final future = _loadProfile();
     setState(() {
       _profileFuture = future;
@@ -90,6 +97,8 @@ class _FriendStatsProfileScreenState extends State<FriendStatsProfileScreen> {
 
             final profile = snapshot.data;
             if (profile == null) {
+              // Defer to post-frame since showing a SnackBar needs a
+              // ScaffoldMessenger from a completed build, not mid-build.
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 _showControllerMessage();
               });
@@ -118,6 +127,10 @@ class _FriendStatsProfileScreenState extends State<FriendStatsProfileScreen> {
                 children: <Widget>[
                   _FriendStatsProfileHeader(profile: profile),
                   const SizedBox(height: 20),
+                  // The friend may have opted out of sharing stats (privacy
+                  // setting), or stats may simply not be computed yet — show
+                  // the same "not shared" state for both rather than
+                  // distinguishing, since the visible outcome is identical.
                   if (!profile.shareStatsWithFriends ||
                       profile.statistics == null)
                     AppEmptyStateCard(

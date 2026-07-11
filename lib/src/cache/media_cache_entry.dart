@@ -12,7 +12,16 @@ class MediaCacheEntry {
   final String relativePath;
   final int byteCount;
   final DateTime cachedAt;
+  // Tracked separately from cachedAt and updated on every read: eviction
+  // (MediaCacheStore._planEvictions) removes least-recently-*accessed*
+  // entries, not least-recently-cached, so a long-cached but still
+  // frequently viewed image isn't evicted just because it's old.
   final DateTime lastAccessedAt;
+  // Set for media that belongs to a specific account (e.g. profile photos,
+  // drink entry photos) so it can be purged on sign-out/account switch via
+  // MediaCacheStore.purgeScope without touching media shared across users
+  // (e.g. default drink catalog images), which is left with scopeUserId
+  // null.
   final String? scopeUserId;
 
   MediaCacheEntry copyWith({

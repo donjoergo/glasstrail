@@ -32,6 +32,9 @@ Future<void> _refreshStatistics(BuildContext context) async {
   final l10n = AppLocalizations.of(context);
   final controller = AppScope.controllerOf(context);
   final success = await controller.refreshData();
+  // This is a top-level function (not State), so use the BuildContext
+  // extension's `mounted` rather than a State field to detect if the widget
+  // tree was torn down while the refresh was in flight.
   if (!context.mounted || success) {
     return;
   }
@@ -48,6 +51,9 @@ bool _statisticsGalleryHasImage(DrinkEntry entry) {
   return imagePath != null && imagePath.isNotEmpty;
 }
 
+// Widen the gallery grid as more horizontal space becomes available (phone
+// -> tablet -> desktop) so thumbnails stay a reasonable, tappable size
+// instead of shrinking indefinitely or leaving excess whitespace.
 int _statisticsGalleryCrossAxisCount(double maxWidth) {
   if (maxWidth >= 900) {
     return 5;
@@ -75,9 +81,15 @@ class StatisticsScreen extends StatefulWidget {
 class _StatisticsScreenState extends State<StatisticsScreen>
     with SingleTickerProviderStateMixin {
   static const _tabCount = 4;
+  // TabController.offset rarely lands exactly on 0 even once a swipe has
+  // visually settled, so treat "close enough" as settled to avoid missing
+  // route updates due to float imprecision.
   static const _settledTabOffsetEpsilon = 0.0001;
 
   late final TabController _tabController;
+  // Route name and tab index are two sources of truth kept in sync; this
+  // flag stops the route->controller sync from re-triggering the
+  // controller->route listener and causing a feedback loop.
   bool _isUpdatingControllerFromRoute = false;
 
   @override
@@ -97,6 +109,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     if (_tabController.index == targetIndex) {
       return;
     }
+    // Setting .index fires the listener synchronously, so guard it to
+    // prevent bouncing back into onRouteSelected.
     _isUpdatingControllerFromRoute = true;
     _tabController.index = targetIndex;
     _isUpdatingControllerFromRoute = false;
@@ -110,6 +124,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   void _handleTabControllerChange() {
+    // Skip changes we triggered ourselves and in-progress swipe animations
+    // (indexIsChanging / non-zero offset) so a route update only fires once
+    // the tab has actually settled on its new index.
     if (_isUpdatingControllerFromRoute ||
         !mounted ||
         _tabController.indexIsChanging ||

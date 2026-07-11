@@ -1,5 +1,9 @@
 import 'cache_policy.dart';
 
+// Bump whenever the on-disk shape of BootstrapSnapshot/CacheManifest changes
+// in a way older cached JSON can't be deserialized into: BootstrapCacheStore
+// compares this against the persisted value and wipes the cache rather than
+// risk crashing on (or silently misreading) an incompatible payload.
 const int cacheSchemaVersion = 1;
 
 class CacheManifestEntry {
@@ -15,6 +19,10 @@ class CacheManifestEntry {
     );
   }
 
+  // Persisted as UTC (so the stored value is unambiguous regardless of the
+  // device's timezone at write time) but converted back to local on read,
+  // matching CachePolicy.isFresh's use of local DateTime.now() for
+  // freshness comparisons.
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'updatedAt': updatedAt.toUtc().toIso8601String(),
@@ -45,6 +53,10 @@ class CacheManifest {
   }
 
   final int schemaVersion;
+  // Records which account the cached (user-scoped) domains belong to, so
+  // callers can detect a mismatch (cache from a different account than the
+  // one now signed in) and purge before trusting any of it — see
+  // BootstrapCacheStore.purgeUserScope.
   final String? userId;
   final Map<CacheDomain, CacheManifestEntry> domains;
 

@@ -4,11 +4,16 @@ import 'package:flutter/widgets.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 import 'package:maplibre_gl_web/maplibre_gl_web.dart' as maplibre_web;
 
+// maplibre_gl_web's platform view chokes on a couple of options that only
+// make sense for the native SDKs, so they must be stripped before any
+// creation/update call reaches the underlying web controller.
 class _GlasstrailMapLibreWebController
     extends maplibre_web.MapLibreMapController {
   static Map<String, dynamic> _sanitizeOptions(Map<String, dynamic> options) {
     final sanitized = Map<String, dynamic>.from(options);
+    // Native-only render mode enum the web plugin can't decode.
     sanitized.remove('myLocationRenderMode');
+    // Native-only margin type the web plugin can't decode.
     sanitized.remove('attributionButtonMargins');
     return sanitized;
   }
@@ -26,6 +31,8 @@ class _GlasstrailMapLibreWebController
     return sanitized;
   }
 
+  // Both the initial view creation and any later options update carry the
+  // same unsupported keys, so both call paths route through sanitization.
   @override
   Widget buildView(
     Map<String, dynamic> creationParams,
@@ -47,6 +54,8 @@ class _GlasstrailMapLibreWebController
   }
 }
 
+// Swaps in the sanitizing controller before any MapLibre widget is built,
+// so every web map instance gets the option fixups automatically.
 void ensureMapLibreWebRegistered() {
   maplibre.MapLibrePlatform.createInstance = () =>
       _GlasstrailMapLibreWebController();

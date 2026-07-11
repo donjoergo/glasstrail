@@ -18,6 +18,11 @@ abstract class CacheStoreBackend {
 Future<CacheStoreBackend> createDefaultCacheStoreBackend({
   String namespace = 'cache',
 }) async {
+  // Application-support (not temp, not documents): unlike temp it isn't
+  // liable to be purged by the OS under storage pressure at any moment,
+  // and unlike documents it's not user-visible/exported in file pickers or
+  // iCloud/Files app — appropriate for cache data that should persist
+  // across launches but is entirely internal to the app.
   final baseDirectory = await getApplicationSupportDirectory();
   final rootDirectory = Directory('${baseDirectory.path}/$namespace');
   if (!await rootDirectory.exists()) {
@@ -89,6 +94,11 @@ class _IoCacheStoreBackend implements CacheStoreBackend {
     return file.readAsString();
   }
 
+  // Write-to-temp-then-rename so a crash or power loss mid-write can never
+  // leave the real cache file truncated/corrupted — the rename is a single
+  // filesystem operation, so readers always see either the old complete
+  // file or the new complete file, never a partial one. `flush: true`
+  // ensures the temp file's bytes are actually durable before the rename.
   @override
   Future<void> writeBytesAtomically(
     String relativePath,

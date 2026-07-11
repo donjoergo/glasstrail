@@ -171,6 +171,10 @@ class AppUser {
     return '$first$second';
   }
 
+  // `null` in copyWith normally means "keep the current value", which makes
+  // it impossible to explicitly clear a nullable field (e.g. remove a
+  // profile photo or birthday) through the same call — hence the separate
+  // `clear*` flags to disambiguate "leave unchanged" from "set to null".
   AppUser copyWith({
     String? password,
     String? displayName,
@@ -188,6 +192,9 @@ class AppUser {
       profileImagePath: clearProfileImage
           ? null
           : profileImagePath ?? this.profileImagePath,
+      // Re-normalized on every copyWith (not just at construction) so a
+      // birthday carried over from `this.birthday` can't drift out of its
+      // canonical date-only form through repeated copies.
       birthday: clearBirthday
           ? null
           : normalizeBirthdayOrNull(birthday ?? this.birthday),
@@ -226,6 +233,12 @@ class AppUser {
   }
 }
 
+// Shared by every model that carries a display name. camelCase/snake_case
+// both come from Supabase (the client library returns snake_case columns
+// as-is), `nickname` is what the field used to be called before a schema
+// rename, and the email-local-part/"Glass Trail User" fallbacks make sure
+// a row with none of these still has something sane to render instead of
+// null propagating into the UI.
 String _displayNameFromJson(Map<String, dynamic> json) {
   final displayName =
       (json['displayName'] as String?) ?? (json['display_name'] as String?);
@@ -393,6 +406,10 @@ class PublicFriendProfile {
   }
 }
 
+// Public friend-profile previews are served through a Supabase Edge
+// Function (so they can be viewed without auth), but the URLs returned by
+// different callers aren't consistently shaped, so this normalizes them
+// to the canonical `/functions/v1/...` form and forces https.
 String? _normalizePublicProfileImageUrl(String? value) {
   final trimmed = value?.trim();
   if (trimmed == null || trimmed.isEmpty) {
@@ -485,6 +502,9 @@ class AppNotificationTypes {
 class AppNotificationImageUrls {
   const AppNotificationImageUrls._();
 
+  // Push notification payloads (FCM) need a publicly reachable absolute
+  // URL for any image — they can't reference bundled app assets — so these
+  // are served from the marketing site rather than shipped in the app.
   static const baseUrl = 'https://glasstrail.vercel.app/notification-assets';
   static const requestAccepted = '$baseUrl/request_accepted.png';
   static const cheers = '$baseUrl/cheers.png';
@@ -1594,6 +1614,10 @@ List<DrinkDefinition> buildDefaultDrinkCatalog() {
           name: item.$3,
           localizedNameDe: item.$4,
           volumeMl: item.$5,
+          // Everything in the nonAlcoholic category is implicitly
+          // alcohol-free, plus the one explicit exception: non-alcoholic
+          // beer, which stays filed under the "beer" category (so it counts
+          // toward beer stats) but still needs the alcohol-free marker/flag.
           isAlcoholFree:
               item.$2 == DrinkCategory.nonAlcoholic ||
               item.$1 == 'beer-non-alcoholic',

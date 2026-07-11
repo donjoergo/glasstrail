@@ -16,6 +16,8 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final allEntries = controller.entries;
+    // Avoid an unnecessary filter/copy when no category is selected so the
+    // "all entries" list view keeps referencing the controller's own list.
     final entries = _selectedCategory == null
         ? allEntries
         : allEntries
@@ -47,6 +49,10 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
               child: Wrap(
                 spacing: 10,
                 runSpacing: 10,
+                // Hide chips for categories with zero entries, but always keep
+                // the currently selected chip visible even if its count is
+                // now zero (e.g. the last entry in that category was deleted),
+                // so the user isn't left with a filter they can't see or clear.
                 children: DrinkCategory.values
                     .where(
                       (category) =>
@@ -317,11 +323,16 @@ class _StatisticsGalleryTileState extends State<_StatisticsGalleryTile> {
   @override
   void didUpdateWidget(covariant _StatisticsGalleryTile oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Only re-resolve when the image path actually changed; the grid
+    // recycles/rebuilds tiles frequently and re-resolving on every rebuild
+    // would re-decode images and cause visible flicker.
     if (oldWidget.imagePath != widget.imagePath) {
       _updateImageFuture();
     }
   }
 
+  // The future is cached in state (not created inline in build) so
+  // FutureBuilder doesn't restart image resolution on every rebuild.
   void _updateImageFuture() {
     _imageFuture = AppMediaResolver.resolveImageProvider(widget.imagePath);
   }

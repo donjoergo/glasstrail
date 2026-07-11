@@ -20,6 +20,9 @@ import '../l10n_extensions.dart';
 import '../models.dart';
 import '../widgets/app_media.dart';
 
+// Multiple settings controls share one `isBusy`/updateSettings action, so we
+// track which specific control triggered the pending request — otherwise
+// every segmented control on the page would show a loading spinner at once.
 enum _ProfilePendingSetting {
   theme,
   language,
@@ -53,6 +56,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<String?> _loadAppVersion() async {
+    // The version label is cosmetic (shown in the About section); if the
+    // plugin fails on some platform, fall back to no version rather than
+    // surfacing an error for something this minor.
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final version = packageInfo.version.trim();
@@ -95,6 +101,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!success) {
       return;
     }
+    // Only the language setting needs to be persisted to locale memory
+    // separately (it's read before the controller/settings are available,
+    // e.g. to pick the locale for the very first frame on next launch).
     if (pendingSetting == _ProfilePendingSetting.language) {
       await localeMemory.rememberLocale(settings.localeCode);
       if (!mounted) {
@@ -194,6 +203,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               key: const Key('friend-profile-copy-link-button'),
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: link));
+                // Use the dialog builder's own `context`, not the screen
+                // State's `mounted` — this callback's context belongs to
+                // the dialog subtree, which can outlive/be disposed
+                // independently of the underlying ProfileScreen.
                 if (!context.mounted) {
                   return;
                 }
@@ -207,6 +220,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             FilledButton.icon(
               key: const Key('friend-profile-share-link-button'),
               onPressed: () async {
+                // share_plus can throw on some platforms/configurations
+                // (e.g. no share targets available); treat that as a
+                // generic failure rather than letting it propagate.
                 try {
                   await SharePlus.instance.share(
                     ShareParams(
@@ -275,6 +291,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _removeFriend(FriendConnection connection) async {
+    // Unfriending is destructive and irreversible from the UI, so require
+    // explicit confirmation; `shouldRemove != true` also treats a dismissed
+    // dialog (null) the same as an explicit cancel.
     final shouldRemove = await _confirmRemoveFriend(connection);
     if (!mounted || shouldRemove != true) {
       return;
@@ -331,6 +350,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // Keep the user in-app on mobile via an in-app browser tab; desktop/web
+  // have no equivalent, so open the system browser instead.
   LaunchMode get _changelogLaunchMode {
     return switch (defaultTargetPlatform) {
       TargetPlatform.android ||
@@ -342,6 +363,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _openGitHubRepository() async {
     final l10n = AppLocalizations.of(context);
 
+    // launchUrl can either return false or throw depending on platform/URL
+    // scheme support, so both paths fall through to the same error message
+    // unless the launch actually succeeded.
     try {
       final launched = await launchUrl(
         _gitHubRepositoryUri,
@@ -928,6 +952,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final friends = controller.friends;
     final incomingRequests = controller.incomingFriendRequests;
     final outgoingRequests = controller.outgoingFriendRequests;
+    // The empty state should only show when there's truly nothing to show —
+    // pending requests (incoming or outgoing) count as "having connections"
+    // even before either side has an accepted friendship.
     final hasConnections =
         friends.isNotEmpty ||
         incomingRequests.isNotEmpty ||

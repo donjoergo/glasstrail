@@ -1,6 +1,11 @@
 import 'cache_manifest.dart';
 import 'cache_policy.dart';
 
+// These read/refresh outcomes are purely diagnostic (surfaced in a
+// debug/settings screen and used by AppController to decide which domains
+// need revalidating) — not part of the cache's actual read/write logic —
+// so engineers and support can tell whether a screen's data came from a
+// live fetch or an aging cache without reproducing the issue live.
 enum CacheReadSource { unknown, remote, freshCache, staleCache }
 
 enum CacheRefreshResult {

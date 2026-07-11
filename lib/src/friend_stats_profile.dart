@@ -41,6 +41,9 @@ class FriendStatsProfile {
   }
 
   factory FriendStatsProfile.fromJson(Map<String, dynamic> json) {
+    // Both camelCase (local cache / older payloads) and snake_case
+    // (Supabase's default column naming) keys are accepted since this
+    // model is deserialized from both sources.
     return FriendStatsProfile(
       id: json['id'] as String,
       displayName:
@@ -50,6 +53,8 @@ class FriendStatsProfile {
       profileImagePath:
           (json['profileImagePath'] as String?) ??
           (json['profile_image_path'] as String?),
+      // Defaults to true so friends made before this preference existed
+      // keep sharing stats rather than silently losing visibility.
       shareStatsWithFriends:
           (json['shareStatsWithFriends'] as bool?) ??
           (json['share_stats_with_friends'] as bool?) ??

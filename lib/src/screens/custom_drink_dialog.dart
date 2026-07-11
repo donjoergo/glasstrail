@@ -43,6 +43,10 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Formatting the volume depends on the user's unit setting, which lives
+    // on an InheritedWidget only reachable via context — so this can't be
+    // done in initState. Guard with a flag so it only runs once, not on
+    // every dependency change (e.g. locale/theme updates).
     if (_didHydrateInitialVolume) {
       return;
     }
@@ -93,6 +97,9 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                 ? null
                 : controller.settings.unit.convertToMl(volume))
           : widget.initialDrink?.volumeMl,
+      // "Alcohol-free" only makes sense for beer; re-guard here even though
+      // the category dropdown already clears the flag, in case _isAlcoholFree
+      // is stale from before the widget rebuilt after a category switch.
       isAlcoholFree: _category == DrinkCategory.beer && _isAlcoholFree,
       imagePath: _imagePath,
     );
@@ -126,6 +133,10 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
     Navigator.of(context).pop();
   }
 
+  // Measures how wide a TextButton with this label would render (including
+  // its internal padding) so the action row layout can decide, before
+  // building it, whether cancel/save/delete fit on one line or need to wrap.
+  // This has to account for locale — translated labels vary a lot in length.
   double _estimatedTextButtonWidth(BuildContext context, String label) {
     final painter = TextPainter(
       text: TextSpan(
@@ -135,6 +146,8 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
     )..layout();
+    // +48 approximates TextButton's default horizontal padding/tap target;
+    // 72 is Material's minimum comfortable tap-target width for a short label.
     final estimatedWidth = painter.width + 48;
     return estimatedWidth < 72 ? 72 : estimatedWidth;
   }
@@ -391,6 +404,9 @@ class _DeleteCustomDrinkDialogState extends State<_DeleteCustomDrinkDialog> {
     final controller = AppScope.controllerOf(context);
     final success = await controller.deleteCustomDrink(widget.drink);
     final message = controller.takeFlashMessage(l10n);
+    // Show the snackbar on the screen behind this dialog (parentContext),
+    // not this dialog's own context, since this dialog is about to pop and
+    // its ScaffoldMessenger wouldn't outlive the message.
     if (message != null && widget.parentContext.mounted) {
       ScaffoldMessenger.of(
         widget.parentContext,

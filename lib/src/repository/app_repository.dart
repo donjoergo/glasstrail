@@ -1,10 +1,16 @@
 import '../friend_stats_profile.dart';
 import '../models.dart';
 
+// Single seam between UI/state layers and data access. Keeping this as an
+// interface lets the app swap Supabase, local-only, and cached
+// implementations (see repository_factory.dart) without touching callers,
+// and lets tests substitute a fake without spinning up a backend.
 abstract class AppRepository {
   String get backendLabel;
   bool get usesRemoteBackend;
 
+  // forceRefresh lets callers (e.g. pull-to-refresh, cache misses) bypass any
+  // local caching in a decorator implementation and hit the source of truth.
   Future<AppUser?> restoreSession({bool forceRefresh = false});
 
   Future<AppUser> signUp({
@@ -41,6 +47,9 @@ abstract class AppRepository {
     required String friendUserId,
   });
 
+  // Unauthenticated variant: used for link previews (e.g. og:image / share
+  // sheets) before the viewer is signed in, so it must not require a session
+  // and must not leak more than the public profile fields.
   Future<PublicFriendProfile> resolvePublicFriendProfileLink(String shareCode);
 
   Future<FriendProfile> resolveFriendProfileLink(String shareCode);
@@ -80,6 +89,8 @@ abstract class AppRepository {
     required List<String> notificationIds,
   });
 
+  // Separate from loadNotifications because notifications need push-style
+  // updates (e.g. realtime) rather than being refetched on a timer/poll.
   Stream<List<AppNotification>> watchNotifications(String userId);
 
   Future<void> registerNotificationDeviceToken({
@@ -120,6 +131,9 @@ abstract class AppRepository {
     bool forceRefresh = false,
   });
 
+  // Cursor-based (not offset) pagination so that new posts inserted ahead of
+  // the cursor while paging don't shift already-fetched pages or duplicate
+  // entries.
   Future<FeedDrinkPostPage> loadFeedDrinkPosts({
     required String userId,
     FeedDrinkPostCursor? cursor,

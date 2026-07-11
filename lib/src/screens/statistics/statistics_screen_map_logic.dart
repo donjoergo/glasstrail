@@ -29,19 +29,32 @@ const String _statisticsMapLowZoomMarkerHitLayerId =
     'statistics-map-low-zoom-marker-hit-layer';
 const String _statisticsMapDetailMarkerHitLayerId =
     'statistics-map-detail-marker-hit-layer';
+// Small enough that fanned-out markers still read as "the same place" at
+// street level, but large enough that two pins never fully overlap and
+// become untappable.
 const double _statisticsMapFanOutDistanceMeters = 9;
 const double _statisticsMapClusterRadius = 52;
+// Below this zoom MapLibre's built-in clustering takes over; above it we
+// switch to the (unclustered) detail source so individual entries at the
+// same real-world spot can still be told apart and tapped.
 const double _statisticsMapClusterMaxZoom = 12;
 const double _statisticsMapDetailMarkerMinZoom = 12;
 const double _statisticsMapSingleMarkerZoom = 15.5;
 const double _statisticsMapTapResolveZoomStep = 2;
 const double _statisticsMapTapResolveMaxZoom = 18.5;
+// Screen-space radius (in logical pixels) used to decide whether a tap
+// landed on more than one marker at once; smaller than the hit target so
+// near-misses still resolve to a single marker.
 const double _statisticsMapMarkerOverlapRadius = 28;
 const double _statisticsMapLonelyMarkerRadius = 52;
 const double _statisticsMapBoundsPadding = 48;
+// Hit target is larger than the visible pin so touch input stays reliable
+// on small screens without making the marker itself look oversized.
 const double _statisticsMapMarkerHitSize = 56;
 const double _statisticsMapMarkerVisualSize = 44;
 const double _statisticsMapFallbackPadding = 56;
+// Nudges the cluster count label up slightly so it sits visually centered
+// inside the circle marker instead of the glyph's natural baseline center.
 const double _statisticsMapClusterCountTextOffsetY = -0.08;
 const double _statisticsMapNativeMarkerSpriteSize =
     _statisticsMapMarkerVisualSize + 8;
@@ -84,6 +97,9 @@ class _StatisticsMapCoordinateGroup {
   final List<DrinkEntry> entries;
 }
 
+// Defends against malformed/legacy stored coordinates (e.g. from a bad
+// import or manual DB edit) that would otherwise crash MapLibre or place a
+// marker off the map entirely.
 bool _statisticsEntryHasCoordinates(DrinkEntry entry) {
   final latitude = entry.locationLatitude;
   final longitude = entry.locationLongitude;
@@ -96,6 +112,9 @@ bool _statisticsEntryHasCoordinates(DrinkEntry entry) {
       longitude <= 180;
 }
 
+// Rounding to ~11m precision groups entries that are effectively "the same
+// venue" despite tiny GPS jitter between visits, so they get fanned out as
+// one cluster instead of showing as separate overlapping pins.
 double _roundStatisticsCoordinate(double value) {
   return double.parse(value.toStringAsFixed(4));
 }
@@ -105,6 +124,9 @@ String _statisticsMapCoordinateGroupKey(double latitude, double longitude) {
       '${_roundStatisticsCoordinate(longitude).toStringAsFixed(4)}';
 }
 
+// Feeds the clustered GeoJSON source: keeps exact (unrounded, un-fanned-out)
+// coordinates so MapLibre's own clustering groups markers purely by real
+// screen-space proximity at the current zoom.
 List<_StatisticsMapMarkerData> _statisticsMapRawMarkersForEntries(
   List<DrinkEntry> entries,
 ) {
@@ -122,6 +144,10 @@ List<_StatisticsMapMarkerData> _statisticsMapRawMarkersForEntries(
       .toList(growable: false);
 }
 
+// Feeds the detail source (used once zoomed past the clustering threshold):
+// entries sharing the same rounded coordinate are spread out in a small
+// circle so multiple visits to one venue each get their own tappable pin
+// instead of stacking into a single indistinguishable marker.
 List<_StatisticsMapMarkerData> _statisticsMapMarkersForEntries(
   List<DrinkEntry> entries,
 ) {
@@ -166,6 +192,9 @@ List<_StatisticsMapMarkerData> _statisticsMapMarkersForEntries(
       continue;
     }
 
+    // Distribute entries evenly around the shared center rather than
+    // stacking them, so every marker in the group is separately visible
+    // and tappable.
     final bearingStep = 360 / group.entries.length;
     for (var index = 0; index < group.entries.length; index++) {
       markers.add(
@@ -221,12 +250,19 @@ StatisticsMapTapResolution resolveStatisticsMapMarkerTap({
     tappedIndex: tappedIndex,
     overlapRadius: overlapRadius,
   );
+  // If several fanned-out markers still overlap on screen and we haven't
+  // hit the max useful zoom yet, zoom in instead of guessing which entry
+  // the user meant to tap — once zoomed further the fan-out spreads them
+  // apart enough for a precise tap.
   if (overlappingIndexes.length > 1 && currentZoom < zoomResolutionMaxZoom) {
     return StatisticsMapTapResolution.zoomIn;
   }
   return StatisticsMapTapResolution.openSheet;
 }
 
+// Used by the non-MapLibre fallback surface, which has no native clustering
+// engine: groups markers by transitive screen-space proximity (flood fill)
+// so nearby pins can be treated as one cluster there too.
 @visibleForTesting
 List<List<int>> statisticsMapClusterGroups({
   required List<Offset> offsets,
@@ -281,6 +317,9 @@ List<int> statisticsMapStandaloneMarkerIndexes({
       .toList(growable: false);
 }
 
+// Bounds are meaningless (and MapLibre rejects a zero-size bounding box) for
+// zero or one marker; callers handle those cases separately by centering
+// the camera on the single marker instead.
 maplibre.LatLngBounds? _statisticsMapBounds(
   List<_StatisticsMapMarkerData> markers,
 ) {
@@ -306,10 +345,16 @@ maplibre.LatLngBounds? _statisticsMapBounds(
   );
 }
 
+// Used as part of a widget ValueKey so the MapLibreMap widget (and its
+// underlying platform view) is recreated whenever the marker set actually
+// changes, rather than trying to diff/patch an existing native map instance.
 String _statisticsMapSignature(List<_StatisticsMapMarkerData> markers) {
   return markers.map((marker) => marker.signature).join('|');
 }
 
+// FNV-1a hash: not for security, just a short, deterministic-across-runs
+// fingerprint for building stable MapLibre sprite image ids (Dart's built-in
+// hashCode is explicitly not guaranteed stable between runs/isolates).
 String _statisticsMapStableHash(String value) {
   var hash = 0x811c9dc5;
   for (final codeUnit in value.codeUnits) {
@@ -319,6 +364,10 @@ String _statisticsMapStableHash(String value) {
   return hash.toRadixString(16).padLeft(8, '0');
 }
 
+// Captures everything that affects how a marker sprite is drawn (theme
+// colors, icon, scale). Comparing/hashing this lets us detect when sprites
+// must be regenerated and re-uploaded to MapLibre — e.g. after a light/dark
+// theme change — instead of reusing stale cached images.
 String _statisticsMapMarkerAssetSignature(
   Map<DrinkCategory, Color> colors, {
   double spriteScale = 1,
@@ -340,6 +389,10 @@ String _statisticsMapMarkerAssetSignature(
       .join('|');
 }
 
+// The signature hash is baked into the sprite id itself so that when the
+// asset signature changes, features referencing the old id keep rendering
+// the old (still-valid) image until the style is reconfigured, and MapLibre
+// never conflates two visually different sprites under one id.
 String _statisticsMapMarkerSpriteId(
   DrinkCategory category,
   String markerAssetSignature,
@@ -413,6 +466,8 @@ Map<String, Object> statisticsMapDetailSourceGeoJsonForEntries({
   );
 }
 
+// MapLibre style layer properties are JSON/JS style expressions, not Flutter
+// Color objects, so colors have to be serialized as CSS hex strings.
 String _statisticsMapHexColor(Color color) {
   String component(int value) => value.toRadixString(16).padLeft(2, '0');
   int channel(double value) => (value * 255).round().clamp(0, 255);
@@ -433,6 +488,9 @@ maplibre.SymbolLayerProperties _statisticsMapMarkerLayerProperties({
   );
 }
 
+// A fully transparent circle layer, larger than the visible pin icon, drawn
+// purely so taps/hover have a generous, reliable hit target — the icon
+// glyph itself is too small/irregularly shaped to hit-test well on touch.
 maplibre.CircleLayerProperties _statisticsMapMarkerHitLayerProperties() {
   return const maplibre.CircleLayerProperties(
     circleRadius: _statisticsMapMarkerHitSize / 2,
@@ -454,6 +512,10 @@ maplibre.SymbolLayerProperties _statisticsMapMarkerHoverLayerProperties({
   );
 }
 
+// MapLibre filters need a concrete value to compare against; when nothing is
+// hovered we compare 'entryId' against a sentinel that can never match a
+// real entry id, which effectively hides the hover layer without needing a
+// separate "layer visible" toggle.
 Object _statisticsMapEntryIdFilter(String? entryId) {
   return <Object>[
     '==',
@@ -514,6 +576,10 @@ Future<void> _configureStatisticsMapMarkerImages(
   }
 }
 
+// MapLibre's symbol layers need raster images, not Flutter widgets, so the
+// pin (with its category icon punched into the center) is rasterized once
+// per category/theme via Canvas and uploaded as a sprite rather than drawn
+// as an overlay widget per marker (which wouldn't scale to many entries).
 Future<Uint8List> _statisticsMapMarkerSpriteBytes({
   required DrinkCategory category,
   required Color backgroundColor,
@@ -601,6 +667,10 @@ maplibre.CameraPosition _statisticsMapInitialCameraPosition(
     );
   }
 
+  // A coarse, cheap-to-compute starting point (world-ish zoom centered on
+  // the bounds midpoint) so the map has something reasonable to render
+  // immediately; _fitStatisticsMapCamera later animates to a tight fit
+  // once the style has actually loaded.
   final bounds = _statisticsMapBounds(markers)!;
   return maplibre.CameraPosition(
     target: maplibre.LatLng(
@@ -641,6 +711,11 @@ Future<void> _fitStatisticsMapCamera(
   );
 }
 
+// Used when MapLibre isn't available on the platform (see
+// runtime_platform.isMapLibrePlatformSupported): projects markers onto the
+// fallback surface by simple linear normalization within their own bounds
+// rather than a real map projection, since there's no actual basemap to
+// align coordinates against — only relative positions matter here.
 Offset _statisticsMapFallbackOffsetForMarker({
   required _StatisticsMapMarkerData marker,
   required List<_StatisticsMapMarkerData> markers,
@@ -659,6 +734,9 @@ Offset _statisticsMapFallbackOffsetForMarker({
     size.height - (_statisticsMapFallbackPadding * 2),
     _statisticsMapMarkerHitSize,
   );
+  // Floor the span so a group of markers that share (almost) the same
+  // longitude/latitude doesn't divide by ~zero and blow up the normalized
+  // position.
   final longitudeSpan = math.max(
     bounds.northeast.longitude - bounds.southwest.longitude,
     0.0001,
@@ -669,6 +747,8 @@ Offset _statisticsMapFallbackOffsetForMarker({
   );
   final normalizedX =
       (marker.position.longitude - bounds.southwest.longitude) / longitudeSpan;
+  // Latitude increases northward but screen Y increases downward, so the
+  // vertical axis has to be flipped relative to the horizontal one.
   final normalizedY =
       (bounds.northeast.latitude - marker.position.latitude) / latitudeSpan;
 

@@ -43,6 +43,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _hydrate(AppUser user) {
+    // build() runs every time the controller notifies listeners, but we only
+    // want to (re)seed the form fields once per user — otherwise in-progress
+    // edits would be wiped out by every unrelated controller update.
     if (_hydratedUserId == user.id) {
       return;
     }
@@ -92,6 +95,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       displayName: _displayNameController.text,
       birthday: _birthday,
       profileImagePath: _profileImagePath,
+      // Sending null alone would be ambiguous to the backend ("no change"
+      // vs "remove it"), so pass an explicit clear flag whenever the local
+      // value is null — covers both "never set" and "user tapped remove".
       clearBirthday: _birthday == null,
       clearProfileImage: _profileImagePath == null,
     );
@@ -148,6 +154,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final controller = AppScope.controllerOf(context);
     final user = controller.currentUser;
     if (user == null) {
+      // The user can become null mid-session (e.g. session expiry, or the
+      // account-deletion dialog logging them out). Navigating during build
+      // isn't safe, so defer to a post-frame callback, and guard with a flag
+      // so a second build before the callback fires doesn't schedule it twice.
       if (!_authRedirectScheduled) {
         _authRedirectScheduled = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -600,6 +610,9 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   Future<void> _submit() async {
     final l10n = AppLocalizations.of(context);
     final phrase = l10n.deleteAccountVerificationPhrase;
+    // Re-check here even though the submit button is already disabled unless
+    // canDelete is true — the button's onPressed is wired at build time and
+    // this guards against acting on a stale/disabled-in-appearance-only state.
     if (_confirmationController.text.trim() != phrase) {
       return;
     }
@@ -619,9 +632,16 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
       }
       return;
     }
+    // Capture the navigator/messenger before the next await: account
+    // deletion tears down auth state, which can trigger the parent screen's
+    // own redirect-to-auth logic concurrently, so `context` may no longer
+    // resolve these safely afterwards even though this dialog is still mounted.
     final routeMemory = AppScope.routeMemoryOf(context);
     final navigator = Navigator.of(context, rootNavigator: true);
     final messenger = ScaffoldMessenger.of(context);
+    // Mark logged-out before navigating so the destination auth screen (and
+    // any route-memory-based redirect logic) doesn't think there's still a
+    // pending post-auth route to bounce back to.
     await routeMemory.markLoggedOut();
     if (!mounted) {
       return;
@@ -654,6 +674,9 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             key: const Key('delete-account-confirmation-field'),
             controller: _confirmationController,
             enabled: !isBusy,
+            // Re-evaluate canDelete on every keystroke so the destructive
+            // button only becomes enabled once the exact phrase is typed —
+            // a deliberate friction point for an irreversible action.
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               labelText: l10n.deleteAccountVerificationLabel(

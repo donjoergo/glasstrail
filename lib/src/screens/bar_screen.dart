@@ -26,9 +26,15 @@ class BarScreen extends StatefulWidget {
 class _BarScreenState extends State<BarScreen>
     with SingleTickerProviderStateMixin {
   static const _tabCount = 2;
+  // TabController.offset is a double that rarely lands exactly on 0 even
+  // when the swipe animation has visually settled; treat "close enough" as
+  // settled so route updates aren't skipped due to float imprecision.
   static const _settledTabOffsetEpsilon = 0.0001;
 
   late final TabController _tabController;
+  // The tab index and the route name are two sources of truth kept in sync.
+  // This flag prevents the route->controller sync from re-triggering the
+  // controller->route listener and causing an infinite feedback loop.
   bool _isUpdatingControllerFromRoute = false;
 
   @override
@@ -48,6 +54,8 @@ class _BarScreenState extends State<BarScreen>
     if (_tabController.index == targetIndex) {
       return;
     }
+    // Setting index fires the listener synchronously, so wrap it with the
+    // guard flag to stop that from bouncing back into onRouteSelected.
     _isUpdatingControllerFromRoute = true;
     _tabController.index = targetIndex;
     _isUpdatingControllerFromRoute = false;
@@ -61,6 +69,9 @@ class _BarScreenState extends State<BarScreen>
   }
 
   void _handleTabControllerChange() {
+    // Ignore changes we ourselves triggered from a route update, and ignore
+    // in-progress swipe animations (indexIsChanging / non-zero offset) so we
+    // only push a route update once the tab has actually settled.
     if (_isUpdatingControllerFromRoute ||
         !mounted ||
         _tabController.indexIsChanging ||
@@ -100,6 +111,9 @@ class _BarScreenState extends State<BarScreen>
     if (!mounted) {
       return;
     }
+    // Prefer a specific flash message set by the controller (e.g. a
+    // validation reason); only fall back to a generic error when the action
+    // failed silently without one.
     final message = controller.takeFlashMessage(l10n);
     if (message != null) {
       _showMessage(message);
@@ -450,6 +464,10 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
                 buildDefaultDragHandles: false,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: sortableDrinks.length,
+                // This widget is stateless and driven entirely by
+                // `sortableDrinks`, so on a drag we compute the resulting
+                // order locally and hand the *whole* ordered id list up to
+                // the controller rather than tracking an index delta.
                 onReorderItem: enabled
                     ? (oldIndex, newIndex) {
                         final reordered = sortableDrinks.toList(growable: true);

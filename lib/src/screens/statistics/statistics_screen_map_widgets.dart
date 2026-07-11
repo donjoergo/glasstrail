@@ -8,6 +8,9 @@ String? _normalizedStatisticsText(String? value) {
   return normalized;
 }
 
+// Category colors come from the theme and can be light or dark, so the
+// glyph/label color is derived per-marker (rather than fixed) to keep
+// contrast readable regardless of which category color is being drawn on.
 Color _statisticsMapMarkerForegroundColor(Color backgroundColor) {
   final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
   return brightness == Brightness.dark ? Colors.white : Colors.black87;
@@ -28,6 +31,9 @@ Future<void> _showStatisticsMapEntrySheet(
   );
 }
 
+// markerIndexes lets `markers`/`offsets` be a reordered or filtered view
+// while onMarkerTap still reports the index into the caller's original,
+// unfiltered marker list (rather than the position within this widget list).
 List<Widget> _statisticsMapMarkerWidgets({
   required List<_StatisticsMapMarkerData> markers,
   required List<int> markerIndexes,
@@ -106,6 +112,10 @@ List<Widget> _statisticsMapAttributionChildren(ThemeData theme) {
   ];
 }
 
+// Rendered instead of MapLibreMap on platforms where MapLibre isn't
+// supported (see runtime_platform.isMapLibrePlatformSupported), so users on
+// those platforms still get a usable, tappable overview of their entries'
+// relative locations rather than a blank/broken screen.
 class _StatisticsMapFallbackSurface extends StatelessWidget {
   const _StatisticsMapFallbackSurface({
     required this.markers,
@@ -176,6 +186,9 @@ class _StatisticsMapFallbackSurface extends StatelessWidget {
   }
 }
 
+// Purely decorative stand-in "map" (wavy road-like curves plus a couple of
+// soft blobs) so the fallback surface still visually reads as a map-ish
+// backdrop, without depending on any real basemap tiles/imagery.
 class _StatisticsMapFallbackPainter extends CustomPainter {
   const _StatisticsMapFallbackPainter({required this.theme});
 
@@ -233,6 +246,9 @@ class _StatisticsMapFallbackPainter extends CustomPainter {
     );
   }
 
+  // The painted shapes are static/deterministic per size; only the theme's
+  // colors can meaningfully change the output, so repaint only on a color
+  // scheme change instead of every rebuild.
   @override
   bool shouldRepaint(covariant _StatisticsMapFallbackPainter oldDelegate) {
     return oldDelegate.theme.colorScheme != theme.colorScheme;
@@ -258,6 +274,10 @@ class _StatisticsMapAttributionCard extends StatelessWidget {
   }
 }
 
+// Widget equivalent of the pin sprite rasterized for the native MapLibre
+// layers in _statisticsMapMarkerSpriteBytes — kept as a real widget here
+// (rather than reusing the rasterized PNG) because the fallback surface has
+// no MapLibre image registry to upload sprites into.
 class _StatisticsMapMarker extends StatelessWidget {
   const _StatisticsMapMarker({
     required this.entry,

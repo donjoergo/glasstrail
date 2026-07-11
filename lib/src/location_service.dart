@@ -48,6 +48,10 @@ class PlatformLocationService extends LocationService {
       }
 
       var permission = await Geolocator.checkPermission();
+      // Only prompt when the permission is a plain "denied" — requesting
+      // again when it's already "deniedForever" would just re-trigger the
+      // OS dialog needlessly (it won't ask twice on some platforms) instead
+      // of directing the user to app settings.
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
@@ -58,6 +62,9 @@ class PlatformLocationService extends LocationService {
       }
 
       final accuracyStatus = await _readLocationAccuracy();
+      // High accuracy is requested explicitly because "approximate" location
+      // (iOS 14+ / Android precise-location toggle) yields addresses that
+      // are too imprecise for reverse geocoding to a street-level result.
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -76,6 +83,12 @@ class PlatformLocationService extends LocationService {
           ),
         ),
       );
+      // geolocator/geocoding can throw any of these depending on platform
+      // (desktop/web without location support, missing native
+      // implementation, OS-level permission/service errors) — logging a
+      // drink should never fail just because location couldn't be
+      // captured, so every failure mode degrades to "no location" instead
+      // of propagating.
     } on LocationServiceDisabledException {
       return const LocationFetchResult();
     } on PermissionDeniedException {
@@ -120,6 +133,9 @@ class PlatformLocationService extends LocationService {
     required String localeCode,
   }) async {
     try {
+      // The geocoding plugin needs a full locale identifier (e.g. "de_DE"),
+      // not just the app's short language code, to return
+      // localized/correctly formatted placemark fields.
       await setLocaleIdentifier(_localeIdentifier(localeCode));
     } on MissingPluginException {
       return null;
@@ -154,6 +170,11 @@ class PlatformLocationService extends LocationService {
   }
 
   String? _formatPlacemark(Placemark placemark) {
+    // Different platforms/regions populate different placemark fields for
+    // the "street" concept (thoroughfare is the standard field, but it's
+    // often empty on some platforms where `street` or even the generic
+    // `name` is what's actually filled in), so each is tried in order of
+    // reliability.
     final streetName = _firstNonEmpty(<String?>[
       placemark.thoroughfare,
       placemark.street,
