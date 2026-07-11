@@ -270,35 +270,45 @@ class _StatisticsMapFilterBar extends StatelessWidget {
     return Material(
       key: const Key('statistics-map-filter-bar'),
       color: theme.colorScheme.surface.withValues(alpha: 0.92),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(28),
       elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: <Widget>[
-            FilterChip(
-              key: const Key('statistics-map-filter-cluster'),
-              selected: clusterEnabled,
-              showCheckmark: false,
-              side: _selectableChipBorder(theme, clusterEnabled),
-              labelStyle: _selectableChipLabelStyle(theme, clusterEnabled),
-              avatar: const Icon(Icons.blur_on_rounded, size: 18),
-              label: Text(l10n.statisticsMapClusterFilterLabel),
-              onSelected: onClusterEnabledChanged,
-            ),
-            FilterChip(
-              key: const Key('statistics-map-filter-photo-only'),
-              selected: photoOnly,
-              showCheckmark: false,
-              side: _selectableChipBorder(theme, photoOnly),
-              labelStyle: _selectableChipLabelStyle(theme, photoOnly),
-              avatar: const Icon(Icons.photo_camera_rounded, size: 18),
-              label: Text(l10n.statisticsMapPhotoFilterLabel),
-              onSelected: onPhotoOnlyChanged,
-            ),
-          ],
+      // PointerInterceptor keeps hover/click events on the filter bar
+      // instead of the MapLibre platform view underneath, so the browser
+      // cursor and taps behave correctly over it.
+      child: PointerInterceptor(
+        child: Padding(
+          // Chips already carry 10/8 horizontal/vertical padding from the
+          // chip theme; add 6/8 here so the edge-to-chip gap is 16 on
+          // every side instead of 18 horizontal vs. 14 vertical.
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              FilterChip(
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                key: const Key('statistics-map-filter-cluster'),
+                selected: clusterEnabled,
+                showCheckmark: false,
+                side: _selectableChipBorder(theme, clusterEnabled),
+                labelStyle: _selectableChipLabelStyle(theme, clusterEnabled),
+                avatar: const Icon(Icons.blur_on_rounded, size: 18),
+                label: Text(l10n.statisticsMapClusterFilterLabel),
+                onSelected: onClusterEnabledChanged,
+              ),
+              FilterChip(
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                key: const Key('statistics-map-filter-photo-only'),
+                selected: photoOnly,
+                showCheckmark: false,
+                side: _selectableChipBorder(theme, photoOnly),
+                labelStyle: _selectableChipLabelStyle(theme, photoOnly),
+                avatar: const Icon(Icons.photo_camera_rounded, size: 18),
+                label: Text(l10n.statisticsMapPhotoFilterLabel),
+                onSelected: onPhotoOnlyChanged,
+              ),
+            ],
+          ),
         ),
       ),
     );

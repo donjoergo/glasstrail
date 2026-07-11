@@ -1028,6 +1028,9 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       spriteScale: _nativeMarkerSpriteScale,
     );
     final useMapLibre = runtime_platform.isMapLibrePlatformSupported;
+    final isLeftHanded =
+        AppScope.controllerOf(context).settings.handedness ==
+        AppHandedness.left;
 
     final content = Stack(
       children: <Widget>[
@@ -1081,7 +1084,9 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         if (useMapLibre)
           Positioned(
             left: 12,
-            bottom: 12,
+            bottom: isLeftHanded
+                ? 96 // Clear the floating action button on the leading side.
+                : 12,
             child: _StatisticsMapLocateButton(
               isLoading: _isLocatingSelf,
               onPressed: _handleLocateMePressed,
@@ -1091,9 +1096,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
           PositionedDirectional(
             top: 16,
             end: 16,
-            bottom:
-                AppScope.controllerOf(context).settings.handedness ==
-                    AppHandedness.left
+            bottom: isLeftHanded
                 ? 16
                 : 96, // Clear the floating action button on the trailing side.
             width: AppBreakpoints.mapPanelWidth,
