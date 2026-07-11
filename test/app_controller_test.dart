@@ -363,7 +363,7 @@ void main() {
       (candidate) => candidate.entry.id == entry.id,
     );
 
-    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    final toggleFuture = controller.cheerFeedEntry(post);
     await repository.setCheersStarted.future;
     await Future<void>.delayed(Duration.zero);
 
@@ -421,7 +421,7 @@ void main() {
       (candidate) => candidate.entry.id == entry.id,
     );
 
-    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    final toggleFuture = controller.cheerFeedEntry(post);
     await repository.setCheersStarted.future;
     await Future<void>.delayed(Duration.zero);
 
@@ -486,10 +486,9 @@ void main() {
       0,
     );
 
-    await repository.setFeedEntryCheers(
+    await repository.addFeedEntryCheer(
       userId: friend.id,
       entryId: entry.id,
-      shouldCheer: true,
     );
     await Future<void>.delayed(Duration.zero);
 
@@ -1898,10 +1897,9 @@ class _BlockingCheersLocalAppRepository extends LocalAppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) async {
     if (!setCheersStarted.isCompleted) {
       setCheersStarted.complete();
@@ -1910,10 +1908,9 @@ class _BlockingCheersLocalAppRepository extends LocalAppRepository {
     if (failSetCheers) {
       throw const AppException('Cheers failed.');
     }
-    return super.setFeedEntryCheers(
+    return super.addFeedEntryCheer(
       userId: userId,
       entryId: entryId,
-      shouldCheer: shouldCheer,
     );
   }
 }
@@ -2313,10 +2310,9 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) {
     throw UnimplementedError();
   }

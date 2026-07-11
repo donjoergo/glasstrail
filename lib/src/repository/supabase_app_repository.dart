@@ -783,17 +783,15 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) async {
     try {
       final rows = await _client.rpc(
         'set_feed_entry_cheers',
         params: <String, dynamic>{
           'target_entry_id': entryId,
-          'should_cheer': shouldCheer,
         },
       );
       final decoded = (rows as List<dynamic>)

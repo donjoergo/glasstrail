@@ -6,6 +6,8 @@ const _notificationMigrationPath =
     'supabase/migrations/202604280001_add_friend_notifications.sql';
 const _feedCheersMigrationPath =
     'supabase/migrations/202605060001_add_feed_entry_cheers.sql';
+const _oneWayCheersMigrationPath =
+    'supabase/migrations/202607110001_make_feed_entry_cheers_one_way.sql';
 const _supersededNotificationMigrationPaths = <String>[
   'supabase/migrations/202604250001_add_friend_notifications.sql',
   'supabase/migrations/202604260001_generalize_notifications.sql',
@@ -263,25 +265,26 @@ void main() {
     expect(migration, contains("'friend_removed'"));
   });
   test('adds the cheers table and cheers rpc in a new migration', () {
-    final migration = File(_feedCheersMigrationPath).readAsStringSync();
+    final cheersMigration = File(_feedCheersMigrationPath).readAsStringSync();
+    final oneWayMigration = File(_oneWayCheersMigrationPath).readAsStringSync();
 
     expect(
-      migration,
+      cheersMigration,
       contains('create table if not exists public.drink_entry_cheers'),
     );
-    expect(migration, contains('primary key (entry_id, user_id)'));
+    expect(cheersMigration, contains('primary key (entry_id, user_id)'));
     expect(
-      migration,
+      cheersMigration,
       contains('references public.drink_entries(id) on delete cascade'),
     );
     expect(
-      migration,
+      oneWayMigration,
       contains('create or replace function public.set_feed_entry_cheers'),
     );
     expect(
-      migration,
+      oneWayMigration,
       contains(
-        'grant execute on function public.set_feed_entry_cheers(uuid, boolean) to authenticated',
+        'grant execute on function public.set_feed_entry_cheers(uuid) to authenticated',
       ),
     );
   });
@@ -322,39 +325,36 @@ void main() {
   });
 
   test('validates and cleans up cheers in the cheers migration', () {
-    final migration = File(_feedCheersMigrationPath).readAsStringSync();
+    final cheersMigration = File(_feedCheersMigrationPath).readAsStringSync();
+    final oneWayMigration = File(_oneWayCheersMigrationPath).readAsStringSync();
 
     expect(
-      migration,
+      oneWayMigration,
       contains("raise exception 'The cheers could not be updated.'"),
     );
-    expect(migration, contains('entry_owner_user_id = requesting_user_id'));
-    expect(migration, contains("relationships.status = 'accepted'"));
-    expect(migration, contains("perform public.create_friend_notification("));
-    expect(migration, contains("'friend_drink_cheered'"));
+    expect(oneWayMigration, contains('entry_owner_user_id = requesting_user_id'));
+    expect(oneWayMigration, contains("relationships.status = 'accepted'"));
+    expect(oneWayMigration, contains("perform public.create_friend_notification("));
+    expect(oneWayMigration, contains("'friend_drink_cheered'"));
     expect(
-      migration,
+      cheersMigration,
       contains(
         'create trigger friend_drink_cheered_notifications_cleanup\n'
         'after delete on public.drink_entries',
       ),
     );
     expect(
-      migration,
+      cheersMigration,
       contains(
         'create trigger cleanup_feed_cheers_for_deleted_friendship\n'
         'after delete on public.friend_relationships',
       ),
     );
     expect(
-      migration,
+      cheersMigration,
       contains(
         'delete from public.drink_entry_cheers cheers\n  using public.drink_entries entries',
       ),
-    );
-    expect(
-      migration,
-      contains("metadata ->> 'entryId' = target_entry_id::text"),
     );
   });
 }

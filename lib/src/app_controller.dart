@@ -1531,11 +1531,12 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<bool> toggleFeedEntryCheers(FeedDrinkPost post) async {
+  Future<bool> cheerFeedEntry(FeedDrinkPost post) async {
     final user = _currentUser;
     final entryId = post.entry.id;
     if (user == null ||
         post.isOwnEntry ||
+        post.hasCurrentUserCheered ||
         _pendingFeedEntryCheers.contains(entryId)) {
       return false;
     }
@@ -1546,12 +1547,8 @@ class AppController extends ChangeNotifier {
     }
 
     final optimisticPost = currentPost.copyWith(
-      cheersCount: currentPost.hasCurrentUserCheered
-          ? currentPost.cheersCount > 0
-                ? currentPost.cheersCount - 1
-                : 0
-          : currentPost.cheersCount + 1,
-      hasCurrentUserCheered: !currentPost.hasCurrentUserCheered,
+      cheersCount: currentPost.cheersCount + 1,
+      hasCurrentUserCheered: true,
     );
 
     _pendingFeedEntryCheers.add(entryId);
@@ -1559,10 +1556,9 @@ class AppController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final update = await _repository.setFeedEntryCheers(
+      final update = await _repository.addFeedEntryCheer(
         userId: user.id,
         entryId: entryId,
-        shouldCheer: optimisticPost.hasCurrentUserCheered,
       );
       _replaceFeedPost(
         optimisticPost.copyWith(
