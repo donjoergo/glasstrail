@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Startup and media caching for faster signed-in launches
-- Map toggles for cluster and photo
+- Map toggles for cluster and photo and locate-me button
 - Tap profile photo to view fullscreen
 
 ### Fixed
