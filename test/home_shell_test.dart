@@ -4878,12 +4878,12 @@ void main() {
     expect(_statisticsMapMarker(noPhotoEntry.id), findsNothing);
 
     final clusterChip = find.byKey(const Key('statistics-map-filter-cluster'));
-    expect(tester.widget<FilterChip>(clusterChip).selected, isFalse);
+    expect(tester.widget<FilterChip>(clusterChip).selected, isTrue);
 
     await tester.tap(clusterChip);
     await tester.pumpAndSettle();
 
-    expect(tester.widget<FilterChip>(clusterChip).selected, isTrue);
+    expect(tester.widget<FilterChip>(clusterChip).selected, isFalse);
   });
 
   testWidgets(

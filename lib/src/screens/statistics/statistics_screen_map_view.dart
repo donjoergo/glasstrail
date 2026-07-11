@@ -8,7 +8,7 @@ class _StatisticsMapPage extends StatefulWidget {
 }
 
 class _StatisticsMapPageState extends State<_StatisticsMapPage> {
-  bool _clusterEnabled = false;
+  bool _clusterEnabled = true;
   bool _photoOnly = false;
 
   @override
