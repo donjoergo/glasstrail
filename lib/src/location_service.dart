@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -120,28 +121,27 @@ class PlatformLocationService extends LocationService {
     required String localeCode,
   }) async {
     try {
-      await setLocaleIdentifier(_localeIdentifier(localeCode));
-    } on MissingPluginException {
-      return null;
-    } on PlatformException {
-      return null;
-    } on UnsupportedError {
-      return null;
-    }
-
-    try {
-      final placemarks = await placemarkFromCoordinates(latitude, longitude);
+      final locale = _localeIdentifier(localeCode);
+      final parts = locale.split('_');
+      final dartLocale = parts.length == 2
+          ? Locale(parts[0], parts[1])
+          : Locale(parts[0]);
+      final geocoding = Geocoding(locale: dartLocale);
+      final placemarks = await geocoding.placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
       if (placemarks.isEmpty) {
         return null;
       }
       return _formatPlacemark(placemarks.first);
-    } on NoResultFoundException {
-      return null;
     } on MissingPluginException {
       return null;
     } on PlatformException {
       return null;
     } on UnsupportedError {
+      return null;
+    } on Exception {
       return null;
     }
   }
