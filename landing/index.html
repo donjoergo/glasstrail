@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GlassTrail — Track every drink</title>
+<link rel="icon" href="assets/app-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+(function () {
+  var t = null, l = null;
+  try { t = localStorage.getItem('gt-theme'); l = localStorage.getItem('gt-lang'); } catch (e) {}
+  if (t !== 'light' && t !== 'dark') t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  if (l !== 'en' && l !== 'de') l = ((navigator.language || 'en').toLowerCase().indexOf('de') === 0) ? 'de' : 'en';
+  document.documentElement.setAttribute('data-theme', t);
+  document.documentElement.setAttribute('data-lang', l);
+})();
+</script>
+<style>
+html, body { margin: 0; padding: 0; }
+body { font-family: 'Manrope', 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { color: var(--secondary); }
+:root, html[data-theme="light"] {
+  --bg: #F6F7F4; --surface: #FFFCF8; --text: #1E2A24; --muted: #5C6B62;
+  --primary: #2D6A4F; --on-primary: #FFFCF8; --secondary: #4D908E; --accent: #E9C46A;
+  --border: rgba(45,106,79,0.14); --nav-bg: rgba(246,247,244,0.85);
+  --ph-bg: #ECEEE9; --ph-border: #C2C9C1; --ph-text: #7A857D;
+  --btn2-bg: rgba(45,106,79,0.08);
+}
+html[data-theme="dark"] {
+  --bg: #0D1210; --surface: #151B18; --text: #E7EDE8; --muted: #99A79F;
+  --primary: #82CCA5; --on-primary: #0D1210; --secondary: #91D6CF; --accent: #E9C46A;
+  --border: rgba(130,204,165,0.16); --nav-bg: rgba(13,18,16,0.82);
+  --ph-bg: #1A211D; --ph-border: #35423B; --ph-text: #77857C;
+  --btn2-bg: rgba(130,204,165,0.1);
+}
+html[data-lang="en"] .i18n-de { display: none !important; }
+html[data-lang="de"] .i18n-en { display: none !important; }
+html[data-theme="light"] .only-dark { display: none !important; }
+html[data-theme="dark"] .only-light { display: none !important; }
+html[data-lang="en"] .lang-btn-en, html[data-lang="de"] .lang-btn-de { background: var(--primary) !important; color: var(--on-primary) !important; }
+.reveal-anim { transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+@media (max-width: 700px) {
+  .img-col-first { order: 2 !important; }
+}
+@media (max-width: 560px) {
+  .nav-controls { width: 100% !important; justify-content: center !important; }
+  .hero-ctas a { flex: 1 1 auto !important; text-align: center !important; }
+  .footer-row { flex-direction: column !important; align-items: center !important; text-align: center !important; gap: 20px !important; }
+  .footer-brand { flex-direction: column !important; text-align: center !important; gap: 8px !important; }
+  .footer-brand span { margin-left: 0 !important; }
+  .footer-links { flex-direction: column !important; align-items: center !important; gap: 14px !important; }
+}
+.reveal-pre { opacity: 0; transform: translateY(28px); }
+@media (prefers-reduced-motion: reduce) { .reveal-anim { transition: none; } .reveal-pre { opacity: 1; transform: none; } }
+.phone-frame { position: relative; flex: none; width: 308px; max-width: 100%; border-radius: 34px; background: #1B1F24; padding: 9px; box-shadow: 0 18px 44px rgba(10,20,15,0.28); }
+.phone-frame::before, .phone-frame::after { content: ""; position: absolute; right: -2px; width: 3px; border-radius: 2px; background: #3A4048; }
+.phone-frame::before { top: 16%; height: 44px; }
+.phone-frame::after { top: 26%; height: 74px; }
+.phone-screen { position: relative; border-radius: 25px; overflow: hidden; background: #000; }
+.phone-screen img { width: 100%; display: block; }
+.phone-notch { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #33465A, #04060A 68%); box-shadow: 0 0 0 2px rgba(0,0,0,0.55); pointer-events: none; z-index: 3; }
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: clamp(32px, 5vw, 64px); align-items: center; }
+.feature-num { font-size: 13px; font-weight: 800; letter-spacing: 0.12em; color: var(--secondary); margin-bottom: 12px; }
+.feature-title { margin: 0 0 14px; font-size: clamp(24px, 4vw, 30px); font-weight: 800; letter-spacing: -0.02em; }
+.feature-copy { margin: 0; font-size: 17px; line-height: 1.65; color: var(--muted); text-wrap: pretty; }
+.desktop-frame { position: relative; width: 520px; max-width: 100%; border-radius: 14px; background: #1B1F24; padding: 8px; box-shadow: 0 18px 44px rgba(10,20,15,0.28); }
+.desktop-frame-dots { display: flex; align-items: center; gap: 6px; padding: 4px 6px 8px; }
+.desktop-frame-dots span { width: 10px; height: 10px; border-radius: 50%; display: block; }
+.desktop-screen { position: relative; border-radius: 6px; overflow: hidden; background: #000; }
+.desktop-screen img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.desktop-screen-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 20px; pointer-events: none; }
+.desktop-screen-label span { font-family: monospace; font-size: 13px; color: var(--ph-text); }
+.desktop-frame-neck { position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%); width: 90px; height: 34px; background: linear-gradient(#14181C, #1B1F24); clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%); }
+.desktop-frame-base { position: absolute; left: 50%; bottom: -40px; transform: translateX(-50%); width: 150px; height: 7px; background: #1B1F24; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div style="min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Manrope', 'Helvetica Neue', sans-serif;">
+
+  <!-- ===== NAV ===== -->
+  <nav style="position: sticky; top: 0; z-index: 50; background: var(--nav-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border);">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 12px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="assets/app-icon.png" alt="GlassTrail" style="width: 36px; height: 36px; border-radius: 10px;">
+        <span style="font-weight: 800; font-size: 19px; letter-spacing: -0.02em;">GlassTrail</span>
+      </div>
+      <div class="nav-controls" style="display: flex; align-items: center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface);">
+          <button class="lang-btn-en" onclick="setLang('en')" style="border: none; cursor: pointer; background: transparent; color: var(--muted); font-family: inherit; font-weight: 700; font-size: 13px; padding: 5px 12px; border-radius: 999px;">EN</button>
+          <button class="lang-btn-de" onclick="setLang('de')" style="border: none; cursor: pointer; background: transparent; color: var(--muted); font-family: inherit; font-weight: 700; font-size: 13px; padding: 5px 12px; border-radius: 999px;">DE</button>
+        </div>
+        <button onclick="toggleTheme()" aria-label="Toggle theme" style="border: 1px solid var(--border); cursor: pointer; background: var(--surface); color: var(--text); width: 36px; height: 36px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 15px; padding: 0;">
+          <span class="only-light" style="line-height: 1;">☀</span>
+          <span class="only-dark" style="line-height: 1;">☾</span>
+        </button>
+        <a href="https://glasstrail.vercel.app/" target="_blank" rel="noopener" style="background: var(--primary); color: var(--on-primary); font-weight: 700; font-size: 14px; padding: 9px 18px; border-radius: 999px; display: inline-block;">
+          <span class="i18n-en">Open App</span><span class="i18n-de">App öffnen</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== HERO ===== -->
+  <header style="max-width: 1120px; margin: 0 auto; padding: clamp(48px, 8vw, 88px) 24px clamp(56px, 9vw, 96px); display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 56px; align-items: center;">
+    <div>
+      <h1 style="margin: 0 0 20px; font-size: clamp(34px, 5.5vw, 54px); line-height: 1.08; font-weight: 800; letter-spacing: -0.03em; text-wrap: pretty;">
+        <span class="i18n-en">Track every drink. Remember every moment.</span>
+        <span class="i18n-de">Verfolge jeden Drink. Erinnere dich an jeden Moment.</span>
+      </h1>
+      <p style="margin: 0 0 32px; font-size: 19px; line-height: 1.6; color: var(--muted); max-width: 34em; text-wrap: pretty;">
+        <span class="i18n-en">GlassTrail is the easiest way to log what you drink, see your habits in beautiful stats, and stay connected with friends along the way.</span>
+        <span class="i18n-de">GlassTrail ist der einfachste Weg, deine Drinks zu loggen, deine Gewohnheiten in schönen Statistiken zu sehen und dabei mit Freunden in Kontakt zu bleiben.</span>
+      </p>
+      <div class="hero-ctas" style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="https://glasstrail.vercel.app/" target="_blank" rel="noopener" style="background: var(--primary); color: var(--on-primary); font-weight: 700; font-size: 16px; padding: 14px 28px; border-radius: 16px; display: inline-block;">
+          <span class="i18n-en">Open App</span><span class="i18n-de">App öffnen</span>
+        </a>
+        <a href="https://github.com/donjoergo/glasstrail/releases" target="_blank" rel="noopener" style="background: var(--btn2-bg); color: var(--primary); font-weight: 700; font-size: 16px; padding: 14px 28px; border-radius: 16px; display: inline-block; border: 1px solid var(--border);">
+          <span class="i18n-en">Get it on Android</span><span class="i18n-de">Für Android herunterladen</span>
+        </a>
+      </div>
+    </div>
+    <div style="position: relative; height: clamp(280px, 50vw, 380px); display: flex; align-items: center; justify-content: center;">
+      <div style="position: absolute; width: 300px; height: 300px; border-radius: 50%; background: var(--secondary); opacity: 0.16; top: 10px; right: 20px;"></div>
+      <div style="position: absolute; width: 210px; height: 210px; border-radius: 50%; background: var(--primary); opacity: 0.2; bottom: 12px; left: 30px;"></div>
+      <div style="position: absolute; width: 90px; height: 90px; border-radius: 50%; background: var(--accent); opacity: 0.5; top: 46px; left: 84px;"></div>
+      <img src="assets/app-icon.png" alt="" style="position: relative; width: 148px; height: 148px; border-radius: 36px; box-shadow: 0 12px 40px rgba(20,40,30,0.22);">
+    </div>
+  </header>
+
+  <!-- ===== FEATURES ===== -->
+  <main style="max-width: 1000px; margin: 0 auto; padding: 0 24px 40px; display: flex; flex-direction: column; gap: clamp(72px, 10vw, 104px);">
+
+    <!-- 1 Drink feed -->
+    <section data-reveal class="feature-grid">
+      <div>
+        <div class="feature-num">01</div>
+        <h2 class="feature-title"><span class="i18n-en">Drink feed</span><span class="i18n-de">Drink-Feed</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">See every drink, right as it happens. Your personal feed keeps a running log of everything you log — with photos, locations, and comments.</span>
+          <span class="i18n-de">Sieh jeden Drink, sobald du ihn einträgst. Dein persönlicher Feed zeigt alles, was du loggst — mit Fotos, Orten und Kommentaren.</span>
+        </p>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <div class="phone-frame"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/feed-light.jpg" alt="Drink feed screenshot">
+          <img class="only-dark" src="assets/screenshots/feed-dark.jpg" alt="Drink feed screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- 2 Statistics cards -->
+    <section data-reveal class="feature-grid">
+      <div class="img-col-first" style="display: flex; justify-content: center;">
+        <div class="phone-frame"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/statistics-cards-light.jpg" alt="Statistics cards screenshot">
+          <img class="only-dark" src="assets/screenshots/statistics-cards-dark.jpg" alt="Statistics cards screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+      <div>
+        <div class="feature-num">02</div>
+        <h2 class="feature-title"><span class="i18n-en">Your habits, at a glance</span><span class="i18n-de">Deine Gewohnheiten auf einen Blick</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">Streaks and quick-read stat cards summarize your drinking patterns instantly.</span>
+          <span class="i18n-de">Streaks und übersichtliche Statistik-Karten fassen deine Trinkgewohnheiten sofort zusammen.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- 3 Pie chart -->
+    <section data-reveal class="feature-grid">
+      <div>
+        <div class="feature-num">03</div>
+        <h2 class="feature-title"><span class="i18n-en">Know what you actually drink</span><span class="i18n-de">Erfahre, was du wirklich trinkst</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">A category breakdown shows the split between beer, wine, cocktails, and more.</span>
+          <span class="i18n-de">Die Kategorie-Übersicht zeigt die Verteilung zwischen Bier, Wein, Cocktails und mehr.</span>
+        </p>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <div class="phone-frame"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/statistics-piechart-light.jpg" alt="Category breakdown screenshot">
+          <img class="only-dark" src="assets/screenshots/statistics-piechart-dark.jpg" alt="Category breakdown screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- 4 Map -->
+    <section data-reveal class="feature-grid">
+      <div class="img-col-first" style="display: flex; justify-content: center;">
+        <div class="phone-frame"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/statistics-map-light.jpg" alt="Drink map screenshot">
+          <img class="only-dark" src="assets/screenshots/statistics-map-dark.jpg" alt="Drink map screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+      <div>
+        <div class="feature-num">04</div>
+        <h2 class="feature-title"><span class="i18n-en">Every drink has a place</span><span class="i18n-de">Jeder Drink hat einen Ort</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">See where you've been drinking on an interactive map of your history.</span>
+          <span class="i18n-de">Sieh auf einer interaktiven Karte, wo du überall unterwegs warst.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- 5 Gallery -->
+    <section data-reveal class="feature-grid">
+      <div>
+        <div class="feature-num">05</div>
+        <h2 class="feature-title"><span class="i18n-en">Relive it in pictures</span><span class="i18n-de">Erlebe es noch einmal in Bildern</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">Every photo you've attached to a drink, collected in one scrollable gallery.</span>
+          <span class="i18n-de">Jedes Foto, das du zu einem Drink hinzugefügt hast, gesammelt in einer Galerie.</span>
+        </p>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <div class="phone-frame"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/statistics-gallery-light.jpg" alt="Photo gallery screenshot">
+          <img class="only-dark" src="assets/screenshots/statistics-gallery-dark.jpg" alt="Photo gallery screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- 6 Statistics list (placeholder) -->
+    <section data-reveal class="feature-grid">
+      <div class="img-col-first" style="display: flex; justify-content: center;">
+        <div class="phone-frame"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/statistics-list-light.jpg" alt="History list screenshot">
+          <img class="only-dark" src="assets/screenshots/statistics-list-dark.jpg" alt="History list screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+      <div>
+        <div class="feature-num">06</div>
+        <h2 class="feature-title"><span class="i18n-en">Every entry, in order</span><span class="i18n-de">Jeder Eintrag, in Reihenfolge</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">A straightforward chronological list view of your full drink history.</span>
+          <span class="i18n-de">Eine übersichtliche, chronologische Listenansicht deiner gesamten Trinkhistorie.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- 7 Easy adding (placeholder) -->
+    <section data-reveal class="feature-grid">
+      <div>
+        <div class="feature-num">07</div>
+        <h2 class="feature-title"><span class="i18n-en">Log a drink in seconds</span><span class="i18n-de">Trage einen Drink in Sekunden ein</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">Pick from your recents, the global catalog, or your own custom drinks — add a photo, location, and note without friction.</span>
+          <span class="i18n-de">Wähle aus deinen letzten, dem globalen Katalog oder deinen eigenen Drinks — mit Foto, Ort und Notiz, ganz ohne Umstände.</span>
+        </p>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <div class="phone-frame"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/add-drink-light.jpg" alt="Add drink screenshot">
+          <img class="only-dark" src="assets/screenshots/add-drink-dark.jpg" alt="Add drink screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- 8 Customizable bar (two-up) -->
+    <section data-reveal class="feature-grid">
+      <div class="img-col-first" style="display: flex; justify-content: center; gap: 20px;">
+        <div class="phone-frame" style="width: 246px; max-width: 46%; align-self: flex-start;"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/bar-global-light.jpg" alt="Bar — global drinks screenshot">
+          <img class="only-dark" src="assets/screenshots/bar-global-dark.jpg" alt="Bar — global drinks screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+        <div class="phone-frame" style="width: 246px; max-width: 46%; margin-top: 44px;"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/bar-own-light.jpg" alt="Bar — custom drinks screenshot">
+          <img class="only-dark" src="assets/screenshots/bar-own-dark.jpg" alt="Bar — custom drinks screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+      <div>
+        <div class="feature-num">08</div>
+        <h2 class="feature-title"><span class="i18n-en">Your bar, your way</span><span class="i18n-de">Deine Bar, wie du sie willst</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">Sort and hide drinks from the global catalog, or add your own custom ones — build the list that matches how you actually drink.</span>
+          <span class="i18n-de">Sortiere und blende Drinks aus dem globalen Katalog aus oder füge eigene hinzu — bau dir die Liste, die zu dir passt.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- 9 Account settings (placeholder) -->
+    <section data-reveal class="feature-grid">
+      <div>
+        <div class="feature-num">09</div>
+        <h2 class="feature-title"><span class="i18n-en">Make it yours</span><span class="i18n-de">Mach es zu deinem</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">Set a display name, profile photo, and birthday, and fine-tune the app to fit how you use it — including a left-handed mode.</span>
+          <span class="i18n-de">Lege Anzeigename, Profilfoto und Geburtstag fest und passe die App an dich an — inklusive Linkshänder-Modus.</span>
+        </p>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <div class="phone-frame"><div class="phone-screen">
+          <img class="only-light" src="assets/screenshots/account-settings-light.jpg" alt="Account settings screenshot">
+          <img class="only-dark" src="assets/screenshots/account-settings-dark.jpg" alt="Account settings screenshot">
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- 10 Push notifications -->
+    <section data-reveal class="feature-grid">
+      <div class="img-col-first" style="display: flex; justify-content: center;">
+        <img class="only-light" src="assets/screenshots/notifications-light.png" alt="Push notification screenshot" style="width: 100%; max-width: 440px; border-radius: 20px; border: 1px solid var(--border); display: block;">
+        <img class="only-dark" src="assets/screenshots/notifications-dark.png" alt="Push notification screenshot" style="width: 100%; max-width: 440px; border-radius: 20px; border: 1px solid var(--border); display: block;">
+      </div>
+      <div>
+        <div class="feature-num">10</div>
+        <h2 class="feature-title"><span class="i18n-en">Never miss what matters</span><span class="i18n-de">Verpasse nie, was zählt</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">Get notified about friend requests, new friendships, and new drinks from people you follow.</span>
+          <span class="i18n-de">Erhalte Benachrichtigungen zu Freundschaftsanfragen, neuen Freundschaften und neuen Drinks von Leuten, denen du folgst.</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- 11 Light & dark mode (interactive, both sides placeholder until real dark shots exist) -->
+    <section data-reveal class="feature-grid">
+      <div>
+        <div class="feature-num">11</div>
+        <h2 class="feature-title"><span class="i18n-en">Looks good, day or night</span><span class="i18n-de">Sieht gut aus, Tag und Nacht</span></h2>
+        <p style="margin: 0 0 24px; font-size: 17px; line-height: 1.65; color: var(--muted); text-wrap: pretty;">
+          <span class="i18n-en">GlassTrail adapts instantly to your system theme — or switch it yourself, anytime.</span>
+          <span class="i18n-de">GlassTrail passt sich sofort deinem System-Theme an — oder du schaltest selbst um, jederzeit.</span>
+        </p>
+        <div style="font-size: 13px; color: var(--muted); font-weight: 600;"><span class="i18n-en">Drag the slider to compare light and dark.</span><span class="i18n-de">Zieh den Regler, um Hell und Dunkel zu vergleichen.</span></div>
+      </div>
+      <div style="display: flex; justify-content: center;">
+        <div class="phone-frame"><div class="phone-screen">
+          <div id="theme-slider" style="position: relative; width: 100%; aspect-ratio: 1440 / 3000; overflow: hidden; cursor: ew-resize; touch-action: none; user-select: none; -webkit-user-select: none;">
+            <img src="assets/screenshots/theme-demo-dark.jpg" alt="Dark mode screenshot" draggable="false" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; -webkit-user-drag: none; pointer-events: none;">
+            <img id="theme-slider-light" src="assets/screenshots/theme-demo-light.jpg" alt="Light mode screenshot" draggable="false" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; clip-path: inset(0 50% 0 0); -webkit-user-drag: none; pointer-events: none;">
+            <div id="theme-slider-handle-line" style="position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; background: #FFFCF8; transform: translateX(-1.5px); box-shadow: 0 0 10px rgba(0,0,0,0.4); pointer-events: none;"></div>
+            <div id="theme-slider-handle" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 42px; height: 42px; border-radius: 50%; background: #FFFCF8; color: #1E2A24; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(0,0,0,0.35); font-size: 13px; letter-spacing: 2px; font-weight: 800; pointer-events: none;">◂▸</div>
+          </div>
+          <div class="phone-notch"></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- 12 Full desktop mode (placeholder, no screenshot yet) -->
+    <section data-reveal class="feature-grid">
+      <div class="img-col-first" style="display: flex; justify-content: center;">
+        <div class="desktop-frame">
+          <div class="desktop-frame-dots">
+            <span style="background: #E0655A;"></span>
+            <span style="background: #E9C46A;"></span>
+            <span style="background: #6BBF8A;"></span>
+          </div>
+          <div class="desktop-screen">
+            <img class="only-light" src="assets/screenshots/desktop-light.png" alt="Desktop layout placeholder">
+            <img class="only-dark" src="assets/screenshots/desktop-dark.png" alt="Desktop layout placeholder">
+            <div class="desktop-screen-label">
+              <span><span class="i18n-en">Desktop screenshot coming soon</span><span class="i18n-de">Desktop-Screenshot folgt</span></span>
+            </div>
+          </div>
+          <div class="desktop-frame-neck"></div>
+          <div class="desktop-frame-base"></div>
+        </div>
+      </div>
+      <div>
+        <div class="feature-num">12</div>
+        <h2 class="feature-title"><span class="i18n-en">Same app, bigger canvas</span><span class="i18n-de">Dieselbe App, mehr Platz</span></h2>
+        <p class="feature-copy">
+          <span class="i18n-en">Open GlassTrail on desktop and the layout grows with you — feed, stats, and bar arranged side by side instead of one narrow column.</span>
+          <span class="i18n-de">Öffne GlassTrail auf dem Desktop, und das Layout wächst mit — Feed, Statistiken und Bar nebeneinander statt in einer schmalen Spalte.</span>
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer style="border-top: 1px solid var(--border); margin-top: 96px; background: var(--surface);">
+    <div class="footer-row" style="max-width: 1120px; margin: 0 auto; padding: 48px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px;">
+      <div class="footer-brand" style="display: flex; align-items: center; gap: 12px;">
+        <img src="assets/app-icon.png" alt="" style="width: 30px; height: 30px; border-radius: 8px;">
+        <span style="font-weight: 800; font-size: 16px;">GlassTrail</span>
+        <span style="color: var(--muted); font-size: 13px; margin-left: 8px;"><span class="i18n-en">GlassTrail is open source.</span><span class="i18n-de">GlassTrail ist Open Source.</span></span>
+      </div>
+      <div class="footer-links" style="display: flex; align-items: center; gap: 24px; font-size: 14px; font-weight: 600;">
+        <a href="https://glasstrail.vercel.app/" target="_blank" rel="noopener"><span class="i18n-en">Open App</span><span class="i18n-de">App öffnen</span></a>
+        <a href="https://github.com/donjoergo/glasstrail/releases" target="_blank" rel="noopener"><span class="i18n-en">Get it on Android</span><span class="i18n-de">Für Android herunterladen</span></a>
+        <a href="https://github.com/donjoergo/glasstrail" target="_blank" rel="noopener"><span class="i18n-en">View on GitHub</span><span class="i18n-de">Auf GitHub ansehen</span></a>
+      </div>
+      <div style="color: var(--muted); font-size: 13px;">© 2026 GlassTrail</div>
+      <div style="width: 100%; text-align: center; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); padding-top: 20px;"><span class="i18n-en">Created with ❤️, ☕ and 🍺 by Jörg Dorlach</span><span class="i18n-de">Erstellt mit ❤️, ☕ und 🍺 von Jörg Dorlach</span></div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('gt-theme', t); } catch (e) {}
+}
+function toggleTheme() {
+  var cur = document.documentElement.getAttribute('data-theme');
+  setTheme(cur === 'dark' ? 'light' : 'dark');
+}
+function setLang(l) {
+  document.documentElement.setAttribute('data-lang', l);
+  try { localStorage.setItem('gt-lang', l); } catch (e) {}
+}
+
+(function () {
+  var slider = document.getElementById('theme-slider');
+  var lightPane = document.getElementById('theme-slider-light');
+  var handleLine = document.getElementById('theme-slider-handle-line');
+  var handle = document.getElementById('theme-slider-handle');
+  var dragging = false;
+
+  function clampPct(e) {
+    var rect = slider.getBoundingClientRect();
+    return Math.max(4, Math.min(96, ((e.clientX - rect.left) / rect.width) * 100));
+  }
+  function apply(pct) {
+    lightPane.style.clipPath = 'inset(0 ' + (100 - pct) + '% 0 0)';
+    handleLine.style.left = pct + '%';
+    handle.style.left = pct + '%';
+  }
+  slider.addEventListener('pointerdown', function (e) {
+    try { slider.setPointerCapture(e.pointerId); } catch (err) {}
+    dragging = true;
+    apply(clampPct(e));
+  });
+  slider.addEventListener('pointermove', function (e) {
+    if (dragging) apply(clampPct(e));
+  });
+  slider.addEventListener('pointerup', function () { dragging = false; });
+  slider.addEventListener('pointercancel', function () { dragging = false; });
+})();
+
+(function () {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (!('IntersectionObserver' in window)) return;
+  var els = document.querySelectorAll('[data-reveal]');
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting || en.boundingClientRect.top < 0) {
+        en.target.classList.remove('reveal-pre');
+        io.unobserve(en.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '10000px 0px 0px 0px' });
+  function sweep() {
+    document.querySelectorAll('.reveal-pre').forEach(function (el) {
+      if (el.getBoundingClientRect().top < window.innerHeight) el.classList.remove('reveal-pre');
+    });
+  }
+  window.addEventListener('scroll', sweep, { passive: true });
+  window.addEventListener('resize', sweep);
+  els.forEach(function (el) {
+    var r = el.getBoundingClientRect();
+    if (r.top > window.innerHeight * 0.85) {
+      el.classList.add('reveal-anim', 'reveal-pre');
+      io.observe(el);
+    }
+  });
+})();
+</script>
+</body>
+</html>
