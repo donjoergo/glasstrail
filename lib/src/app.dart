@@ -12,6 +12,7 @@ import 'app_scope.dart';
 import 'app_theme.dart';
 import 'backend_config.dart';
 import 'beer_with_me_import_flow.dart';
+import 'bootstrap/app_bootstrap_loader.dart';
 import 'browser_theme_color.dart';
 import 'deep_link_service.dart';
 import 'import_file_service.dart';
@@ -28,6 +29,7 @@ import 'screens/friend_profile_screen.dart';
 import 'screens/friend_stats_profile_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/notifications_screen.dart';
+import 'widgets/app_media.dart';
 
 const _appDisplayTitle = 'Glass Trail';
 const _brandIconAsset = 'assets/icon/app_icon.png';
@@ -72,10 +74,10 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
     super.initState();
     final controllerFuture =
         widget.controllerFuture ??
-        AppController.bootstrap(
+        AppBootstrapLoader(
           backendConfig: widget.backendConfig,
           pushNotificationService: widget.pushNotificationService,
-        );
+        ).loadController();
     _localeMemoryFuture = widget.localeMemoryFuture ?? LocaleMemory.create();
     _primeBootstrapLocale();
     _bootstrapFuture = _loadBootstrapData(
@@ -221,7 +223,8 @@ class GlassTrailApp extends StatefulWidget {
   State<GlassTrailApp> createState() => _GlassTrailAppState();
 }
 
-class _GlassTrailAppState extends State<GlassTrailApp> {
+class _GlassTrailAppState extends State<GlassTrailApp>
+    with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<Uri>? _deepLinkSubscription;
   StreamSubscription<PushNotificationOpen>? _notificationOpenSubscription;
@@ -230,9 +233,11 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _postSignUpPromptEligible = !widget.controller.isAuthenticated;
     _subscribeToDeepLinks();
     _subscribeToNotificationRoutes();
+    unawaited(_warmVisibleMedia());
   }
 
   @override
@@ -250,9 +255,18 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_deepLinkSubscription?.cancel());
     unawaited(_notificationOpenSubscription?.cancel());
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(widget.controller.revalidateHotDomainsOnResume());
+      unawaited(_warmVisibleMedia());
+    }
   }
 
   void _subscribeToDeepLinks() {
@@ -300,6 +314,13 @@ class _GlassTrailAppState extends State<GlassTrailApp> {
     await widget.controller.refreshForNotificationOpen(
       routeName: open.routeName,
       notificationId: open.notificationId,
+    );
+    await _warmVisibleMedia();
+  }
+
+  Future<void> _warmVisibleMedia() {
+    return AppMediaResolver.warmImagePaths(
+      _bootstrapMediaPaths(widget.controller),
     );
   }
 
@@ -585,6 +606,25 @@ class _BootstrapData {
   final LocaleMemory localeMemory;
   final String localeCode;
   final String? initialRoute;
+}
+
+List<String> _bootstrapMediaPaths(AppController controller) {
+  final paths = <String>[
+    ?controller.currentUser?.profileImagePath,
+    ...controller.feedPosts
+        .take(6)
+        .expand((post) => <String?>[post.entry.imagePath, post.authorImagePath])
+        .whereType<String>(),
+    ...controller.notifications
+        .take(6)
+        .map((notification) => notification.imagePath)
+        .whereType<String>(),
+    ...controller.customDrinks
+        .take(6)
+        .map((drink) => drink.imagePath)
+        .whereType<String>(),
+  ];
+  return paths.toSet().toList(growable: false);
 }
 
 class _AppRouteScreen extends StatelessWidget {
