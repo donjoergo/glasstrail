@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Startup and media caching for faster signed-in launches
+- New Landing page for promotional purposes
 
 ### Fixed
 - Harden cache cleanup on session changes
