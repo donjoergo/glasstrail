@@ -1620,27 +1620,30 @@ void main() {
     },
   );
 
-  test('looks up drinks by id across the default catalog and custom drinks', () async {
-    final controller = await buildTestController();
+  test(
+    'looks up drinks by id across the default catalog and custom drinks',
+    () async {
+      final controller = await buildTestController();
 
-    await controller.signUp(
-      email: 'drink-by-id@example.com',
-      password: 'password123',
-      displayName: 'Drink By Id',
-    );
-    await controller.saveCustomDrink(
-      name: 'Garden Spritz',
-      category: DrinkCategory.cocktails,
-      volumeMl: 250,
-      imagePath: '/tmp/garden-spritz.png',
-    );
-    final customDrink = controller.customDrinks.single;
-    final defaultDrink = controller.defaultCatalog.first;
+      await controller.signUp(
+        email: 'drink-by-id@example.com',
+        password: 'password123',
+        displayName: 'Drink By Id',
+      );
+      await controller.saveCustomDrink(
+        name: 'Garden Spritz',
+        category: DrinkCategory.cocktails,
+        volumeMl: 250,
+        imagePath: '/tmp/garden-spritz.png',
+      );
+      final customDrink = controller.customDrinks.single;
+      final defaultDrink = controller.defaultCatalog.first;
 
-    expect(controller.drinkById(defaultDrink.id), defaultDrink);
-    expect(controller.drinkById(customDrink.id), customDrink);
-    expect(controller.drinkById('does-not-exist'), isNull);
-  });
+      expect(controller.drinkById(defaultDrink.id), defaultDrink);
+      expect(controller.drinkById(customDrink.id), customDrink);
+      expect(controller.drinkById('does-not-exist'), isNull);
+    },
+  );
 
   test('localizes mapped repository error messages', () async {
     final controller = await buildTestController();

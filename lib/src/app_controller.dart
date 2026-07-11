@@ -213,6 +213,7 @@ class AppController extends ChangeNotifier {
     }
     return null;
   }
+
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
   List<FeedDrinkPost> get feedPosts => List.unmodifiable(_feedPosts);
   bool get hasMoreFeedPosts => _hasMoreFeedPosts;

@@ -236,7 +236,10 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
             imagePath: controller.drinkById(entry.drinkId)?.imagePath,
             radius: 20,
             backgroundColor: Colors.transparent,
-            fallback: Icon(entry.category.icon, color: theme.colorScheme.primary),
+            fallback: Icon(
+              entry.category.icon,
+              color: theme.colorScheme.primary,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
