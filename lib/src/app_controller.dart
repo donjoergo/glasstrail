@@ -200,6 +200,19 @@ class AppController extends ChangeNotifier {
     ..._defaultCatalog,
     ..._customDrinks,
   ]);
+  DrinkDefinition? drinkById(String id) {
+    for (final drink in _defaultCatalog) {
+      if (drink.id == id) {
+        return drink;
+      }
+    }
+    for (final drink in _customDrinks) {
+      if (drink.id == id) {
+        return drink;
+      }
+    }
+    return null;
+  }
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
   List<FeedDrinkPost> get feedPosts => List.unmodifiable(_feedPosts);
   bool get hasMoreFeedPosts => _hasMoreFeedPosts;
@@ -675,6 +688,9 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  DrinkDefinition? _lastSavedCustomDrink;
+  DrinkDefinition? get lastSavedCustomDrink => _lastSavedCustomDrink;
+
   Future<bool> saveCustomDrink({
     String? drinkId,
     required String name,
@@ -711,6 +727,7 @@ class AppController extends ChangeNotifier {
       }
       next.sort((left, right) => left.name.compareTo(right.name));
       _customDrinks = next;
+      _lastSavedCustomDrink = drink;
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.customDrinkSaved,
       );

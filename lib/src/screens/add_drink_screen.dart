@@ -87,7 +87,7 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
 
   Future<void> _openCustomDrinkDialog() async {
     final l10n = AppLocalizations.of(context);
-    await showDialog<void>(
+    final createdDrink = await showDialog<DrinkDefinition>(
       context: context,
       builder: (_) => const CustomDrinkDialog(),
     );
@@ -99,6 +99,12 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
+    }
+    if (createdDrink != null) {
+      _selectDrink(createdDrink);
+      setState(() {
+        _imagePath = createdDrink.imagePath;
+      });
     }
   }
 

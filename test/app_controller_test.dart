@@ -1593,6 +1593,55 @@ void main() {
     },
   );
 
+  test(
+    'exposes the saved drink via lastSavedCustomDrink after creating one',
+    () async {
+      final controller = await buildTestController();
+
+      await controller.signUp(
+        email: 'last-saved-custom-drink@example.com',
+        password: 'password123',
+        displayName: 'Last Saved Custom Drink',
+      );
+
+      final success = await controller.saveCustomDrink(
+        name: 'Porch Lager',
+        category: DrinkCategory.beer,
+        volumeMl: 500,
+        imagePath: '/tmp/porch-lager.png',
+      );
+
+      expect(success, isTrue);
+      final saved = controller.lastSavedCustomDrink;
+      expect(saved, isNotNull);
+      expect(saved!.name, 'Porch Lager');
+      expect(saved.imagePath, '/tmp/porch-lager.png');
+      expect(saved.id, controller.customDrinks.single.id);
+    },
+  );
+
+  test('looks up drinks by id across the default catalog and custom drinks', () async {
+    final controller = await buildTestController();
+
+    await controller.signUp(
+      email: 'drink-by-id@example.com',
+      password: 'password123',
+      displayName: 'Drink By Id',
+    );
+    await controller.saveCustomDrink(
+      name: 'Garden Spritz',
+      category: DrinkCategory.cocktails,
+      volumeMl: 250,
+      imagePath: '/tmp/garden-spritz.png',
+    );
+    final customDrink = controller.customDrinks.single;
+    final defaultDrink = controller.defaultCatalog.first;
+
+    expect(controller.drinkById(defaultDrink.id), defaultDrink);
+    expect(controller.drinkById(customDrink.id), customDrink);
+    expect(controller.drinkById('does-not-exist'), isNull);
+  });
+
   test('localizes mapped repository error messages', () async {
     final controller = await buildTestController();
     final german = _l10n('de');

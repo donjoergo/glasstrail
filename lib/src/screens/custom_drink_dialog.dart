@@ -106,7 +106,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
       ).showSnackBar(SnackBar(content: Text(message)));
     }
     if (success) {
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(controller.lastSavedCustomDrink);
     }
   }
 

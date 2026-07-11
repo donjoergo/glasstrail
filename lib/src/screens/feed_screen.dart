@@ -917,6 +917,7 @@ class _DrinkEntryCard extends StatelessWidget {
       timeLabel,
     ].join(' • ');
     final locationAddress = _normalizedLocationAddress(entry.locationAddress);
+    final drinkImagePath = controller.drinkById(entry.drinkId)?.imagePath;
     final card = Container(
       key: Key('feed-post-${entry.id}'),
       decoration: BoxDecoration(
@@ -960,10 +961,15 @@ class _DrinkEntryCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Row(
                             children: <Widget>[
-                              Icon(
-                                entry.category.icon,
-                                size: 16,
-                                color: theme.colorScheme.onSurfaceVariant,
+                              AppAvatar(
+                                imagePath: drinkImagePath,
+                                radius: 8,
+                                backgroundColor: Colors.transparent,
+                                fallback: Icon(
+                                  entry.category.icon,
+                                  size: 16,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
                               const SizedBox(width: 4),
                               Expanded(

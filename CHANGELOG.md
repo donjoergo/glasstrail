@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full desktop mode: adaptive widescreen layouts with resizable master-detail views, a floating map detail panel, dialogs instead of sheets, and multi-pane statistics and bar screens
 - Map toggles for cluster and photo and locate-me button
 
+### Fixed
+- Directly creating and logging of custom drinks with images is now more intuitive
+
 ## [2.2.0] - 2026-07-11
 ### Added
 - Startup and media caching for faster signed-in launches
