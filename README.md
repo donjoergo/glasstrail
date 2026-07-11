@@ -12,16 +12,56 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
 
 <table>
   <tr>
-    <td align="center"><strong>Feed</strong><br><img src="docs/screenshots/feed.jpg" alt="Feed" width="180"></td>
-    <td align="center"><strong>Statistics</strong><br><img src="docs/screenshots/statistics_cards.jpg" alt="Statistics cards" width="180"></td>
-    <td align="center"><strong>Pie Chart</strong><br><img src="docs/screenshots/statistics_piechart.jpg" alt="Pie chart" width="180"></td>
-    <td align="center"><strong>Drink Locations</strong><br><img src="docs/screenshots/map.jpg" alt="Drink locations" width="180"></td>
+    <td align="center"><strong>Feed</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/feed-dark.jpg">
+        <img src="landing/assets/screenshots/feed-light.jpg" alt="Feed" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Statistics</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/statistics-cards-dark.jpg">
+        <img src="landing/assets/screenshots/statistics-cards-light.jpg" alt="Statistics cards" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Pie Chart</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/statistics-piechart-dark.jpg">
+        <img src="landing/assets/screenshots/statistics-piechart-light.jpg" alt="Pie chart" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Drink Locations</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/statistics-map-dark.jpg">
+        <img src="landing/assets/screenshots/statistics-map-light.jpg" alt="Drink locations" width="180">
+      </picture>
+    </td>
   </tr>
   <tr>
-    <td align="center"><strong>Drink Gallery</strong><br><img src="docs/screenshots/gallery.jpg" alt="Drink gallery" width="180"></td>
-    <td align="center"><strong>Global Drinks</strong><br><img src="docs/screenshots/bar_global_drinks.jpg" alt="Global drinks" width="180"></td>
-    <td align="center"><strong>Custom Drinks</strong><br><img src="docs/screenshots/bar_own%20drinks.jpg" alt="Own drinks" width="180"></td>
-    <td align="center"><strong>Notifications</strong><br><img src="docs/screenshots/notifications.png" alt="Notifications" width="180"></td>
+    <td align="center"><strong>Drink Gallery</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/statistics-gallery-dark.jpg">
+        <img src="landing/assets/screenshots/statistics-gallery-light.jpg" alt="Drink gallery" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Global Drinks</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/bar-global-dark.jpg">
+        <img src="landing/assets/screenshots/bar-global-light.jpg" alt="Global drinks" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Custom Drinks</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/bar-own-dark.jpg">
+        <img src="landing/assets/screenshots/bar-own-light.jpg" alt="Own drinks" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Notifications</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/notifications-dark.png">
+        <img src="landing/assets/screenshots/notifications-light.png" alt="Notifications" width="180">
+      </picture>
+    </td>
   </tr>
 </table>
 
