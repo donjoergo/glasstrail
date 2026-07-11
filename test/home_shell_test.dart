@@ -3715,10 +3715,7 @@ void main() {
       '0',
     );
 
-    await repository.addFeedEntryCheer(
-      userId: friend.id,
-      entryId: entry.id,
-    );
+    await repository.addFeedEntryCheer(userId: friend.id, entryId: entry.id);
     await tester.pump();
     await tester.pumpAndSettle();
 

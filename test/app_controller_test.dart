@@ -486,10 +486,7 @@ void main() {
       0,
     );
 
-    await repository.addFeedEntryCheer(
-      userId: friend.id,
-      entryId: entry.id,
-    );
+    await repository.addFeedEntryCheer(userId: friend.id, entryId: entry.id);
     await Future<void>.delayed(Duration.zero);
 
     final notification = controller.notifications.firstWhere(
@@ -1908,10 +1905,7 @@ class _BlockingCheersLocalAppRepository extends LocalAppRepository {
     if (failSetCheers) {
       throw const AppException('Cheers failed.');
     }
-    return super.addFeedEntryCheer(
-      userId: userId,
-      entryId: entryId,
-    );
+    return super.addFeedEntryCheer(userId: userId, entryId: entryId);
   }
 }
 

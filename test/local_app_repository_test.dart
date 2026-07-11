@@ -730,17 +730,11 @@ void main() {
       final entry = await repository.addDrinkEntry(user: logger, drink: drink);
 
       await expectLater(
-        repository.addFeedEntryCheer(
-          userId: logger.id,
-          entryId: entry.id,
-        ),
+        repository.addFeedEntryCheer(userId: logger.id, entryId: entry.id),
         throwsA(isA<AppException>()),
       );
       await expectLater(
-        repository.addFeedEntryCheer(
-          userId: stranger.id,
-          entryId: entry.id,
-        ),
+        repository.addFeedEntryCheer(userId: stranger.id, entryId: entry.id),
         throwsA(isA<AppException>()),
       );
     });
@@ -771,7 +765,7 @@ void main() {
         (candidate) => candidate.id == 'beer-pils',
       );
       final entry = await repository.addDrinkEntry(user: logger, drink: drink);
-      
+
       final firstUpdate = await repository.addFeedEntryCheer(
         userId: friend.id,
         entryId: entry.id,

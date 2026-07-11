@@ -332,9 +332,15 @@ void main() {
       oneWayMigration,
       contains("raise exception 'The cheers could not be updated.'"),
     );
-    expect(oneWayMigration, contains('entry_owner_user_id = requesting_user_id'));
+    expect(
+      oneWayMigration,
+      contains('entry_owner_user_id = requesting_user_id'),
+    );
     expect(oneWayMigration, contains("relationships.status = 'accepted'"));
-    expect(oneWayMigration, contains("perform public.create_friend_notification("));
+    expect(
+      oneWayMigration,
+      contains("perform public.create_friend_notification("),
+    );
     expect(oneWayMigration, contains("'friend_drink_cheered'"));
     expect(
       cheersMigration,

@@ -790,9 +790,7 @@ class SupabaseAppRepository implements AppRepository {
     try {
       final rows = await _client.rpc(
         'set_feed_entry_cheers',
-        params: <String, dynamic>{
-          'target_entry_id': entryId,
-        },
+        params: <String, dynamic>{'target_entry_id': entryId},
       );
       final decoded = (rows as List<dynamic>)
           .map((row) {

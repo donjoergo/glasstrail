@@ -1234,8 +1234,6 @@ class LocalAppRepository implements AppRepository {
     }
   }
 
-
-
   Future<void> _deleteFriendDrinkCheeredNotificationsForEntry(
     String entryId,
   ) async {

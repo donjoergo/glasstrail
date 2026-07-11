@@ -822,9 +822,7 @@ class _DrinkEntryCard extends StatelessWidget {
                         TextButton.icon(
                           key: Key('feed-entry-cheers-${entry.id}'),
                           onPressed: cheersEnabled
-                              ? () => unawaited(
-                                  controller.cheerFeedEntry(post),
-                                )
+                              ? () => unawaited(controller.cheerFeedEntry(post))
                               : null,
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
