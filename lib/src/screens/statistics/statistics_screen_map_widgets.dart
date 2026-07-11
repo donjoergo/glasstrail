@@ -258,6 +258,103 @@ class _StatisticsMapAttributionCard extends StatelessWidget {
   }
 }
 
+class _StatisticsMapFilterBar extends StatelessWidget {
+  const _StatisticsMapFilterBar({
+    required this.clusterEnabled,
+    required this.photoOnly,
+    required this.onClusterEnabledChanged,
+    required this.onPhotoOnlyChanged,
+  });
+
+  final bool clusterEnabled;
+  final bool photoOnly;
+  final ValueChanged<bool> onClusterEnabledChanged;
+  final ValueChanged<bool> onPhotoOnlyChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return Material(
+      key: const Key('statistics-map-filter-bar'),
+      color: theme.colorScheme.surface.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(14),
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: <Widget>[
+            FilterChip(
+              key: const Key('statistics-map-filter-cluster'),
+              selected: clusterEnabled,
+              showCheckmark: false,
+              avatar: const Icon(Icons.blur_on_rounded, size: 18),
+              label: Text(l10n.statisticsMapClusterFilterLabel),
+              onSelected: onClusterEnabledChanged,
+            ),
+            FilterChip(
+              key: const Key('statistics-map-filter-photo-only'),
+              selected: photoOnly,
+              showCheckmark: false,
+              avatar: const Icon(Icons.photo_camera_rounded, size: 18),
+              label: Text(l10n.statisticsMapPhotoFilterLabel),
+              onSelected: onPhotoOnlyChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatisticsMapLocateButton extends StatelessWidget {
+  const _StatisticsMapLocateButton({
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return Tooltip(
+      message: l10n.statisticsMapLocateMeTooltip,
+      child: Material(
+        key: const Key('statistics-map-locate-button'),
+        color: theme.colorScheme.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(24),
+        elevation: 1,
+        child: InkWell(
+          key: const Key('statistics-map-locate-button-inkwell'),
+          borderRadius: BorderRadius.circular(24),
+          onTap: isLoading ? null : onPressed,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    Icons.my_location,
+                    size: 20,
+                    color: theme.colorScheme.primary,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StatisticsMapMarker extends StatelessWidget {
   const _StatisticsMapMarker({
     required this.entry,

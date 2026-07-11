@@ -686,6 +686,24 @@ abstract class AppLocalizations {
   /// **'Enable location while logging drinks so they can appear here on the map.'**
   String get statisticsMapEmptyBody;
 
+  /// No description provided for @statisticsMapClusterFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster'**
+  String get statisticsMapClusterFilterLabel;
+
+  /// No description provided for @statisticsMapPhotoFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'With photo'**
+  String get statisticsMapPhotoFilterLabel;
+
+  /// No description provided for @statisticsMapLocateMeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show my location'**
+  String get statisticsMapLocateMeTooltip;
+
   /// No description provided for @statisticsGalleryEmptyTitle.
   ///
   /// In en, this message translates to:

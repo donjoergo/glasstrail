@@ -321,6 +321,15 @@ class AppLocalizationsDe extends AppLocalizations {
       'Aktiviere beim Loggen den Standort, damit Drinks hier auf der Karte erscheinen.';
 
   @override
+  String get statisticsMapClusterFilterLabel => 'Cluster';
+
+  @override
+  String get statisticsMapPhotoFilterLabel => 'Mit Foto';
+
+  @override
+  String get statisticsMapLocateMeTooltip => 'Meinen Standort anzeigen';
+
+  @override
   String get statisticsGalleryEmptyTitle => 'Noch keine Drink-Fotos';
 
   @override

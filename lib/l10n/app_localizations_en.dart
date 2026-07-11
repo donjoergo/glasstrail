@@ -319,6 +319,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enable location while logging drinks so they can appear here on the map.';
 
   @override
+  String get statisticsMapClusterFilterLabel => 'Cluster';
+
+  @override
+  String get statisticsMapPhotoFilterLabel => 'With photo';
+
+  @override
+  String get statisticsMapLocateMeTooltip => 'Show my location';
+
+  @override
   String get statisticsGalleryEmptyTitle => 'No drink photos yet';
 
   @override

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 
 DrinkEntry _entry({
   required String id,
   required DrinkCategory category,
   required double latitude,
   required double longitude,
+  String? imagePath,
 }) {
   return DrinkEntry(
     id: id,
@@ -18,6 +20,7 @@ DrinkEntry _entry({
     consumedAt: DateTime.utc(2026, 1, 1),
     locationLatitude: latitude,
     locationLongitude: longitude,
+    imagePath: imagePath,
   );
 }
 
@@ -218,5 +221,74 @@ void main() {
     expect(properties.containsKey('text-halo-color'), isFalse);
     expect(properties['text-allow-overlap'], isTrue);
     expect(properties['text-ignore-placement'], isTrue);
+  });
+
+  test('photo-only filter keeps only entries with a non-empty imagePath', () {
+    final entries = <DrinkEntry>[
+      _entry(
+        id: 'with-photo',
+        category: DrinkCategory.beer,
+        latitude: 52.52,
+        longitude: 13.405,
+        imagePath: '/tmp/beer.jpg',
+      ),
+      _entry(
+        id: 'blank-photo',
+        category: DrinkCategory.beer,
+        latitude: 52.52,
+        longitude: 13.405,
+        imagePath: '   ',
+      ),
+      _entry(
+        id: 'no-photo',
+        category: DrinkCategory.wine,
+        latitude: 48.1372,
+        longitude: 11.5756,
+      ),
+    ];
+
+    final filtered = statisticsMapEntriesForFilters(
+      entries: entries,
+      photoOnly: true,
+    );
+
+    expect(filtered.map((entry) => entry.id), <String>['with-photo']);
+  });
+
+  test('photo-only filter disabled returns entries unchanged', () {
+    final entries = <DrinkEntry>[
+      _entry(
+        id: 'no-photo',
+        category: DrinkCategory.wine,
+        latitude: 48.1372,
+        longitude: 11.5756,
+      ),
+    ];
+
+    final filtered = statisticsMapEntriesForFilters(
+      entries: entries,
+      photoOnly: false,
+    );
+
+    expect(filtered, same(entries));
+  });
+
+  test('self-location GeoJSON encodes a single point in lon/lat order', () {
+    final geoJson = statisticsMapSelfLocationGeoJson(
+      const maplibre.LatLng(52.52, 13.405),
+    );
+
+    final features = geoJson['features']! as List<Object?>;
+    expect(features, hasLength(1));
+
+    final feature = features.single! as Map<String, Object?>;
+    expect(feature['type'], 'Feature');
+
+    final geometry = feature['geometry']! as Map<String, Object?>;
+    expect(geometry['type'], 'Point');
+    final coordinates = (geometry['coordinates']! as List<Object?>)
+        .cast<double>();
+    expect(coordinates[0], closeTo(13.405, 0.0000001));
+    expect(coordinates[1], closeTo(52.52, 0.0000001));
   });
 }

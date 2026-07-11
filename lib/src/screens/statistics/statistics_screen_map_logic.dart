@@ -29,6 +29,10 @@ const String _statisticsMapLowZoomMarkerHitLayerId =
     'statistics-map-low-zoom-marker-hit-layer';
 const String _statisticsMapDetailMarkerHitLayerId =
     'statistics-map-detail-marker-hit-layer';
+const String _statisticsMapSelfLocationSourceId =
+    'statistics-map-self-location-source';
+const String _statisticsMapSelfLocationLayerId =
+    'statistics-map-self-location-layer';
 const double _statisticsMapFanOutDistanceMeters = 9;
 const double _statisticsMapClusterRadius = 52;
 const double _statisticsMapClusterMaxZoom = 12;
@@ -188,6 +192,17 @@ List<_StatisticsMapMarkerData> _statisticsMapMarkersForEntries(
 
 maplibre.LatLng _statisticsMapLatLngFromOffset(latlong2.LatLng position) {
   return maplibre.LatLng(position.latitude, position.longitude);
+}
+
+@visibleForTesting
+List<DrinkEntry> statisticsMapEntriesForFilters({
+  required List<DrinkEntry> entries,
+  required bool photoOnly,
+}) {
+  if (!photoOnly) {
+    return entries;
+  }
+  return entries.where(_statisticsGalleryHasImage).toList(growable: false);
 }
 
 @visibleForTesting
@@ -411,6 +426,30 @@ Map<String, Object> statisticsMapDetailSourceGeoJsonForEntries({
     _statisticsMapMarkersForEntries(entries),
     markerAssetSignature: markerAssetSignature,
   );
+}
+
+Map<String, Object> _statisticsMapEmptyGeoJson() {
+  return const <String, Object>{
+    'type': 'FeatureCollection',
+    'features': <Object>[],
+  };
+}
+
+@visibleForTesting
+Map<String, Object> statisticsMapSelfLocationGeoJson(maplibre.LatLng position) {
+  return <String, Object>{
+    'type': 'FeatureCollection',
+    'features': <Object>[
+      <String, Object>{
+        'type': 'Feature',
+        'geometry': <String, Object>{
+          'type': 'Point',
+          'coordinates': <double>[position.longitude, position.latitude],
+        },
+        'properties': const <String, Object>{},
+      },
+    ],
+  };
 }
 
 String _statisticsMapHexColor(Color color) {
