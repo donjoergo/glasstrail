@@ -482,9 +482,8 @@ class _FeedDetailPane extends StatelessWidget {
                   TextButton.icon(
                     key: Key('feed-detail-cheers-${entry.id}'),
                     onPressed: cheersEnabled
-                        ? () => unawaited(
-                            controller.cheerFeedEntry(resolvedPost),
-                          )
+                        ? () =>
+                              unawaited(controller.cheerFeedEntry(resolvedPost))
                         : null,
                     icon: cheersPending
                         ? const SizedBox.square(
