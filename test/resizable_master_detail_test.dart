@@ -145,6 +145,36 @@ void main() {
     expect(masterWidth(tester), 520);
   });
 
+  testWidgets('survives layouts narrower than the minimum master width', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ResizableMasterDetail(
+            defaultMasterWidth: 480,
+            dividerKey: dividerKey,
+            master: const SizedBox.expand(key: masterKey),
+            detail: const SizedBox.expand(key: detailKey),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 400 * 0.6 = 240 < minMasterWidth (320): the fraction cap wins and
+    // the build must not throw a clamp assertion.
+    expect(tester.takeException(), isNull);
+    expect(masterWidth(tester), 240);
+  });
+
   testWidgets('reverses drag direction in RTL layouts', (tester) async {
     tester.view.physicalSize = const Size(1300, 900);
     tester.view.devicePixelRatio = 1.0;

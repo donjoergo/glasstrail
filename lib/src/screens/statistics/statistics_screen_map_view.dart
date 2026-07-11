@@ -451,6 +451,9 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
           controller: controller,
           point: point,
         );
+        if (!mounted) {
+          return;
+        }
         if (leafMarkers.length == 1) {
           await _openMarkerDetail(leafMarkers.single);
           return;
@@ -459,7 +462,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
           _openPanel(_StatisticsMapPanelSelection(markers: leafMarkers));
           return;
         }
-        // Empty resolution — fall back to zooming into the cluster.
+        // Empty or partial resolution — fall back to zooming in.
       }
       final nextZoom = math.min(
         _currentZoom + _statisticsMapTapResolveZoomStep,
@@ -561,6 +564,11 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         clusterOffset: clusterOffset,
         expectedCount: pointCount,
       );
+      if (leafIndexes.length < pointCount) {
+        // Partial screen-space match — hiding cluster members would be
+        // worse than the zoom fallback, so report no resolution.
+        return const <_StatisticsMapMarkerData>[];
+      }
       return leafIndexes
           .map((index) => widget.markers[index])
           .toList(growable: false);
@@ -576,6 +584,12 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     maplibre.Annotation? annotation,
     maplibre.HoverEventType eventType,
   ) async {
+    if (_panelSelection?.detail != null) {
+      // The panel detail pins its marker highlight; don't let hover
+      // events overwrite it while the detail is shown.
+      return;
+    }
+
     final markerExists = widget.markers.any((marker) => marker.entry.id == id);
     if (!markerExists) {
       return;
@@ -600,6 +614,11 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     maplibre.LatLng coordinates,
   ) async {
     if (!kIsWeb || !runtime_platform.isMapLibrePlatformSupported) {
+      return;
+    }
+    if (_panelSelection?.detail != null) {
+      // The panel detail pins its marker highlight; skip hover queries
+      // while the detail is shown so mouse moves don't clear it.
       return;
     }
 

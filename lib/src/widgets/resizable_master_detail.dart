@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// A master/detail split with a draggable divider.
@@ -34,8 +36,11 @@ class _ResizableMasterDetailState extends State<ResizableMasterDetail> {
 
   double _clampedMasterWidth(double totalWidth) {
     final maxWidth = totalWidth * widget.maxMasterFraction;
+    // In layouts narrower than the minimum the fraction cap wins, so the
+    // clamp bounds stay ordered instead of throwing.
+    final minWidth = math.min(widget.minMasterWidth, maxWidth);
     final width = _draggedWidth ?? widget.defaultMasterWidth;
-    return width.clamp(widget.minMasterWidth, maxWidth);
+    return width.clamp(minWidth, maxWidth);
   }
 
   void _handleDragUpdate(DragUpdateDetails details, double totalWidth) {
