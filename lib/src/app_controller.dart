@@ -1686,7 +1686,9 @@ class AppController extends ChangeNotifier {
     if (_currentUser != null) {
       await _reloadUserScope();
       _subscribeToNotifications();
-      await _registerPushTokenBestEffort();
+      // Push token registration hits the FCM network; never gate first frame
+      // on it.
+      unawaited(_registerPushTokenBestEffort());
     }
   }
 
