@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Startup and media caching for faster signed-in launches
+- Tap profile photo to view fullscreen
 
 ### Fixed
 - Harden cache cleanup on session changes

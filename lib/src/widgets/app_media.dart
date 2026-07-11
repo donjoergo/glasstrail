@@ -46,12 +46,14 @@ class AppAvatar extends StatefulWidget {
     required this.radius,
     required this.fallback,
     this.backgroundColor,
+    this.enableFullscreenOnTap = false,
   });
 
   final String? imagePath;
   final double radius;
   final Widget fallback;
   final Color? backgroundColor;
+  final bool enableFullscreenOnTap;
 
   @override
   State<AppAvatar> createState() => _AppAvatarState();
@@ -98,10 +100,29 @@ class _AppAvatarState extends State<AppAvatar> {
               if (imageProvider == null) {
                 return Center(child: widget.fallback);
               }
-              return Image(
+              final image = Image(
                 image: imageProvider,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => Center(child: widget.fallback),
+              );
+              if (!widget.enableFullscreenOnTap) {
+                return image;
+              }
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () {
+                    showDialog<void>(
+                      context: context,
+                      barrierColor: Colors.black87,
+                      useSafeArea: false,
+                      builder: (context) =>
+                          _FullscreenPhotoDialog(imageProvider: imageProvider),
+                    );
+                  },
+                  child: image,
+                ),
               );
             },
           ),

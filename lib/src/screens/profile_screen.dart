@@ -487,6 +487,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             key: const Key('profile-avatar'),
                             imagePath: user.profileImagePath,
                             radius: 30,
+                            enableFullscreenOnTap: true,
                             backgroundColor: theme.colorScheme.primary
                                 .withValues(alpha: 0.14),
                             fallback: Text(
