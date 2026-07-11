@@ -6,8 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Desktop mode: adaptive widescreen layouts with Material 3 breakpoints — navigation rail from 840px, dialogs instead of bottom sheets, capped form widths, a floating map detail panel with cluster drink lists, master-detail feed and history, and a multi-pane statistics dashboard from 1200px
 - Startup and media caching for faster signed-in launches
+- Full desktop mode: adaptive widescreen layouts with resizable master-detail views, a floating map detail panel, dialogs instead of sheets, and multi-pane statistics and bar screens
 
 ### Fixed
 - Harden cache cleanup on session changes
