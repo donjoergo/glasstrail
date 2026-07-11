@@ -127,10 +127,9 @@ abstract class AppRepository {
     bool forceRefresh = false,
   });
 
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   });
   Future<DrinkEntry> addDrinkEntry({
     required AppUser user,

@@ -322,10 +322,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statisticsMapClusterFilterLabel => 'Cluster';
 
   @override
-  String get statisticsMapPhotoFilterLabel => 'With photo';
+  String statisticsMapClusterTitle(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count drinks here',
+      one: '1 drink here',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get statisticsMapLocateMeTooltip => 'Show my location';
+
+  @override
+  String get statisticsMapPhotoFilterLabel => 'With photo';
+
+  @override
+  String get feedDetailEmptyTitle => 'No drink selected';
+
+  @override
+  String get feedDetailEmptyBody =>
+      'Select a drink from the feed to see its details here.';
+
+  @override
+  String get historyDetailEmptyTitle => 'No entry selected';
+
+  @override
+  String get historyDetailEmptyBody =>
+      'Select an entry from the history to see its details here.';
+
+  @override
+  String get statisticsDashboard => 'Dashboard';
 
   @override
   String get statisticsGalleryEmptyTitle => 'No drink photos yet';

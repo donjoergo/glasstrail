@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_breakpoints.dart';
 import '../app_scope.dart';
 import '../friend_stats_profile.dart';
+import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 import '../widgets/statistics_overview_content.dart';
@@ -93,45 +95,53 @@ class _FriendStatsProfileScreenState extends State<FriendStatsProfileScreen> {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 _showControllerMessage();
               });
-              return ListView(
-                key: const Key('friend-stats-profile-list'),
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-                children: <Widget>[
-                  AppEmptyStateCard(
-                    key: const Key('friend-stats-profile-unavailable'),
-                    icon: Icons.person_off_rounded,
-                    title: l10n.friendStatsUnavailableTitle,
-                    body: l10n.friendStatsUnavailableBody,
-                  ),
-                ],
+              return AppConstrainedContent(
+                maxWidth: AppBreakpoints.listContentMaxWidth,
+                child: ListView(
+                  key: const Key('friend-stats-profile-list'),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                  children: <Widget>[
+                    AppEmptyStateCard(
+                      key: const Key('friend-stats-profile-unavailable'),
+                      icon: Icons.person_off_rounded,
+                      title: l10n.friendStatsUnavailableTitle,
+                      body: l10n.friendStatsUnavailableBody,
+                    ),
+                  ],
+                ),
               );
             }
 
             return RefreshIndicator(
               key: const Key('friend-stats-profile-refresh-indicator'),
               onRefresh: _refreshProfile,
-              child: ListView(
-                key: const Key('friend-stats-profile-list'),
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-                children: <Widget>[
-                  _FriendStatsProfileHeader(profile: profile),
-                  const SizedBox(height: 20),
-                  if (!profile.shareStatsWithFriends ||
-                      profile.statistics == null)
-                    AppEmptyStateCard(
-                      key: const Key('friend-stats-profile-not-shared'),
-                      icon: Icons.visibility_off_rounded,
-                      title: l10n.friendStatsNotSharedTitle,
-                      body: l10n.friendStatsNotSharedBody(profile.displayName),
-                    )
-                  else
-                    StatisticsOverviewContent(
-                      stats: profile.statistics!,
-                      localeCode: controller.settings.localeCode,
-                    ),
-                ],
+              child: AppConstrainedContent(
+                maxWidth: AppBreakpoints.listContentMaxWidth,
+                child: ListView(
+                  key: const Key('friend-stats-profile-list'),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+                  children: <Widget>[
+                    _FriendStatsProfileHeader(profile: profile),
+                    const SizedBox(height: 20),
+                    if (!profile.shareStatsWithFriends ||
+                        profile.statistics == null)
+                      AppEmptyStateCard(
+                        key: const Key('friend-stats-profile-not-shared'),
+                        icon: Icons.visibility_off_rounded,
+                        title: l10n.friendStatsNotSharedTitle,
+                        body: l10n.friendStatsNotSharedBody(
+                          profile.displayName,
+                        ),
+                      )
+                    else
+                      StatisticsOverviewContent(
+                        stats: profile.statistics!,
+                        localeCode: controller.settings.localeCode,
+                      ),
+                  ],
+                ),
               ),
             );
           },

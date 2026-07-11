@@ -204,6 +204,76 @@ void main() {
     expect(indexes, const <int>[3]);
   });
 
+  test('cluster leaf indexes collect markers within the base radius', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[
+        Offset(100, 100),
+        Offset(110, 100),
+        Offset(100, 130),
+        Offset(400, 400),
+      ],
+      clusterOffset: const Offset(100, 100),
+      expectedCount: 3,
+    );
+
+    expect(indexes.toSet(), <int>{0, 1, 2});
+  });
+
+  test('cluster leaf indexes expand the radius until the count is met', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[
+        Offset(100, 100),
+        Offset(140, 100),
+        Offset(170, 100), // 70px away — needs the 1.5x expansion.
+        Offset(500, 500),
+      ],
+      clusterOffset: const Offset(100, 100),
+      expectedCount: 3,
+      baseRadius: 52,
+    );
+
+    expect(indexes.toSet(), <int>{0, 1, 2});
+  });
+
+  test('cluster leaf indexes trim to the nearest markers when over count', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[
+        Offset(100, 140), // 40px away.
+        Offset(100, 110), // 10px away.
+        Offset(100, 120), // 20px away.
+      ],
+      clusterOffset: const Offset(100, 100),
+      expectedCount: 2,
+    );
+
+    expect(indexes.toSet(), <int>{1, 2});
+  });
+
+  test('cluster leaf indexes return partial matches at the radius cap', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[
+        Offset(100, 100),
+        Offset(600, 600),
+        Offset(700, 700),
+      ],
+      clusterOffset: const Offset(100, 100),
+      expectedCount: 3,
+      baseRadius: 52,
+    );
+
+    expect(indexes, <int>[0]);
+  });
+
+  test('cluster leaf indexes handle empty offsets', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[],
+      clusterOffset: Offset.zero,
+      expectedCount: 2,
+    );
+
+    expect(indexes, isEmpty);
+  });
+
   test('cluster count layer properties keep the label centered', () {
     final properties = statisticsMapClusterCountLayerProperties(
       labelColor: Colors.white,
