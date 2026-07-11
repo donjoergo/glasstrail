@@ -35,14 +35,17 @@ class SupabaseAppRepository implements AppRepository {
   bool get usesRemoteBackend => true;
 
   @override
-  Future<AppUser?> restoreSession() async {
-    final authUser = _client.auth.currentUser;
-    if (authUser == null) {
-      return null;
-    }
+  Future<AppUser?> restoreSession({bool forceRefresh = false}) async {
     try {
-      return _ensureProfile(authUser);
+      final authUser = await _restoreAuthUser(forceRefresh: forceRefresh);
+      if (authUser == null) {
+        return null;
+      }
+      return await _ensureProfile(authUser);
     } on AuthException catch (error) {
+      if (forceRefresh && _isMissingOrInvalidSession(error)) {
+        return null;
+      }
       throw AppException(error.message);
     } on StorageException catch (error) {
       throw AppException(error.message);
@@ -246,7 +249,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<FriendConnection>> loadFriendConnections(String userId) async {
+  Future<List<FriendConnection>> loadFriendConnections(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client.rpc('load_friend_connections');
       return (rows as List<dynamic>)
@@ -437,7 +443,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<AppNotification>> loadNotifications(String userId) async {
+  Future<List<AppNotification>> loadNotifications(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client.rpc('load_notifications');
       return (rows as List<dynamic>)
@@ -596,7 +605,9 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<DrinkDefinition>> loadDefaultCatalog() async {
+  Future<List<DrinkDefinition>> loadDefaultCatalog({
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client
           .from('global_drinks')
@@ -621,7 +632,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<DrinkDefinition>> loadCustomDrinks(String userId) async {
+  Future<List<DrinkDefinition>> loadCustomDrinks(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client
           .from('user_drinks')
@@ -717,7 +731,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<List<DrinkEntry>> loadEntries(String userId) async {
+  Future<List<DrinkEntry>> loadEntries(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final rows = await _client
           .from('drink_entries')
@@ -738,6 +755,7 @@ class SupabaseAppRepository implements AppRepository {
     required String userId,
     FeedDrinkPostCursor? cursor,
     int limit = 20,
+    bool forceRefresh = false,
   }) async {
     try {
       final pageLimit = limit.clamp(1, 50).toInt();
@@ -765,18 +783,14 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) async {
     try {
       final rows = await _client.rpc(
         'set_feed_entry_cheers',
-        params: <String, dynamic>{
-          'target_entry_id': entryId,
-          'should_cheer': shouldCheer,
-        },
+        params: <String, dynamic>{'target_entry_id': entryId},
       );
       final decoded = (rows as List<dynamic>)
           .map((row) {
@@ -939,7 +953,10 @@ class SupabaseAppRepository implements AppRepository {
   }
 
   @override
-  Future<UserSettings> loadSettings(String userId) async {
+  Future<UserSettings> loadSettings(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final row = await _client
           .from('user_settings')
@@ -1231,6 +1248,34 @@ class SupabaseAppRepository implements AppRepository {
     final message = error.message.toLowerCase();
     return message.contains('invalid login credentials') ||
         message.contains('invalid credentials');
+  }
+
+  Future<User?> _restoreAuthUser({required bool forceRefresh}) async {
+    if (!forceRefresh) {
+      return _client.auth.currentUser;
+    }
+    if (_client.auth.currentSession == null) {
+      return null;
+    }
+    final response = await _client.auth.refreshSession();
+    return response.user ?? response.session?.user ?? _client.auth.currentUser;
+  }
+
+  bool _isMissingOrInvalidSession(AuthException error) {
+    if (error is AuthSessionMissingException ||
+        error is AuthInvalidJwtException) {
+      return true;
+    }
+    if (error is AuthRetryableFetchException) {
+      return false;
+    }
+    final message = error.message.toLowerCase();
+    return error.code == 'invalid_grant' ||
+        error.code == 'session_not_found' ||
+        message.contains('refresh token') ||
+        message.contains('invalid grant') ||
+        message.contains('session expired') ||
+        message.contains('invalid jwt');
   }
 
   Future<String?> _loadCustomDrinkImagePath({

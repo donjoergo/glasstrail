@@ -8,6 +8,23 @@
 
 GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in statistics, following friends in a shared feed, and staying on top of social activity with notifications. The initial idea was to make a worthy successor to [Beer With Me](https://play.google.com/store/apps/details?id=se.dagsappar.beer&hl=de) with modern design and a few extra perks.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><strong>Feed</strong><br><img src="docs/screenshots/feed.jpg" alt="Feed" width="180"></td>
+    <td align="center"><strong>Statistics</strong><br><img src="docs/screenshots/statistics_cards.jpg" alt="Statistics cards" width="180"></td>
+    <td align="center"><strong>Pie Chart</strong><br><img src="docs/screenshots/statistics_piechart.jpg" alt="Pie chart" width="180"></td>
+    <td align="center"><strong>Drink Locations</strong><br><img src="docs/screenshots/map.jpg" alt="Drink locations" width="180"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Drink Gallery</strong><br><img src="docs/screenshots/gallery.jpg" alt="Drink gallery" width="180"></td>
+    <td align="center"><strong>Global Drinks</strong><br><img src="docs/screenshots/bar_global_drinks.jpg" alt="Global drinks" width="180"></td>
+    <td align="center"><strong>Custom Drinks</strong><br><img src="docs/screenshots/bar_own%20drinks.jpg" alt="Own drinks" width="180"></td>
+    <td align="center"><strong>Notifications</strong><br><img src="docs/screenshots/notifications.png" alt="Notifications" width="180"></td>
+  </tr>
+</table>
+
 ## Features
 
 - Intuitive drink logging with photo, location and comment
@@ -46,18 +63,18 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
 
 The app exposes one route per visible page. On Flutter Web, in-app routing currently uses hash URLs, so bookmarks look like `/#/feed`. Public friend profile shares use non-hash URLs so messengers can render link previews.
 
-| Page               | Route                             | Purpose                                                                  |
-| ------------------ | --------------------------------- | ------------------------------------------------------------------------ |
-| Auth               | `/auth`                           | Sign in and sign up                                                      |
-| Feed               | `/feed`                           | Personal and social drink feed                                           |
-| Statistics         | `/statistics`                     | Trends, streaks, and category breakdown                                  |
-| Bar                | `/bar`                            | Organize the drink catalog and manage custom drinks                      |
-| Profile            | `/profile`                        | Profile summary and app settings                                         |
-| Notifications      | `/notifications`                  | In-app alerts for friend requests, drink updates, and friendship changes |
-| Edit Profile       | `/profile/edit`                   | Dedicated profile editing page                                           |
-| Friend Profile     | `/friends/profile/<code>`         | In-app friend profile route for sending requests                         |
-| Friend Stats       | `/friends/view/<friendUserId>`    | Protected in-app statistics view for an accepted friend                  |
-| Add Drink          | `/add-drink`                      | Log a drink from recent, global, or custom options                       |
+| Page           | Route                          | Purpose                                                                  |
+| -------------- | ------------------------------ | ------------------------------------------------------------------------ |
+| Auth           | `/auth`                        | Sign in and sign up                                                      |
+| Feed           | `/feed`                        | Personal and social drink feed                                           |
+| Statistics     | `/statistics`                  | Trends, streaks, and category breakdown                                  |
+| Bar            | `/bar`                         | Organize the drink catalog and manage custom drinks                      |
+| Profile        | `/profile`                     | Profile summary and app settings                                         |
+| Notifications  | `/notifications`               | In-app alerts for friend requests, drink updates, and friendship changes |
+| Edit Profile   | `/profile/edit`                | Dedicated profile editing page                                           |
+| Friend Profile | `/friends/profile/<code>`      | In-app friend profile route for sending requests                         |
+| Friend Stats   | `/friends/view/<friendUserId>` | Protected in-app statistics view for an accepted friend                  |
+| Add Drink      | `/add-drink`                   | Log a drink from recent, global, or custom options                       |
 
 Additional routing behavior:
 

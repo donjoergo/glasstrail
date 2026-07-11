@@ -4,10 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-07-11
+### Added
+- Startup and media caching for faster signed-in launches
+- Tap profile photo to view fullscreen
+- Maintenance: Enabled dependabot
+
+### Changed
+- Prevent un-cheering action
+
+### Fixed
+- Harden cache cleanup on session changes
+- About app attribution localized
+
 ## [2.1.0] - 2026-05-25
 ### Added
 - Prompt BeerWithMe import after sign-up
-- Profile account management
+- Profile account management: Delete account and change password
 
 ### Changed
 - Build only arm64 apk to reduce app size from 100mb to \~ 35mb
@@ -111,6 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - settings
   - login
 
+[2.2.0]: https://github.com/donjoergo/glasstrail/compare/2.1.0...2.2.0
 [2.1.0]: https://github.com/donjoergo/glasstrail/compare/2.0.0...2.1.0
 [2.0.0]: https://github.com/donjoergo/glasstrail/compare/1.2.1...2.0.0
 [1.2.1]: https://github.com/donjoergo/glasstrail/compare/1.2.0...1.2.1

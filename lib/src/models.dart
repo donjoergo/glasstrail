@@ -1023,6 +1023,20 @@ class FeedDrinkPostCursor {
 
   final DateTime consumedAt;
   final String entryId;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'consumedAt': consumedAt.toIso8601String(),
+      'entryId': entryId,
+    };
+  }
+
+  factory FeedDrinkPostCursor.fromJson(Map<String, dynamic> json) {
+    return FeedDrinkPostCursor(
+      consumedAt: DateTime.parse(json['consumedAt'] as String),
+      entryId: json['entryId'] as String,
+    );
+  }
 }
 
 class FeedEntryCheersUpdate {
@@ -1074,6 +1088,30 @@ class FeedDrinkPost {
   String get authorDisplayName => authorProfile.displayName;
   String? get authorImagePath => authorProfile.profileImagePath;
   String get authorInitials => authorProfile.initials;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'entry': entry.toJson(),
+      'authorProfile': authorProfile.toJson(),
+      'isOwnEntry': isOwnEntry,
+      'cheersCount': cheersCount,
+      'hasCurrentUserCheered': hasCurrentUserCheered,
+    };
+  }
+
+  factory FeedDrinkPost.fromJson(Map<String, dynamic> json) {
+    return FeedDrinkPost(
+      entry: DrinkEntry.fromJson(
+        Map<String, dynamic>.from(json['entry'] as Map),
+      ),
+      authorProfile: FriendProfile.fromJson(
+        Map<String, dynamic>.from(json['authorProfile'] as Map),
+      ),
+      isOwnEntry: json['isOwnEntry'] == true,
+      cheersCount: (json['cheersCount'] as num?)?.toInt() ?? 0,
+      hasCurrentUserCheered: json['hasCurrentUserCheered'] == true,
+    );
+  }
 }
 
 class FeedDrinkPostPage {
@@ -1086,6 +1124,31 @@ class FeedDrinkPostPage {
   final List<FeedDrinkPost> posts;
   final FeedDrinkPostCursor? cursor;
   final bool hasMore;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'posts': posts.map((post) => post.toJson()).toList(growable: false),
+      'cursor': cursor?.toJson(),
+      'hasMore': hasMore,
+    };
+  }
+
+  factory FeedDrinkPostPage.fromJson(Map<String, dynamic> json) {
+    return FeedDrinkPostPage(
+      posts: (json['posts'] as List<dynamic>? ?? const <dynamic>[])
+          .map(
+            (post) =>
+                FeedDrinkPost.fromJson(Map<String, dynamic>.from(post as Map)),
+          )
+          .toList(growable: false),
+      cursor: json['cursor'] is Map
+          ? FeedDrinkPostCursor.fromJson(
+              Map<String, dynamic>.from(json['cursor'] as Map),
+            )
+          : null,
+      hasMore: json['hasMore'] == true,
+    );
+  }
 }
 
 class UserSettings {

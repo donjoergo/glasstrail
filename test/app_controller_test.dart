@@ -70,6 +70,60 @@ void main() {
     expect(controller.notifications, isEmpty);
   });
 
+  test('does not gate bootstrap on push token registration', () async {
+    final repository = _PushRegisterProbeRepository();
+    repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
+    repository.restoreSessionCompleter.complete(
+      const AppUser(
+        id: 'user-1',
+        email: 'user@example.com',
+        displayName: 'User Example',
+      ),
+    );
+    repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
+    repository.entriesCompleter.complete(const <DrinkEntry>[]);
+    repository.feedPostsCompleter.complete(
+      const FeedDrinkPostPage(
+        posts: <FeedDrinkPost>[],
+        cursor: null,
+        hasMore: false,
+      ),
+    );
+    repository.settingsCompleter.complete(UserSettings.defaults());
+    repository.friendConnectionsCompleter.complete(const <FriendConnection>[]);
+    repository.notificationsCompleter.complete(const <AppNotification>[]);
+
+    final pushService = _BlockedTokenPushNotificationService();
+
+    var bootstrapCompleted = false;
+    final bootstrapFuture =
+        AppController.bootstrapWithRepository(
+          repository,
+          pushNotificationService: pushService,
+        ).then((controller) {
+          bootstrapCompleted = true;
+          return controller;
+        });
+
+    for (var i = 0; i < 20; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(
+      bootstrapCompleted,
+      isTrue,
+      reason: 'bootstrap must not wait for the FCM device token',
+    );
+
+    pushService.tokenCompleter.complete(
+      const PushDeviceToken(token: 'late-token', platform: 'android'),
+    );
+    for (var i = 0; i < 20; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(repository.registerNotificationDeviceTokenCalls, 1);
+    await bootstrapFuture;
+  });
+
   test('refreshes app data through the repository again', () async {
     final repository = _BootstrapProbeRepository();
     repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
@@ -363,7 +417,7 @@ void main() {
       (candidate) => candidate.entry.id == entry.id,
     );
 
-    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    final toggleFuture = controller.cheerFeedEntry(post);
     await repository.setCheersStarted.future;
     await Future<void>.delayed(Duration.zero);
 
@@ -421,7 +475,7 @@ void main() {
       (candidate) => candidate.entry.id == entry.id,
     );
 
-    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    final toggleFuture = controller.cheerFeedEntry(post);
     await repository.setCheersStarted.future;
     await Future<void>.delayed(Duration.zero);
 
@@ -486,11 +540,7 @@ void main() {
       0,
     );
 
-    await repository.setFeedEntryCheers(
-      userId: friend.id,
-      entryId: entry.id,
-      shouldCheer: true,
-    );
+    await repository.addFeedEntryCheer(userId: friend.id, entryId: entry.id);
     await Future<void>.delayed(Duration.zero);
 
     final notification = controller.notifications.firstWhere(
@@ -1898,10 +1948,9 @@ class _BlockingCheersLocalAppRepository extends LocalAppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) async {
     if (!setCheersStarted.isCompleted) {
       setCheersStarted.complete();
@@ -1910,12 +1959,39 @@ class _BlockingCheersLocalAppRepository extends LocalAppRepository {
     if (failSetCheers) {
       throw const AppException('Cheers failed.');
     }
-    return super.setFeedEntryCheers(
-      userId: userId,
-      entryId: entryId,
-      shouldCheer: shouldCheer,
-    );
+    return super.addFeedEntryCheer(userId: userId, entryId: entryId);
   }
+}
+
+class _PushRegisterProbeRepository extends _BootstrapProbeRepository {
+  int registerNotificationDeviceTokenCalls = 0;
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) async {
+    registerNotificationDeviceTokenCalls++;
+  }
+}
+
+class _BlockedTokenPushNotificationService extends PushNotificationService {
+  final tokenCompleter = Completer<PushDeviceToken?>();
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() => tokenCompleter.future;
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes =>
+      const Stream<PushDeviceToken>.empty();
+
+  @override
+  Future<PushNotificationOpen?> consumeInitialOpen() async => null;
+
+  @override
+  Stream<PushNotificationOpen> get openedNotifications =>
+      const Stream<PushNotificationOpen>.empty();
 }
 
 class _StaticPushNotificationService extends PushNotificationService {
@@ -2188,25 +2264,33 @@ class _BootstrapProbeRepository implements AppRepository {
   bool get usesRemoteBackend => false;
 
   @override
-  Future<List<DrinkDefinition>> loadDefaultCatalog() {
+  Future<List<DrinkDefinition>> loadDefaultCatalog({
+    bool forceRefresh = false,
+  }) {
     loadDefaultCatalogCalls++;
     return defaultCatalogCompleter.future;
   }
 
   @override
-  Future<AppUser?> restoreSession() {
+  Future<AppUser?> restoreSession({bool forceRefresh = false}) {
     restoreSessionCalls++;
     return restoreSessionCompleter.future;
   }
 
   @override
-  Future<List<DrinkDefinition>> loadCustomDrinks(String userId) {
+  Future<List<DrinkDefinition>> loadCustomDrinks(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadCustomDrinksCalls++;
     return customDrinksCompleter.future;
   }
 
   @override
-  Future<List<DrinkEntry>> loadEntries(String userId) {
+  Future<List<DrinkEntry>> loadEntries(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadEntriesCalls++;
     return entriesCompleter.future;
   }
@@ -2216,6 +2300,7 @@ class _BootstrapProbeRepository implements AppRepository {
     required String userId,
     FeedDrinkPostCursor? cursor,
     int limit = 20,
+    bool forceRefresh = false,
   }) {
     loadFeedDrinkPostsCalls++;
     final handler = onLoadFeedDrinkPosts;
@@ -2226,13 +2311,19 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
-  Future<UserSettings> loadSettings(String userId) {
+  Future<UserSettings> loadSettings(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadSettingsCalls++;
     return settingsCompleter.future;
   }
 
   @override
-  Future<List<FriendConnection>> loadFriendConnections(String userId) {
+  Future<List<FriendConnection>> loadFriendConnections(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadFriendConnectionsCalls++;
     final handler = onLoadFriendConnections;
     if (handler != null) {
@@ -2242,7 +2333,10 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
-  Future<List<AppNotification>> loadNotifications(String userId) {
+  Future<List<AppNotification>> loadNotifications(
+    String userId, {
+    bool forceRefresh = false,
+  }) {
     loadNotificationsCalls++;
     return notificationsCompleter.future;
   }
@@ -2295,10 +2389,9 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) {
     throw UnimplementedError();
   }
