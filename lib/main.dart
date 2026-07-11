@@ -6,9 +6,13 @@ import 'src/location_service.dart';
 import 'src/photo_service.dart';
 import 'src/push_notification_service.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  final pushNotificationService = await createPlatformPushNotificationService();
+  // Firebase init must not delay the first frame; it resolves in parallel
+  // with bootstrap behind the deferred wrapper.
+  final pushNotificationService = DeferredPushNotificationService(
+    createPlatformPushNotificationService(),
+  );
   runApp(
     GlassTrailBootstrapApp(
       photoService: const FileSelectorPhotoService(),
