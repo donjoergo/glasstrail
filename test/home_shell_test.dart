@@ -5180,6 +5180,14 @@ void main() {
       expect(find.byType(Dialog), findsOneWidget);
       expect(find.byType(BottomSheet), findsNothing);
       expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('statistics-map-dialog-close')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(Key('statistics-map-sheet-${beerEntry.id}')),
+        findsNothing,
+      );
     },
   );
 

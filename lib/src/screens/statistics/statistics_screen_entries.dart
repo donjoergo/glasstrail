@@ -328,31 +328,29 @@ List<AppGalleryViewerItem> _statisticsGalleryViewerItems({
             if (normalizeLocationAddress(entry.locationAddress) != null)
               normalizeLocationAddress(entry.locationAddress)!,
           ],
-          comment: _normalizedStatisticsGalleryComment(entry.comment),
+          comment: nonEmptyTrimmed(entry.comment),
         ),
       )
       .toList(growable: false);
 }
 
-String? _normalizedStatisticsGalleryComment(String? comment) {
-  final normalized = comment?.trim();
-  if (normalized == null || normalized.isEmpty) {
-    return null;
-  }
-  return normalized;
-}
-
 Widget _statisticsGalleryTileFor({
   required BuildContext context,
   required List<DrinkEntry> entries,
-  required List<AppGalleryViewerItem> galleryItems,
   required int index,
 }) {
   final entry = entries[index];
   return _StatisticsGalleryTile(
     key: Key('statistics-gallery-tile-${entry.id}'),
-    imagePath: galleryItems[index].imagePath,
+    imagePath: entry.imagePath!.trim(),
     onTap: () {
+      // Viewer items carry formatted metadata for every entry; build them
+      // lazily on tap instead of on every grid rebuild.
+      final galleryItems = _statisticsGalleryViewerItems(
+        controller: AppScope.controllerOf(context),
+        l10n: AppLocalizations.of(context),
+        entries: entries,
+      );
       showAppGalleryViewerDialog(
         context,
         items: galleryItems,
@@ -372,11 +370,6 @@ class _StatisticsGalleryPage extends StatelessWidget {
     final entries = controller.entries
         .where(_statisticsGalleryHasImage)
         .toList(growable: false);
-    final galleryItems = _statisticsGalleryViewerItems(
-      controller: controller,
-      l10n: l10n,
-      entries: entries,
-    );
 
     if (entries.isEmpty) {
       return RefreshIndicator(
@@ -418,7 +411,6 @@ class _StatisticsGalleryPage extends StatelessWidget {
             itemBuilder: (context, index) => _statisticsGalleryTileFor(
               context: context,
               entries: entries,
-              galleryItems: galleryItems,
               index: index,
             ),
           );

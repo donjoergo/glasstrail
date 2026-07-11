@@ -319,11 +319,44 @@ class _StatisticsMapEntrySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final content = DrinkEntryDetailContent(
+      entry: entry,
+      accentColor: accentColor,
+    );
+
+    if (AppBreakpoints.isExpanded(context)) {
+      // Dialog presentation: no drag handle exists here, so provide a
+      // close button and breathing room at the top instead.
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: <Widget>[
+                IconButton(
+                  key: const Key('statistics-map-dialog-close'),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              child: content,
+            ),
+          ),
+        ],
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      child: SingleChildScrollView(
-        child: DrinkEntryDetailContent(entry: entry, accentColor: accentColor),
-      ),
+      child: SingleChildScrollView(child: content),
     );
   }
 }

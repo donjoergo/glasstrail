@@ -7,14 +7,6 @@ import '../l10n_extensions.dart';
 import '../models.dart';
 import 'app_media.dart';
 
-String? _normalizedDetailText(String? value) {
-  final normalized = value?.trim();
-  if (normalized == null || normalized.isEmpty) {
-    return null;
-  }
-  return normalized;
-}
-
 /// Shared drink entry detail body used by the statistics map sheet, the map
 /// overlay panel, and the master-detail panes.
 ///
@@ -54,9 +46,9 @@ class DrinkEntryDetailContent extends StatelessWidget {
     final volumeLabel = entry.volumeMl == null
         ? null
         : unit.formatVolume(entry.volumeMl);
-    final locationAddress = _normalizedDetailText(entry.locationAddress);
-    final comment = _normalizedDetailText(entry.comment);
-    final imagePath = _normalizedDetailText(entry.imagePath);
+    final locationAddress = normalizeLocationAddress(entry.locationAddress);
+    final comment = nonEmptyTrimmed(entry.comment);
+    final imagePath = nonEmptyTrimmed(entry.imagePath);
 
     return Column(
       key: Key('$keyPrefix-${entry.id}'),

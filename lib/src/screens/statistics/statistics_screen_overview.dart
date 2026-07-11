@@ -21,15 +21,9 @@ class _StatisticsDashboardOverviewColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.controllerOf(context);
-    final l10n = AppLocalizations.of(context);
     final galleryEntries = controller.entries
         .where(_statisticsGalleryHasImage)
         .toList(growable: false);
-    final galleryItems = _statisticsGalleryViewerItems(
-      controller: controller,
-      l10n: l10n,
-      entries: galleryEntries,
-    );
 
     return RefreshIndicator(
       key: const Key('statistics-dashboard-refresh-indicator'),
@@ -64,7 +58,6 @@ class _StatisticsDashboardOverviewColumn extends StatelessWidget {
                       (context, index) => _statisticsGalleryTileFor(
                         context: context,
                         entries: galleryEntries,
-                        galleryItems: galleryItems,
                         index: index,
                       ),
                       childCount: galleryEntries.length,
