@@ -5317,6 +5317,79 @@ void main() {
     );
   });
 
+  testWidgets('shows both bar sections side by side on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-side-by-side@example.com',
+      password: 'password123',
+      displayName: 'Bar Side By Side',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-tab-bar')), findsNothing);
+    expect(find.byKey(const Key('bar-global-section')), findsOneWidget);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+
+    final globalLeft = tester
+        .getTopLeft(find.byKey(const Key('bar-global-section')))
+        .dx;
+    final customLeft = tester
+        .getTopLeft(find.byKey(const Key('bar-custom-drinks-section')))
+        .dx;
+    expect(globalLeft, lessThan(customLeft));
+  });
+
+  testWidgets('restores the bar tabs when resizing below 1200', (tester) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-resize@example.com',
+      password: 'password123',
+      displayName: 'Bar Resize',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-tab-bar')), findsNothing);
+
+    _setSurfaceSize(tester, const Size(1100, 900));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-tab-bar')), findsOneWidget);
+    expect(find.byKey(const Key('bar-global-section')), findsOneWidget);
+
+    await _openBarCustomDrinksTab(tester);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+  });
+
   testWidgets('marks history entries that have a photo', (tester) async {
     _setSurfaceSize(tester, const Size(430, 1000));
     addTearDown(() {

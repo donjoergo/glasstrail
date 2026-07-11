@@ -123,6 +123,22 @@ class _BarScreenState extends State<BarScreen>
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
+    if (AppBreakpoints.isLarge(context)) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Expanded(
+            child: _BarDrinkSortingTab(runCatalogAction: _runCatalogAction),
+          ),
+          Expanded(
+            child: _BarCustomDrinksTab(
+              showCustomDrinkDialog: _showCustomDrinkDialog,
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: <Widget>[
         Padding(
