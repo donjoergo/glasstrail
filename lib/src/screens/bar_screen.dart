@@ -124,18 +124,21 @@ class _BarScreenState extends State<BarScreen>
     final theme = Theme.of(context);
 
     if (AppBreakpoints.isLarge(context)) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Expanded(
-            child: _BarDrinkSortingTab(runCatalogAction: _runCatalogAction),
-          ),
-          Expanded(
-            child: _BarCustomDrinksTab(
-              showCustomDrinkDialog: _showCustomDrinkDialog,
+      return AppConstrainedContent(
+        maxWidth: AppBreakpoints.barContentMaxWidth,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Expanded(
+              child: _BarDrinkSortingTab(runCatalogAction: _runCatalogAction),
             ),
-          ),
-        ],
+            Expanded(
+              child: _BarCustomDrinksTab(
+                showCustomDrinkDialog: _showCustomDrinkDialog,
+              ),
+            ),
+          ],
+        ),
       );
     }
 

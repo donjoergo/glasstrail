@@ -5,12 +5,13 @@ class _StatisticsDashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Expanded(flex: 5, child: _StatisticsDashboardOverviewColumn()),
-        Expanded(flex: 7, child: _StatisticsMapPage()),
-      ],
+    return ResizableMasterDetail(
+      defaultMasterWidth: AppBreakpoints.isExtraLarge(context)
+          ? AppBreakpoints.masterPaneWidthExtraLarge
+          : AppBreakpoints.masterPaneWidth,
+      dividerKey: const Key('statistics-dashboard-split-divider'),
+      master: const _StatisticsDashboardOverviewColumn(),
+      detail: const _StatisticsMapPage(),
     );
   }
 }

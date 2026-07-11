@@ -24,6 +24,7 @@ class AppBreakpoints {
   static const double feedMasterPaneWidth = 480;
   static const double feedMasterPaneWidthExtraLarge = 560;
   static const double mapPanelWidth = 380;
+  static const double barContentMaxWidth = 1200;
 
   static AppLayoutSize sizeOf(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
