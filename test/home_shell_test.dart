@@ -1297,7 +1297,7 @@ void main() {
     expect(find.text('GitHub'), findsOneWidget);
     expect(
       find.text(
-        'created with ❤️, ☕ and 🍺 by Jörg Dorlach',
+        'Created with ❤️, ☕ and 🍺 by Jörg Dorlach',
         findRichText: true,
       ),
       findsOneWidget,

@@ -318,6 +318,21 @@
   "roadmap": "Planned next",
   "about": "About",
   "github": "GitHub",
+  "profileAttribution": "Created with {heart}, {coffee} and {beer} by Jörg Dorlach",
+  "@profileAttribution": {
+    "description": "Attribution line in the profile about section",
+    "placeholders": {
+      "heart": {
+        "type": "String"
+      },
+      "coffee": {
+        "type": "String"
+      },
+      "beer": {
+        "type": "String"
+      }
+    }
+  },
   "roadmapBody": "Achievements are planned next.",
   "beerWithMeImport": "Beer With Me Import",
   "beerWithMeImportBody": "Import a Beer With Me export into your GlassTrail history. Existing Beer With Me imports are detected and skipped automatically.",
