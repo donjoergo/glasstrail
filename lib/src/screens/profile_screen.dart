@@ -387,7 +387,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '${l10n.appTitle} V$version';
   }
 
-  List<InlineSpan> _buildAttributionSpans(ThemeData theme, AppLocalizations l10n) {
+  List<InlineSpan> _buildAttributionSpans(
+    ThemeData theme,
+    AppLocalizations l10n,
+  ) {
     const heart = '❤️';
     const coffee = '☕';
     const beer = '🍺';
