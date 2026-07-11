@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import '../app_breakpoints.dart';
 
@@ -34,12 +35,16 @@ Future<T?> showAdaptiveSheetOrDialog<T>({
           MediaQuery.sizeOf(dialogContext).height * dialogMaxHeightFactor;
       return Dialog(
         clipBehavior: Clip.antiAlias,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: dialogMaxWidth,
-            maxHeight: maxHeight,
+        // PointerInterceptor keeps native wheel/drag events on the dialog
+        // instead of platform views underneath (e.g. the MapLibre map).
+        child: PointerInterceptor(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: dialogMaxWidth,
+              maxHeight: maxHeight,
+            ),
+            child: builder(dialogContext),
           ),
-          child: builder(dialogContext),
         ),
       );
     },
