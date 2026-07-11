@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tap profile photo to view fullscreen
 - Maintenance: Enabled dependabot
 
+### Changed
+- Prevent un-cheering action
+
 ### Fixed
 - Harden cache cleanup on session changes
 - About app attribution localized

@@ -675,7 +675,8 @@ class _DrinkEntryCard extends StatelessWidget {
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
     final cheersPending = controller.isFeedEntryCheersPending(entry.id);
-    final cheersEnabled = !post.isOwnEntry && !cheersPending;
+    final cheersEnabled =
+        !post.isOwnEntry && !cheersPending && !post.hasCurrentUserCheered;
     final timeLabel = DateFormat.yMMMd(
       locale,
     ).add_Hm().format(entry.consumedAt);
@@ -847,9 +848,7 @@ class _DrinkEntryCard extends StatelessWidget {
                         TextButton.icon(
                           key: Key('feed-entry-cheers-${entry.id}'),
                           onPressed: cheersEnabled
-                              ? () => unawaited(
-                                  controller.toggleFeedEntryCheers(post),
-                                )
+                              ? () => unawaited(controller.cheerFeedEntry(post))
                               : null,
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(

@@ -545,15 +545,13 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) async {
-    final update = await _delegate.setFeedEntryCheers(
+    final update = await _delegate.addFeedEntryCheer(
       userId: userId,
       entryId: entryId,
-      shouldCheer: shouldCheer,
     );
     await _updateCache((state) {
       final page = state.snapshot.firstFeedPage;

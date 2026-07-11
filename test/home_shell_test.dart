@@ -3627,11 +3627,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.widget<Text>(cheersCount).data, '1');
-
-      await tester.tap(cheersButton);
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Text>(cheersCount).data, '0');
+      expect(tester.widget<TextButton>(cheersButton).onPressed, isNull);
     },
   );
 
@@ -3719,11 +3715,7 @@ void main() {
       '0',
     );
 
-    await repository.setFeedEntryCheers(
-      userId: friend.id,
-      entryId: entry.id,
-      shouldCheer: true,
-    );
+    await repository.addFeedEntryCheer(userId: friend.id, entryId: entry.id);
     await tester.pump();
     await tester.pumpAndSettle();
 
