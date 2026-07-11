@@ -24,6 +24,7 @@ import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/add_drink_screen.dart';
+import 'package:glasstrail/src/screens/custom_drink_dialog.dart';
 import 'package:glasstrail/src/screens/feed_screen.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
@@ -3153,6 +3154,102 @@ void main() {
       ImageUploadPreset.feed,
     ]);
   });
+
+  testWidgets(
+    'auto-fills the add-drink photo when creating a custom drink inline',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'inline-custom-drink-photo@example.com',
+        password: 'password123',
+        displayName: 'Inline Custom Drink Photo',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Create custom drink'));
+      await tester.pumpAndSettle();
+
+      final dialogNameField = find
+          .descendant(
+            of: find.byType(CustomDrinkDialog),
+            matching: find.byType(TextFormField),
+          )
+          .first;
+      await tester.enterText(dialogNameField, 'Porch Lager');
+      await _tapPhotoAction(tester, find.text('Pick photo'));
+      await tester.tap(find.byKey(const Key('custom-drink-save-button')));
+      await tester.pumpAndSettle();
+
+      expect(controller.customDrinks.single.imagePath, isNotNull);
+      expect(find.text('Porch Lager'), findsWidgets);
+      expect(find.byKey(const Key('add-drink-image-preview')), findsOneWidget);
+      expect(find.text('Change photo'), findsOneWidget);
+      expect(find.text('Pick photo'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'does not auto-fill the add-drink photo when selecting an existing custom drink',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'existing-custom-drink-photo@example.com',
+        password: 'password123',
+        displayName: 'Existing Custom Drink Photo',
+      );
+      await controller.saveCustomDrink(
+        name: 'Garden Spritz',
+        category: DrinkCategory.cocktails,
+        volumeMl: 250,
+        imagePath: '/tmp/garden-spritz.png',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('drink-category-title-cocktails')));
+      await tester.pumpAndSettle();
+      final gardenSpritzTile = find.widgetWithText(ListTile, 'Garden Spritz');
+      await tester.ensureVisible(gardenSpritzTile);
+      await tester.tap(gardenSpritzTile);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('add-drink-image-preview')), findsNothing);
+      expect(find.text('Pick photo'), findsOneWidget);
+    },
+  );
 
   testWidgets('shows the streak card in the feed without a details button', (
     tester,

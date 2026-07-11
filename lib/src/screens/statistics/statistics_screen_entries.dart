@@ -232,7 +232,15 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          Icon(entry.category.icon, color: theme.colorScheme.primary),
+          AppAvatar(
+            imagePath: controller.drinkById(entry.drinkId)?.imagePath,
+            radius: 20,
+            backgroundColor: Colors.transparent,
+            fallback: Icon(
+              entry.category.icon,
+              color: theme.colorScheme.primary,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

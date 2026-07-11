@@ -5,6 +5,7 @@ import '../app_breakpoints.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
 import 'adaptive_modal.dart';
+import 'app_media.dart';
 
 Future<DrinkDefinition?> showDrinkPickerSheet({
   required BuildContext context,
@@ -209,10 +210,12 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
                   (drink) => ChoiceChip(
                     selected: widget.selectedDrink?.id == drink.id,
                     showCheckmark: false,
-                    avatar: Icon(
-                      drink.category.icon,
+                    avatar: AppAvatar(
                       key: Key('recent-drink-icon-${drink.id}'),
-                      size: 18,
+                      imagePath: drink.imagePath,
+                      radius: 9,
+                      backgroundColor: Colors.transparent,
+                      fallback: Icon(drink.category.icon, size: 18),
                     ),
                     label: Text(
                       drink.shouldShowAlcoholFreeMarker
@@ -341,7 +344,12 @@ class _DrinkCategorySection extends StatelessWidget {
               ].join(' • ');
               return ListTile(
                 dense: true,
-                leading: Icon(drink.category.icon),
+                leading: AppAvatar(
+                  imagePath: drink.imagePath,
+                  radius: 20,
+                  backgroundColor: Colors.transparent,
+                  fallback: Icon(drink.category.icon),
+                ),
                 title: Text(drink.displayName(localeCode)),
                 subtitle: metadata.isEmpty ? null : Text(metadata),
                 trailing: selectedDrink?.id == drink.id

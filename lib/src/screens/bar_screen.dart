@@ -9,6 +9,7 @@ import '../l10n_extensions.dart';
 import '../models.dart';
 import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
+import '../widgets/app_media.dart';
 import 'custom_drink_dialog.dart';
 
 class BarScreen extends StatefulWidget {
@@ -354,11 +355,13 @@ class _BarCustomDrinksTab extends StatelessWidget {
                     (drink) => ListTile(
                       key: Key('bar-custom-drink-${drink.id}'),
                       contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
+                      leading: AppAvatar(
+                        imagePath: drink.imagePath,
+                        radius: 20,
                         backgroundColor: theme.colorScheme.primary.withValues(
                           alpha: 0.12,
                         ),
-                        child: Icon(
+                        fallback: Icon(
                           drink.category.icon,
                           color: theme.colorScheme.primary,
                         ),
@@ -499,9 +502,14 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
                   return ListTile(
                     key: itemKey,
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      drink.category.icon,
-                      color: theme.colorScheme.primary,
+                    leading: AppAvatar(
+                      imagePath: drink.imagePath,
+                      radius: 20,
+                      backgroundColor: Colors.transparent,
+                      fallback: Icon(
+                        drink.category.icon,
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
                     title: Text(drink.displayName(l10n.locale.languageCode)),
                     subtitle: Text(l10n.drinkDefinitionMetadata(drink, unit)),
