@@ -51,6 +51,43 @@ class DisabledPushNotificationService extends PushNotificationService {
       const Stream<PushNotificationOpen>.empty();
 }
 
+/// Wraps a [PushNotificationService] that is still initializing so callers
+/// (and `runApp`) never have to wait for platform setup such as
+/// `Firebase.initializeApp`. If initialization fails, behaves like
+/// [DisabledPushNotificationService].
+class DeferredPushNotificationService extends PushNotificationService {
+  DeferredPushNotificationService(Future<PushNotificationService> inner)
+    : _inner = inner.catchError(
+        (Object _) => const DisabledPushNotificationService(),
+      );
+
+  final Future<PushNotificationService> _inner;
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() async {
+    final service = await _inner;
+    return service.getDeviceToken();
+  }
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes async* {
+    final service = await _inner;
+    yield* service.tokenRefreshes;
+  }
+
+  @override
+  Future<PushNotificationOpen?> consumeInitialOpen() async {
+    final service = await _inner;
+    return service.consumeInitialOpen();
+  }
+
+  @override
+  Stream<PushNotificationOpen> get openedNotifications async* {
+    final service = await _inner;
+    yield* service.openedNotifications;
+  }
+}
+
 Future<PushNotificationService> createPlatformPushNotificationService() async {
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
     return const DisabledPushNotificationService();

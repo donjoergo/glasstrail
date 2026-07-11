@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../app_theme.dart';
 import '../app_controller.dart';
+import '../app_routes.dart';
 import '../app_scope.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
@@ -377,7 +378,8 @@ class _FeedDetailPane extends StatelessWidget {
     final categoryLabel = l10n.categoryLabel(entry.category);
     final unit = controller.settings.unit;
     final cheersPending = controller.isFeedEntryCheersPending(entry.id);
-    final cheersEnabled = !post.isOwnEntry && !cheersPending;
+    final cheersEnabled =
+        !post.isOwnEntry && !cheersPending && !post.hasCurrentUserCheered;
     final resolvedPost = post;
 
     return SingleChildScrollView(
@@ -481,7 +483,7 @@ class _FeedDetailPane extends StatelessWidget {
                     key: Key('feed-detail-cheers-${entry.id}'),
                     onPressed: cheersEnabled
                         ? () => unawaited(
-                            controller.toggleFeedEntryCheers(resolvedPost),
+                            controller.cheerFeedEntry(resolvedPost),
                           )
                         : null,
                     icon: cheersPending
@@ -829,6 +831,44 @@ class _DrinkEntryCard extends StatelessWidget {
 
   DrinkEntry get entry => post.entry;
 
+  Widget _buildAuthorAvatar(BuildContext context, ThemeData theme) {
+    final fallback = Text(
+      post.authorInitials,
+      style: theme.textTheme.labelLarge?.copyWith(
+        color: theme.colorScheme.primary,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+    final backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.12);
+
+    if (post.isOwnEntry) {
+      return AppAvatar(
+        imagePath: post.authorImagePath,
+        radius: 20,
+        backgroundColor: backgroundColor,
+        enableFullscreenOnTap: true,
+        fallback: fallback,
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: Key('feed-entry-avatar-tap-${entry.id}'),
+        customBorder: const CircleBorder(),
+        onTap: () => Navigator.of(
+          context,
+        ).pushNamed(AppRoutes.friendStatsProfileRoute(post.authorProfile.id)),
+        child: AppAvatar(
+          imagePath: post.authorImagePath,
+          radius: 20,
+          backgroundColor: backgroundColor,
+          fallback: fallback,
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleAction(
     BuildContext context,
     _DrinkEntryAction action,
@@ -867,7 +907,8 @@ class _DrinkEntryCard extends StatelessWidget {
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
     final cheersPending = controller.isFeedEntryCheersPending(entry.id);
-    final cheersEnabled = !post.isOwnEntry && !cheersPending;
+    final cheersEnabled =
+        !post.isOwnEntry && !cheersPending && !post.hasCurrentUserCheered;
     final timeLabel = DateFormat.yMMMd(
       locale,
     ).add_Hm().format(entry.consumedAt);
@@ -896,20 +937,7 @@ class _DrinkEntryCard extends StatelessWidget {
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    AppAvatar(
-                      imagePath: post.authorImagePath,
-                      radius: 20,
-                      backgroundColor: theme.colorScheme.primary.withValues(
-                        alpha: 0.12,
-                      ),
-                      fallback: Text(
-                        post.authorInitials,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
+                    _buildAuthorAvatar(context, theme),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -1055,9 +1083,7 @@ class _DrinkEntryCard extends StatelessWidget {
                         TextButton.icon(
                           key: Key('feed-entry-cheers-${entry.id}'),
                           onPressed: cheersEnabled
-                              ? () => unawaited(
-                                  controller.toggleFeedEntryCheers(post),
-                                )
+                              ? () => unawaited(controller.cheerFeedEntry(post))
                               : null,
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(

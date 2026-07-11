@@ -1277,6 +1277,12 @@ abstract class AppLocalizations {
   /// **'GitHub'**
   String get github;
 
+  /// Attribution line in the profile about section
+  ///
+  /// In en, this message translates to:
+  /// **'Created with {heart}, {coffee} and {beer} by Jörg Dorlach'**
+  String profileAttribution(String heart, String coffee, String beer);
+
   /// No description provided for @roadmapBody.
   ///
   /// In en, this message translates to:

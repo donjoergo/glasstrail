@@ -389,6 +389,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '${l10n.appTitle} V$version';
   }
 
+  List<InlineSpan> _buildAttributionSpans(
+    ThemeData theme,
+    AppLocalizations l10n,
+  ) {
+    const heart = '❤️';
+    const coffee = '☕';
+    const beer = '🍺';
+    final text = l10n.profileAttribution(heart, coffee, beer);
+    final baseStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final emojiStyle = baseStyle?.copyWith(fontFamily: 'ProfileEmoji');
+    final markers = <String>[heart, coffee, beer];
+
+    final spans = <InlineSpan>[];
+    var index = 0;
+    while (index < text.length) {
+      final marker = markers.firstWhere(
+        (candidate) => text.startsWith(candidate, index),
+        orElse: () => '',
+      );
+      if (marker.isNotEmpty) {
+        spans.add(TextSpan(text: marker, style: emojiStyle));
+        index += marker.length;
+        continue;
+      }
+      final nextMarkerIndex = markers
+          .map((candidate) => text.indexOf(candidate, index))
+          .where((position) => position != -1)
+          .fold<int?>(
+            null,
+            (closest, position) =>
+                closest == null || position < closest ? position : closest,
+          );
+      final end = nextMarkerIndex ?? text.length;
+      spans.add(TextSpan(text: text.substring(index, end), style: baseStyle));
+      index = end;
+    }
+    return spans;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -491,6 +532,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               key: const Key('profile-avatar'),
                               imagePath: user.profileImagePath,
                               radius: 30,
+                              enableFullscreenOnTap: true,
                               backgroundColor: theme.colorScheme.primary
                                   .withValues(alpha: 0.14),
                               fallback: Text(
@@ -892,33 +934,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      children: <InlineSpan>[
-                        const TextSpan(text: 'created with '),
-                        TextSpan(
-                          text: '❤️',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontFamily: 'ProfileEmoji',
-                          ),
-                        ),
-                        const TextSpan(text: ', '),
-                        TextSpan(
-                          text: '☕',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontFamily: 'ProfileEmoji',
-                          ),
-                        ),
-                        const TextSpan(text: ' and '),
-                        TextSpan(
-                          text: '🍺',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontFamily: 'ProfileEmoji',
-                          ),
-                        ),
-                        const TextSpan(text: ' by Jörg Dorlach'),
-                      ],
+                      children: _buildAttributionSpans(theme, l10n),
                     ),
                     key: const Key('profile-about-attribution'),
                   ),

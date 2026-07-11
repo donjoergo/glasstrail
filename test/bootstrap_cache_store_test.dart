@@ -56,6 +56,44 @@ void main() {
     );
   });
 
+  test('serves repeated reads from memory without re-reading disk', () async {
+    final backend = TestCacheStoreBackend();
+    final store = await BootstrapCacheStore.create(backend: backend);
+    await store.writeState(
+      BootstrapCacheState(
+        snapshot: const BootstrapSnapshot(
+          currentUser: AppUser(
+            id: 'user-1',
+            email: 'user@example.com',
+            displayName: 'User Example',
+          ),
+        ),
+        manifest: CacheManifest(
+          schemaVersion: cacheSchemaVersion,
+          userId: 'user-1',
+          domains: <CacheDomain, CacheManifestEntry>{
+            CacheDomain.currentUser: CacheManifestEntry(
+              updatedAt: DateTime(2026, 5, 12),
+              itemCount: 1,
+            ),
+          },
+        ),
+      ),
+    );
+
+    final first = await store.readState();
+    final readsAfterFirst = backend.readCalls;
+    final second = await store.readState();
+
+    expect(first.snapshot.currentUser?.id, 'user-1');
+    expect(second.snapshot.currentUser?.id, 'user-1');
+    expect(
+      backend.readCalls,
+      readsAfterFirst,
+      reason: 'second readState must be served from memory',
+    );
+  });
+
   test('drops corrupt cache payloads safely', () async {
     final backend = TestCacheStoreBackend();
     await backend.writeTextAtomically('bootstrap/manifest.json', '{not-json');

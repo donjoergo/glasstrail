@@ -677,6 +677,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get github => 'GitHub';
 
   @override
+  String profileAttribution(String heart, String coffee, String beer) {
+    return 'Erstellt mit $heart, $coffee und $beer von Jörg Dorlach';
+  }
+
+  @override
   String get roadmapBody => 'Als Nächstes kommen Erfolge.';
 
   @override

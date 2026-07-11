@@ -174,6 +174,77 @@ void main() {
     expect(find.byKey(const Key('app-photo-preview-fullscreen')), findsNothing);
   });
 
+  testWidgets('opens fullscreen zoom dialog for tappable avatars', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: Scaffold(
+          body: Center(
+            child: AppAvatar(
+              key: const Key('test-avatar'),
+              imagePath: transparentPngDataUrl,
+              radius: 30,
+              enableFullscreenOnTap: true,
+              fallback: const Text('AB'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('app-photo-preview-fullscreen')), findsNothing);
+
+    await tester.tap(find.byType(InkWell));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('app-photo-preview-fullscreen')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const Key('app-photo-preview-fullscreen-close')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('app-photo-preview-fullscreen')), findsNothing);
+  });
+
+  testWidgets('avatar fallback initials are not tappable to fullscreen', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: Scaffold(
+          body: Center(
+            child: AppAvatar(
+              key: const Key('test-avatar'),
+              imagePath: null,
+              radius: 30,
+              enableFullscreenOnTap: true,
+              fallback: const Text('AB'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('test-avatar')),
+        matching: find.byType(InkWell),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets(
     'opens gallery viewer with edge buttons, keyboard, and swipe navigation',
     (tester) async {
