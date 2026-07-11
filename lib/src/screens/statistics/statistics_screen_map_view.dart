@@ -904,6 +904,12 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
 
     final colors = statisticsCategoryColors(Theme.of(context));
     final backgroundColor = colors[marker.entry.category]!;
+    // The modal blocks map mouse events, so the hover cursor and marker
+    // highlight would stay stuck while it is open — reset them first.
+    await _setHoveredMarkerEntryId(null);
+    if (!mounted) {
+      return;
+    }
     await _showStatisticsMapEntrySheet(context, marker, backgroundColor);
   }
 
