@@ -171,6 +171,7 @@ class _FriendStatsProfileHeader extends StatelessWidget {
             key: const Key('friend-stats-profile-avatar'),
             imagePath: profile.profileImagePath,
             radius: _friendStatsProfileAvatarRadius,
+            enableFullscreenOnTap: true,
             backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.14),
             fallback: Text(
               profile.initials,
