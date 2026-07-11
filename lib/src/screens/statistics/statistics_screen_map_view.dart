@@ -199,6 +199,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     setState(() {
       _panelSelection = null;
     });
+    unawaited(_setHoveredMarkerEntryId(null));
   }
 
   void _showPanelDetail(_StatisticsMapMarkerData marker) {
@@ -212,6 +213,28 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         detail: marker,
       );
     });
+    unawaited(_highlightPanelMarkerOnMap(marker));
+  }
+
+  /// Pans/zooms the camera to the selected panel entry and enlarges its
+  /// marker so the user sees where the drink was logged.
+  Future<void> _highlightPanelMarkerOnMap(
+    _StatisticsMapMarkerData marker,
+  ) async {
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+
+    await _setHoveredMarkerEntryId(marker.entry.id);
+    await controller.animateCamera(
+      maplibre.CameraUpdate.newLatLngZoom(
+        marker.position,
+        // The detail marker layers only render individual markers from this
+        // zoom on; below it the marker would stay hidden inside a cluster.
+        math.max(_currentZoom, _statisticsMapDetailMarkerMinZoom),
+      ),
+    );
   }
 
   void _showPanelList() {
@@ -224,6 +247,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         markers: selection.markers,
       );
     });
+    unawaited(_setHoveredMarkerEntryId(null));
   }
 
   Future<void> _handleStyleLoaded() async {
@@ -937,17 +961,22 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
             width: AppBreakpoints.mapPanelWidth,
             child: Align(
               alignment: Alignment.topCenter,
-              child: CallbackShortcuts(
-                bindings: <ShortcutActivator, VoidCallback>{
-                  const SingleActivator(LogicalKeyboardKey.escape): _closePanel,
-                },
-                child: Focus(
-                  focusNode: _panelFocusNode,
-                  child: _StatisticsMapEntryPanel(
-                    selection: _panelSelection!,
-                    onClose: _closePanel,
-                    onDetailSelected: _showPanelDetail,
-                    onBackToList: _showPanelList,
+              // PointerInterceptor keeps native wheel/drag events on the
+              // panel instead of the MapLibre platform view underneath.
+              child: PointerInterceptor(
+                child: CallbackShortcuts(
+                  bindings: <ShortcutActivator, VoidCallback>{
+                    const SingleActivator(LogicalKeyboardKey.escape):
+                        _closePanel,
+                  },
+                  child: Focus(
+                    focusNode: _panelFocusNode,
+                    child: _StatisticsMapEntryPanel(
+                      selection: _panelSelection!,
+                      onClose: _closePanel,
+                      onDetailSelected: _showPanelDetail,
+                      onBackToList: _showPanelList,
+                    ),
                   ),
                 ),
               ),

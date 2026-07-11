@@ -33,7 +33,24 @@ void main() {
     expect(await sizeAtWidth(tester, 840), AppLayoutSize.expanded);
     expect(await sizeAtWidth(tester, 1199), AppLayoutSize.expanded);
     expect(await sizeAtWidth(tester, 1200), AppLayoutSize.large);
-    expect(await sizeAtWidth(tester, 2560), AppLayoutSize.large);
+    expect(await sizeAtWidth(tester, 1599), AppLayoutSize.large);
+    expect(await sizeAtWidth(tester, 1600), AppLayoutSize.extraLarge);
+    expect(await sizeAtWidth(tester, 2560), AppLayoutSize.extraLarge);
+  });
+
+  testWidgets('isExtraLarge is true from 1600 upwards', (tester) async {
+    Future<bool> isExtraLargeAtWidth(double width) async {
+      late bool value;
+      await tester.pumpWidget(
+        buildProbe(width, (context) {
+          value = AppBreakpoints.isExtraLarge(context);
+        }),
+      );
+      return value;
+    }
+
+    expect(await isExtraLargeAtWidth(1599), isFalse);
+    expect(await isExtraLargeAtWidth(1600), isTrue);
   });
 
   testWidgets('isExpanded is true from 840 upwards', (tester) async {
@@ -74,7 +91,11 @@ void main() {
     expect(AppBreakpoints.dialogMaxWidth, 560);
     expect(AppBreakpoints.formContentMaxWidth, 640);
     expect(AppBreakpoints.listContentMaxWidth, 840);
+    expect(AppBreakpoints.extraLarge, 1600);
     expect(AppBreakpoints.masterPaneWidth, 420);
+    expect(AppBreakpoints.masterPaneWidthExtraLarge, 520);
+    expect(AppBreakpoints.feedMasterPaneWidth, 480);
+    expect(AppBreakpoints.feedMasterPaneWidthExtraLarge, 560);
     expect(AppBreakpoints.mapPanelWidth, 380);
   });
 }

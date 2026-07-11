@@ -9,7 +9,11 @@ import 'package:glasstrail/src/screens/statistics_screen.dart';
 
 import 'support/test_harness.dart';
 
-DrinkEntry _entry({required String id, required DateTime consumedAt}) {
+DrinkEntry _entry({
+  required String id,
+  required DateTime consumedAt,
+  String? imagePath,
+}) {
   return DrinkEntry(
     id: id,
     userId: 'user-1',
@@ -18,6 +22,7 @@ DrinkEntry _entry({required String id, required DateTime consumedAt}) {
     category: DrinkCategory.beer,
     consumedAt: consumedAt,
     volumeMl: 500,
+    imagePath: imagePath,
     locationLatitude: 52.52,
     locationLongitude: 13.405,
   );
@@ -110,6 +115,24 @@ void main() {
     await tester.tap(find.byKey(const Key('statistics-map-panel-back')));
     await tester.pumpAndSettle();
     expect(backToListCalls, 1);
+  });
+
+  testWidgets('marks cluster list entries that have a photo', (tester) async {
+    final entryWithImage = _entry(
+      id: 'with-image',
+      consumedAt: DateTime(2026, 5, 11, 19),
+      imagePath: '/tmp/photo.png',
+    );
+    await pumpPanel(tester, entries: <DrinkEntry>[olderEntry, entryWithImage]);
+
+    expect(
+      find.byKey(const Key('statistics-map-panel-image-indicator-with-image')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('statistics-map-panel-image-indicator-older')),
+      findsNothing,
+    );
   });
 
   testWidgets('hides the back button for single marker details', (

@@ -5317,6 +5317,64 @@ void main() {
     );
   });
 
+  testWidgets('marks history entries that have a photo', (tester) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'history-image-indicator@example.com',
+      password: 'password123',
+      displayName: 'History Image Indicator',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final wine = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      imagePath: _transparentPngDataUrl,
+    );
+    final entryWithImage = controller.entries.firstWhere(
+      (entry) => entry.drinkId == beer.id,
+    );
+    await controller.addDrinkEntry(drink: wine, volumeMl: wine.volumeMl);
+    final entryWithoutImage = controller.entries.firstWhere(
+      (entry) => entry.drinkId == wine.id,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'History');
+
+    expect(
+      find.byKey(
+        Key('statistics-history-image-indicator-${entryWithImage.id}'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        Key('statistics-history-image-indicator-${entryWithoutImage.id}'),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('replaces statistics tabs with a dashboard on large screens', (
     tester,
   ) async {

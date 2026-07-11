@@ -20,6 +20,7 @@ import '../app_breakpoints.dart';
 import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/drink_entry_detail_content.dart';
+import '../widgets/resizable_master_detail.dart';
 import '../widgets/statistics_overview_content.dart';
 import '../widgets/app_media.dart';
 import '../widgets/drink_picker_catalog.dart';
@@ -316,17 +317,16 @@ class _FeedScreenState extends State<FeedScreen> {
       return feedList;
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        SizedBox(width: 480, child: feedList),
-        Expanded(
-          child: _FeedDetailPane(
-            selectedEntryId: _selectedEntryId,
-            locale: locale,
-          ),
-        ),
-      ],
+    return ResizableMasterDetail(
+      defaultMasterWidth: AppBreakpoints.isExtraLarge(context)
+          ? AppBreakpoints.feedMasterPaneWidthExtraLarge
+          : AppBreakpoints.feedMasterPaneWidth,
+      dividerKey: const Key('feed-split-divider'),
+      master: feedList,
+      detail: _FeedDetailPane(
+        selectedEntryId: _selectedEntryId,
+        locale: locale,
+      ),
     );
   }
 }

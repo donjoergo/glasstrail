@@ -124,12 +124,13 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
       return historyList;
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        SizedBox(width: AppBreakpoints.masterPaneWidth, child: historyList),
-        Expanded(child: _buildDetailPane(context, theme, l10n, entries)),
-      ],
+    return ResizableMasterDetail(
+      defaultMasterWidth: AppBreakpoints.isExtraLarge(context)
+          ? AppBreakpoints.masterPaneWidthExtraLarge
+          : AppBreakpoints.masterPaneWidth,
+      dividerKey: const Key('statistics-history-split-divider'),
+      master: historyList,
+      detail: _buildDetailPane(context, theme, l10n, entries),
     );
   }
 
@@ -271,6 +272,15 @@ class _StatisticsHistoryEntryCard extends StatelessWidget {
               ],
             ),
           ),
+          if (_statisticsGalleryHasImage(entry)) ...<Widget>[
+            Icon(
+              Icons.photo_camera_outlined,
+              key: Key('statistics-history-image-indicator-${entry.id}'),
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+          ],
           Text(controller.settings.unit.formatVolume(entry.volumeMl)),
         ],
       ),

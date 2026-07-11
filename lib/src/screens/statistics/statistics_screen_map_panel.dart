@@ -188,9 +188,22 @@ class _StatisticsMapPanelList extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          trailing: entry.volumeMl == null
-              ? null
-              : Text(unit.formatVolume(entry.volumeMl)),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (_statisticsGalleryHasImage(entry)) ...<Widget>[
+                Icon(
+                  Icons.photo_camera_outlined,
+                  key: Key('statistics-map-panel-image-indicator-${entry.id}'),
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+              ],
+              if (entry.volumeMl != null)
+                Text(unit.formatVolume(entry.volumeMl)),
+            ],
+          ),
         );
       },
     );

@@ -10,6 +10,7 @@ import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart' as latlong2;
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_breakpoints.dart';
@@ -25,6 +26,7 @@ import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
 import '../widgets/app_media.dart';
 import '../widgets/drink_entry_detail_content.dart';
+import '../widgets/resizable_master_detail.dart';
 import '../widgets/statistics_overview_content.dart';
 import 'statistics/statistics_map_web_cursor.dart' as statistics_map_web_cursor;
 
