@@ -234,6 +234,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
         // zoom on; below it the marker would stay hidden inside a cluster.
         math.max(_currentZoom, _statisticsMapDetailMarkerMinZoom),
       ),
+      duration: const Duration(milliseconds: 1000),
     );
   }
 
