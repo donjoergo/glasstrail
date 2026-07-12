@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_breakpoints.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
+import 'adaptive_modal.dart';
+import 'app_media.dart';
 
 Future<DrinkDefinition?> showDrinkPickerSheet({
   required BuildContext context,
@@ -15,58 +18,65 @@ Future<DrinkDefinition?> showDrinkPickerSheet({
   bool enabled = true,
   VoidCallback? onCreateCustomDrink,
 }) {
-  return showModalBottomSheet<DrinkDefinition>(
+  return showAdaptiveSheetOrDialog<DrinkDefinition>(
     context: context,
     isScrollControlled: true,
-    useSafeArea: true,
     showDragHandle: true,
+    dialogMaxHeightFactor: 0.9,
     builder: (context) {
       final theme = Theme.of(context);
-      final viewInsets = MediaQuery.viewInsetsOf(context);
-      return Padding(
-        padding: EdgeInsets.only(bottom: viewInsets.bottom),
-        child: FractionallySizedBox(
-          heightFactor: 0.9,
-          child: Column(
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+      final content = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-                    IconButton(
-                      key: const Key('drink-picker-close-button'),
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                  child: DrinkPickerCatalog(
-                    availableDrinks: availableDrinks,
-                    recentDrinks: recentDrinks,
-                    localeCode: localeCode,
-                    unit: unit,
-                    selectedDrink: selectedDrink,
-                    enabled: enabled,
-                    onCreateCustomDrink: onCreateCustomDrink,
-                    onSelect: (drink) => Navigator.of(context).pop(drink),
                   ),
                 ),
-              ),
-            ],
+                IconButton(
+                  key: const Key('drink-picker-close-button'),
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
           ),
-        ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: DrinkPickerCatalog(
+                availableDrinks: availableDrinks,
+                recentDrinks: recentDrinks,
+                localeCode: localeCode,
+                unit: unit,
+                selectedDrink: selectedDrink,
+                enabled: enabled,
+                onCreateCustomDrink: onCreateCustomDrink,
+                onSelect: (drink) => Navigator.of(context).pop(drink),
+              ),
+            ),
+          ),
+        ],
+      );
+
+      if (AppBreakpoints.isExpanded(context)) {
+        return content;
+      }
+
+      // Sheet-only chrome: keyboard insets and the 90% height factor.
+      final viewInsets = MediaQuery.viewInsetsOf(context);
+      return Padding(
+        // Keeps the search field above the on-screen keyboard instead of
+        // being covered by it.
+        padding: EdgeInsets.only(bottom: viewInsets.bottom),
+        child: FractionallySizedBox(heightFactor: 0.9, child: content),
       );
     },
   );
@@ -121,6 +131,10 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
 
   void _selectDrink(DrinkDefinition drink) {
     widget.onSelect(drink);
+    // collapseAfterSelect is used when this catalog is embedded inline
+    // (not in a modal sheet that gets popped on select), so the expanded
+    // category needs to be reset manually to avoid leaving a stale
+    // expanded state visible after picking a drink.
     if (!widget.collapseAfterSelect || !mounted) {
       return;
     }
@@ -148,6 +162,9 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
               .contains(search);
         })
         .toList(growable: false);
+    // Pre-seed every category so the map lookup below (`grouped[...]!`)
+    // never needs a null check, and categories with zero matches still
+    // render (as an empty, collapsed section) via _DrinkCategorySection.
     final grouped = <DrinkCategory, List<DrinkDefinition>>{
       for (final category in DrinkCategory.values)
         category: <DrinkDefinition>[],
@@ -177,6 +194,10 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
           onChanged: widget.enabled
               ? (_) {
                   setState(() {
+                    // Manual expansion state is cleared and replaced by
+                    // search-driven auto-expansion, otherwise a category the
+                    // user had expanded before searching would stay
+                    // expanded/collapsed independent of the search results.
                     _expandedCategory = null;
                     _autoExpandSearchResults = _searchController.text
                         .trim()
@@ -202,10 +223,12 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
                   (drink) => ChoiceChip(
                     selected: widget.selectedDrink?.id == drink.id,
                     showCheckmark: false,
-                    avatar: Icon(
-                      drink.category.icon,
+                    avatar: AppAvatar(
                       key: Key('recent-drink-icon-${drink.id}'),
-                      size: 18,
+                      imagePath: drink.imagePath,
+                      radius: 9,
+                      backgroundColor: Colors.transparent,
+                      fallback: Icon(drink.category.icon, size: 18),
                     ),
                     label: Text(
                       drink.shouldShowAlcoholFreeMarker
@@ -242,6 +265,9 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
               return heading;
             }
 
+            // Stack the "create custom drink" action under the heading on
+            // narrow layouts instead of squeezing it into a Row, where it
+            // would truncate or wrap awkwardly next to the heading text.
             if (constraints.maxWidth < 480) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,6 +346,11 @@ class _DrinkCategorySection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
+        // ExpansionTile only reads `initiallyExpanded` once, when the
+        // element is first created — it ignores later widget rebuilds with
+        // a different value. Folding `isExpanded` into the key forces
+        // Flutter to treat a changed expansion state as a brand-new
+        // element, so search-driven auto-expand actually takes effect.
         key: Key('drink-category-section-${category.name}-$isExpanded'),
         initiallyExpanded: isExpanded,
         enabled: enabled && isInteractive,
@@ -334,7 +365,12 @@ class _DrinkCategorySection extends StatelessWidget {
               ].join(' • ');
               return ListTile(
                 dense: true,
-                leading: Icon(drink.category.icon),
+                leading: AppAvatar(
+                  imagePath: drink.imagePath,
+                  radius: 20,
+                  backgroundColor: Colors.transparent,
+                  fallback: Icon(drink.category.icon),
+                ),
                 title: Text(drink.displayName(localeCode)),
                 subtitle: metadata.isEmpty ? null : Text(metadata),
                 trailing: selectedDrink?.id == drink.id

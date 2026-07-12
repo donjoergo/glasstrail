@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_breakpoints.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';
@@ -40,6 +41,9 @@ class _HomeShellState extends State<HomeShell> {
     if (_currentRouteName == normalizedRoute) {
       return;
     }
+    // No setState needed: didUpdateWidget already runs as part of a rebuild
+    // triggered by the parent (route change), so this field update will be
+    // picked up by the build() that's already in progress.
     _currentRouteName = normalizedRoute;
   }
 
@@ -53,6 +57,9 @@ class _HomeShellState extends State<HomeShell> {
 
   String _targetRouteForHomeIndex(BuildContext context, int index) {
     final routeMemory = AppScope.routeMemoryOf(context).lastRoute;
+    // Statistics and Bar have their own internal sub-tabs; if the user was
+    // last on a specific sub-tab, tapping the nav item should return them
+    // there instead of always resetting to that section's default view.
     return switch (index) {
       0 => AppRoutes.feed,
       1 =>
@@ -68,6 +75,9 @@ class _HomeShellState extends State<HomeShell> {
   void _openHomeRoute(BuildContext context, int index) {
     final targetRoute = _targetRouteForHomeIndex(context, index);
     final currentRoute = AppRoutes.homePrimaryRoute(_currentRouteName);
+    // Compare by primary section, not exact route, so re-tapping the active
+    // tab (which may resolve to a remembered sub-route) is a no-op instead
+    // of pushing a redundant replacement route.
     if (AppRoutes.homePrimaryRoute(targetRoute) == currentRoute) {
       return;
     }
@@ -85,8 +95,13 @@ class _HomeShellState extends State<HomeShell> {
     });
 
     final routeMemory = AppScope.routeMemoryOf(context);
+    // Fire-and-forget: persisting the route and syncing the browser URL bar
+    // (web) are side effects that shouldn't block or fail the UI update.
     unawaited(routeMemory.rememberRoute(normalizedRoute));
     unawaited(
+      // replace: true keeps sub-tab navigation (e.g. switching Bar tabs)
+      // from growing the browser history stack — each sub-tab replaces the
+      // previous entry instead of adding a new "back" step.
       SystemNavigator.routeInformationUpdated(
         uri: Uri.parse(normalizedRoute),
         replace: true,
@@ -127,7 +142,7 @@ class _HomeShellState extends State<HomeShell> {
         onPressed: () => _openNotifications(context),
       ),
     ];
-    final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final isWide = AppBreakpoints.isExpanded(context);
     final appBarTitleStyle = theme.textTheme.headlineSmall?.copyWith(
       fontSize: isWide ? 24 : 20,
       fontWeight: FontWeight.w800,
@@ -160,6 +175,7 @@ class _HomeShellState extends State<HomeShell> {
                   child: NavigationRail(
                     selectedIndex: currentIndex,
                     useIndicator: true,
+                    labelType: NavigationRailLabelType.all,
                     onDestinationSelected: (index) =>
                         _openHomeRoute(context, index),
                     destinations: <NavigationRailDestination>[
@@ -190,6 +206,9 @@ class _HomeShellState extends State<HomeShell> {
               ],
             ),
             PositionedDirectional(
+              // 160 clears the 112px-wide rail plus its 16px margins so the
+              // FAB doesn't overlap the rail when placed on the left for
+              // left-handed users.
               start: isLeftHanded ? 160 : null,
               end: isLeftHanded ? null : 32,
               bottom: 32,

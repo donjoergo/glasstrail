@@ -7,6 +7,11 @@ import 'location_service.dart';
 import 'photo_service.dart';
 import 'route_memory.dart';
 
+// Root dependency-injection point for the widget tree: bundles the
+// AppController (via InheritedNotifier, so descendants rebuild on its
+// notifyListeners()) alongside platform-service singletons (photo, import
+// file, location) and on-device memory (route/locale), avoiding threading
+// these through every constructor.
 class AppScope extends InheritedNotifier<AppController> {
   const AppScope({
     super.key,
@@ -25,6 +30,10 @@ class AppScope extends InheritedNotifier<AppController> {
   final RouteMemory routeMemory;
   final LocaleMemory localeMemory;
 
+  // The assert exists purely to give a clear failure message in debug
+  // builds ("AppScope missing from widget tree") instead of an opaque
+  // null-check crash; it's stripped in release, so the `!` below still has
+  // to do the real work there.
   static AppController controllerOf(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
     assert(scope != null, 'AppScope missing from widget tree.');

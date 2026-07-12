@@ -6,10 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Startup and media caching for faster signed-in launches
+- Full desktop mode: adaptive widescreen layouts with resizable master-detail views, a floating map detail panel, dialogs instead of sheets, and multi-pane statistics and bar screens
 - New Landing page for promotional purposes
+- Map toggles for cluster and photo and locate-me button
+
+### Fixed
+- Directly creating and logging of custom drinks with images is now more intuitive
+- Location was fetched twice during drink adding
+
+## [2.2.0] - 2026-07-11
+### Added
+- Startup and media caching for faster signed-in launches
 - Tap profile photo to view fullscreen
 - Maintenance: Enabled dependabot
+
+### Changed
+- Prevent un-cheering action
 
 ### Fixed
 - Harden cache cleanup on session changes
@@ -122,7 +134,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - settings
   - login
 
-[Unreleased]: https://github.com/donjoergo/glasstrail/compare/2.1.0...HEAD
+[Unreleased]: https://github.com/donjoergo/glasstrail/compare/2.2.0...HEAD
+[2.2.0]: https://github.com/donjoergo/glasstrail/compare/2.1.0...2.2.0
 [2.1.0]: https://github.com/donjoergo/glasstrail/compare/2.0.0...2.1.0
 [2.0.0]: https://github.com/donjoergo/glasstrail/compare/1.2.1...2.0.0
 [1.2.1]: https://github.com/donjoergo/glasstrail/compare/1.2.0...1.2.1

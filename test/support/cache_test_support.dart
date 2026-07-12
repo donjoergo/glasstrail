@@ -16,6 +16,7 @@ class TestCacheStoreBackend implements CacheStoreBackend {
   final Map<String, Uint8List> _files = <String, Uint8List>{};
   final List<String> deletedPaths = <String>[];
   String? failWritePath;
+  int readCalls = 0;
 
   @override
   Future<void> deleteDirectory(String relativeDirectory) async {
@@ -35,6 +36,7 @@ class TestCacheStoreBackend implements CacheStoreBackend {
 
   @override
   Future<Uint8List?> readBytes(String relativePath) async {
+    readCalls++;
     final bytes = _files[relativePath];
     if (bytes == null) {
       return null;

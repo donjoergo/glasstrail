@@ -70,6 +70,60 @@ void main() {
     expect(controller.notifications, isEmpty);
   });
 
+  test('does not gate bootstrap on push token registration', () async {
+    final repository = _PushRegisterProbeRepository();
+    repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
+    repository.restoreSessionCompleter.complete(
+      const AppUser(
+        id: 'user-1',
+        email: 'user@example.com',
+        displayName: 'User Example',
+      ),
+    );
+    repository.customDrinksCompleter.complete(const <DrinkDefinition>[]);
+    repository.entriesCompleter.complete(const <DrinkEntry>[]);
+    repository.feedPostsCompleter.complete(
+      const FeedDrinkPostPage(
+        posts: <FeedDrinkPost>[],
+        cursor: null,
+        hasMore: false,
+      ),
+    );
+    repository.settingsCompleter.complete(UserSettings.defaults());
+    repository.friendConnectionsCompleter.complete(const <FriendConnection>[]);
+    repository.notificationsCompleter.complete(const <AppNotification>[]);
+
+    final pushService = _BlockedTokenPushNotificationService();
+
+    var bootstrapCompleted = false;
+    final bootstrapFuture =
+        AppController.bootstrapWithRepository(
+          repository,
+          pushNotificationService: pushService,
+        ).then((controller) {
+          bootstrapCompleted = true;
+          return controller;
+        });
+
+    for (var i = 0; i < 20; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(
+      bootstrapCompleted,
+      isTrue,
+      reason: 'bootstrap must not wait for the FCM device token',
+    );
+
+    pushService.tokenCompleter.complete(
+      const PushDeviceToken(token: 'late-token', platform: 'android'),
+    );
+    for (var i = 0; i < 20; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(repository.registerNotificationDeviceTokenCalls, 1);
+    await bootstrapFuture;
+  });
+
   test('refreshes app data through the repository again', () async {
     final repository = _BootstrapProbeRepository();
     repository.defaultCatalogCompleter.complete(buildDefaultDrinkCatalog());
@@ -363,7 +417,7 @@ void main() {
       (candidate) => candidate.entry.id == entry.id,
     );
 
-    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    final toggleFuture = controller.cheerFeedEntry(post);
     await repository.setCheersStarted.future;
     await Future<void>.delayed(Duration.zero);
 
@@ -421,7 +475,7 @@ void main() {
       (candidate) => candidate.entry.id == entry.id,
     );
 
-    final toggleFuture = controller.toggleFeedEntryCheers(post);
+    final toggleFuture = controller.cheerFeedEntry(post);
     await repository.setCheersStarted.future;
     await Future<void>.delayed(Duration.zero);
 
@@ -486,11 +540,7 @@ void main() {
       0,
     );
 
-    await repository.setFeedEntryCheers(
-      userId: friend.id,
-      entryId: entry.id,
-      shouldCheer: true,
-    );
+    await repository.addFeedEntryCheer(userId: friend.id, entryId: entry.id);
     await Future<void>.delayed(Duration.zero);
 
     final notification = controller.notifications.firstWhere(
@@ -1543,6 +1593,58 @@ void main() {
     },
   );
 
+  test(
+    'exposes the saved drink via lastSavedCustomDrink after creating one',
+    () async {
+      final controller = await buildTestController();
+
+      await controller.signUp(
+        email: 'last-saved-custom-drink@example.com',
+        password: 'password123',
+        displayName: 'Last Saved Custom Drink',
+      );
+
+      final success = await controller.saveCustomDrink(
+        name: 'Porch Lager',
+        category: DrinkCategory.beer,
+        volumeMl: 500,
+        imagePath: '/tmp/porch-lager.png',
+      );
+
+      expect(success, isTrue);
+      final saved = controller.lastSavedCustomDrink;
+      expect(saved, isNotNull);
+      expect(saved!.name, 'Porch Lager');
+      expect(saved.imagePath, '/tmp/porch-lager.png');
+      expect(saved.id, controller.customDrinks.single.id);
+    },
+  );
+
+  test(
+    'looks up drinks by id across the default catalog and custom drinks',
+    () async {
+      final controller = await buildTestController();
+
+      await controller.signUp(
+        email: 'drink-by-id@example.com',
+        password: 'password123',
+        displayName: 'Drink By Id',
+      );
+      await controller.saveCustomDrink(
+        name: 'Garden Spritz',
+        category: DrinkCategory.cocktails,
+        volumeMl: 250,
+        imagePath: '/tmp/garden-spritz.png',
+      );
+      final customDrink = controller.customDrinks.single;
+      final defaultDrink = controller.defaultCatalog.first;
+
+      expect(controller.drinkById(defaultDrink.id), defaultDrink);
+      expect(controller.drinkById(customDrink.id), customDrink);
+      expect(controller.drinkById('does-not-exist'), isNull);
+    },
+  );
+
   test('localizes mapped repository error messages', () async {
     final controller = await buildTestController();
     final german = _l10n('de');
@@ -1898,10 +2000,9 @@ class _BlockingCheersLocalAppRepository extends LocalAppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) async {
     if (!setCheersStarted.isCompleted) {
       setCheersStarted.complete();
@@ -1910,12 +2011,39 @@ class _BlockingCheersLocalAppRepository extends LocalAppRepository {
     if (failSetCheers) {
       throw const AppException('Cheers failed.');
     }
-    return super.setFeedEntryCheers(
-      userId: userId,
-      entryId: entryId,
-      shouldCheer: shouldCheer,
-    );
+    return super.addFeedEntryCheer(userId: userId, entryId: entryId);
   }
+}
+
+class _PushRegisterProbeRepository extends _BootstrapProbeRepository {
+  int registerNotificationDeviceTokenCalls = 0;
+
+  @override
+  Future<void> registerNotificationDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) async {
+    registerNotificationDeviceTokenCalls++;
+  }
+}
+
+class _BlockedTokenPushNotificationService extends PushNotificationService {
+  final tokenCompleter = Completer<PushDeviceToken?>();
+
+  @override
+  Future<PushDeviceToken?> getDeviceToken() => tokenCompleter.future;
+
+  @override
+  Stream<PushDeviceToken> get tokenRefreshes =>
+      const Stream<PushDeviceToken>.empty();
+
+  @override
+  Future<PushNotificationOpen?> consumeInitialOpen() async => null;
+
+  @override
+  Stream<PushNotificationOpen> get openedNotifications =>
+      const Stream<PushNotificationOpen>.empty();
 }
 
 class _StaticPushNotificationService extends PushNotificationService {
@@ -2313,10 +2441,9 @@ class _BootstrapProbeRepository implements AppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) {
     throw UnimplementedError();
   }

@@ -158,8 +158,15 @@ class StatsCalculator {
   static AppStatistics fromEntries(List<DrinkEntry> entries, {DateTime? now}) {
     final reference = now ?? DateTime.now();
     final today = DateTime(reference.year, reference.month, reference.day);
+    // DateTime.weekday is 1 (Monday) through 7 (Sunday); subtracting
+    // (weekday - 1) days always lands on the most recent Monday, matching
+    // the app's ISO-style week-starts-Monday convention.
     final weekStart = today.subtract(Duration(days: today.weekday - 1));
 
+    // Every category starts at 0 (rather than only including categories
+    // that actually appear) so the statistics UI can render a complete,
+    // stable set of category rows/chips without needing to special-case
+    // missing entries.
     final categoryCounts = <DrinkCategory, int>{
       for (final category in DrinkCategory.values) category: 0,
     };
@@ -215,6 +222,9 @@ class StatsCalculator {
     var rolling = 0;
     DateTime? previous;
     DateTime? rollingStart;
+    // uniqueDays is sorted ascending, so a single forward pass tracking a
+    // "current run" (rolling) and resetting it whenever there's a gap of
+    // more than one day is enough to find the longest run.
     for (final day in uniqueDays) {
       if (previous == null || day.difference(previous).inDays > 1) {
         rolling = 1;
@@ -223,6 +233,9 @@ class StatsCalculator {
         rolling++;
       }
       previous = day;
+      // On a tie (rolling == bestStreak), still update start/end so that
+      // when multiple streaks share the record length, the most recent one
+      // is what's reported/displayed rather than the first one found.
       if (rolling > bestStreak || (rolling == bestStreak && rolling > 0)) {
         bestStreak = rolling;
         bestStreakStart = rollingStart;
@@ -250,6 +263,11 @@ class StatsCalculator {
       );
     }, growable: false);
 
+    // Distinguishes "you had a streak going but haven't logged today yet"
+    // (keepAlive — a nudge to not lose it) from "you've never had a streak"
+    // (start), and "today is day one" from "today extends an existing
+    // streak", since the UI shows different encouragement copy/colors for
+    // each state.
     final streakMessageState = switch (currentStreak) {
       0 when streakThroughYesterday > 0 => StreakMessageState.keepAlive,
       0 => StreakMessageState.start,

@@ -125,6 +125,8 @@ void main() {
         ),
       );
       addTearDown(controller.dispose);
+      // Push token registration is decoupled from bootstrap; flush it.
+      await Future<void>.delayed(Duration.zero);
 
       expect(controller.isAuthenticated, isTrue);
       expect(delegate.notificationListenCount, 1);
@@ -311,6 +313,8 @@ void main() {
         ),
       );
       addTearDown(controller.dispose);
+      // Push token registration is decoupled from bootstrap; flush it.
+      await Future<void>.delayed(Duration.zero);
 
       expect(controller.currentUser?.id, cachedUser.id);
       expect(controller.entries.single.id, cachedEntry.id);

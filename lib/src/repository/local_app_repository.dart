@@ -9,6 +9,11 @@ import '../models.dart';
 import '../stats_calculator.dart';
 import 'app_repository.dart';
 
+// Backend-free implementation of AppRepository that persists everything to
+// SharedPreferences as JSON blobs. Used when Supabase isn't configured (e.g.
+// local dev without credentials, or explicit offline mode) so the whole app
+// remains usable, and it re-implements relationship/notification fan-out
+// logic that Supabase normally handles via RPCs/triggers server-side.
 class LocalAppRepository implements AppRepository {
   LocalAppRepository(this._preferences, {Uuid? uuid})
     : _uuid = uuid ?? const Uuid();
@@ -21,6 +26,9 @@ class LocalAppRepository implements AppRepository {
   static const _settingsKey = 'glasstrail.settings';
   static const _friendRelationshipsKey = 'glasstrail.friend_relationships';
   static const _notificationsKey = 'glasstrail.notifications';
+  // Mirrors typical push-notification retention conventions: read
+  // notifications are pruned quickly since the user has already seen them,
+  // unread ones are kept much longer so nothing is silently lost.
   static const _readNotificationRetention = Duration(days: 30);
   static const _unreadNotificationRetention = Duration(days: 90);
 
@@ -63,6 +71,9 @@ class LocalAppRepository implements AppRepository {
     DateTime? birthday,
     String? profileImagePath,
   }) async {
+    // Emails are compared case-insensitively (mirrors typical auth backend
+    // behavior, including Supabase) so "User@x.com" and "user@x.com" can't
+    // both register.
     final normalizedEmail = email.trim().toLowerCase();
     final users = _loadUsers();
     if (users.any((user) => user.email.toLowerCase() == normalizedEmail)) {
@@ -158,6 +169,11 @@ class LocalAppRepository implements AppRepository {
 
   @override
   Future<void> deleteAccount(AppUser user) async {
+    // A real backend would cascade-delete via foreign keys; here we have to
+    // manually walk every domain that references this user (drinks,
+    // entries, relationships, cheers, notifications) to avoid leaving
+    // orphaned data or letting other users keep referencing a deleted
+    // account.
     final userId = user.id;
     final users = _loadUsers();
     final updatedUsers = users
@@ -171,6 +187,8 @@ class LocalAppRepository implements AppRepository {
     customDrinks.remove(userId);
 
     final entries = _readJsonMap(_entriesKey);
+    // Track ids up front so cheers referencing these entries can also be
+    // cleaned up below, after the entries themselves are gone.
     final deletedEntryIds = ((entries[userId] as List?) ?? const <dynamic>[])
         .map(
           (item) => (Map<String, dynamic>.from(item as Map))['id'] as String?,
@@ -192,12 +210,15 @@ class LocalAppRepository implements AppRepository {
     final cheersByEntryId = _loadFeedEntryCheers();
     var cheersChanged = false;
     for (final entryId in cheersByEntryId.keys.toList(growable: false)) {
+      // Entry itself was deleted with the account: drop all cheers on it.
       if (deletedEntryIds.contains(entryId)) {
         cheersByEntryId.remove(entryId);
         cheersChanged = true;
         continue;
       }
 
+      // Entry belongs to someone else, but this user may have cheered it;
+      // remove just their cheer and clean up the entry if it's now empty.
       final cheerUserIds = cheersByEntryId[entryId];
       if (cheerUserIds == null || !cheerUserIds.remove(userId)) {
         continue;
@@ -212,6 +233,9 @@ class LocalAppRepository implements AppRepository {
     final affectedNotificationUserIds = <String>{};
     notifications.removeWhere((item) {
       final notification = AppNotification.fromJson(item);
+      // Deletes notifications this user sent or received; the recipient is
+      // the one whose live notification stream (see watchNotifications)
+      // needs to be republished once the removal is saved.
       final matches =
           notification.senderUserId == userId ||
           notification.recipientUserId == userId;
@@ -318,6 +342,9 @@ class LocalAppRepository implements AppRepository {
       throw const AppException('You cannot add yourself as a friend.');
     }
 
+    // Relationships are unique per pair regardless of direction, so a prior
+    // (e.g. rejected) relationship must be reused/updated in place instead
+    // of inserting a second row for the same pair of users.
     final relationships = _loadFriendRelationships();
     final existingIndex = relationships.indexWhere(
       (relationship) =>
@@ -343,6 +370,9 @@ class LocalAppRepository implements AppRepository {
       final status = FriendRequestStatusX.fromStorage(
         existing['status'] as String,
       );
+      // Only a previously-rejected relationship can be re-requested; a
+      // pending or already-accepted relationship is left untouched so a
+      // duplicate request can't reset an existing friendship's state.
       if (status == FriendRequestStatus.rejected) {
         relationships[existingIndex] = <String, dynamic>{
           ...existing,
@@ -539,10 +569,17 @@ class LocalAppRepository implements AppRepository {
 
   @override
   Stream<List<AppNotification>> watchNotifications(String userId) {
+    // One broadcast controller per user, cached in a map, so multiple
+    // listeners (and repeated calls to watchNotifications) share the same
+    // stream instead of creating duplicate controllers that would need to
+    // be independently kept in sync by every mutating method below.
     late final StreamController<List<AppNotification>> controller;
     controller = _notificationControllers.putIfAbsent(
       userId,
       () => StreamController<List<AppNotification>>.broadcast(
+        // Emit an initial snapshot on listen so subscribers don't have to
+        // wait for the next mutation to see current data (there is no
+        // realtime backend pushing state here, unlike Supabase).
         onListen: () {
           controller.add(_notificationsForUser(userId));
         },
@@ -551,6 +588,9 @@ class LocalAppRepository implements AppRepository {
     return controller.stream;
   }
 
+  // No-ops: this backend has no push notification service to register
+  // device tokens with, but the method still needs to exist to satisfy
+  // AppRepository for callers that don't branch on backend type.
   @override
   Future<void> registerNotificationDeviceToken({
     required String userId,
@@ -673,10 +713,15 @@ class LocalAppRepository implements AppRepository {
     int limit = 20,
     bool forceRefresh = false,
   }) async {
+    // Clamp defensively since this mimics a backend query parameter that a
+    // real server would also validate/clamp; keeps a pathological limit
+    // value from returning an unbounded or empty result set.
     final pageLimit = limit.clamp(1, 50).toInt();
     final usersById = <String, AppUser>{
       for (final user in _loadUsers()) user.id: user,
     };
+    // Feed only shows the user's own posts plus accepted friends' posts —
+    // pending/rejected connections must never leak entries into the feed.
     final visibleUserIds = <String>{
       userId,
       ..._friendConnectionsForUser(userId)
@@ -717,6 +762,9 @@ class LocalAppRepository implements AppRepository {
         : posts
               .where((post) => _isFeedPostAfterCursor(post, cursor))
               .toList(growable: false);
+    // Fetch one page's worth after filtering; requesting one extra item
+    // would be the classic way to detect hasMore, but here it's cheap to
+    // just compare filtered.length since everything is already in memory.
     final hasMore = filtered.length > pageLimit;
     final pagePosts = filtered.take(pageLimit).toList(growable: false);
     return FeedDrinkPostPage(
@@ -727,11 +775,13 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) async {
+    // Cheering your own entry or a non-friend's entry is invalid — mirrors
+    // the RLS/RPC constraints Supabase enforces server-side, so behavior
+    // doesn't diverge between backends.
     final entry = _loadEntriesById()[entryId];
     if (entry == null ||
         entry.userId == userId ||
@@ -743,35 +793,19 @@ class LocalAppRepository implements AppRepository {
     final cheerUserIds = Set<String>.from(
       cheersByEntryId[entryId] ?? const <String>{},
     );
-    final hadCheered = cheerUserIds.contains(userId);
 
-    if (shouldCheer) {
-      if (cheerUserIds.add(userId)) {
-        cheersByEntryId[entryId] = cheerUserIds;
-        await _saveFeedEntryCheers(cheersByEntryId);
-        final sender = _userById(userId);
-        if (sender != null) {
-          await _addNotification(
-            recipientUserId: entry.userId,
-            sender: sender,
-            type: AppNotificationTypes.friendDrinkCheered,
-            metadata: <String, dynamic>{'entryId': entry.id, 'route': '/feed'},
-          );
-        }
-      }
-    } else if (hadCheered) {
-      cheerUserIds.remove(userId);
-      if (cheerUserIds.isEmpty) {
-        cheersByEntryId.remove(entryId);
-      } else {
-        cheersByEntryId[entryId] = cheerUserIds;
-      }
+    if (cheerUserIds.add(userId)) {
+      cheersByEntryId[entryId] = cheerUserIds;
       await _saveFeedEntryCheers(cheersByEntryId);
-      await _deleteFriendDrinkCheeredNotification(
-        recipientUserId: entry.userId,
-        senderUserId: userId,
-        entryId: entry.id,
-      );
+      final sender = _userById(userId);
+      if (sender != null) {
+        await _addNotification(
+          recipientUserId: entry.userId,
+          sender: sender,
+          type: AppNotificationTypes.friendDrinkCheered,
+          metadata: <String, dynamic>{'entryId': entry.id, 'route': '/feed'},
+        );
+      }
     }
 
     return FeedEntryCheersUpdate(
@@ -823,6 +857,9 @@ class LocalAppRepository implements AppRepository {
     raw.add(entry.toJson());
     map[user.id] = raw;
     await _writeJsonMap(_entriesKey, map);
+    // Imported entries (e.g. bulk-imported history) shouldn't spam friends
+    // with "logged a drink" notifications for every backfilled record; see
+    // _shouldNotifyFriendsForEntry.
     if (_shouldNotifyFriendsForEntry(entry)) {
       await _addDrinkLoggedNotifications(sender: user, entry: entry);
     }
@@ -849,6 +886,9 @@ class LocalAppRepository implements AppRepository {
 
     final trimmedComment = comment?.trim();
     final trimmedImagePath = imagePath?.trim();
+    // volumeMl is only honored when replacementDrink is also provided:
+    // volume is tied to which drink it's measuring, so changing just the
+    // volume without changing the drink isn't a supported edit here.
     final updated = entry.copyWith(
       drinkId: replacementDrink?.id,
       drinkName: replacementDrink?.name,
@@ -865,6 +905,9 @@ class LocalAppRepository implements AppRepository {
     raw[index] = updated.toJson();
     map[user.id] = raw;
     await _writeJsonMap(_entriesKey, map);
+    // An edit can flip an entry between "notify friends" and "imported,
+    // don't notify" (e.g. attaching/removing an import source), so the
+    // existing notification must be kept in sync rather than left stale.
     if (_shouldNotifyFriendsForEntry(updated)) {
       await _updateFriendDrinkLoggedNotifications(sender: user, entry: updated);
     } else {
@@ -922,6 +965,10 @@ class LocalAppRepository implements AppRepository {
     return settings;
   }
 
+  // Alcohol-free is only user-choosable for beer (0.0% variants exist);
+  // non-alcoholic category is definitionally alcohol-free, and every other
+  // category (wine, spirits, etc.) is assumed to contain alcohol, so the
+  // caller-provided flag is ignored/overridden for those.
   bool _customDrinkAlcoholFreeValue(
     DrinkCategory category,
     bool isAlcoholFree,
@@ -960,6 +1007,9 @@ class LocalAppRepository implements AppRepository {
     return null;
   }
 
+  // Share codes are generated lazily on first use (rather than at sign-up)
+  // since most users never share a profile link; this avoids wasting a code
+  // generation + write for every account.
   Future<AppUser> _ensureProfileShareCode(String userId) async {
     final users = _loadUsers();
     final index = users.indexWhere((candidate) => candidate.id == userId);
@@ -985,6 +1035,10 @@ class LocalAppRepository implements AppRepository {
         .map((user) => user.profileShareCode)
         .whereType<String>()
         .toSet();
+    // UUID collisions are astronomically unlikely, but this backend has no
+    // unique-constraint/DB-level guarantee like Supabase would, so re-roll
+    // defensively against any code already in use rather than risk two
+    // users sharing a link.
     while (true) {
       final code = _uuid.v4().replaceAll('-', '');
       if (!existingCodes.contains(code)) {
@@ -1251,32 +1305,6 @@ class LocalAppRepository implements AppRepository {
     }
   }
 
-  Future<void> _deleteFriendDrinkCheeredNotification({
-    required String recipientUserId,
-    required String senderUserId,
-    required String entryId,
-  }) async {
-    final notifications = _loadNotifications();
-    var changed = false;
-    notifications.removeWhere((item) {
-      final notification = AppNotification.fromJson(item);
-      final matches =
-          notification.type == AppNotificationTypes.friendDrinkCheered &&
-          notification.recipientUserId == recipientUserId &&
-          notification.senderUserId == senderUserId &&
-          notification.metadata['entryId'] == entryId;
-      if (matches) {
-        changed = true;
-      }
-      return matches;
-    });
-    if (!changed) {
-      return;
-    }
-    await _saveNotifications(notifications);
-    _publishNotifications(recipientUserId);
-  }
-
   Future<void> _deleteFriendDrinkCheeredNotificationsForEntry(
     String entryId,
   ) async {
@@ -1339,6 +1367,9 @@ class LocalAppRepository implements AppRepository {
     }
   }
 
+  // Called before most notification reads/writes since this backend has no
+  // scheduled job runner — pruning has to happen lazily, on access, or
+  // expired notifications would accumulate in SharedPreferences forever.
   Future<void> _pruneExpiredNotifications() async {
     final notifications = _loadNotifications();
     if (notifications.isEmpty) {
@@ -1368,6 +1399,9 @@ class LocalAppRepository implements AppRepository {
 
   bool _isExpiredNotification(AppNotification notification, DateTime now) {
     final readAt = notification.readAt;
+    // Retention clock starts from readAt (not createdAt) once read, since a
+    // notification the user has already seen has less value the longer it
+    // sits around — it's kept only briefly for reference.
     if (readAt != null) {
       return readAt.isBefore(now.subtract(_readNotificationRetention));
     }
@@ -1497,6 +1531,10 @@ class LocalAppRepository implements AppRepository {
     return right.entry.id.compareTo(left.entry.id);
   }
 
+  // Mirrors _compareFeedPosts' ordering (consumedAt desc, id desc as
+  // tiebreaker) so a cursor built from one page's last item reliably
+  // selects only posts strictly after it, with no gaps or duplicates when
+  // multiple entries share the same consumedAt.
   bool _isFeedPostAfterCursor(FeedDrinkPost post, FeedDrinkPostCursor cursor) {
     final entry = post.entry;
     if (entry.consumedAt.isBefore(cursor.consumedAt)) {
@@ -1508,6 +1546,9 @@ class LocalAppRepository implements AppRepository {
     return entry.id.compareTo(cursor.entryId) < 0;
   }
 
+  // Entries carrying an import source (e.g. bulk-imported from another app)
+  // are historical backfill, not something a friend just did — notifying
+  // for those would be noisy and misleading.
   bool _shouldNotifyFriendsForEntry(DrinkEntry entry) {
     final source = entry.importSource?.trim();
     return source == null || source.isEmpty;

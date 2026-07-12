@@ -21,6 +21,12 @@ class BootstrapSnapshot {
   final List<FriendConnection> friendConnections;
   final List<AppNotification> notifications;
 
+  // The explicit clear* flags exist because these fields are nullable: a
+  // plain `currentUser: null` argument is indistinguishable from "not
+  // passed" in Dart's named-parameter defaulting, so without a separate
+  // flag there would be no way to intentionally null out currentUser/
+  // firstFeedPage/settings via copyWith (e.g. on sign-out) as opposed to
+  // just leaving them unchanged.
   BootstrapSnapshot copyWith({
     AppUser? currentUser,
     bool clearCurrentUser = false,
@@ -69,6 +75,11 @@ class BootstrapSnapshot {
     };
   }
 
+  // Every nested field is defensively type-checked (`is Map`/`as List?`)
+  // rather than trusted, because this is deserializing a snapshot written
+  // to disk by (potentially) a previous app version — a missing or
+  // differently-typed field shouldn't throw and break bootstrap, it should
+  // just come back empty/null so the app re-fetches it.
   factory BootstrapSnapshot.fromJson(Map<String, dynamic> json) {
     return BootstrapSnapshot(
       currentUser: json['currentUser'] is Map

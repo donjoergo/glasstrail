@@ -17,10 +17,21 @@ class AppRoutes {
   static const addDrink = '/add-drink';
   static const editProfile = '/profile/edit';
 
+  // The single source of truth for turning an arbitrary incoming route
+  // string (deep link, push notification payload, web URL, restored route
+  // memory) into one this app actually understands. Anything unrecognized
+  // falls back to root rather than crashing the navigator with an unknown
+  // route.
   static String normalize(String? routeName) {
+    // Strip a query string before matching: deep links/web URLs can carry
+    // one (e.g. "?route=/feed" or share-code params) that isn't part of the
+    // route name itself.
     final candidate = routeName == null || routeName.isEmpty
         ? root
         : routeName.split('?').first;
+    // Friend-profile routes carry a dynamic share code/user id suffix, so
+    // they can't be matched by the fixed-string switch below and must be
+    // special-cased first.
     if (isFriendProfileRoute(candidate) ||
         isFriendStatsProfileRoute(candidate)) {
       return candidate;
@@ -46,6 +57,9 @@ class AppRoutes {
     };
   }
 
+  // Encoded because share codes/user ids are embedded directly in the route
+  // path segment (not a query parameter), so any character that isn't
+  // path-safe would otherwise corrupt route matching or navigation.
   static String friendProfileRoute(String shareCode) {
     return '$friendProfilePrefix${Uri.encodeComponent(shareCode)}';
   }
@@ -157,6 +171,10 @@ class AppRoutes {
     };
   }
 
+  // Deliberately narrower than isPostAuthRoute: notifications/add-drink/
+  // edit-profile are valid places to land right after auth, but are
+  // transient/action screens that shouldn't be what a relaunched app
+  // restores you into (route memory should drop you on a main tab instead).
   static bool isRestorable(String? routeName) {
     final normalized = normalize(routeName);
     if (isFriendProfileRoute(normalized) ||

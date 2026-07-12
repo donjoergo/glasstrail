@@ -123,6 +123,23 @@
   "history": "History",
   "statisticsMapEmptyTitle": "No drinks with location yet",
   "statisticsMapEmptyBody": "Enable location while logging drinks so they can appear here on the map.",
+  "statisticsMapClusterFilterLabel": "Cluster",
+  "statisticsMapClusterTitle": "{count, plural, =1{1 drink here} other{{count} drinks here}}",
+  "statisticsMapLocateMeTooltip": "Show my location",
+  "statisticsMapPhotoFilterLabel": "With photo",
+  "@statisticsMapClusterTitle": {
+    "description": "Title of the map overlay panel listing the drinks inside a tapped cluster",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "feedDetailEmptyTitle": "No drink selected",
+  "feedDetailEmptyBody": "Select a drink from the feed to see its details here.",
+  "historyDetailEmptyTitle": "No entry selected",
+  "historyDetailEmptyBody": "Select an entry from the history to see its details here.",
+  "statisticsDashboard": "Dashboard",
   "statisticsGalleryEmptyTitle": "No drink photos yet",
   "statisticsGalleryEmptyBody": "Photos from logged drinks will appear here automatically.",
   "totalDrinks": "Total drinks",
