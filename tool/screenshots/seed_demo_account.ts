@@ -173,6 +173,12 @@ const STOCK_PHOTOS = {
   whiskey: 'whiskey.jpg',
   softDrinks: 'soft-drinks.jpg',
   coffee: 'coffee.jpg',
+  cider: 'cider.jpg',
+  clubMate: 'club-mate.jpg',
+  tomatoJuice: 'tomato-juice.jpg',
+  caipirinha: 'caipirinha.jpg',
+  tea: 'tea.jpg',
+  cubaLibre: 'cuba-libre.jpg',
 } as const;
 
 type StockPhotoKey = keyof typeof STOCK_PHOTOS;
@@ -241,13 +247,17 @@ function buildPrimaryEntries(customDrinkIds: Map<string, string>): EntrySpec[] {
     { offsetHours: 160, sourceType: 'global', sourceDrinkId: 'shots-jaegermeister', drinkName: 'Jägermeister', categorySlug: 'shots', volumeMl: 20 },
     { offsetHours: 185, sourceType: 'global', sourceDrinkId: 'sparklingWines-champagne', drinkName: 'Champagne', categorySlug: 'sparklingWines', volumeMl: 120, comment: 'Celebrating a promotion.', location: LOCATIONS.hamburg },
     { offsetHours: 205, sourceType: 'custom', sourceDrinkId: oldFashionedId, drinkName: 'House Old Fashioned', categorySlug: 'cocktails', volumeMl: 200 },
-    { offsetHours: 230, sourceType: 'global', sourceDrinkId: 'appleWines-cider', drinkName: 'Cider', categorySlug: 'appleWines', volumeMl: 330 },
+    { offsetHours: 230, sourceType: 'global', sourceDrinkId: 'appleWines-cider', drinkName: 'Cider', categorySlug: 'appleWines', volumeMl: 330, photoKey: 'cider' },
     { offsetHours: 255, sourceType: 'global', sourceDrinkId: 'wine-white-wine', drinkName: 'White Wine', categorySlug: 'wine', volumeMl: 150 },
     { offsetHours: 280, sourceType: 'global', sourceDrinkId: 'beer-pils', drinkName: 'Pils', categorySlug: 'beer', volumeMl: 330 },
     { offsetHours: 305, sourceType: 'custom', sourceDrinkId: mulledWineId, drinkName: 'Family Mulled Wine', categorySlug: 'wine', volumeMl: 200, comment: 'Christmas market.', location: LOCATIONS.vienna },
-    { offsetHours: 330, sourceType: 'global', sourceDrinkId: 'nonAlcoholic-tea', drinkName: 'Tea', categorySlug: 'nonAlcoholic', volumeMl: 300 },
+    { offsetHours: 330, sourceType: 'global', sourceDrinkId: 'nonAlcoholic-tea', drinkName: 'Tea', categorySlug: 'nonAlcoholic', volumeMl: 300, photoKey: 'tea' },
     { offsetHours: 360, sourceType: 'global', sourceDrinkId: 'cocktails-mojito', drinkName: 'Mojito', categorySlug: 'cocktails', volumeMl: 250 },
     { offsetHours: 400, sourceType: 'global', sourceDrinkId: 'beer-radler', drinkName: 'Radler', categorySlug: 'beer', volumeMl: 500, comment: 'Hot day, needed something light.' },
+    { offsetHours: 420, sourceType: 'global', sourceDrinkId: 'nonAlcoholic-club-mate', drinkName: 'Club-Mate', categorySlug: 'nonAlcoholic', volumeMl: 500, photoKey: 'clubMate' },
+    { offsetHours: 440, sourceType: 'global', sourceDrinkId: 'nonAlcoholic-juice', drinkName: 'Tomato Juice', categorySlug: 'nonAlcoholic', volumeMl: 250, photoKey: 'tomatoJuice' },
+    { offsetHours: 460, sourceType: 'global', sourceDrinkId: 'cocktails-caipirinha', drinkName: 'Caipirinha', categorySlug: 'cocktails', volumeMl: 250, comment: 'Brazilian night at the bar.', photoKey: 'caipirinha' },
+    { offsetHours: 480, sourceType: 'global', sourceDrinkId: 'longdrinks-cuba-libre', drinkName: 'Cuba Libre', categorySlug: 'longdrinks', volumeMl: 250, photoKey: 'cubaLibre' },
   ];
 }
 
