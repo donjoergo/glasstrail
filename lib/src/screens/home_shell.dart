@@ -175,6 +175,7 @@ class _HomeShellState extends State<HomeShell> {
                   child: NavigationRail(
                     selectedIndex: currentIndex,
                     useIndicator: true,
+                    labelType: NavigationRailLabelType.all,
                     onDestinationSelected: (index) =>
                         _openHomeRoute(context, index),
                     destinations: <NavigationRailDestination>[
