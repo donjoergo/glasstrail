@@ -1,4 +1,4 @@
-import { chromium, type Page } from 'playwright';
+import { chromium, type BrowserContext, type Page } from 'playwright';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
@@ -13,7 +13,11 @@ const DEVICE_SCALE_FACTOR = 3;
 export async function enableFlutterSemantics(page: Page): Promise<void> {
   const placeholder = page.locator('flt-semantics-placeholder');
   await placeholder.waitFor({ state: 'attached', timeout: 30000 });
-  await placeholder.click({ force: true });
+  // Flutter positions this element at `left:-1px; top:-1px` by design (kept off-screen
+  // for sighted users but focusable for screen readers), so it sits outside the
+  // viewport and Playwright's coordinate-based click can't reach it even with
+  // `force: true`. Dispatch a real DOM click instead, which doesn't need hit-testing.
+  await placeholder.evaluate((el) => (el as HTMLElement).click());
   await page.locator('flt-semantics').first().waitFor({ state: 'attached', timeout: 15000 });
 }
 
@@ -22,26 +26,44 @@ export async function login(page: Page): Promise<void> {
   await enableFlutterSemantics(page);
 
   await page.getByLabel('Email').fill(env.demoPrimaryEmail);
-  await page.getByLabel('Password').fill(env.demoPrimaryPassword);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  // Flutter's obscured password field ignores Playwright's synthetic `fill()`
+  // (it silently no-ops — the DOM value never updates), so it needs a real
+  // click-and-type instead.
+  await page.getByLabel('Password').click();
+  await page.keyboard.type(env.demoPrimaryPassword, { delay: 20 });
+  // The auth screen has two "Sign in"-labeled elements: the sign-in/create-account
+  // tab toggle above the form, and the actual submit button below it — the submit
+  // button is always the last one in the accessibility tree.
+  await page.getByRole('button', { name: 'Sign in' }).last().click();
 
   await page.waitForFunction(
     () => location.hash === '#/feed' || location.hash === '' || location.hash === '#/',
     undefined,
-    { timeout: 30000 },
+    { timeout: 360000 },
   );
   await page.waitForTimeout(2000);
+}
+
+interface ViewportOverride {
+  width: number;
+  height: number;
+  deviceScaleFactor?: number;
 }
 
 interface ScreenSpec {
   name: string;
   hashRoute: string;
   afterNavigate?: (page: Page) => Promise<void>;
+  // Defaults to the shared mobile VIEWPORT/DEVICE_SCALE_FACTOR when omitted.
+  viewport?: ViewportOverride;
+  // Defaults to 'jpg'. Screens with a non-default viewport (desktop, notifications)
+  // use 'png' to match the lossless assets already referenced by landing/index.html.
+  format?: 'jpg' | 'png';
 }
 
 async function scrollToPieChart(page: Page): Promise<void> {
   await page.mouse.move(VIEWPORT.width / 2, VIEWPORT.height / 2);
-  await page.mouse.wheel(0, 700);
+  await page.mouse.wheel(0, 2000);
   await page.waitForTimeout(500);
 }
 
@@ -56,7 +78,37 @@ const SCREENS: ScreenSpec[] = [
   { name: 'bar-global', hashRoute: '/bar/sorting' },
   { name: 'bar-own', hashRoute: '/bar/custom' },
   { name: 'account-settings', hashRoute: '/profile' },
+  { name: 'notifications', hashRoute: '/notifications', viewport: { width: 480, height: 343 }, format: 'png' },
+  {
+    name: 'desktop',
+    hashRoute: '/statistics',
+    // Comfortably clears the app's `large` breakpoint (1200px, AppBreakpoints.large)
+    // so the feed renders its widescreen master-detail layout with the side nav rail.
+    // 16:10 matches the `.desktop-screen img` aspect-ratio baked into landing/index.html.
+    viewport: { width: 1440, height: 900, deviceScaleFactor: 2 },
+    format: 'png',
+  },
 ];
+
+function selectScreens(names: string[]): ScreenSpec[] {
+  if (names.length === 0) {
+    return SCREENS;
+  }
+  const byName = new Map(SCREENS.map((screen) => [screen.name, screen]));
+  const unknown = names.filter((name) => !byName.has(name));
+  if (unknown.length > 0) {
+    const valid = SCREENS.map((screen) => screen.name).join(', ');
+    throw new Error(`Unknown screen(s): ${unknown.join(', ')}. Valid screens: ${valid}`);
+  }
+  return names.map((name) => byName.get(name)!);
+}
+
+function renderProgress(current: number, total: number, label: string): void {
+  const barWidth = 24;
+  const filled = Math.round((current / total) * barWidth);
+  const bar = '#'.repeat(filled) + '-'.repeat(barWidth - filled);
+  process.stdout.write(`\r[${bar}] ${current}/${total} ${label}`.padEnd(70));
+}
 
 async function goToScreen(page: Page, hashRoute: string): Promise<void> {
   await page.evaluate((route) => {
@@ -71,44 +123,88 @@ async function captureTheme(
   filePath: string,
 ): Promise<void> {
   await page.emulateMedia({ colorScheme });
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(2000);
   await page.screenshot({ path: filePath });
+}
+
+function viewportKey(viewport: ViewportOverride): string {
+  return `${viewport.width}x${viewport.height}@${viewport.deviceScaleFactor ?? DEVICE_SCALE_FACTOR}`;
 }
 
 async function main(): Promise<void> {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
+  const screensToRun = selectScreens(process.argv.slice(2));
+
   const browser = await chromium.launch();
-  const context = await browser.newContext({
+  const mobileViewport: ViewportOverride = { width: VIEWPORT.width, height: VIEWPORT.height, deviceScaleFactor: DEVICE_SCALE_FACTOR };
+  const mobileContext = await browser.newContext({
     viewport: VIEWPORT,
     deviceScaleFactor: DEVICE_SCALE_FACTOR,
     locale: 'en-US',
   });
-  const page = await context.newPage();
+  const mobilePage = await mobileContext.newPage();
 
-  await login(page);
+  await login(mobilePage);
+  const storageState = await mobileContext.storageState();
 
-  for (const screen of SCREENS) {
+  const pagesByViewport = new Map<string, { context: BrowserContext; page: Page }>();
+  pagesByViewport.set(viewportKey(mobileViewport), { context: mobileContext, page: mobilePage });
+
+  async function getPageFor(viewport?: ViewportOverride): Promise<Page> {
+    const resolved = viewport ?? mobileViewport;
+    const key = viewportKey(resolved);
+    let entry = pagesByViewport.get(key);
+    if (!entry) {
+      const context = await browser.newContext({
+        viewport: { width: resolved.width, height: resolved.height },
+        deviceScaleFactor: resolved.deviceScaleFactor ?? DEVICE_SCALE_FACTOR,
+        locale: 'en-US',
+        storageState,
+      });
+      const page = await context.newPage();
+      await page.goto(env.captureBaseUrl, { waitUntil: 'networkidle' });
+      entry = { context, page };
+      pagesByViewport.set(key, entry);
+    }
+    return entry.page;
+  }
+
+  const totalSteps = screensToRun.length * 2;
+  let step = 0;
+
+  for (const screen of screensToRun) {
+    const page = await getPageFor(screen.viewport);
     await goToScreen(page, screen.hashRoute);
     if (screen.afterNavigate) {
       await screen.afterNavigate(page);
     }
-    await captureTheme(page, 'light', path.join(OUTPUT_DIR, `${screen.name}-light.jpg`));
-    await captureTheme(page, 'dark', path.join(OUTPUT_DIR, `${screen.name}-dark.jpg`));
+    for (const theme of ['light', 'dark'] as const) {
+      step += 1;
+      renderProgress(step, totalSteps, `${screen.name} (${theme})`);
+      const extension = screen.format ?? 'jpg';
+      await captureTheme(page, theme, path.join(OUTPUT_DIR, `${screen.name}-${theme}.${extension}`));
+    }
+  }
+  process.stdout.write('\n');
+
+  if (screensToRun.some((screen) => screen.name === 'feed')) {
+    await fs.copyFile(
+      path.join(OUTPUT_DIR, 'feed-light.jpg'),
+      path.join(OUTPUT_DIR, 'theme-demo-light.jpg'),
+    );
+    await fs.copyFile(
+      path.join(OUTPUT_DIR, 'feed-dark.jpg'),
+      path.join(OUTPUT_DIR, 'theme-demo-dark.jpg'),
+    );
   }
 
+  for (const { context } of pagesByViewport.values()) {
+    await context.close();
+  }
   await browser.close();
 
-  await fs.copyFile(
-    path.join(OUTPUT_DIR, 'feed-light.jpg'),
-    path.join(OUTPUT_DIR, 'theme-demo-light.jpg'),
-  );
-  await fs.copyFile(
-    path.join(OUTPUT_DIR, 'feed-dark.jpg'),
-    path.join(OUTPUT_DIR, 'theme-demo-dark.jpg'),
-  );
-
-  console.log(`Captured ${SCREENS.length} screens (light + dark) into ${OUTPUT_DIR}`);
+  console.log(`Captured ${screensToRun.length} screen(s) (light + dark) into ${OUTPUT_DIR}`);
 }
 
 const isMainModule = path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url);
