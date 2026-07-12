@@ -41,6 +41,7 @@ class BootstrapCacheStore {
   // write cycles (e.g. an entry added while settings are also being saved)
   // could interleave and one write would clobber the other's changes.
   Future<void> _writeQueue = Future<void>.value();
+  BootstrapCacheState? _memoizedState;
 
   static Future<BootstrapCacheStore> create({
     CacheStoreBackend? backend,
@@ -51,6 +52,16 @@ class BootstrapCacheStore {
   }
 
   Future<BootstrapCacheState> readState() async {
+    final memoized = _memoizedState;
+    if (memoized != null) {
+      return memoized;
+    }
+    final state = await _readStateFromDisk();
+    _memoizedState = state;
+    return state;
+  }
+
+  Future<BootstrapCacheState> _readStateFromDisk() async {
     try {
       final manifestJson = await _backend.readText(_manifestPath);
       final snapshotJson = await _backend.readText(_snapshotPath);
@@ -88,14 +99,22 @@ class BootstrapCacheStore {
   // records "as of when" each domain was cached) to never claim freshness
   // for data that didn't actually make it to disk.
   Future<void> writeState(BootstrapCacheState state) async {
-    await _backend.writeTextAtomically(
-      _snapshotPath,
-      jsonEncode(state.snapshot.toJson()),
-    );
-    await _backend.writeTextAtomically(
-      _manifestPath,
-      jsonEncode(state.manifest.toJson()),
-    );
+    try {
+      await _backend.writeTextAtomically(
+        _snapshotPath,
+        jsonEncode(state.snapshot.toJson()),
+      );
+      await _backend.writeTextAtomically(
+        _manifestPath,
+        jsonEncode(state.manifest.toJson()),
+      );
+      _memoizedState = state;
+    } catch (_) {
+      // Disk may now disagree with memory; drop the memo so the next read
+      // reflects what was actually persisted.
+      _memoizedState = null;
+      rethrow;
+    }
   }
 
   // Chained onto the tail of _writeQueue so this read-modify-write only
@@ -117,6 +136,7 @@ class BootstrapCacheStore {
   }
 
   Future<void> purgeAll() async {
+    _memoizedState = null;
     await _backend.deleteDirectory('bootstrap');
   }
 

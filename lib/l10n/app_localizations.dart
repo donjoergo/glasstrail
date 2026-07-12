@@ -686,6 +686,60 @@ abstract class AppLocalizations {
   /// **'Enable location while logging drinks so they can appear here on the map.'**
   String get statisticsMapEmptyBody;
 
+  /// No description provided for @statisticsMapClusterFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster'**
+  String get statisticsMapClusterFilterLabel;
+
+  /// Title of the map overlay panel listing the drinks inside a tapped cluster
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 drink here} other{{count} drinks here}}'**
+  String statisticsMapClusterTitle(num count);
+
+  /// No description provided for @statisticsMapLocateMeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show my location'**
+  String get statisticsMapLocateMeTooltip;
+
+  /// No description provided for @statisticsMapPhotoFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'With photo'**
+  String get statisticsMapPhotoFilterLabel;
+
+  /// No description provided for @feedDetailEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No drink selected'**
+  String get feedDetailEmptyTitle;
+
+  /// No description provided for @feedDetailEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a drink from the feed to see its details here.'**
+  String get feedDetailEmptyBody;
+
+  /// No description provided for @historyDetailEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No entry selected'**
+  String get historyDetailEmptyTitle;
+
+  /// No description provided for @historyDetailEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an entry from the history to see its details here.'**
+  String get historyDetailEmptyBody;
+
+  /// No description provided for @statisticsDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get statisticsDashboard;
+
   /// No description provided for @statisticsGalleryEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -1240,6 +1294,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'GitHub'**
   String get github;
+
+  /// Attribution line in the profile about section
+  ///
+  /// In en, this message translates to:
+  /// **'Created with {heart}, {coffee} and {beer} by Jörg Dorlach'**
+  String profileAttribution(String heart, String coffee, String beer);
 
   /// No description provided for @roadmapBody.
   ///

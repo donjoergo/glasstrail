@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,6 +24,7 @@ import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/photo_service.dart';
 import 'package:glasstrail/src/repository/local_app_repository.dart';
 import 'package:glasstrail/src/screens/add_drink_screen.dart';
+import 'package:glasstrail/src/screens/custom_drink_dialog.dart';
 import 'package:glasstrail/src/screens/feed_screen.dart';
 import 'package:glasstrail/src/screens/home_shell.dart';
 import 'package:glasstrail/src/screens/profile_screen.dart';
@@ -115,6 +117,18 @@ Future<void> _openStatisticsTab(
 
 Future<void> _openBarCustomDrinksTab(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('bar-custom-tab')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openStatisticsWideSection(
+  WidgetTester tester,
+  String label,
+) async {
+  final segment = find.descendant(
+    of: find.byKey(const Key('statistics-wide-section-switcher')),
+    matching: find.text(label),
+  );
+  await tester.tap(segment);
   await tester.pumpAndSettle();
 }
 
@@ -1297,7 +1311,7 @@ void main() {
     expect(find.text('GitHub'), findsOneWidget);
     expect(
       find.text(
-        'created with ❤️, ☕ and 🍺 by Jörg Dorlach',
+        'Created with ❤️, ☕ and 🍺 by Jörg Dorlach',
         findRichText: true,
       ),
       findsOneWidget,
@@ -3141,6 +3155,102 @@ void main() {
     ]);
   });
 
+  testWidgets(
+    'auto-fills the add-drink photo when creating a custom drink inline',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'inline-custom-drink-photo@example.com',
+        password: 'password123',
+        displayName: 'Inline Custom Drink Photo',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Create custom drink'));
+      await tester.pumpAndSettle();
+
+      final dialogNameField = find
+          .descendant(
+            of: find.byType(CustomDrinkDialog),
+            matching: find.byType(TextFormField),
+          )
+          .first;
+      await tester.enterText(dialogNameField, 'Porch Lager');
+      await _tapPhotoAction(tester, find.text('Pick photo'));
+      await tester.tap(find.byKey(const Key('custom-drink-save-button')));
+      await tester.pumpAndSettle();
+
+      expect(controller.customDrinks.single.imagePath, isNotNull);
+      expect(find.text('Porch Lager'), findsWidgets);
+      expect(find.byKey(const Key('add-drink-image-preview')), findsOneWidget);
+      expect(find.text('Change photo'), findsOneWidget);
+      expect(find.text('Pick photo'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'does not auto-fill the add-drink photo when selecting an existing custom drink',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'existing-custom-drink-photo@example.com',
+        password: 'password123',
+        displayName: 'Existing Custom Drink Photo',
+      );
+      await controller.saveCustomDrink(
+        name: 'Garden Spritz',
+        category: DrinkCategory.cocktails,
+        volumeMl: 250,
+        imagePath: '/tmp/garden-spritz.png',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('drink-category-title-cocktails')));
+      await tester.pumpAndSettle();
+      final gardenSpritzTile = find.widgetWithText(ListTile, 'Garden Spritz');
+      await tester.ensureVisible(gardenSpritzTile);
+      await tester.tap(gardenSpritzTile);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('add-drink-image-preview')), findsNothing);
+      expect(find.text('Pick photo'), findsOneWidget);
+    },
+  );
+
   testWidgets('shows the streak card in the feed without a details button', (
     tester,
   ) async {
@@ -3627,11 +3737,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.widget<Text>(cheersCount).data, '1');
-
-      await tester.tap(cheersButton);
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Text>(cheersCount).data, '0');
+      expect(tester.widget<TextButton>(cheersButton).onPressed, isNull);
     },
   );
 
@@ -3719,11 +3825,7 @@ void main() {
       '0',
     );
 
-    await repository.setFeedEntryCheers(
-      userId: friend.id,
-      entryId: entry.id,
-      shouldCheer: true,
-    );
+    await repository.addFeedEntryCheer(userId: friend.id, entryId: entry.id);
     await tester.pump();
     await tester.pumpAndSettle();
 
@@ -4807,6 +4909,85 @@ void main() {
     },
   );
 
+  testWidgets('filters statistics map markers to entries with a photo', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-photo-filter@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Photo Filter',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final wine = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+      imagePath: '/tmp/beer.jpg',
+    );
+    final photoEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == beer.id,
+    );
+    await controller.addDrinkEntry(
+      drink: wine,
+      volumeMl: wine.volumeMl,
+      locationLatitude: 48.1372,
+      locationLongitude: 11.5756,
+    );
+    final noPhotoEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == wine.id,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'Map');
+
+    expect(find.byKey(const Key('statistics-map-filter-bar')), findsOneWidget);
+    expect(_statisticsMapMarkers(), findsNWidgets(2));
+
+    final photoOnlyChip = find.byKey(
+      const Key('statistics-map-filter-photo-only'),
+    );
+    expect(tester.widget<FilterChip>(photoOnlyChip).selected, isFalse);
+
+    await tester.tap(photoOnlyChip);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<FilterChip>(photoOnlyChip).selected, isTrue);
+    expect(_statisticsMapMarkers(), findsOneWidget);
+    expect(_statisticsMapMarker(photoEntry.id), findsOneWidget);
+    expect(_statisticsMapMarker(noPhotoEntry.id), findsNothing);
+
+    final clusterChip = find.byKey(const Key('statistics-map-filter-cluster'));
+    expect(tester.widget<FilterChip>(clusterChip).selected, isTrue);
+
+    await tester.tap(clusterChip);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<FilterChip>(clusterChip).selected, isFalse);
+  });
+
   testWidgets(
     'opens a statistics map sheet with localized name, time, volume and address',
     (tester) async {
@@ -4960,6 +5141,665 @@ void main() {
     expect(
       find.byKey(Key('statistics-map-sheet-image-${plainEntry.id}')),
       findsNothing,
+    );
+  });
+
+  testWidgets('shows the statistics map detail panel on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-map-panel@example.com',
+      password: 'password123',
+      displayName: 'Stats Map Panel',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final wine = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+    );
+    final beerEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == beer.id,
+    );
+    await controller.addDrinkEntry(
+      drink: wine,
+      volumeMl: wine.volumeMl,
+      locationLatitude: 48.1372,
+      locationLongitude: 11.5756,
+    );
+    final wineEntry = controller.entries.firstWhere(
+      (entry) => entry.drinkId == wine.id,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+
+    expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+
+    await tester.tap(_statisticsMapMarker(beerEntry.id));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-map-panel')), findsOneWidget);
+    expect(
+      find.byKey(Key('statistics-map-panel-${beerEntry.id}')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(Key('statistics-map-sheet-${beerEntry.id}')),
+      findsNothing,
+    );
+
+    await tester.tap(_statisticsMapMarker(wineEntry.id));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-map-panel')), findsOneWidget);
+    expect(
+      find.byKey(Key('statistics-map-panel-${wineEntry.id}')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(Key('statistics-map-panel-${beerEntry.id}')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('statistics-map-panel-close')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+  });
+
+  testWidgets(
+    'closes the statistics map panel with escape and empty map taps',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1300, 900));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'stats-map-panel-close@example.com',
+        password: 'password123',
+        displayName: 'Stats Map Panel Close',
+      );
+
+      final beer = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      final wine = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'wine-red-wine',
+      );
+      await controller.addDrinkEntry(
+        drink: beer,
+        volumeMl: beer.volumeMl,
+        locationLatitude: 52.52,
+        locationLongitude: 13.405,
+      );
+      final beerEntry = controller.entries.firstWhere(
+        (entry) => entry.drinkId == beer.id,
+      );
+      await controller.addDrinkEntry(
+        drink: wine,
+        volumeMl: wine.volumeMl,
+        locationLatitude: 48.1372,
+        locationLongitude: 11.5756,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openStatisticsTab(tester);
+
+      await tester.tap(_statisticsMapMarker(beerEntry.id));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('statistics-map-panel')), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+
+      await tester.tap(_statisticsMapMarker(beerEntry.id));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('statistics-map-panel')), findsOneWidget);
+
+      final mapCard = tester.getRect(
+        find.byKey(const Key('statistics-map-card')),
+      );
+      await tester.tapAt(mapCard.center);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'shows the statistics map entry as a dialog between 840 and 1200',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1100, 900));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'stats-map-sheet-medium@example.com',
+        password: 'password123',
+        displayName: 'Stats Map Sheet Medium',
+      );
+
+      final beer = controller.availableDrinks.firstWhere(
+        (candidate) => candidate.id == 'beer-pils',
+      );
+      await controller.addDrinkEntry(
+        drink: beer,
+        volumeMl: beer.volumeMl,
+        locationLatitude: 52.52,
+        locationLongitude: 13.405,
+      );
+      final beerEntry = controller.entries.firstWhere(
+        (entry) => entry.drinkId == beer.id,
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _openStatisticsTab(tester);
+      await _openStatisticsSection(tester, 'Map');
+
+      await tester.tap(_statisticsMapMarker(beerEntry.id));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(Key('statistics-map-sheet-${beerEntry.id}')),
+        findsOneWidget,
+      );
+      expect(find.byType(Dialog), findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(find.byKey(const Key('statistics-map-panel')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('statistics-map-dialog-close')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(Key('statistics-map-sheet-${beerEntry.id}')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('shows a feed master-detail layout on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'feed-master-detail@example.com',
+      password: 'password123',
+      displayName: 'Feed Master Detail',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      comment: 'Detail pane comment',
+    );
+    final entry = controller.entries.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-detail-empty-state')), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('feed-post-${entry.id}')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-detail-empty-state')), findsNothing);
+    expect(find.byKey(Key('feed-detail-${entry.id}')), findsOneWidget);
+    expect(find.byKey(Key('feed-detail-edit-${entry.id}')), findsOneWidget);
+    expect(find.byKey(Key('feed-detail-delete-${entry.id}')), findsOneWidget);
+  });
+
+  testWidgets('keeps the feed single-column below the large breakpoint', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1100, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'feed-single-column@example.com',
+      password: 'password123',
+      displayName: 'Feed Single Column',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(drink: beer, volumeMl: beer.volumeMl);
+    final entry = controller.entries.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('feed-detail-empty-state')), findsNothing);
+    expect(find.byKey(Key('feed-post-${entry.id}')), findsOneWidget);
+  });
+
+  testWidgets('shows a history master-detail layout on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'history-master-detail@example.com',
+      password: 'password123',
+      displayName: 'History Master Detail',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      comment: 'History detail comment',
+    );
+    final entry = controller.entries.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsWideSection(tester, 'History');
+
+    expect(
+      find.byKey(const Key('statistics-history-detail-empty-state')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(Key('statistics-history-entry-${entry.id}')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('statistics-history-detail-empty-state')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(Key('statistics-history-detail-${entry.id}')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows both bar sections side by side on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-side-by-side@example.com',
+      password: 'password123',
+      displayName: 'Bar Side By Side',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-tab-bar')), findsNothing);
+    expect(find.byKey(const Key('bar-global-section')), findsOneWidget);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+
+    final globalLeft = tester
+        .getTopLeft(find.byKey(const Key('bar-global-section')))
+        .dx;
+    final customLeft = tester
+        .getTopLeft(find.byKey(const Key('bar-custom-drinks-section')))
+        .dx;
+    expect(globalLeft, lessThan(customLeft));
+  });
+
+  testWidgets('restores the bar tabs when resizing below 1200', (tester) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-resize@example.com',
+      password: 'password123',
+      displayName: 'Bar Resize',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-tab-bar')), findsNothing);
+
+    _setSurfaceSize(tester, const Size(1100, 900));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bar-tab-bar')), findsOneWidget);
+    expect(find.byKey(const Key('bar-global-section')), findsOneWidget);
+
+    await _openBarCustomDrinksTab(tester);
+    expect(find.byKey(const Key('bar-custom-drinks-section')), findsOneWidget);
+  });
+
+  testWidgets('marks history entries that have a photo', (tester) async {
+    _setSurfaceSize(tester, const Size(430, 1000));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'history-image-indicator@example.com',
+      password: 'password123',
+      displayName: 'History Image Indicator',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    final wine = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'wine-red-wine',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      imagePath: _transparentPngDataUrl,
+    );
+    final entryWithImage = controller.entries.firstWhere(
+      (entry) => entry.drinkId == beer.id,
+    );
+    await controller.addDrinkEntry(drink: wine, volumeMl: wine.volumeMl);
+    final entryWithoutImage = controller.entries.firstWhere(
+      (entry) => entry.drinkId == wine.id,
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _openStatisticsTab(tester);
+    await _openStatisticsSection(tester, 'History');
+
+    expect(
+      find.byKey(
+        Key('statistics-history-image-indicator-${entryWithImage.id}'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        Key('statistics-history-image-indicator-${entryWithoutImage.id}'),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('replaces statistics tabs with a dashboard on large screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-dashboard@example.com',
+      password: 'password123',
+      displayName: 'Stats Dashboard',
+    );
+
+    final beer = controller.availableDrinks.firstWhere(
+      (candidate) => candidate.id == 'beer-pils',
+    );
+    await controller.addDrinkEntry(
+      drink: beer,
+      volumeMl: beer.volumeMl,
+      imagePath: _transparentPngDataUrl,
+      locationLatitude: 52.52,
+      locationLongitude: 13.405,
+    );
+    final entry = controller.entries.single;
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-tab-bar')), findsNothing);
+    expect(
+      find.byKey(const Key('statistics-wide-section-switcher')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('statistics-map-card')), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(Key('statistics-gallery-tile-${entry.id}')),
+      300,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('statistics-dashboard-scroll')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(
+      find.byKey(Key('statistics-gallery-tile-${entry.id}')),
+      findsOneWidget,
+    );
+
+    await _openStatisticsWideSection(tester, 'History');
+
+    expect(
+      find.byKey(const Key('statistics-history-list-view')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('statistics-map-card')), findsNothing);
+    expect(_rememberedRoute(tester), AppRoutes.statisticsHistory);
+
+    await _openStatisticsWideSection(tester, 'Dashboard');
+
+    expect(find.byKey(const Key('statistics-map-card')), findsOneWidget);
+    expect(_rememberedRoute(tester), isNot(AppRoutes.statisticsHistory));
+  });
+
+  testWidgets('renders the dashboard for statistics deep links when large', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-deep-link@example.com',
+      password: 'password123',
+      displayName: 'Stats Deep Link',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statisticsGallery,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-tab-bar')), findsNothing);
+    expect(
+      find.byKey(const Key('statistics-wide-section-switcher')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('statistics-map-card')), findsNothing);
+    expect(find.byKey(const Key('statistics-list-view')), findsNothing);
+    expect(
+      find.byKey(const Key('statistics-dashboard-scroll')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('renders history for its deep link when large', (tester) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-history-link@example.com',
+      password: 'password123',
+      displayName: 'Stats History Link',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statisticsHistory,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('statistics-history-list-view')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('restores the statistics tab bar when resizing below 1200', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1300, 900));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'stats-resize@example.com',
+      password: 'password123',
+      displayName: 'Stats Resize',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.statistics,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-tab-bar')), findsNothing);
+
+    await _openStatisticsWideSection(tester, 'History');
+    expect(_rememberedRoute(tester), AppRoutes.statisticsHistory);
+
+    _setSurfaceSize(tester, const Size(800, 900));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('statistics-tab-bar')), findsOneWidget);
+    expect(
+      find.byKey(const Key('statistics-history-list-view')),
+      findsOneWidget,
     );
   });
 
@@ -5279,7 +6119,7 @@ void main() {
   testWidgets('uses five columns for gallery layouts on wider screens', (
     tester,
   ) async {
-    _setSurfaceSize(tester, const Size(1200, 1366));
+    _setSurfaceSize(tester, const Size(1100, 1366));
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
@@ -5359,6 +6199,62 @@ void main() {
     );
     expect(railContainer.decoration, isNull);
     expect(railContainer.color, isNotNull);
+  });
+
+  testWidgets('shows the navigation rail from the expanded breakpoint', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(850, 1200));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'rail-edge@example.com',
+      password: 'password123',
+      displayName: 'Rail Edge',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
+
+  testWidgets('keeps the bottom navigation bar below the expanded breakpoint', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(830, 1200));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-edge@example.com',
+      password: 'password123',
+      displayName: 'Bar Edge',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(NavigationRail), findsNothing);
   });
 
   testWidgets(

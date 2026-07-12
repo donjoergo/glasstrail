@@ -1,47 +1,40 @@
 part of '../statistics_screen.dart';
 
-class _StatisticsMapPage extends StatelessWidget {
+class _StatisticsMapPage extends StatefulWidget {
   const _StatisticsMapPage();
+
+  @override
+  State<_StatisticsMapPage> createState() => _StatisticsMapPageState();
+}
+
+class _StatisticsMapPageState extends State<_StatisticsMapPage> {
+  bool _clusterEnabled = true;
+  bool _photoOnly = false;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final markers = _statisticsMapMarkersForEntries(
-      AppScope.controllerOf(context).entries,
+    final allEntries = AppScope.controllerOf(context).entries;
+    final filteredEntries = statisticsMapEntriesForFilters(
+      entries: allEntries,
+      photoOnly: _photoOnly,
     );
-
-    if (markers.isEmpty) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final cardHeight = math.max(constraints.maxHeight - 8, 1.0);
-
-          return RefreshIndicator(
-            key: const Key('statistics-map-refresh-indicator'),
-            onRefresh: () => _refreshStatistics(context),
-            child: ListView(
-              key: const Key('statistics-map-list-view'),
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: 8),
-              children: <Widget>[
-                SizedBox(
-                  height: cardHeight,
-                  child: _StatisticsEmptyStateCard(
-                    key: const Key('statistics-map-empty-state'),
-                    icon: Icons.map_rounded,
-                    title: l10n.statisticsMapEmptyTitle,
-                    body: l10n.statisticsMapEmptyBody,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    }
+    final markers = _statisticsMapMarkersForEntries(filteredEntries);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final mapHeight = math.max(constraints.maxHeight - 8, 1.0);
+        final cardHeight = math.max(constraints.maxHeight - 8, 1.0);
+        final content = markers.isEmpty
+            ? _StatisticsEmptyStateCard(
+                key: const Key('statistics-map-empty-state'),
+                icon: Icons.map_rounded,
+                title: l10n.statisticsMapEmptyTitle,
+                body: l10n.statisticsMapEmptyBody,
+              )
+            : _StatisticsMapCard(
+                markers: markers,
+                clusterEnabled: _clusterEnabled,
+              );
 
         return RefreshIndicator(
           key: const Key('statistics-map-refresh-indicator'),
@@ -52,8 +45,26 @@ class _StatisticsMapPage extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8),
             children: <Widget>[
               SizedBox(
-                height: mapHeight,
-                child: _StatisticsMapCard(markers: markers),
+                height: cardHeight,
+                child: Stack(
+                  children: <Widget>[
+                    Positioned.fill(child: content),
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: _StatisticsMapFilterBar(
+                        clusterEnabled: _clusterEnabled,
+                        photoOnly: _photoOnly,
+                        onClusterEnabledChanged: (value) {
+                          setState(() => _clusterEnabled = value);
+                        },
+                        onPhotoOnlyChanged: (value) {
+                          setState(() => _photoOnly = value);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -64,9 +75,13 @@ class _StatisticsMapPage extends StatelessWidget {
 }
 
 class _StatisticsMapCard extends StatefulWidget {
-  const _StatisticsMapCard({required this.markers});
+  const _StatisticsMapCard({
+    required this.markers,
+    required this.clusterEnabled,
+  });
 
   final List<_StatisticsMapMarkerData> markers;
+  final bool clusterEnabled;
 
   @override
   State<_StatisticsMapCard> createState() => _StatisticsMapCardState();
@@ -74,6 +89,10 @@ class _StatisticsMapCard extends StatefulWidget {
 
 class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   maplibre.MapLibreMapController? _controller;
+  _StatisticsMapPanelSelection? _panelSelection;
+  final FocusNode _panelFocusNode = FocusNode(
+    debugLabel: 'statistics-map-panel-focus',
+  );
   String? _hoveredMarkerEntryId;
   // Web hover is resolved via an async queryRenderedFeatures round-trip, so
   // mouse-move events can arrive faster than queries resolve. These fields
@@ -86,6 +105,8 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   int _webHoverEpoch = 0;
   math.Point<double>? _pendingWebHoverPoint;
   VoidCallback? _detachWebMouseLeaveListener;
+  maplibre.LatLng? _selfLocation;
+  bool _isLocatingSelf = false;
   late double _currentZoom;
   late final maplibre.OnFeatureInteractionCallback _featureTapListener;
   late final maplibre.OnFeatureHoverCallback _featureHoverListener;
@@ -149,7 +170,46 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
           )) {
         _hoveredMarkerEntryId = null;
       }
+      _reconcilePanelSelection();
     }
+    if (oldWidget.clusterEnabled != widget.clusterEnabled) {
+      unawaited(_reconfigureLayers());
+    }
+  }
+
+  void _reconcilePanelSelection() {
+    final panelSelection = _panelSelection;
+    if (panelSelection == null) {
+      return;
+    }
+
+    final panelIds = panelSelection.markers
+        .map((marker) => marker.entry.id)
+        .toSet();
+    final remaining = widget.markers
+        .where((marker) => panelIds.contains(marker.entry.id))
+        .toList(growable: false);
+    if (remaining.isEmpty) {
+      _panelSelection = null;
+      return;
+    }
+
+    _StatisticsMapMarkerData? detail;
+    final detailId = panelSelection.detail?.entry.id;
+    if (detailId != null) {
+      final detailIndex = remaining.indexWhere(
+        (marker) => marker.entry.id == detailId,
+      );
+      if (detailIndex != -1) {
+        detail = remaining[detailIndex];
+      } else if (remaining.length == 1) {
+        detail = remaining.single;
+      }
+    }
+    _panelSelection = _StatisticsMapPanelSelection(
+      markers: remaining,
+      detail: detail,
+    );
   }
 
   @override
@@ -162,7 +222,78 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     }
     _detachWebMouseLeaveListener?.call();
     _setWebCanvasCursor('');
+    _panelFocusNode.dispose();
     super.dispose();
+  }
+
+  void _openPanel(_StatisticsMapPanelSelection selection) {
+    setState(() {
+      _panelSelection = selection;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _panelSelection != null) {
+        _panelFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _closePanel() {
+    if (_panelSelection == null) {
+      return;
+    }
+    setState(() {
+      _panelSelection = null;
+    });
+    unawaited(_setHoveredMarkerEntryId(null));
+  }
+
+  void _showPanelDetail(_StatisticsMapMarkerData marker) {
+    final selection = _panelSelection;
+    if (selection == null) {
+      return;
+    }
+    setState(() {
+      _panelSelection = _StatisticsMapPanelSelection(
+        markers: selection.markers,
+        detail: marker,
+      );
+    });
+    unawaited(_highlightPanelMarkerOnMap(marker));
+  }
+
+  /// Pans/zooms the camera to the selected panel entry and enlarges its
+  /// marker so the user sees where the drink was logged.
+  Future<void> _highlightPanelMarkerOnMap(
+    _StatisticsMapMarkerData marker,
+  ) async {
+    final controller = _controller;
+    if (controller == null) {
+      return;
+    }
+
+    await _setHoveredMarkerEntryId(marker.entry.id);
+    await controller.animateCamera(
+      maplibre.CameraUpdate.newLatLngZoom(
+        marker.position,
+        // The detail marker layers only render individual markers from this
+        // zoom on; below it the marker would stay hidden inside a cluster.
+        math.max(_currentZoom, _statisticsMapDetailMarkerMinZoom),
+      ),
+      duration: const Duration(milliseconds: 1000),
+    );
+  }
+
+  void _showPanelList() {
+    final selection = _panelSelection;
+    if (selection == null) {
+      return;
+    }
+    setState(() {
+      _panelSelection = _StatisticsMapPanelSelection(
+        markers: selection.markers,
+      );
+    });
+    unawaited(_setHoveredMarkerEntryId(null));
   }
 
   // Called every time the map (re)loads its style — including when the
@@ -170,6 +301,16 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
   // custom sources/layers/images have to be torn down and rebuilt from
   // scratch here; MapLibre doesn't carry them across style reloads.
   Future<void> _handleStyleLoaded() async {
+    await _reconfigureLayers();
+    _attachWebMouseLeaveListener();
+    _setWebCanvasCursor('');
+    final controller = _controller;
+    if (controller != null) {
+      await _fitStatisticsMapCamera(controller, widget.markers);
+    }
+  }
+
+  Future<void> _reconfigureLayers() async {
     final controller = _controller;
     if (controller == null) {
       return;
@@ -188,9 +329,6 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       colors: colors,
       markerAssetSignature: markerAssetSignature,
     );
-    _attachWebMouseLeaveListener();
-    _setWebCanvasCursor('');
-    await _fitStatisticsMapCamera(controller, widget.markers);
   }
 
   Future<void> _configureNativeLayers(
@@ -218,6 +356,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       _statisticsMapLowZoomMarkerLayerId,
       _statisticsMapClusterCountLayerId,
       _statisticsMapClusterCircleLayerId,
+      _statisticsMapSelfLocationLayerId,
     ]) {
       try {
         await controller.removeLayer(layerId);
@@ -229,6 +368,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     for (final sourceId in <String>[
       _statisticsMapDetailSourceId,
       _statisticsMapClusteredSourceId,
+      _statisticsMapSelfLocationSourceId,
     ]) {
       try {
         await controller.removeSource(sourceId);
@@ -256,7 +396,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
           entries: _entries,
           markerAssetSignature: markerAssetSignature,
         ),
-        cluster: true,
+        cluster: widget.clusterEnabled,
         clusterRadius: _statisticsMapClusterRadius,
         clusterMaxZoom: _statisticsMapClusterMaxZoom,
       ),
@@ -364,6 +504,27 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       enableInteraction: true,
     );
 
+    final selfLocation = _selfLocation;
+    await controller.addSource(
+      _statisticsMapSelfLocationSourceId,
+      maplibre.GeojsonSourceProperties(
+        data: selfLocation == null
+            ? _statisticsMapEmptyGeoJson()
+            : statisticsMapSelfLocationGeoJson(selfLocation),
+      ),
+    );
+    await controller.addCircleLayer(
+      _statisticsMapSelfLocationSourceId,
+      _statisticsMapSelfLocationLayerId,
+      maplibre.CircleLayerProperties(
+        circleColor: _statisticsMapHexColor(theme.colorScheme.primary),
+        circleRadius: 8,
+        circleStrokeColor: _statisticsMapHexColor(theme.colorScheme.surface),
+        circleStrokeWidth: 2.5,
+      ),
+      enableInteraction: false,
+    );
+
     await _updateHoveredMarkerFilters();
   }
 
@@ -385,6 +546,24 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     // by a fixed amount instead of computing an exact "expand" zoom.
     if (layerId == _statisticsMapClusterCircleLayerId ||
         layerId == _statisticsMapClusterCountLayerId) {
+      if (mounted && AppBreakpoints.isLarge(context)) {
+        final leafMarkers = await _resolveClusterLeafMarkers(
+          controller: controller,
+          point: point,
+        );
+        if (!mounted) {
+          return;
+        }
+        if (leafMarkers.length == 1) {
+          await _openMarkerDetail(leafMarkers.single);
+          return;
+        }
+        if (leafMarkers.length > 1) {
+          _openPanel(_StatisticsMapPanelSelection(markers: leafMarkers));
+          return;
+        }
+        // Empty or partial resolution — fall back to zooming in.
+      }
       final nextZoom = math.min(
         _currentZoom + _statisticsMapTapResolveZoomStep,
         _statisticsMapTapResolveMaxZoom,
@@ -411,7 +590,7 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     // the sheet directly.
     if (layerId == _statisticsMapLowZoomMarkerLayerId ||
         layerId == _statisticsMapLowZoomMarkerHitLayerId) {
-      await _openMarkerSheet(marker);
+      await _openMarkerDetail(marker);
       return;
     }
 
@@ -445,7 +624,63 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       // Fall back to the tapped marker when transient projection fails.
     }
 
-    await _openMarkerSheet(marker);
+    await _openMarkerDetail(marker);
+  }
+
+  Future<List<_StatisticsMapMarkerData>> _resolveClusterLeafMarkers({
+    required maplibre.MapLibreMapController controller,
+    required math.Point<double> point,
+  }) async {
+    try {
+      final features = await controller.queryRenderedFeatures(point, <String>[
+        _statisticsMapClusterCircleLayerId,
+      ], null);
+      int? pointCount;
+      for (final feature in features) {
+        if (feature is! Map) {
+          continue;
+        }
+        final properties = feature['properties'];
+        if (properties is! Map) {
+          continue;
+        }
+        final rawCount = properties['point_count'];
+        if (rawCount is num) {
+          pointCount = rawCount.toInt();
+          break;
+        }
+        final parsedCount = int.tryParse(rawCount?.toString() ?? '');
+        if (parsedCount != null) {
+          pointCount = parsedCount;
+          break;
+        }
+      }
+      if (pointCount == null || pointCount < 1) {
+        return const <_StatisticsMapMarkerData>[];
+      }
+
+      final offsets = await _projectMarkerOffsets(controller);
+      final projectionScale = _projectionScale;
+      final clusterOffset = Offset(
+        point.x / projectionScale,
+        point.y / projectionScale,
+      );
+      final leafIndexes = statisticsMapClusterLeafIndexes(
+        offsets: offsets,
+        clusterOffset: clusterOffset,
+        expectedCount: pointCount,
+      );
+      if (leafIndexes.length < pointCount) {
+        // Partial screen-space match — hiding cluster members would be
+        // worse than the zoom fallback, so report no resolution.
+        return const <_StatisticsMapMarkerData>[];
+      }
+      return leafIndexes
+          .map((index) => widget.markers[index])
+          .toList(growable: false);
+    } catch (_) {
+      return const <_StatisticsMapMarkerData>[];
+    }
   }
 
   Future<void> _handleFeatureHover(
@@ -455,6 +690,12 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     maplibre.Annotation? annotation,
     maplibre.HoverEventType eventType,
   ) async {
+    if (_panelSelection?.detail != null) {
+      // The panel detail pins its marker highlight; don't let hover
+      // events overwrite it while the detail is shown.
+      return;
+    }
+
     final markerExists = widget.markers.any((marker) => marker.entry.id == id);
     if (!markerExists) {
       return;
@@ -487,6 +728,11 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     maplibre.LatLng coordinates,
   ) async {
     if (!kIsWeb || !runtime_platform.isMapLibrePlatformSupported) {
+      return;
+    }
+    if (_panelSelection?.detail != null) {
+      // The panel detail pins its marker highlight; skip hover queries
+      // while the detail is shown so mouse moves don't clear it.
       return;
     }
 
@@ -790,13 +1036,82 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     );
   }
 
-  Future<void> _openMarkerSheet(_StatisticsMapMarkerData marker) async {
+  Future<void> _handleLocateMePressed() async {
+    if (_isLocatingSelf) {
+      return;
+    }
+
+    setState(() => _isLocatingSelf = true);
+    try {
+      final localeCode = AppScope.controllerOf(context).settings.localeCode;
+      final result = await AppScope.locationServiceOf(
+        context,
+      ).fetchCurrentLocation(localeCode: localeCode);
+      final location = result.location;
+      if (!mounted) {
+        return;
+      }
+
+      if (location == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).locationUnavailable),
+          ),
+        );
+        return;
+      }
+
+      final position = maplibre.LatLng(location.latitude, location.longitude);
+      setState(() => _selfLocation = position);
+
+      final controller = _controller;
+      if (controller != null) {
+        try {
+          await controller.setGeoJsonSource(
+            _statisticsMapSelfLocationSourceId,
+            statisticsMapSelfLocationGeoJson(position),
+          );
+        } catch (_) {
+          // Fall back to a full layer rebuild if the source isn't ready yet.
+          await _reconfigureLayers();
+        }
+        await controller.animateCamera(
+          maplibre.CameraUpdate.newLatLngZoom(
+            position,
+            math.max(_currentZoom, _statisticsMapSingleMarkerZoom),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLocatingSelf = false);
+      }
+    }
+  }
+
+  Future<void> _openMarkerDetail(_StatisticsMapMarkerData marker) async {
     if (!mounted) {
+      return;
+    }
+
+    if (AppBreakpoints.isLarge(context)) {
+      _openPanel(
+        _StatisticsMapPanelSelection(
+          markers: <_StatisticsMapMarkerData>[marker],
+          detail: marker,
+        ),
+      );
       return;
     }
 
     final colors = statisticsCategoryColors(Theme.of(context));
     final backgroundColor = colors[marker.entry.category]!;
+    // The modal blocks map mouse events, so the hover cursor and marker
+    // highlight would stay stuck while it is open — reset them first.
+    await _setHoveredMarkerEntryId(null);
+    if (!mounted) {
+      return;
+    }
     await _showStatisticsMapEntrySheet(context, marker, backgroundColor);
   }
 
@@ -812,6 +1127,9 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
       spriteScale: _nativeMarkerSpriteScale,
     );
     final useMapLibre = runtime_platform.isMapLibrePlatformSupported;
+    final isLeftHanded =
+        AppScope.controllerOf(context).settings.handedness ==
+        AppHandedness.left;
 
     final content = Stack(
       children: <Widget>[
@@ -855,10 +1173,13 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
                   },
                   onStyleLoadedCallback: _handleStyleLoaded,
                   onCameraMove: _handleCameraMove,
+                  onMapClick: (point, coordinates) => _closePanel(),
                 )
               : _StatisticsMapFallbackSurface(
                   markers: widget.markers,
                   colors: colors,
+                  onMarkerTap: _openMarkerDetail,
+                  onBackgroundTap: _closePanel,
                 ),
         ),
         // Only needed for the fallback surface: the real MapLibreMap already
@@ -871,6 +1192,48 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
             bottom: 12,
             child: _StatisticsMapAttributionCard(
               children: _statisticsMapAttributionChildren(theme),
+            ),
+          ),
+        if (useMapLibre)
+          Positioned(
+            left: 12,
+            bottom: isLeftHanded
+                ? 96 // Clear the floating action button on the leading side.
+                : 12,
+            child: _StatisticsMapLocateButton(
+              isLoading: _isLocatingSelf,
+              onPressed: _handleLocateMePressed,
+            ),
+          ),
+        if (_panelSelection != null)
+          PositionedDirectional(
+            top: 16,
+            end: 16,
+            bottom: isLeftHanded
+                ? 16
+                : 96, // Clear the floating action button on the trailing side.
+            width: AppBreakpoints.mapPanelWidth,
+            child: Align(
+              alignment: Alignment.topCenter,
+              // PointerInterceptor keeps native wheel/drag events on the
+              // panel instead of the MapLibre platform view underneath.
+              child: PointerInterceptor(
+                child: CallbackShortcuts(
+                  bindings: <ShortcutActivator, VoidCallback>{
+                    const SingleActivator(LogicalKeyboardKey.escape):
+                        _closePanel,
+                  },
+                  child: Focus(
+                    focusNode: _panelFocusNode,
+                    child: _StatisticsMapEntryPanel(
+                      selection: _panelSelection!,
+                      onClose: _closePanel,
+                      onDetailSelected: _showPanelDetail,
+                      onBackToList: _showPanelList,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
       ],

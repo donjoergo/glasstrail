@@ -579,15 +579,13 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) async {
-    final update = await _delegate.setFeedEntryCheers(
+    final update = await _delegate.addFeedEntryCheer(
       userId: userId,
       entryId: entryId,
-      shouldCheer: shouldCheer,
     );
     // Patch the cached first feed page in place with the authoritative
     // counts from the delegate, rather than waiting for the next refresh,

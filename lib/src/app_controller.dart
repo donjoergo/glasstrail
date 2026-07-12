@@ -222,6 +222,20 @@ class AppController extends ChangeNotifier {
     ..._defaultCatalog,
     ..._customDrinks,
   ]);
+  DrinkDefinition? drinkById(String id) {
+    for (final drink in _defaultCatalog) {
+      if (drink.id == id) {
+        return drink;
+      }
+    }
+    for (final drink in _customDrinks) {
+      if (drink.id == id) {
+        return drink;
+      }
+    }
+    return null;
+  }
+
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
   List<FeedDrinkPost> get feedPosts => List.unmodifiable(_feedPosts);
   bool get hasMoreFeedPosts => _hasMoreFeedPosts;
@@ -716,6 +730,9 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  DrinkDefinition? _lastSavedCustomDrink;
+  DrinkDefinition? get lastSavedCustomDrink => _lastSavedCustomDrink;
+
   Future<bool> saveCustomDrink({
     String? drinkId,
     required String name,
@@ -752,6 +769,7 @@ class AppController extends ChangeNotifier {
       }
       next.sort((left, right) => left.name.compareTo(right.name));
       _customDrinks = next;
+      _lastSavedCustomDrink = drink;
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.customDrinkSaved,
       );
@@ -1610,11 +1628,12 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<bool> toggleFeedEntryCheers(FeedDrinkPost post) async {
+  Future<bool> cheerFeedEntry(FeedDrinkPost post) async {
     final user = _currentUser;
     final entryId = post.entry.id;
     if (user == null ||
         post.isOwnEntry ||
+        post.hasCurrentUserCheered ||
         _pendingFeedEntryCheers.contains(entryId)) {
       return false;
     }
@@ -1628,12 +1647,8 @@ class AppController extends ChangeNotifier {
     // a possibly-stale cached count, so a concurrent cheers change elsewhere
     // could otherwise push it below zero before the server confirms.
     final optimisticPost = currentPost.copyWith(
-      cheersCount: currentPost.hasCurrentUserCheered
-          ? currentPost.cheersCount > 0
-                ? currentPost.cheersCount - 1
-                : 0
-          : currentPost.cheersCount + 1,
-      hasCurrentUserCheered: !currentPost.hasCurrentUserCheered,
+      cheersCount: currentPost.cheersCount + 1,
+      hasCurrentUserCheered: true,
     );
 
     _pendingFeedEntryCheers.add(entryId);
@@ -1641,10 +1656,9 @@ class AppController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final update = await _repository.setFeedEntryCheers(
+      final update = await _repository.addFeedEntryCheer(
         userId: user.id,
         entryId: entryId,
-        shouldCheer: optimisticPost.hasCurrentUserCheered,
       );
       _replaceFeedPost(
         optimisticPost.copyWith(
@@ -1774,7 +1788,9 @@ class AppController extends ChangeNotifier {
     if (_currentUser != null) {
       await _reloadUserScope();
       _subscribeToNotifications();
-      await _registerPushTokenBestEffort();
+      // Push token registration hits the FCM network; never gate first frame
+      // on it.
+      unawaited(_registerPushTokenBestEffort());
     }
   }
 

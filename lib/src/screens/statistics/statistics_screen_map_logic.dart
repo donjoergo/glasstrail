@@ -32,6 +32,10 @@ const String _statisticsMapDetailMarkerHitLayerId =
 // Small enough that fanned-out markers still read as "the same place" at
 // street level, but large enough that two pins never fully overlap and
 // become untappable.
+const String _statisticsMapSelfLocationSourceId =
+    'statistics-map-self-location-source';
+const String _statisticsMapSelfLocationLayerId =
+    'statistics-map-self-location-layer';
 const double _statisticsMapFanOutDistanceMeters = 9;
 const double _statisticsMapClusterRadius = 52;
 // Below this zoom MapLibre's built-in clustering takes over; above it we
@@ -220,6 +224,17 @@ maplibre.LatLng _statisticsMapLatLngFromOffset(latlong2.LatLng position) {
 }
 
 @visibleForTesting
+List<DrinkEntry> statisticsMapEntriesForFilters({
+  required List<DrinkEntry> entries,
+  required bool photoOnly,
+}) {
+  if (!photoOnly) {
+    return entries;
+  }
+  return entries.where(_statisticsGalleryHasImage).toList(growable: false);
+}
+
+@visibleForTesting
 List<int> statisticsMapOverlappingMarkerIndexes({
   required List<Offset> offsets,
   required int tappedIndex,
@@ -258,6 +273,53 @@ StatisticsMapTapResolution resolveStatisticsMapMarkerTap({
     return StatisticsMapTapResolution.zoomIn;
   }
   return StatisticsMapTapResolution.openSheet;
+}
+
+/// Resolves the marker indexes belonging to a tapped cluster by screen-space
+/// proximity, since maplibre_gl 0.26.1 exposes no cluster-leaves API.
+///
+/// Collects markers within [baseRadius] of [clusterOffset] and widens the
+/// search (x1.5, x2, capped at x2.5) until [expectedCount] markers are found.
+/// When more markers match than expected, only the nearest [expectedCount]
+/// are kept. Returns fewer indexes when the cap is reached without a full
+/// match — callers should fall back to zooming in that case.
+@visibleForTesting
+List<int> statisticsMapClusterLeafIndexes({
+  required List<Offset> offsets,
+  required Offset clusterOffset,
+  required int expectedCount,
+  double baseRadius = _statisticsMapClusterRadius,
+}) {
+  if (offsets.isEmpty || expectedCount <= 0) {
+    return const <int>[];
+  }
+
+  final distances = offsets
+      .map((offset) => (offset - clusterOffset).distance)
+      .toList(growable: false);
+
+  List<int> withinRadius(double radius) {
+    return List<int>.generate(
+      offsets.length,
+      (index) => index,
+    ).where((index) => distances[index] <= radius).toList(growable: false);
+  }
+
+  var matches = const <int>[];
+  for (final radiusFactor in const <double>[1, 1.5, 2, 2.5]) {
+    matches = withinRadius(baseRadius * radiusFactor);
+    if (matches.length >= expectedCount) {
+      break;
+    }
+  }
+
+  if (matches.length > expectedCount) {
+    final sorted = matches.toList()
+      ..sort((a, b) => distances[a].compareTo(distances[b]));
+    matches = sorted.sublist(0, expectedCount)..sort();
+  }
+
+  return matches;
 }
 
 // Used by the non-MapLibre fallback surface, which has no native clustering
@@ -464,6 +526,30 @@ Map<String, Object> statisticsMapDetailSourceGeoJsonForEntries({
     _statisticsMapMarkersForEntries(entries),
     markerAssetSignature: markerAssetSignature,
   );
+}
+
+Map<String, Object> _statisticsMapEmptyGeoJson() {
+  return const <String, Object>{
+    'type': 'FeatureCollection',
+    'features': <Object>[],
+  };
+}
+
+@visibleForTesting
+Map<String, Object> statisticsMapSelfLocationGeoJson(maplibre.LatLng position) {
+  return <String, Object>{
+    'type': 'FeatureCollection',
+    'features': <Object>[
+      <String, Object>{
+        'type': 'Feature',
+        'geometry': <String, Object>{
+          'type': 'Point',
+          'coordinates': <double>[position.longitude, position.latitude],
+        },
+        'properties': const <String, Object>{},
+      },
+    ],
+  };
 }
 
 // MapLibre style layer properties are JSON/JS style expressions, not Flutter

@@ -211,8 +211,8 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: scheme.surfaceContainerHighest,
         disabledColor: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
-        selectedColor: scheme.primary.withValues(alpha: 0.18),
-        secondarySelectedColor: scheme.primary.withValues(alpha: 0.18),
+        selectedColor: scheme.primary.withValues(alpha: 0.28),
+        secondarySelectedColor: scheme.primary.withValues(alpha: 0.28),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         labelStyle: textTheme.labelLarge?.copyWith(color: scheme.onSurface),
         secondaryLabelStyle: textTheme.labelLarge?.copyWith(

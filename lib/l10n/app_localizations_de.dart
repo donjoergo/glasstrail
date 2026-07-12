@@ -321,6 +321,43 @@ class AppLocalizationsDe extends AppLocalizations {
       'Aktiviere beim Loggen den Standort, damit Drinks hier auf der Karte erscheinen.';
 
   @override
+  String get statisticsMapClusterFilterLabel => 'Cluster';
+
+  @override
+  String statisticsMapClusterTitle(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Drinks hier',
+      one: '1 Drink hier',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statisticsMapLocateMeTooltip => 'Meinen Standort anzeigen';
+
+  @override
+  String get statisticsMapPhotoFilterLabel => 'Mit Foto';
+
+  @override
+  String get feedDetailEmptyTitle => 'Kein Drink ausgewählt';
+
+  @override
+  String get feedDetailEmptyBody =>
+      'Wähle einen Drink im Feed aus, um hier Details zu sehen.';
+
+  @override
+  String get historyDetailEmptyTitle => 'Kein Eintrag ausgewählt';
+
+  @override
+  String get historyDetailEmptyBody =>
+      'Wähle einen Eintrag in der Historie aus, um hier Details zu sehen.';
+
+  @override
+  String get statisticsDashboard => 'Dashboard';
+
+  @override
   String get statisticsGalleryEmptyTitle => 'Noch keine Drink-Fotos';
 
   @override
@@ -647,6 +684,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get github => 'GitHub';
+
+  @override
+  String profileAttribution(String heart, String coffee, String beer) {
+    return 'Erstellt mit $heart, $coffee und $beer von Jörg Dorlach';
+  }
 
   @override
   String get roadmapBody => 'Als Nächstes kommen Erfolge.';

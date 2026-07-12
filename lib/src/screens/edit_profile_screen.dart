@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_breakpoints.dart';
 import '../app_controller.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
@@ -186,7 +187,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 680),
+              constraints: const BoxConstraints(
+                maxWidth: AppBreakpoints.formContentMaxWidth,
+              ),
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(

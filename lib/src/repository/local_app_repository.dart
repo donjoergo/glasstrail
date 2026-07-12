@@ -775,10 +775,9 @@ class LocalAppRepository implements AppRepository {
   }
 
   @override
-  Future<FeedEntryCheersUpdate> setFeedEntryCheers({
+  Future<FeedEntryCheersUpdate> addFeedEntryCheer({
     required String userId,
     required String entryId,
-    required bool shouldCheer,
   }) async {
     // Cheering your own entry or a non-friend's entry is invalid — mirrors
     // the RLS/RPC constraints Supabase enforces server-side, so behavior
@@ -794,35 +793,19 @@ class LocalAppRepository implements AppRepository {
     final cheerUserIds = Set<String>.from(
       cheersByEntryId[entryId] ?? const <String>{},
     );
-    final hadCheered = cheerUserIds.contains(userId);
 
-    if (shouldCheer) {
-      if (cheerUserIds.add(userId)) {
-        cheersByEntryId[entryId] = cheerUserIds;
-        await _saveFeedEntryCheers(cheersByEntryId);
-        final sender = _userById(userId);
-        if (sender != null) {
-          await _addNotification(
-            recipientUserId: entry.userId,
-            sender: sender,
-            type: AppNotificationTypes.friendDrinkCheered,
-            metadata: <String, dynamic>{'entryId': entry.id, 'route': '/feed'},
-          );
-        }
-      }
-    } else if (hadCheered) {
-      cheerUserIds.remove(userId);
-      if (cheerUserIds.isEmpty) {
-        cheersByEntryId.remove(entryId);
-      } else {
-        cheersByEntryId[entryId] = cheerUserIds;
-      }
+    if (cheerUserIds.add(userId)) {
+      cheersByEntryId[entryId] = cheerUserIds;
       await _saveFeedEntryCheers(cheersByEntryId);
-      await _deleteFriendDrinkCheeredNotification(
-        recipientUserId: entry.userId,
-        senderUserId: userId,
-        entryId: entry.id,
-      );
+      final sender = _userById(userId);
+      if (sender != null) {
+        await _addNotification(
+          recipientUserId: entry.userId,
+          sender: sender,
+          type: AppNotificationTypes.friendDrinkCheered,
+          metadata: <String, dynamic>{'entryId': entry.id, 'route': '/feed'},
+        );
+      }
     }
 
     return FeedEntryCheersUpdate(
@@ -1320,32 +1303,6 @@ class LocalAppRepository implements AppRepository {
     for (final userId in affectedUserIds) {
       _publishNotifications(userId);
     }
-  }
-
-  Future<void> _deleteFriendDrinkCheeredNotification({
-    required String recipientUserId,
-    required String senderUserId,
-    required String entryId,
-  }) async {
-    final notifications = _loadNotifications();
-    var changed = false;
-    notifications.removeWhere((item) {
-      final notification = AppNotification.fromJson(item);
-      final matches =
-          notification.type == AppNotificationTypes.friendDrinkCheered &&
-          notification.recipientUserId == recipientUserId &&
-          notification.senderUserId == senderUserId &&
-          notification.metadata['entryId'] == entryId;
-      if (matches) {
-        changed = true;
-      }
-      return matches;
-    });
-    if (!changed) {
-      return;
-    }
-    await _saveNotifications(notifications);
-    _publishNotifications(recipientUserId);
   }
 
   Future<void> _deleteFriendDrinkCheeredNotificationsForEntry(

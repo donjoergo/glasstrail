@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_breakpoints.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
+import 'adaptive_modal.dart';
+import 'app_media.dart';
 
 Future<DrinkDefinition?> showDrinkPickerSheet({
   required BuildContext context,
@@ -15,63 +18,65 @@ Future<DrinkDefinition?> showDrinkPickerSheet({
   bool enabled = true,
   VoidCallback? onCreateCustomDrink,
 }) {
-  return showModalBottomSheet<DrinkDefinition>(
+  return showAdaptiveSheetOrDialog<DrinkDefinition>(
     context: context,
     isScrollControlled: true,
-    useSafeArea: true,
     showDragHandle: true,
+    dialogMaxHeightFactor: 0.9,
     builder: (context) {
       final theme = Theme.of(context);
+      final content = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  key: const Key('drink-picker-close-button'),
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: DrinkPickerCatalog(
+                availableDrinks: availableDrinks,
+                recentDrinks: recentDrinks,
+                localeCode: localeCode,
+                unit: unit,
+                selectedDrink: selectedDrink,
+                enabled: enabled,
+                onCreateCustomDrink: onCreateCustomDrink,
+                onSelect: (drink) => Navigator.of(context).pop(drink),
+              ),
+            ),
+          ),
+        ],
+      );
+
+      if (AppBreakpoints.isExpanded(context)) {
+        return content;
+      }
+
+      // Sheet-only chrome: keyboard insets and the 90% height factor.
       final viewInsets = MediaQuery.viewInsetsOf(context);
       return Padding(
         // Keeps the search field above the on-screen keyboard instead of
         // being covered by it.
         padding: EdgeInsets.only(bottom: viewInsets.bottom),
-        child: FractionallySizedBox(
-          // Leave a sliver of the screen behind the sheet visible so it
-          // still reads as a sheet over the previous screen, not a full
-          // takeover.
-          heightFactor: 0.9,
-          child: Column(
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      key: const Key('drink-picker-close-button'),
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                  child: DrinkPickerCatalog(
-                    availableDrinks: availableDrinks,
-                    recentDrinks: recentDrinks,
-                    localeCode: localeCode,
-                    unit: unit,
-                    selectedDrink: selectedDrink,
-                    enabled: enabled,
-                    onCreateCustomDrink: onCreateCustomDrink,
-                    onSelect: (drink) => Navigator.of(context).pop(drink),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: FractionallySizedBox(heightFactor: 0.9, child: content),
       );
     },
   );
@@ -218,10 +223,12 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
                   (drink) => ChoiceChip(
                     selected: widget.selectedDrink?.id == drink.id,
                     showCheckmark: false,
-                    avatar: Icon(
-                      drink.category.icon,
+                    avatar: AppAvatar(
                       key: Key('recent-drink-icon-${drink.id}'),
-                      size: 18,
+                      imagePath: drink.imagePath,
+                      radius: 9,
+                      backgroundColor: Colors.transparent,
+                      fallback: Icon(drink.category.icon, size: 18),
                     ),
                     label: Text(
                       drink.shouldShowAlcoholFreeMarker
@@ -358,7 +365,12 @@ class _DrinkCategorySection extends StatelessWidget {
               ].join(' • ');
               return ListTile(
                 dense: true,
-                leading: Icon(drink.category.icon),
+                leading: AppAvatar(
+                  imagePath: drink.imagePath,
+                  radius: 20,
+                  backgroundColor: Colors.transparent,
+                  fallback: Icon(drink.category.icon),
+                ),
                 title: Text(drink.displayName(localeCode)),
                 subtitle: metadata.isEmpty ? null : Text(metadata),
                 trailing: selectedDrink?.id == drink.id

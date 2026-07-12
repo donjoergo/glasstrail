@@ -609,10 +609,13 @@ String? _prefixedNotificationLine(String prefix, String? value) {
   return '$prefix $normalized';
 }
 
-String? _nonEmptyString(String? value) {
+/// Trims [value] and returns null when nothing remains.
+String? nonEmptyTrimmed(String? value) {
   final normalized = value?.trim();
   return normalized == null || normalized.isEmpty ? null : normalized;
 }
+
+String? _nonEmptyString(String? value) => nonEmptyTrimmed(value);
 
 class AppNotification {
   const AppNotification({

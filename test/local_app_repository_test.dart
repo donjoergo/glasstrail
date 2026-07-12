@@ -677,10 +677,9 @@ void main() {
         expect(initialFeed.posts.single.cheersCount, 0);
         expect(initialFeed.posts.single.hasCurrentUserCheered, isFalse);
 
-        final cheersUpdate = await repository.setFeedEntryCheers(
+        final cheersUpdate = await repository.addFeedEntryCheer(
           userId: friend.id,
           entryId: entry.id,
-          shouldCheer: true,
         );
 
         expect(cheersUpdate.cheersCount, 1);
@@ -731,34 +730,26 @@ void main() {
       final entry = await repository.addDrinkEntry(user: logger, drink: drink);
 
       await expectLater(
-        repository.setFeedEntryCheers(
-          userId: logger.id,
-          entryId: entry.id,
-          shouldCheer: true,
-        ),
+        repository.addFeedEntryCheer(userId: logger.id, entryId: entry.id),
         throwsA(isA<AppException>()),
       );
       await expectLater(
-        repository.setFeedEntryCheers(
-          userId: stranger.id,
-          entryId: entry.id,
-          shouldCheer: true,
-        ),
+        repository.addFeedEntryCheer(userId: stranger.id, entryId: entry.id),
         throwsA(isA<AppException>()),
       );
     });
 
-    test('removes cheers notifications when a cheers is undone', () async {
+    test('second addFeedEntryCheer call is idempotent', () async {
       final friend = await repository.signUp(
-        email: 'undo-cheers-friend@example.com',
+        email: 'idempotent-cheers-friend@example.com',
         password: 'secret',
-        displayName: 'Undo Cheers Friend',
+        displayName: 'Idempotent Cheers Friend',
       );
       await repository.signOut();
       final logger = await repository.signUp(
-        email: 'undo-cheers-logger@example.com',
+        email: 'idempotent-cheers-logger@example.com',
         password: 'secret',
-        displayName: 'Undo Cheers Logger',
+        displayName: 'Idempotent Cheers Logger',
       );
       final loggerProfile = await repository.getOwnFriendProfile(logger.id);
       final connections = await repository.sendFriendRequestToProfile(
@@ -774,39 +765,35 @@ void main() {
         (candidate) => candidate.id == 'beer-pils',
       );
       final entry = await repository.addDrinkEntry(user: logger, drink: drink);
-      await repository.setFeedEntryCheers(
+
+      final firstUpdate = await repository.addFeedEntryCheer(
         userId: friend.id,
         entryId: entry.id,
-        shouldCheer: true,
       );
 
-      expect(
-        (await repository.loadNotifications(logger.id)).where(
-          (notification) =>
-              notification.type == AppNotificationTypes.friendDrinkCheered,
-        ),
-        isNotEmpty,
-      );
+      expect(firstUpdate.cheersCount, 1);
+      expect(firstUpdate.hasCurrentUserCheered, isTrue);
 
-      final update = await repository.setFeedEntryCheers(
+      final firstNotifications = await repository.loadNotifications(logger.id);
+      final firstCheersNotifications = firstNotifications.where(
+        (n) => n.type == AppNotificationTypes.friendDrinkCheered,
+      );
+      expect(firstCheersNotifications.length, 1);
+
+      // Perform a second cheer (idempotent call)
+      final secondUpdate = await repository.addFeedEntryCheer(
         userId: friend.id,
         entryId: entry.id,
-        shouldCheer: false,
       );
 
-      expect(update.cheersCount, 0);
-      expect(update.hasCurrentUserCheered, isFalse);
-      expect(
-        (await repository.loadNotifications(logger.id)).where(
-          (notification) =>
-              notification.type == AppNotificationTypes.friendDrinkCheered,
-        ),
-        isEmpty,
-      );
+      expect(secondUpdate.cheersCount, 1);
+      expect(secondUpdate.hasCurrentUserCheered, isTrue);
 
-      final friendFeed = await repository.loadFeedDrinkPosts(userId: friend.id);
-      expect(friendFeed.posts.single.cheersCount, 0);
-      expect(friendFeed.posts.single.hasCurrentUserCheered, isFalse);
+      final secondNotifications = await repository.loadNotifications(logger.id);
+      final secondCheersNotifications = secondNotifications.where(
+        (n) => n.type == AppNotificationTypes.friendDrinkCheered,
+      );
+      expect(secondCheersNotifications.length, 1);
     });
 
     test(
@@ -840,10 +827,9 @@ void main() {
           user: logger,
           drink: drink,
         );
-        await repository.setFeedEntryCheers(
+        await repository.addFeedEntryCheer(
           userId: friend.id,
           entryId: entry.id,
-          shouldCheer: true,
         );
 
         await repository.deleteDrinkEntry(userId: logger.id, entry: entry);
@@ -901,15 +887,13 @@ void main() {
           user: addressee,
           drink: drink,
         );
-        await repository.setFeedEntryCheers(
+        await repository.addFeedEntryCheer(
           userId: requester.id,
           entryId: addresseeEntry.id,
-          shouldCheer: true,
         );
-        await repository.setFeedEntryCheers(
+        await repository.addFeedEntryCheer(
           userId: addressee.id,
           entryId: requesterEntry.id,
-          shouldCheer: true,
         );
 
         await repository.removeFriend(
@@ -1902,10 +1886,9 @@ void main() {
           drink: drink,
           comment: 'First entry',
         );
-        await repository.setFeedEntryCheers(
+        await repository.addFeedEntryCheer(
           userId: firstUser.id,
           entryId: secondEntry.id,
-          shouldCheer: true,
         );
         await repository.signOut();
 
@@ -1913,10 +1896,9 @@ void main() {
           email: 'delete-second@example.com',
           password: 'secret',
         );
-        await repository.setFeedEntryCheers(
+        await repository.addFeedEntryCheer(
           userId: secondUser.id,
           entryId: firstEntry.id,
-          shouldCheer: true,
         );
         await repository.signOut();
 
