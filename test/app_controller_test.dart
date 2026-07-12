@@ -1501,6 +1501,48 @@ void main() {
     expect(updatedBeerIds, reorderedIds);
   });
 
+  test('resets a category order override back to alphabetical', () async {
+    final controller = await buildTestController();
+
+    await controller.signUp(
+      email: 'reset-order@example.com',
+      password: 'password123',
+      displayName: 'Reset Order Example',
+    );
+
+    final initialBeerIds = controller.availableDrinks
+        .where(
+          (drink) => !drink.isCustom && drink.category == DrinkCategory.beer,
+        )
+        .map((drink) => drink.id)
+        .toList(growable: false);
+    final reorderedIds = <String>[
+      initialBeerIds[1],
+      initialBeerIds[0],
+      ...initialBeerIds.skip(2),
+    ];
+
+    expect(controller.hasGlobalDrinkOrderOverride(DrinkCategory.beer), isFalse);
+
+    await controller.reorderGlobalDrinks(
+      category: DrinkCategory.beer,
+      orderedDrinkIds: reorderedIds,
+    );
+    expect(controller.hasGlobalDrinkOrderOverride(DrinkCategory.beer), isTrue);
+
+    final success = await controller.resetGlobalDrinkOrder(DrinkCategory.beer);
+
+    expect(success, isTrue);
+    expect(controller.hasGlobalDrinkOrderOverride(DrinkCategory.beer), isFalse);
+    final resetBeerIds = controller.availableDrinks
+        .where(
+          (drink) => !drink.isCustom && drink.category == DrinkCategory.beer,
+        )
+        .map((drink) => drink.id)
+        .toList(growable: false);
+    expect(resetBeerIds, initialBeerIds);
+  });
+
   test(
     'reorders custom drinks together with global drinks inside a category',
     () async {

@@ -435,6 +435,20 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  bool hasGlobalDrinkOrderOverride(DrinkCategory category) {
+    return _settings.globalDrinkOrderOverrides.containsKey(category);
+  }
+
+  Future<bool> resetGlobalDrinkOrder(DrinkCategory category) async {
+    if (!hasGlobalDrinkOrderOverride(category)) {
+      return true;
+    }
+    final nextOverrides = _copyGlobalDrinkOrderOverrides()..remove(category);
+    return updateSettings(
+      _settings.copyWith(globalDrinkOrderOverrides: nextOverrides),
+    );
+  }
+
   Future<bool> hideGlobalDrink(String drinkId) async {
     if (!_defaultCatalog.any((drink) => drink.id == drinkId)) {
       return false;

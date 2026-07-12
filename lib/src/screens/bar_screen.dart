@@ -268,6 +268,9 @@ class _BarDrinkSortingTab extends StatelessWidget {
                       hiddenDrinks: controller.hiddenGlobalDrinksForCategory(
                         category,
                       ),
+                      hasOrderOverride: controller.hasGlobalDrinkOrderOverride(
+                        category,
+                      ),
                       enabled: !isBusy,
                       unit: unit,
                       onHideDrink: (drinkId) => runCatalogAction(
@@ -287,6 +290,10 @@ class _BarDrinkSortingTab extends StatelessWidget {
                           category: category,
                           orderedDrinkIds: orderedDrinkIds,
                         ),
+                      ),
+                      onResetOrder: () => runCatalogAction(
+                        (controller) =>
+                            controller.resetGlobalDrinkOrder(category),
                       ),
                     ),
                   ),
@@ -409,6 +416,7 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
     required this.categoryHidden,
     required this.sortableDrinks,
     required this.hiddenDrinks,
+    required this.hasOrderOverride,
     required this.enabled,
     required this.unit,
     required this.onHideDrink,
@@ -416,12 +424,14 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
     required this.onHideCategory,
     required this.onShowCategory,
     required this.onReorder,
+    required this.onResetOrder,
   });
 
   final DrinkCategory category;
   final bool categoryHidden;
   final List<DrinkDefinition> sortableDrinks;
   final List<DrinkDefinition> hiddenDrinks;
+  final bool hasOrderOverride;
   final bool enabled;
   final AppUnit unit;
   final ValueChanged<String> onHideDrink;
@@ -429,6 +439,35 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
   final VoidCallback onHideCategory;
   final VoidCallback onShowCategory;
   final ValueChanged<List<String>> onReorder;
+  final VoidCallback onResetOrder;
+
+  Future<void> _confirmResetOrder(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(l10n.resetCategoryOrderConfirmTitle),
+        content: Text(
+          l10n.resetCategoryOrderConfirmBody(l10n.categoryLabel(category)),
+        ),
+        actions: <Widget>[
+          TextButton(
+            key: Key('bar-reset-order-cancel-${category.storageValue}'),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            key: Key('bar-reset-order-confirm-${category.storageValue}'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.resetCategoryOrder),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      onResetOrder();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -462,6 +501,14 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                ),
+                IconButton(
+                  key: Key('bar-reset-order-${category.storageValue}'),
+                  tooltip: l10n.resetCategoryOrder,
+                  onPressed: enabled && hasOrderOverride
+                      ? () => _confirmResetOrder(context)
+                      : null,
+                  icon: const Icon(Icons.sort_by_alpha_rounded),
                 ),
                 TextButton.icon(
                   key: Key(

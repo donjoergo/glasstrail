@@ -824,6 +824,24 @@ abstract class AppLocalizations {
   /// **'Show'**
   String get showDrink;
 
+  /// No description provided for @resetCategoryOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset order'**
+  String get resetCategoryOrder;
+
+  /// No description provided for @resetCategoryOrderConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset order?'**
+  String get resetCategoryOrderConfirmTitle;
+
+  /// No description provided for @resetCategoryOrderConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{category} drinks will be sorted alphabetically again. You can still drag to reorder them afterwards.'**
+  String resetCategoryOrderConfirmBody(String category);
+
   /// No description provided for @allGlobalDrinksHidden.
   ///
   /// In en, this message translates to:

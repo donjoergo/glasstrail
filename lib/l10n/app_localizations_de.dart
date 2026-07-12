@@ -403,6 +403,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get showDrink => 'Einblenden';
 
   @override
+  String get resetCategoryOrder => 'Sortierung zurücksetzen';
+
+  @override
+  String get resetCategoryOrderConfirmTitle => 'Sortierung zurücksetzen?';
+
+  @override
+  String resetCategoryOrderConfirmBody(String category) {
+    return 'Getränke in $category werden wieder alphabetisch sortiert. Du kannst sie danach weiterhin per Ziehen neu anordnen.';
+  }
+
+  @override
   String get allGlobalDrinksHidden =>
       'Alle globalen Getränke dieser Kategorie sind ausgeblendet.';
 

@@ -154,6 +154,16 @@
   "showCategory": "Show category",
   "hideDrink": "Hide",
   "showDrink": "Show",
+  "resetCategoryOrder": "Reset order",
+  "resetCategoryOrderConfirmTitle": "Reset order?",
+  "resetCategoryOrderConfirmBody": "{category} drinks will be sorted alphabetically again. You can still drag to reorder them afterwards.",
+  "@resetCategoryOrderConfirmBody": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
   "allGlobalDrinksHidden": "All global drinks in this category are hidden.",
   "backend": "Backend",
   "backendRemoteBody": "Supabase is configured and remote sync is active.",
