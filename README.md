@@ -58,8 +58,8 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
     </td>
     <td align="center"><strong>Notifications</strong><br>
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/notifications-dark.png">
-        <img src="landing/assets/screenshots/notifications-light.png" alt="Notifications" width="180">
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/notifications-dark.jpg">
+        <img src="landing/assets/screenshots/notifications-light.jpg" alt="Notifications" width="180">
       </picture>
     </td>
   </tr>

@@ -56,9 +56,6 @@ interface ScreenSpec {
   afterNavigate?: (page: Page) => Promise<void>;
   // Defaults to the shared mobile VIEWPORT/DEVICE_SCALE_FACTOR when omitted.
   viewport?: ViewportOverride;
-  // Defaults to 'jpg'. Screens with a non-default viewport (desktop, notifications)
-  // use 'png' to match the lossless assets already referenced by landing/index.html.
-  format?: 'jpg' | 'png';
 }
 
 async function scrollToPieChart(page: Page): Promise<void> {
@@ -78,7 +75,7 @@ const SCREENS: ScreenSpec[] = [
   { name: 'bar-global', hashRoute: '/bar/sorting' },
   { name: 'bar-own', hashRoute: '/bar/custom' },
   { name: 'account-settings', hashRoute: '/profile' },
-  { name: 'notifications', hashRoute: '/notifications', viewport: { width: 480, height: 343 }, format: 'png' },
+  { name: 'notifications', hashRoute: '/notifications', viewport: { width: 480, height: 343 } },
   {
     name: 'desktop',
     hashRoute: '/statistics',
@@ -86,7 +83,6 @@ const SCREENS: ScreenSpec[] = [
     // so the feed renders its widescreen master-detail layout with the side nav rail.
     // 16:10 matches the `.desktop-screen img` aspect-ratio baked into landing/index.html.
     viewport: { width: 1440, height: 900, deviceScaleFactor: 2 },
-    format: 'png',
   },
 ];
 
@@ -182,8 +178,7 @@ async function main(): Promise<void> {
     for (const theme of ['light', 'dark'] as const) {
       step += 1;
       renderProgress(step, totalSteps, `${screen.name} (${theme})`);
-      const extension = screen.format ?? 'jpg';
-      await captureTheme(page, theme, path.join(OUTPUT_DIR, `${screen.name}-${theme}.${extension}`));
+      await captureTheme(page, theme, path.join(OUTPUT_DIR, `${screen.name}-${theme}.jpg`));
     }
   }
   process.stdout.write('\n');
