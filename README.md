@@ -261,6 +261,9 @@ sequenceDiagram
 
 ## Development
 
+Backend setup (local Supabase stack, environment model, migrations, smoke
+check) is documented in [docs/backend_setup.md](docs/backend_setup.md).
+
 Install dependencies:
 
 ```bash
@@ -390,16 +393,16 @@ Configure these Vercel environment variables if the defaults are not correct:
 
 ### Verification
 
+Format check (CI uses the same command):
+
+```bash
+dart format --output=none --set-exit-if-changed .
+```
+
 Static analysis:
 
 ```bash
 flutter analyze
-```
-
-Format all files:
-
-```bash
-dart format .
 ```
 
 Unit and widget tests:
@@ -408,11 +411,37 @@ Unit and widget tests:
 flutter test
 ```
 
-Integration tests:
+Integration tests (require a configured Flutter integration target such as
+Linux desktop, or a connected emulator/device):
 
 ```bash
 flutter test integration_test
 ```
+
+The default `flutter test` run is deterministic: it uses the local
+repository and fake photo/location services, and needs no Supabase,
+network, emulator, camera, or real location.
+
+#### Local Supabase smoke tests
+
+`test/supabase_local_repository_test.dart` runs the Supabase-backed
+repository against a local Supabase stack. The tests are skipped unless
+explicitly enabled and never fall back to the production backend:
+
+```bash
+supabase start
+supabase db reset
+
+export GLASSTRAIL_SUPABASE_LOCAL_TESTS=1
+export GLASSTRAIL_SUPABASE_URL=http://127.0.0.1:54321
+export GLASSTRAIL_SUPABASE_ANON_KEY=<anon key from `supabase status`>
+
+flutter test test/supabase_local_repository_test.dart
+```
+
+`tool/supabase_smoke_check.dart` additionally smoke-checks a running backend
+(auth, RLS isolation, storage) over plain HTTP — see
+[docs/backend_setup.md](docs/backend_setup.md).
 
 ### Changelog
 

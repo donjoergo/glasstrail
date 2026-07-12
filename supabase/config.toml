@@ -1,3 +1,36 @@
+# Local development stack configuration for the Supabase CLI.
+# Production (project lzuxlcfjnekgjukqxoza) is configured in the Supabase
+# dashboard; this file only affects `supabase start` / `supabase db reset`.
+# See docs/backend_setup.md.
+project_id = "glasstrail"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+enable_signup = true
+
+# Local email confirmations stay disabled so sign-up works immediately in
+# development; the hosted production setting lives in the dashboard.
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+# The private `user-media` storage bucket and its RLS policies are created by
+# supabase/migrations/202603180001_initial_schema.sql during `supabase db reset`.
+[storage]
+enabled = true
+
 [functions.friend-profile-preview]
 verify_jwt = false
 
