@@ -1,15 +1,29 @@
-# GlassTrail
+<p align="center">
+  <a href="https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml"><img src="https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml/badge.svg"></a>
+  <a href="https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml"><img src="https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://crowdin.com/project/glasstrail"><img src="https://badges.crowdin.net/glasstrail/localized.svg"></a>
 
-[![Android Release](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml/badge.svg)](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml)
-[![CI](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml/badge.svg)](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml)
-[![Crowdin](https://badges.crowdin.net/glasstrail/localized.svg)](https://crowdin.com/project/glasstrail)
+</p>
 
-[Web App](https://glasstrail.vercel.app/) | [Android App](https://github.com/donjoergo/glasstrail/releases)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="landing/assets/hero-header-light.svg">
+    <img src="landing/assets/hero-header-light.svg" width="300">
+  </picture>
+</p>
+<h2 align="center">Track drinks with friends and earn badges</h3>
+
+<p align="center">
+  <a href="https://glasstrail-landing.vercel.app">Landing Page</a>|
+  <a href="https://glasstrail.vercel.app">Web App</a>|
+  <a href="https://github.com/donjoergo/glasstrail/releases">Android App</a>
+</p>
 
 GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in statistics, following friends in a shared feed, and staying on top of social activity with notifications. The initial idea was to make a worthy successor to [Beer With Me](https://play.google.com/store/apps/details?id=se.dagsappar.beer&hl=de) with modern design and a few extra perks.
 
 ## Contents
 
+- [Contents](#contents)
 - [Demo](#demo)
 - [Screenshots](#screenshots)
 - [Features](#features)
@@ -19,7 +33,22 @@ GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in st
 - [App Architecture](#app-architecture)
 - [Main User Flows](#main-user-flows)
 - [Development](#development)
+  - [Flutter Environment Variables](#flutter-environment-variables)
+  - [Push Notifications](#push-notifications)
+    - [Notification Flow](#notification-flow)
+    - [Configure FCM](#configure-fcm)
+      - [Create Firebase Project](#create-firebase-project)
+      - [Configure Supabase Secrets](#configure-supabase-secrets)
+      - [Create Supabase Webhook](#create-supabase-webhook)
+    - [Notification Images](#notification-images)
+  - [Public Friend Profile Previews](#public-friend-profile-previews)
+  - [Verification](#verification)
+  - [Changelog](#changelog)
 - [Deployment and releases](#deployment-and-releases)
+  - [Creating a Release](#creating-a-release)
+  - [Vercel](#vercel)
+  - [Android Releases](#android-releases)
+    - [Keystore](#keystore)
 
 ## Demo
 
