@@ -1,0 +1,19 @@
+GlassTrail is a drink-tracking app for logging what you drink, reviewing your habits in statistics, and staying connected with friends through a shared feed.
+
+Log a drink in seconds with a photo, location, and comment, then look back at your history in a personal feed. Statistics break your habits down by streaks, category, map, and gallery, so you can see patterns over time instead of just raw numbers.
+
+Add friends with shareable profile links, follow their drink entries, comments, and photos in a social feed, and get notified about friend requests, friendship updates, and new drinks from people you follow.
+
+Features:
+
+* Drink logging with photo, location, and comment
+* Personal feed of your own drink history
+* Friends with shareable profile links and private connections
+* Social feed with friends' entries, comments, photos, and locations
+* In-app and push notifications for friend and drink activity
+* Statistics with streaks, category breakdown, map, and gallery
+* Global drink catalog plus your own custom drinks
+* Bar management with sorting, visibility controls, and custom drinks
+* Left-handed mode
+* Multi-device sync for drinks, statistics, and profile
+* English and German localization
