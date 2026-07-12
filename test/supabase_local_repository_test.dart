@@ -60,9 +60,12 @@ void main() {
     late AppUser userA;
     late AppUser userB;
 
+    // The implicit flow avoids the asyncStorage requirement of the default
+    // PKCE flow; these tests only need short-lived password sessions.
     SupabaseClient newClient() => SupabaseClient(
       Platform.environment['GLASSTRAIL_SUPABASE_URL']!,
       Platform.environment['GLASSTRAIL_SUPABASE_ANON_KEY']!,
+      authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
     );
 
     setUpAll(() async {
