@@ -1595,6 +1595,33 @@ void main() {
     },
   );
 
+  test('sorts drinks alphabetically case-insensitively', () async {
+    final controller = await buildTestController();
+
+    await controller.signUp(
+      email: 'case-insensitive-sort@example.com',
+      password: 'password123',
+      displayName: 'Case Insensitive Sort',
+    );
+    await controller.saveCustomDrink(
+      name: 'banana fizz',
+      category: DrinkCategory.cocktails,
+      volumeMl: 200,
+    );
+    await controller.saveCustomDrink(
+      name: 'Apple Crush',
+      category: DrinkCategory.cocktails,
+      volumeMl: 200,
+    );
+
+    final customNames = controller
+        .customDrinksForCategory(DrinkCategory.cocktails)
+        .map((drink) => drink.name)
+        .toList(growable: false);
+
+    expect(customNames, <String>['Apple Crush', 'banana fizz']);
+  });
+
   test(
     'removes a custom drink photo when saving an existing custom drink',
     () async {

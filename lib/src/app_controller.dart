@@ -2190,7 +2190,8 @@ class AppController extends ChangeNotifier {
   int _localizedDrinkComparer(DrinkDefinition left, DrinkDefinition right) {
     return left
         .displayName(_settings.localeCode)
-        .compareTo(right.displayName(_settings.localeCode));
+        .toLowerCase()
+        .compareTo(right.displayName(_settings.localeCode).toLowerCase());
   }
 
   Map<DrinkCategory, List<String>> _copyGlobalDrinkOrderOverrides() {
