@@ -7,7 +7,7 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="landing/assets/hero-header-light.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="landing/assets/hero-header-dark.svg">
     <img src="landing/assets/hero-header-light.svg" width="300">
   </picture>
 </p>
