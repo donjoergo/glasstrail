@@ -26,6 +26,11 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final controller = AppScope.controllerOf(context);
+    // Memoize with ??= so didChangeDependencies firing again (theme/locale
+    // change, etc.) doesn't re-resolve the share code and restart the
+    // loading spinner. Duration.zero defers the lookup to after this frame,
+    // since resolving may synchronously trigger controller state changes
+    // that shouldn't happen mid-build.
     _profileFuture ??= Future<_VisibleFriendProfile?>.delayed(
       Duration.zero,
       () async {
@@ -78,6 +83,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   }
 
   void _signIn() {
+    // Pass this screen's route as the post-auth redirect target so the user
+    // lands back on the same friend profile after signing in, instead of
+    // the default post-login destination.
     Navigator.of(context).pushReplacementNamed(
       AppRoutes.auth,
       arguments: AppRoutes.friendProfileRoute(widget.shareCode),
@@ -85,6 +93,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   }
 
   void _openFeed() {
+    // On web this screen can be entered via a share-link query parameter;
+    // clear it before navigating away so refreshing the feed later doesn't
+    // re-trigger routing back to this friend-profile link.
     clearLaunchRouteQuery();
     Navigator.of(context).pushReplacementNamed(AppRoutes.feed);
   }
@@ -141,6 +152,10 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
 
                     final profile = snapshot.data;
                     if (profile == null) {
+                      // The controller may have set an explanatory flash
+                      // message (e.g. "link expired") during resolution.
+                      // Showing a SnackBar requires a ScaffoldMessenger from
+                      // a completed build, so defer to a post-frame callback.
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         _showControllerMessage();
                       });
@@ -246,6 +261,9 @@ class _FriendProfileCard extends StatelessWidget {
       connection: existingConnection,
     );
     final canAdd = isAuthenticated && !isSelf && existingConnection == null;
+    // Only an outgoing (self-sent) pending request can be withdrawn here —
+    // an incoming request is handled from the notifications/requests screen,
+    // not from viewing the other person's shared profile.
     final canCancel =
         isAuthenticated &&
         existingConnection?.isPending == true &&

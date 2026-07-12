@@ -111,6 +111,10 @@ class StatisticsOverviewContent extends StatelessWidget {
             value: count.toDouble(),
             color: colors[category],
             radius: 48,
+            // All categories are always passed as sections (rather than
+            // filtering out empty ones) so slice colors/order stay stable
+            // as counts change; empty categories just get a blank title
+            // instead of a "0" label cluttering the ring.
             title: count == 0 ? '' : '${l10n.categoryLabel(category)}\n$count',
             titleStyle: theme.textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w700,
@@ -271,6 +275,9 @@ class _StatisticsOverviewPanel extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // 360px is roughly the width of the smallest common phones; below
+        // that, tighter padding/spacing keeps the four metric tiles from
+        // overflowing or wrapping.
         final isCompact = constraints.maxWidth < 360;
         final panelPadding = isCompact ? 16.0 : 20.0;
         final tileSpacing = isCompact ? 8.0 : 12.0;
@@ -431,6 +438,8 @@ class _StatisticsOverviewPanel extends StatelessWidget {
       return null;
     }
 
+    // Only show the year when the streak isn't from the current year —
+    // for a recent streak the year is redundant and just adds noise.
     final currentYear = DateTime.now().year;
     final showYear = start.year != currentYear || end.year != currentYear;
 
@@ -449,6 +458,11 @@ class _StatisticsOverviewPanel extends StatelessWidget {
 
   Color _currentStreakAccentColor(ThemeData theme, AppStatistics stats) {
     final scheme = theme.colorScheme;
+    // keepAlive/startedToday use fixed hex colors instead of theme colors
+    // in light mode because they need to read as "amber warning" / "teal
+    // success" regardless of the app's chosen primary/secondary hues; in
+    // dark mode the theme's tertiary/secondary already provide enough
+    // contrast so no override is needed.
     return switch (stats.streakMessageState) {
       StreakMessageState.start => scheme.onSurfaceVariant,
       StreakMessageState.keepAlive =>

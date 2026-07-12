@@ -69,6 +69,9 @@ Future<void> startBeerWithMeImportFlow(
   bool showProgressDialog = false,
 }) async {
   final exportFile = await _pickBeerWithMeExportFile(context);
+  // Each await above can span a file picker / dialog, during which the user
+  // may navigate away and unmount this widget's context; re-checking
+  // context.mounted after every await avoids using a stale BuildContext.
   if (!context.mounted || exportFile == null) {
     return;
   }
@@ -90,6 +93,10 @@ Future<void> startBeerWithMeImportFlow(
         context,
         importFuture,
       );
+      // The progress dialog pops with null (instead of rethrowing) when
+      // importFuture errors, so it can close itself cleanly. Falling back to
+      // awaiting importFuture here lets the original exception surface and
+      // be handled by the catch block below.
       result = dialogResult ?? await importFuture;
     } else {
       result = await importFuture;
@@ -124,6 +131,9 @@ Future<BeerWithMeImportFile?> _pickBeerWithMeExportFile(
     }
     return exportFile;
   } on FormatException {
+    // FormatException specifically means parseBeerWithMeExportFile decoded
+    // the file but it wasn't the expected JSON array shape, which warrants a
+    // more actionable "invalid file" message than a generic read failure.
     if (context.mounted) {
       _showMessage(context, l10n.beerWithMeImportInvalidFile);
     }
@@ -436,6 +446,9 @@ class _BeerWithMeImportProgressDialogState
     super.initState();
     widget.importFuture.then(
       _closeWithResult,
+      // Deliberately swallowed here: this dialog's only job is to close
+      // itself so the caller's own try/catch (which re-awaits importFuture)
+      // can handle the error and show the appropriate message.
       onError: (Object error, StackTrace stackTrace) {
         if (!mounted) {
           return;
@@ -454,6 +467,9 @@ class _BeerWithMeImportProgressDialogState
 
   @override
   Widget build(BuildContext context) {
+    // canPop is false so back-gesture/button can't dismiss the dialog mid
+    // import; cancellation must go through the explicit cancel button, which
+    // asks the controller to stop cleanly instead of abandoning the future.
     return PopScope(
       canPop: false,
       child: AnimatedBuilder(

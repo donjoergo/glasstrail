@@ -49,6 +49,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // didChangeDependencies can fire multiple times (e.g. on theme/locale
+    // changes), so guard with a flag to only kick off the location lookup once.
     if (_startedInitialLocationLookup) {
       return;
     }
@@ -66,6 +68,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-check location on resume because the user may have granted/changed
+    // location permission in system settings while the app was backgrounded.
     if (state != AppLifecycleState.resumed || !_isLocationEnabled) {
       return;
     }
@@ -77,6 +81,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
       context,
       preset: ImageUploadPreset.feed,
     );
+    // The picker await can outlive this screen (user navigated away while
+    // picking), so bail out before touching State/context.
     if (!mounted || path == null) {
       return;
     }
@@ -94,12 +100,18 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
     if (!mounted) {
       return;
     }
+    // The custom-drink dialog reports success/failure via a one-shot flash
+    // message on the controller rather than a dialog return value, so pull
+    // and surface it here after the dialog closes.
     final message = AppScope.controllerOf(context).takeFlashMessage(l10n);
     if (message != null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     }
+    // Creating a custom drink implies the user wants to log it now, so
+    // auto-select it and carry over the photo they attached during
+    // creation instead of making them pick the drink and photo again.
     if (createdDrink != null) {
       _selectDrink(createdDrink);
       setState(() {
@@ -112,18 +124,24 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
     final unit = AppScope.controllerOf(context).settings.unit;
     setState(() {
       _selectedDrink = drink;
+      // Reset the manual-edit flag so switching drinks re-syncs the volume
+      // field to the new drink's default instead of keeping a stale value.
       _volumeEditedManually = false;
       _volumeController.text = unit.formatVolumeInput(drink.volumeMl);
     });
   }
 
   Future<void> _refreshLocation({bool force = false}) async {
+    // Skip if a lookup is already in flight, unless this is a forced
+    // (app-resume) retry — avoids stacking redundant location requests.
     if (!_isLocationEnabled || (_isResolvingLocation && !force)) {
       return;
     }
 
     final locationService = AppScope.locationServiceOf(context);
     final localeCode = AppScope.controllerOf(context).settings.localeCode;
+    // Bump a version counter so a slow, superseded request can detect it's
+    // stale and avoid clobbering state written by a later request.
     final requestVersion = ++_locationRequestVersion;
     setState(() {
       _isResolvingLocation = true;
@@ -135,8 +153,13 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
       result = await locationService.fetchCurrentLocation(
         localeCode: localeCode,
       );
-    } catch (_) {}
+    } catch (_) {
+      // Location is optional metadata for the entry; on failure fall back to
+      // the "unavailable" default rather than surfacing an error to the user.
+    }
 
+    // Drop the result if the widget was disposed, the toggle was flipped
+    // off, or a newer request superseded this one while we were awaiting.
     if (!mounted ||
         requestVersion != _locationRequestVersion ||
         !_isLocationEnabled) {
@@ -158,6 +181,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
     setState(() {
       _isLocationEnabled = value;
       if (!value) {
+        // Invalidate any in-flight lookup so it can't overwrite state after
+        // the user has explicitly opted out of attaching a location.
         _locationRequestVersion++;
         _isResolvingLocation = false;
         _locationAccuracyStatus = LocationAccuracyStatus.unknown;
@@ -171,6 +196,8 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
 
   Future<void> _openLocationSettings() async {
     final opened = await AppScope.locationServiceOf(context).openAppSettings();
+    // Only complain if the settings screen genuinely failed to open; if it
+    // opened, the user left the app and there's nothing more to report here.
     if (!mounted || opened) {
       return;
     }
@@ -193,6 +220,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
     final location = _isLocationEnabled ? _location : null;
     final success = await controller.addDrinkEntry(
       drink: _selectedDrink!,
+      // Only use the parsed field value if the user actually edited it;
+      // otherwise trust the drink's canonical volume even if the field text
+      // failed to parse (e.g. was cleared), rather than falling back to 0.
       volumeMl: _volumeEditedManually
           ? (volume == null
                 ? _selectedDrink!.volumeMl
@@ -472,9 +502,13 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
     if (address != null && address.isNotEmpty) {
       return address;
     }
+    // We have coordinates but reverse geocoding didn't yield an address
+    // (e.g. offline or provider failure) — say so instead of showing blank.
     if (_location != null) {
       return l10n.locationAddressUnavailable;
     }
+    // Distinguish "we tried and got nothing" from "still starting up" so the
+    // user doesn't see a permanent loading spinner if location truly failed.
     if (_locationAttempted) {
       return l10n.locationUnavailable;
     }
@@ -482,6 +516,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
   }
 
   bool get _showsApproximateLocationWarning {
+    // "Reduced" accuracy means the OS is only giving an approximate fix
+    // (e.g. iOS "Precise Location" off); surface a hint to open settings
+    // only once a lookup has actually completed with that status.
     return _isLocationEnabled &&
         !_isResolvingLocation &&
         _locationAttempted &&

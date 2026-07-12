@@ -5,6 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../cache/media_cache_store.dart';
 
+// Remembers resolved image aspect ratios across rebuilds/instances so a
+// placeholder with the wrong aspect ratio never flashes before the real
+// image decodes (e.g. when scrolling a list back into view).
 final Map<String, double> _appPhotoPreviewAspectRatioCache = <String, double>{};
 
 @visibleForTesting
@@ -304,6 +307,9 @@ class _ResolvedPhotoPreviewState extends State<_ResolvedPhotoPreview> {
     final newStream = widget.imageProvider.resolve(
       createLocalImageConfiguration(context),
     );
+    // didChangeDependencies runs on every dependency change (e.g. theme
+    // change), not just when the image actually changes, so skip
+    // re-subscribing when the resolved stream is unchanged.
     if (_imageStream?.key == newStream.key) {
       return;
     }
@@ -328,6 +334,9 @@ class _ResolvedPhotoPreviewState extends State<_ResolvedPhotoPreview> {
         if (!mounted || _aspectRatio != null) {
           return;
         }
+        // Decoding failed (corrupt file, unsupported format, etc.) — fall
+        // back to a square aspect ratio so the placeholder/error icon still
+        // gets a sane, bounded layout instead of collapsing to zero size.
         setState(() {
           _aspectRatio = 1;
         });
@@ -501,6 +510,10 @@ class _AppGalleryViewerDialogState extends State<_AppGalleryViewerDialog> {
     _currentIndex = _normalizedInitialIndex();
     _pageController = PageController(initialPage: _currentIndex);
     _focusNode = FocusNode(debugLabel: 'gallery-viewer-focus');
+    // Autofocus on the Focus widget doesn't reliably win against the
+    // bottom-sheet/dialog route's own focus traversal, so focus is
+    // requested explicitly once the first frame is up to guarantee arrow
+    // key navigation works immediately.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
@@ -968,6 +981,10 @@ class AppMediaResolver {
       return null;
     }
 
+    // A single "imagePath" field on entries/profiles can hold several
+    // different representations depending on where it was produced (web
+    // picker, native picker, JSON import, or Supabase storage), so each
+    // shape has to be distinguished and resolved differently.
     if (_looksLikeDataUrl(normalized)) {
       final uriData = Uri.parse(normalized).data;
       final bytes = uriData?.contentAsBytes();
@@ -993,6 +1010,8 @@ class AppMediaResolver {
     final warmablePaths = imagePaths
         .map((path) => path.trim())
         .where((path) => path.isNotEmpty && _isCanonicalStoragePath(path))
+        // Cap the number of concurrent prefetches so opening a long feed
+        // doesn't fire dozens of simultaneous signed-url + download requests.
         .take(12)
         .toSet();
     await Future.wait<void>(
@@ -1007,6 +1026,10 @@ class AppMediaResolver {
       return Future<String?>.value(cached.url);
     }
 
+    // Several widgets can request the same storage path around the same
+    // time (avatar + feed thumbnail, list rebuild, etc.); dedupe in-flight
+    // requests so we don't hit Supabase storage with duplicate signed-url
+    // calls for the same path.
     final inFlight = _signedUrlRequests[path];
     if (inFlight != null) {
       return inFlight;
@@ -1022,6 +1045,8 @@ class AppMediaResolver {
   static Future<ImageProvider<Object>?> _resolveCanonicalStorageProvider(
     String path,
   ) async {
+    // Persistent on-disk cache is checked before doing any network work so
+    // previously downloaded images render instantly and offline.
     final cachedBytes = await _readPersistentBytes(path);
     if (cachedBytes != null) {
       return MemoryImage(cachedBytes);
@@ -1039,6 +1064,9 @@ class AppMediaResolver {
     if (downloadedBytes != null) {
       return MemoryImage(downloadedBytes);
     }
+    // Persisting the download failed (e.g. disk full or web platform without
+    // the cache store) — fall back to letting Flutter stream the signed URL
+    // directly rather than failing to show the image at all.
     return NetworkImage(signedUrl);
   }
 
@@ -1054,6 +1082,9 @@ class AppMediaResolver {
       return null;
     }
 
+    // Request a 1-hour signed URL but cache it for only 50 minutes, leaving
+    // headroom so a slow request or clock drift can't hand out a URL that
+    // expires moments after it's returned from cache.
     final url = await client.storage
         .from(_mediaBucket)
         .createSignedUrl(path, 60 * 60);
@@ -1119,6 +1150,8 @@ class AppMediaResolver {
     if (path.startsWith('/')) {
       return true;
     }
+    // Windows absolute paths (e.g. "C:\\Users\\...") don't start with a
+    // slash, so they need their own check.
     return path.contains(':\\');
   }
 

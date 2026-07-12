@@ -73,6 +73,8 @@ Future<DrinkDefinition?> showDrinkPickerSheet({
       // Sheet-only chrome: keyboard insets and the 90% height factor.
       final viewInsets = MediaQuery.viewInsetsOf(context);
       return Padding(
+        // Keeps the search field above the on-screen keyboard instead of
+        // being covered by it.
         padding: EdgeInsets.only(bottom: viewInsets.bottom),
         child: FractionallySizedBox(heightFactor: 0.9, child: content),
       );
@@ -129,6 +131,10 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
 
   void _selectDrink(DrinkDefinition drink) {
     widget.onSelect(drink);
+    // collapseAfterSelect is used when this catalog is embedded inline
+    // (not in a modal sheet that gets popped on select), so the expanded
+    // category needs to be reset manually to avoid leaving a stale
+    // expanded state visible after picking a drink.
     if (!widget.collapseAfterSelect || !mounted) {
       return;
     }
@@ -156,6 +162,9 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
               .contains(search);
         })
         .toList(growable: false);
+    // Pre-seed every category so the map lookup below (`grouped[...]!`)
+    // never needs a null check, and categories with zero matches still
+    // render (as an empty, collapsed section) via _DrinkCategorySection.
     final grouped = <DrinkCategory, List<DrinkDefinition>>{
       for (final category in DrinkCategory.values)
         category: <DrinkDefinition>[],
@@ -185,6 +194,10 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
           onChanged: widget.enabled
               ? (_) {
                   setState(() {
+                    // Manual expansion state is cleared and replaced by
+                    // search-driven auto-expansion, otherwise a category the
+                    // user had expanded before searching would stay
+                    // expanded/collapsed independent of the search results.
                     _expandedCategory = null;
                     _autoExpandSearchResults = _searchController.text
                         .trim()
@@ -252,6 +265,9 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
               return heading;
             }
 
+            // Stack the "create custom drink" action under the heading on
+            // narrow layouts instead of squeezing it into a Row, where it
+            // would truncate or wrap awkwardly next to the heading text.
             if (constraints.maxWidth < 480) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,6 +346,11 @@ class _DrinkCategorySection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
+        // ExpansionTile only reads `initiallyExpanded` once, when the
+        // element is first created — it ignores later widget rebuilds with
+        // a different value. Folding `isExpanded` into the key forces
+        // Flutter to treat a changed expansion state as a brand-new
+        // element, so search-driven auto-expand actually takes effect.
         key: Key('drink-category-section-${category.name}-$isExpanded'),
         initiallyExpanded: isExpanded,
         enabled: enabled && isInteractive,

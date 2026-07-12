@@ -52,6 +52,7 @@ class _AuthScreenState extends State<AuthScreen> {
       context,
       preset: ImageUploadPreset.profile,
     );
+    // The picker await can outlive this screen if the user backs out mid-pick.
     if (!mounted || path == null) {
       return;
     }
@@ -117,8 +118,13 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!mounted) {
         return;
       }
+      // Unfocus and explicitly close the autofill context *before*
+      // navigating away, otherwise the OS "save password?" prompt can be
+      // dismissed or never shown once the form fields are disposed.
       FocusScope.of(context).unfocus();
       TextInput.finishAutofillContext();
+      // A deep link or invite flow may want to land on a specific screen
+      // post-auth; consume (and clear) that pending redirect here.
       final targetRoute = await routeMemory.consumePostAuthRoute(redirectRoute);
       if (!mounted) {
         return;
@@ -130,6 +136,8 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _updateLocale(String localeCode) async {
     final controller = AppScope.controllerOf(context);
     final nextLocale = AppLocaleCatalog.normalizeCode(localeCode);
+    // Avoid an unnecessary settings write (and its async round trip) if the
+    // dropdown selection normalizes to the locale that's already active.
     if (controller.settings.localeCode == nextLocale) {
       return;
     }
@@ -372,6 +380,8 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildBrandHero(ThemeData theme, AppLocalizations l10n) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        // 360 logical px is roughly the smallest common phone width; below
+        // it the icon+title stack vertically instead of side-by-side.
         final isCompact = constraints.maxWidth < 360;
         final iconSize = isCompact ? 112.0 : 132.0;
         final baseTitleStyle = isCompact
@@ -385,6 +395,8 @@ class _AuthScreenState extends State<AuthScreen> {
           softWrap: false,
           overflow: TextOverflow.visible,
           style: baseTitleStyle?.copyWith(
+            // Web renders this display style noticeably smaller than mobile
+            // for the same textTheme size, so bump it up to match visually.
             fontSize: !isCompact && kIsWeb
                 ? (baseTitleStyle.fontSize ?? 57) + 22
                 : null,
@@ -445,6 +457,8 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildSignInForm(AppLocalizations l10n, bool isBusy) {
+    // Sign-in and sign-up use separate AutofillGroups (and controllers) so
+    // the OS doesn't mix up saved-password autofill between the two forms.
     return AutofillGroup(
       child: Form(
         key: _signInKey,
@@ -474,6 +488,8 @@ class _AuthScreenState extends State<AuthScreen> {
               autofillHints: const <String>[AutofillHints.password],
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) {
+                // Guard against submitting again while a request is already
+                // in flight (e.g. user presses "done" twice on the keyboard).
                 if (isBusy) {
                   return;
                 }
