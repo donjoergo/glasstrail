@@ -9,23 +9,27 @@ const admin = createAdminClient();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STOCK_PHOTOS_DIR = path.join(__dirname, 'seed_assets', 'stock_photos');
+const PROFILE_PHOTOS_DIR = path.join(__dirname, 'seed_assets', 'profile_photos');
 
 interface DemoAccountSpec {
   email: string;
   password: string;
   displayName: string;
+  profilePhotoFileName: string;
 }
 
 const PRIMARY_ACCOUNT: DemoAccountSpec = {
   email: env.demoPrimaryEmail,
   password: env.demoPrimaryPassword,
   displayName: 'Alex Rivers',
+  profilePhotoFileName: 'alex_rivers.jpeg',
 };
 
 const FRIEND_ACCOUNT: DemoAccountSpec = {
   email: env.demoFriendEmail,
   password: env.demoFriendPassword,
   displayName: 'Sam Torres',
+  profilePhotoFileName: 'sam_torres.jpeg',
 };
 
 async function ensureAuthUser(account: DemoAccountSpec): Promise<string> {
@@ -64,10 +68,28 @@ async function ensureAuthUser(account: DemoAccountSpec): Promise<string> {
   return created.user.id;
 }
 
-async function upsertProfile(userId: string, displayName: string): Promise<void> {
+async function uploadProfilePhoto(userId: string, fileName: string): Promise<string> {
+  const bytes = await readFile(path.join(PROFILE_PHOTOS_DIR, fileName));
+  const storagePath = `${userId}/profiles/${fileName}`;
+  const { error } = await admin.storage.from('user-media').upload(storagePath, bytes, {
+    contentType: 'image/jpeg',
+    upsert: true,
+  });
+  if (error) {
+    throw error;
+  }
+  return storagePath;
+}
+
+async function upsertProfile(
+  userId: string,
+  displayName: string,
+  profilePhotoFileName: string,
+): Promise<void> {
+  const profileImagePath = await uploadProfilePhoto(userId, profilePhotoFileName);
   const { error } = await admin
     .from('profiles')
-    .update({ display_name: displayName })
+    .update({ display_name: displayName, profile_image_path: profileImagePath })
     .eq('id', userId);
   if (error) {
     throw error;
@@ -392,8 +414,8 @@ async function main(): Promise<void> {
   const primaryId = await ensureAuthUser(PRIMARY_ACCOUNT);
   const friendId = await ensureAuthUser(FRIEND_ACCOUNT);
 
-  await upsertProfile(primaryId, PRIMARY_ACCOUNT.displayName);
-  await upsertProfile(friendId, FRIEND_ACCOUNT.displayName);
+  await upsertProfile(primaryId, PRIMARY_ACCOUNT.displayName, PRIMARY_ACCOUNT.profilePhotoFileName);
+  await upsertProfile(friendId, FRIEND_ACCOUNT.displayName, FRIEND_ACCOUNT.profilePhotoFileName);
   await upsertSettings(primaryId);
   await upsertSettings(friendId);
   await ensureFriendship(primaryId, friendId);
