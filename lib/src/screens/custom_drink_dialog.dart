@@ -113,6 +113,8 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
       ).showSnackBar(SnackBar(content: Text(message)));
     }
     if (success) {
+      // Return the saved drink so callers (e.g. add_drink_screen) can
+      // auto-select it immediately instead of leaving the picker unset.
       Navigator.of(context).pop(controller.lastSavedCustomDrink);
     }
   }

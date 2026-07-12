@@ -177,6 +177,9 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     }
   }
 
+  // Entries can be filtered out or deleted while the panel is open; drop
+  // any markers no longer present and clear the detail view if it pointed
+  // at one of them, rather than leaving the panel showing stale data.
   void _reconcilePanelSelection() {
     final panelSelection = _panelSelection;
     if (panelSelection == null) {
@@ -627,6 +630,10 @@ class _StatisticsMapCardState extends State<_StatisticsMapCard> {
     await _openMarkerDetail(marker);
   }
 
+  // MapLibre's cluster feature carries a `point_count` property but no way
+  // to list which entries it contains, so the leaf count is read from the
+  // tapped feature first and then matched against nearby marker offsets via
+  // statisticsMapClusterLeafIndexes.
   Future<List<_StatisticsMapMarkerData>> _resolveClusterLeafMarkers({
     required maplibre.MapLibreMapController controller,
     required math.Point<double> point,

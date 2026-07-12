@@ -37,6 +37,9 @@ part 'statistics/statistics_screen_map_panel.dart';
 part 'statistics/statistics_screen_map_view.dart';
 part 'statistics/statistics_screen_entries.dart';
 
+// Shared by the map filter chips and the entries category chips, which
+// live in sibling part files, so both helpers sit here instead of being
+// duplicated in (or claimed by) either one.
 BorderSide _selectableChipBorder(ThemeData theme, bool selected) {
   final scheme = theme.colorScheme;
   return selected

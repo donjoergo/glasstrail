@@ -52,6 +52,8 @@ class BootstrapCacheStore {
   }
 
   Future<BootstrapCacheState> readState() async {
+    // Startup reads this repeatedly (once per repository/service that
+    // consults the cache); memoize so only the first call touches disk.
     final memoized = _memoizedState;
     if (memoized != null) {
       return memoized;

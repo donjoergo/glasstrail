@@ -109,6 +109,9 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     }
+    // Creating a custom drink implies the user wants to log it now, so
+    // auto-select it and carry over the photo they attached during
+    // creation instead of making them pick the drink and photo again.
     if (createdDrink != null) {
       _selectDrink(createdDrink);
       setState(() {

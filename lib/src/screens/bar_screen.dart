@@ -138,6 +138,9 @@ class _BarScreenState extends State<BarScreen>
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
+    // On large screens there's enough width to show both tabs side by side,
+    // so skip the TabBar/TabBarView navigation entirely rather than making
+    // the user switch between them.
     if (AppBreakpoints.isLarge(context)) {
       return AppConstrainedContent(
         maxWidth: AppBreakpoints.barContentMaxWidth,
@@ -520,6 +523,10 @@ class _GlobalDrinkCategoryCard extends StatelessWidget {
                   return ListTile(
                     key: itemKey,
                     contentPadding: EdgeInsets.zero,
+                    // Transparent background, unlike the custom-drinks tab's
+                    // avatar: this row previously showed a bare icon with no
+                    // circle behind it, so keep that look when there's no
+                    // photo to fall back to.
                     leading: AppAvatar(
                       imagePath: drink.imagePath,
                       radius: 20,

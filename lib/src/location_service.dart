@@ -158,6 +158,9 @@ class PlatformLocationService extends LocationService {
     } on UnsupportedError {
       return null;
     } on Exception {
+      // Catches NoResultFoundException and other geocoding-specific
+      // failures without depending on the package's exception types, which
+      // vary by platform and aren't all publicly exported.
       return null;
     }
   }

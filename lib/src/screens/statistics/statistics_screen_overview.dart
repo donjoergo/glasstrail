@@ -35,6 +35,10 @@ class _StatisticsDashboardOverviewColumn extends StatelessWidget {
             key: const Key('statistics-dashboard-scroll'),
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: <Widget>[
+              // Right padding is trimmed to 12 (vs. the usual 20 elsewhere,
+              // e.g. the history master pane) since this column sits flush
+              // against the resizable divider, which already reserves its
+              // own gutter.
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
                 sliver: SliverToBoxAdapter(

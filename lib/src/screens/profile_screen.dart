@@ -413,6 +413,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '${l10n.appTitle} V$version';
   }
 
+  // The attribution sentence is fully localized (word order varies by
+  // language), so the emoji can't be spliced in at fixed positions like the
+  // old hardcoded TextSpan list did. Instead the localized string is passed
+  // the emoji as substitution args, then re-scanned here to split it back
+  // into spans so only the emoji get the ProfileEmoji font override.
   List<InlineSpan> _buildAttributionSpans(
     ThemeData theme,
     AppLocalizations l10n,

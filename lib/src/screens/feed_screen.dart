@@ -238,6 +238,8 @@ class _FeedScreenState extends State<FeedScreen> {
       onRefresh: _refresh,
       child: NotificationListener<ScrollNotification>(
         onNotification: _handleScrollNotification,
+        // Feed cards want more breathing room than the shared form width
+        // (640), so override the default max width here.
         child: AppConstrainedContent(
           maxWidth: 720,
           child: CustomScrollView(
@@ -302,6 +304,10 @@ class _FeedScreenState extends State<FeedScreen> {
                           categoryLabel: l10n.categoryLabel(
                             post.entry.category,
                           ),
+                          // Tap-to-select only applies in the master-detail split;
+                          // on narrow layouts the card's own menu and cheers
+                          // button already expose every action, so a tap has
+                          // nothing to do.
                           isSelected:
                               isLarge && _selectedEntryId == post.entry.id,
                           onTap: isLarge
@@ -366,6 +372,10 @@ class _FeedDetailPane extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
+    // Selection is tracked by entry id rather than list index, so it
+    // survives refreshes/re-sorts; if the entry has since disappeared
+    // (deleted, or not yet paged in) this falls through to the empty
+    // state below instead of crashing.
     FeedDrinkPost? post;
     if (selectedEntryId != null) {
       final postIndex = controller.feedPosts.indexWhere(
@@ -400,6 +410,9 @@ class _FeedDetailPane extends StatelessWidget {
     final categoryLabel = l10n.categoryLabel(entry.category);
     final unit = controller.settings.unit;
     final cheersPending = controller.isFeedEntryCheersPending(entry.id);
+    // Cheers are one-way (see the cheers-one-way migration) — once given,
+    // they can't be retracted, so the button is disabled after cheering
+    // rather than toggling.
     final cheersEnabled =
         !post.isOwnEntry && !cheersPending && !post.hasCurrentUserCheered;
     final resolvedPost = post;
@@ -928,8 +941,9 @@ class _DrinkEntryCard extends StatelessWidget {
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
     final cheersPending = controller.isFeedEntryCheersPending(entry.id);
-    // Can't cheers your own post, and disable mid-toggle to prevent
-    // duplicate cheers/un-cheers from rapid taps before the request resolves.
+    // Can't cheers your own post; disable mid-request to prevent duplicate
+    // cheers from rapid taps, and after cheering since cheers are one-way
+    // (see the cheers-one-way migration) and can't be retracted.
     final cheersEnabled =
         !post.isOwnEntry && !cheersPending && !post.hasCurrentUserCheered;
     final timeLabel = DateFormat.yMMMd(
