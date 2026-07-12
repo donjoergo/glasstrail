@@ -16,6 +16,7 @@
   if (l !== 'en' && l !== 'de') l = ((navigator.language || 'en').toLowerCase().indexOf('de') === 0) ? 'de' : 'en';
   document.documentElement.setAttribute('data-theme', t);
   document.documentElement.setAttribute('data-lang', l);
+  document.documentElement.setAttribute('lang', l);
 })();
 </script>
 <style>
@@ -72,8 +73,6 @@ html[data-lang="en"] .lang-btn-en, html[data-lang="de"] .lang-btn-de { backgroun
 .desktop-frame-dots span { width: 10px; height: 10px; border-radius: 50%; display: block; }
 .desktop-screen { position: relative; border-radius: 6px; overflow: hidden; background: #000; }
 .desktop-screen img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
-.desktop-screen-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 20px; pointer-events: none; }
-.desktop-screen-label span { font-family: monospace; font-size: 13px; color: var(--ph-text); }
 .desktop-frame-neck { position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%); width: 90px; height: 34px; background: linear-gradient(#14181C, #1B1F24); clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%); }
 .desktop-frame-base { position: absolute; left: 50%; bottom: -40px; transform: translateX(-50%); width: 150px; height: 7px; background: #1B1F24; border-radius: 4px; }
 </style>
@@ -352,7 +351,7 @@ html[data-lang="en"] .lang-btn-en, html[data-lang="de"] .lang-btn-de { backgroun
       </div>
     </section>
 
-    <!-- 12 Full desktop mode (placeholder, no screenshot yet) -->
+    <!-- 12 Full desktop mode -->
     <section data-reveal class="feature-grid">
       <div class="img-col-first" style="display: flex; justify-content: center;">
         <div class="desktop-frame">
@@ -362,11 +361,8 @@ html[data-lang="en"] .lang-btn-en, html[data-lang="de"] .lang-btn-de { backgroun
             <span style="background: #6BBF8A;"></span>
           </div>
           <div class="desktop-screen">
-            <img class="only-light" src="assets/screenshots/desktop-light.png" alt="Desktop layout placeholder">
-            <img class="only-dark" src="assets/screenshots/desktop-dark.png" alt="Desktop layout placeholder">
-            <div class="desktop-screen-label">
-              <span><span class="i18n-en">Desktop screenshot coming soon</span><span class="i18n-de">Desktop-Screenshot folgt</span></span>
-            </div>
+            <img class="only-light" src="assets/screenshots/desktop-light.png" alt="GlassTrail desktop layout">
+            <img class="only-dark" src="assets/screenshots/desktop-dark.png" alt="GlassTrail desktop layout">
           </div>
           <div class="desktop-frame-neck"></div>
           <div class="desktop-frame-base"></div>
@@ -415,6 +411,7 @@ function toggleTheme() {
 }
 function setLang(l) {
   document.documentElement.setAttribute('data-lang', l);
+  document.documentElement.setAttribute('lang', l);
   try { localStorage.setItem('gt-lang', l); } catch (e) {}
 }
 
