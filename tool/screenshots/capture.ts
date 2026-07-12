@@ -56,6 +56,11 @@ interface ScreenSpec {
   afterNavigate?: (page: Page) => Promise<void>;
   // Defaults to the shared mobile VIEWPORT/DEVICE_SCALE_FACTOR when omitted.
   viewport?: ViewportOverride;
+  // Extra time to let the screen settle after a light/dark switch, before the
+  // screenshot. Defaults to 2000ms. The map needs more: swapping styles reloads
+  // the whole tile layer, and with clustering off every individual marker has
+  // to re-render rather than just a handful of cluster bubbles.
+  themeSettleMs?: number;
 }
 
 async function scrollToPieChart(page: Page): Promise<void> {
@@ -64,11 +69,27 @@ async function scrollToPieChart(page: Page): Promise<void> {
   await page.waitForTimeout(500);
 }
 
+async function disableMapClustering(page: Page): Promise<void> {
+  // The "Cluster" toggle is a canvas-painted chip with no accessible name (it never
+  // surfaces in the semantics tree, unlike every other interactive control on this
+  // screen), so it can't be targeted with a role/label locator — only a coordinate
+  // click reaches it. Position is fixed to the mobile VIEWPORT (480x1000).
+  await page.mouse.click(70, 180);
+  await page.waitForTimeout(500);
+}
+
+async function disableDesktopMapClustering(page: Page): Promise<void> {
+  // Same canvas-painted, semantics-less toggle as disableMapClustering, just at the
+  // desktop viewport's map position (1440x900).
+  await page.mouse.click(644, 163);
+  await page.waitForTimeout(500);
+}
+
 const SCREENS: ScreenSpec[] = [
   { name: 'feed', hashRoute: '/feed' },
   { name: 'statistics-cards', hashRoute: '/statistics/overview' },
   { name: 'statistics-piechart', hashRoute: '/statistics/overview', afterNavigate: scrollToPieChart },
-  { name: 'statistics-map', hashRoute: '/statistics/map' },
+  { name: 'statistics-map', hashRoute: '/statistics/map', afterNavigate: disableMapClustering, themeSettleMs: 4000 },
   { name: 'statistics-gallery', hashRoute: '/statistics/gallery' },
   { name: 'statistics-list', hashRoute: '/statistics/history' },
   { name: 'add-drink', hashRoute: '/add-drink' },
@@ -83,6 +104,8 @@ const SCREENS: ScreenSpec[] = [
     // so the feed renders its widescreen master-detail layout with the side nav rail.
     // 16:10 matches the `.desktop-screen img` aspect-ratio baked into landing/index.html.
     viewport: { width: 1440, height: 900, deviceScaleFactor: 2 },
+    afterNavigate: disableDesktopMapClustering,
+    themeSettleMs: 4000,
   },
 ];
 
@@ -117,9 +140,10 @@ async function captureTheme(
   page: Page,
   colorScheme: 'light' | 'dark',
   filePath: string,
+  settleMs = 2000,
 ): Promise<void> {
   await page.emulateMedia({ colorScheme });
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(settleMs);
   await page.screenshot({ path: filePath });
 }
 
@@ -178,7 +202,12 @@ async function main(): Promise<void> {
     for (const theme of ['light', 'dark'] as const) {
       step += 1;
       renderProgress(step, totalSteps, `${screen.name} (${theme})`);
-      await captureTheme(page, theme, path.join(OUTPUT_DIR, `${screen.name}-${theme}.jpg`));
+      await captureTheme(
+        page,
+        theme,
+        path.join(OUTPUT_DIR, `${screen.name}-${theme}.jpg`),
+        screen.themeSettleMs,
+      );
     }
   }
   process.stdout.write('\n');

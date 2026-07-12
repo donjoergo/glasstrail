@@ -8,6 +8,27 @@
 
 GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in statistics, following friends in a shared feed, and staying on top of social activity with notifications. The initial idea was to make a worthy successor to [Beer With Me](https://play.google.com/store/apps/details?id=se.dagsappar.beer&hl=de) with modern design and a few extra perks.
 
+## Contents
+
+- [Demo](#demo)
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Tech Stack and Tooling](#tech-stack-and-tooling)
+- [App Pages](#app-pages)
+- [Navigation Map](#navigation-map)
+- [App Architecture](#app-architecture)
+- [Main User Flows](#main-user-flows)
+- [Development](#development)
+- [Deployment and releases](#deployment-and-releases)
+
+## Demo
+
+Try GlassTrail at [glasstrail.vercel.app](https://glasstrail.vercel.app/) with the demo account below. It's reseeded regularly with fresh sample data, so feel free to poke around.
+
+| Email               | Password |
+| ------------------- | -------- |
+| demo@glasstrail.app | Demo123  |
+
 ## Screenshots
 
 <table>
