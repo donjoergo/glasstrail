@@ -10,6 +10,9 @@ import '../cache/media_cache_store.dart';
 import '../models.dart';
 import 'app_repository.dart';
 
+// Lets the cache layer know who is "currently signed in" without depending
+// on a concrete auth implementation (e.g. Supabase). Only id/email are
+// needed to validate that cached data belongs to the active session.
 typedef LocalAuthSessionLoader = LocalAuthSession? Function();
 
 class LocalAuthSession {
@@ -19,10 +22,17 @@ class LocalAuthSession {
   final String email;
 }
 
+// Exposed separately from AppRepository so callers that don't care about
+// cache internals (most of the app) aren't forced to depend on this type.
 abstract interface class CacheAwareAppRepository {
   Future<CacheDebugReport> loadCacheDebugReport();
 }
 
+// Decorator around a "real" AppRepository (Supabase or local) that adds a
+// stale-while-revalidate cache: serve cached data instantly, refresh from
+// the delegate in the background/foreground, and fall back to stale data if
+// the delegate call fails (e.g. offline). This keeps the UI responsive and
+// usable without network while the underlying repository stays simple.
 class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
   CachedAppRepository({
     required AppRepository delegate,
@@ -34,7 +44,14 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
        _mediaCacheStore = mediaCacheStore,
        _loadLocalAuthSession = loadLocalAuthSession;
 
+  // Must match the default `limit` used by loadFeedDrinkPosts callers so
+  // that the cached "first page" snapshot lines up with what an uncached
+  // first request would return; any other limit/cursor bypasses the cache
+  // entirely (see loadFeedDrinkPosts below).
   static const _firstFeedPageLimit = 20;
+  // Domains that belong to a specific signed-in user and must be wiped when
+  // that user signs out or a different user signs in on the same device, so
+  // one account never sees another account's cached data.
   static const Set<CacheDomain> _userScopedDomains = <CacheDomain>{
     CacheDomain.customDrinks,
     CacheDomain.entries,
@@ -62,6 +79,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     final localSession = _loadLocalAuthSession?.call();
     if (!forceRefresh && localSession != null) {
       final state = await _cacheStore.readState();
+      // Cached user is only usable if it belongs to the session the auth
+      // layer currently reports as active; otherwise a stale/foreign
+      // cached profile could be shown for the wrong account.
       final hasCachedUser =
           state.manifest.userId == localSession.id &&
           state.manifest.entryFor(CacheDomain.currentUser) != null &&
@@ -98,6 +118,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     }
 
     try {
+      // Always force-refresh against the delegate here: we only reach this
+      // point when the cache was skipped or unusable, so there is no
+      // benefit to letting the delegate serve its own (redundant) cache.
       final user = await _delegate.restoreSession(forceRefresh: true);
       if (user == null) {
         _recordRuntime(
@@ -118,6 +141,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       );
       return user;
     } catch (_) {
+      // Remote restore failed (e.g. offline, backend down): fall back to a
+      // stale cached user rather than surfacing an error, so the app can
+      // still open in a degraded state instead of forcing a sign-in screen.
       final state = await _cacheStore.readState();
       final cachedUser = state.snapshot.currentUser;
       final hasCachedUser =
@@ -189,9 +215,14 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
   @override
   Future<void> signOut() async {
     final state = await _cacheStore.readState();
+    // Resolve the outgoing user id before signing out (the delegate's own
+    // session state disappears after signOut), falling back to the local
+    // auth session in case the cached snapshot was never populated.
     final userId =
         state.snapshot.currentUser?.id ?? _loadLocalAuthSession?.call()?.id;
     await _delegate.signOut();
+    // Purge so the next signed-in user (or a re-sign-in) never sees this
+    // account's cached data, and so cached media doesn't linger on disk.
     await _cacheStore.purgeUserScope(userId: userId);
     if (userId != null) {
       await _mediaCacheStore.purgeScope(userId);
@@ -516,6 +547,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     int limit = 20,
     bool forceRefresh = false,
   }) {
+    // Only the very first page at the default limit is cached (see
+    // _firstFeedPageLimit); anything paginated further has no stable cache
+    // slot to live in, so go straight to the delegate.
     if (cursor != null || limit != _firstFeedPageLimit) {
       return _delegate.loadFeedDrinkPosts(
         userId: userId,
@@ -553,6 +587,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       userId: userId,
       entryId: entryId,
     );
+    // Patch the cached first feed page in place with the authoritative
+    // counts from the delegate, rather than waiting for the next refresh,
+    // so the UI stays consistent if it re-reads from cache immediately.
     await _updateCache((state) {
       final page = state.snapshot.firstFeedPage;
       if (page == null) {
@@ -610,6 +647,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       importSourceId: importSourceId,
     );
     await _updateCache((state) {
+      // Filter-then-prepend (instead of append) keeps the new entry from
+      // ever duplicating an existing one and avoids a full re-sort pass
+      // over the whole cached list before the final sort.
       final entries = <DrinkEntry>[
         entry,
         ...state.snapshot.entries.where(
@@ -618,6 +658,8 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       ]..sort(_compareEntriesDescending);
       var nextState = _writeEntries(state, user.id, entries);
       final profile = FriendProfile.fromUser(user);
+      // Also reflect the new entry in the cached feed page immediately so
+      // the user's own post appears in their feed without a round trip.
       final page = _upsertFeedPost(
         nextState.snapshot.firstFeedPage,
         FeedDrinkPost(entry: entry, authorProfile: profile, isOwnEntry: true),
@@ -701,6 +743,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
           userId,
           FeedDrinkPostPage(
             posts: nextPosts,
+            // Clear the cursor once the page is emptied so a subsequent
+            // fetch starts over from the top instead of paginating from a
+            // cursor that may now point past the (now-shorter) result set.
             cursor: nextPosts.isEmpty ? null : page.cursor,
             hasMore: page.hasMore,
           ),
@@ -748,6 +793,15 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     );
   }
 
+  // Shared cache-read implementation for every cached domain. Note that
+  // whenever usable cache exists and the caller didn't ask for
+  // forceRefresh, cache is served regardless of CachePolicy freshness —
+  // freshness here only affects the recorded debug/runtime state (see
+  // CacheDebugReport), not whether a network call happens. Callers that
+  // need actual revalidation (e.g. on resume) are expected to pass
+  // forceRefresh explicitly once CachePolicy.isFresh says data is stale.
+  // Centralizing this also keeps error-fallback-to-stale-cache behavior
+  // consistent across every loadX method instead of re-implementing it.
   Future<T> _loadDomainFromCache<T>({
     required CacheDomain domain,
     required bool forceRefresh,
@@ -759,6 +813,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
   }) async {
     final state = await _cacheStore.readState();
     final manifestEntry = state.manifest.entryFor(domain);
+    // Cache is only "usable" when it's for the requesting user (or the
+    // domain isn't user-scoped); otherwise it belongs to a previous account
+    // and must not be served.
     final hasUsableCache =
         manifestEntry != null &&
         (userScopeId == null || state.manifest.userId == userScopeId);
@@ -789,6 +846,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
       );
       return value;
     } catch (_) {
+      // forceRefresh/hasUsableCache are unchanged since the guard above, so
+      // this branch mirrors it defensively; falls back to cache instead of
+      // surfacing the remote error to the UI when cache is available.
       if (!forceRefresh && hasUsableCache) {
         _recordRuntime(
           domain,
@@ -822,6 +882,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     BootstrapCacheState state,
     AppUser user,
   ) {
+    // Detects an account switch on the same device/cache (e.g. sign out
+    // then sign in as someone else without the cache ever being purged) and
+    // clears the previous user's scoped data before writing the new user.
     final nextState =
         state.manifest.userId != null && state.manifest.userId != user.id
         ? _clearUserScopedDomains(state)
@@ -852,6 +915,8 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
 
   bool _isLocalSessionActive(String userId) {
     final loadLocalAuthSession = _loadLocalAuthSession;
+    // No session loader configured (e.g. LocalAppRepository callers) means
+    // there's nothing to race against, so always allow the write.
     if (loadLocalAuthSession == null) {
       return true;
     }
@@ -862,6 +927,11 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     BootstrapCacheState Function(BootstrapCacheState state) transform, {
     String? userScopeId,
   }) async {
+    // Guards against writing results from a slow in-flight request that
+    // completes after the user has already signed out or switched accounts
+    // (a race between an async remote call and sign-out/sign-in). Checked
+    // both before and inside the store's update callback because the
+    // session can change while we're waiting to acquire the update lock.
     if (userScopeId != null && !_isLocalSessionActive(userScopeId)) {
       return;
     }
@@ -1000,6 +1070,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
         ]..sort(
           (left, right) => _compareEntriesDescending(left.entry, right.entry),
         );
+    // Trim back to the page size so the cached "first page" never grows
+    // unbounded as entries are added locally; hasMore is preserved (or set)
+    // so the UI still knows more can be fetched from the delegate.
     final trimmedPosts = posts
         .take(_firstFeedPageLimit)
         .toList(growable: false);
@@ -1010,6 +1083,9 @@ class CachedAppRepository implements AppRepository, CacheAwareAppRepository {
     );
   }
 
+  // Secondary sort by id breaks ties between entries with identical
+  // timestamps deterministically, so cache writes/sorts don't reorder
+  // same-instant entries between calls.
   int _compareEntriesDescending(DrinkEntry left, DrinkEntry right) {
     final timeComparison = right.consumedAt.compareTo(left.consumedAt);
     if (timeComparison != 0) {

@@ -44,6 +44,9 @@ class _ResizableMasterDetailState extends State<ResizableMasterDetail> {
   }
 
   void _handleDragUpdate(DragUpdateDetails details, double totalWidth) {
+    // Drag delta is screen-space (positive = rightward), but in RTL the
+    // master pane is visually on the right, so dragging right should
+    // shrink it rather than grow it — flip the sign to match.
     final directionFactor = Directionality.of(context) == TextDirection.rtl
         ? -1
         : 1;
@@ -74,6 +77,8 @@ class _ResizableMasterDetailState extends State<ResizableMasterDetail> {
                 behavior: HitTestBehavior.opaque,
                 onHorizontalDragUpdate: (details) =>
                     _handleDragUpdate(details, totalWidth),
+                // Hit area (10) is wider than the visible line (3) below so
+                // the divider stays easy to grab with mouse or touch.
                 child: SizedBox(
                   width: 10,
                   child: Center(

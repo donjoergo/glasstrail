@@ -1,6 +1,10 @@
 import 'media_cache_entry.dart';
 
 const int mediaCacheSchemaVersion = 1;
+// 128 MB: large enough to hold a meaningful working set of feed/profile
+// images for offline-ish browsing, small enough not to become a significant
+// chunk of a user's device storage without them realizing an app is doing
+// it.
 const int defaultMediaCacheSizeLimitBytes = 128 * 1024 * 1024;
 
 class MediaCacheManifest {
@@ -24,6 +28,10 @@ class MediaCacheManifest {
   final int schemaVersion;
   final int sizeLimitBytes;
   final Map<String, MediaCacheEntry> entries;
+  // Cumulative count of entries ever evicted for exceeding sizeLimitBytes;
+  // surfaced in CacheDebugReport as a signal that the cache is thrashing
+  // (limit too small for the working set) rather than a value used by any
+  // eviction logic itself.
   final int evictionCount;
 
   int get totalBytes =>

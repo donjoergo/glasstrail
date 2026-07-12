@@ -89,11 +89,17 @@ class DeferredPushNotificationService extends PushNotificationService {
 }
 
 Future<PushNotificationService> createPlatformPushNotificationService() async {
+  // Push notifications are only wired up for Android in this app (no APNs
+  // entitlement/web push setup), so other platforms get the no-op service
+  // rather than attempting Firebase Messaging calls that would fail there.
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
     return const DisabledPushNotificationService();
   }
 
   try {
+    // Guard against double-initialization: Firebase.initializeApp throws
+    // if called more than once for the default app, which can happen if
+    // another part of app startup already initialized it.
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
@@ -101,6 +107,9 @@ Future<PushNotificationService> createPlatformPushNotificationService() async {
     }
     return FirebasePushNotificationService(FirebaseMessaging.instance);
   } catch (_) {
+    // Missing/misconfigured google-services.json, no Play Services on the
+    // device/emulator, etc. — push notifications are a non-critical
+    // enhancement, so failure here shouldn't block app startup.
     return const DisabledPushNotificationService();
   }
 }
@@ -114,6 +123,10 @@ class FirebasePushNotificationService extends PushNotificationService {
 
   @override
   Future<PushDeviceToken?> getDeviceToken() async {
+    // Android 13+ requires runtime notification permission; requestPermission
+    // shows the OS prompt (a no-op if already granted/denied) before a
+    // token is fetched, since a token is useless without permission to
+    // actually display notifications.
     final settings = await _messaging.requestPermission();
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
       return null;
@@ -157,6 +170,10 @@ class FirebasePushNotificationService extends PushNotificationService {
     if (route == null) {
       return null;
     }
+    // Data payload keys come from the Supabase edge function that sends
+    // notifications (snake_case) — camelCase is also accepted defensively
+    // in case a payload is ever sent from elsewhere (e.g. manual testing
+    // via the Firebase console).
     final notificationId =
         _stringData(message, 'notification_id') ??
         _stringData(message, 'notificationId');

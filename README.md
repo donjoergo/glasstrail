@@ -1,27 +1,117 @@
-# GlassTrail
+<p align="center">
+  <a href="https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml"><img src="https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml/badge.svg"></a>
+  <a href="https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml"><img src="https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://crowdin.com/project/glasstrail"><img src="https://badges.crowdin.net/glasstrail/localized.svg"></a>
 
-[![Android Release](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml/badge.svg)](https://github.com/donjoergo/glasstrail/actions/workflows/android-release.yml)
-[![CI](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml/badge.svg)](https://github.com/donjoergo/glasstrail/actions/workflows/ci.yml)
-[![Crowdin](https://badges.crowdin.net/glasstrail/localized.svg)](https://crowdin.com/project/glasstrail)
+</p>
 
-[Web App](https://glasstrail.vercel.app/) | [Android App](https://github.com/donjoergo/glasstrail/releases)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="landing/assets/hero-header-dark.svg">
+    <img src="landing/assets/hero-header-light.svg" width="300">
+  </picture>
+</p>
+<h2 align="center">Track drinks with friends and earn badges</h3>
+
+<p align="center">
+  <a href="https://glasstrail-landing.vercel.app">Landing Page</a>|
+  <a href="https://glasstrail.vercel.app">Web App</a>|
+  <a href="https://github.com/donjoergo/glasstrail/releases">Android App</a>
+</p>
 
 GlassTrail is a Flutter app for tracking drinks, reviewing personal habits in statistics, following friends in a shared feed, and staying on top of social activity with notifications. The initial idea was to make a worthy successor to [Beer With Me](https://play.google.com/store/apps/details?id=se.dagsappar.beer&hl=de) with modern design and a few extra perks.
+
+## Contents
+
+- [Contents](#contents)
+- [Demo](#demo)
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Tech Stack and Tooling](#tech-stack-and-tooling)
+- [App Pages](#app-pages)
+- [Navigation Map](#navigation-map)
+- [App Architecture](#app-architecture)
+- [Main User Flows](#main-user-flows)
+- [Development](#development)
+  - [Flutter Environment Variables](#flutter-environment-variables)
+  - [Push Notifications](#push-notifications)
+    - [Notification Flow](#notification-flow)
+    - [Configure FCM](#configure-fcm)
+      - [Create Firebase Project](#create-firebase-project)
+      - [Configure Supabase Secrets](#configure-supabase-secrets)
+      - [Create Supabase Webhook](#create-supabase-webhook)
+    - [Notification Images](#notification-images)
+  - [Public Friend Profile Previews](#public-friend-profile-previews)
+  - [Verification](#verification)
+  - [Changelog](#changelog)
+- [Deployment and releases](#deployment-and-releases)
+  - [Creating a Release](#creating-a-release)
+  - [Vercel](#vercel)
+  - [Android Releases](#android-releases)
+    - [Keystore](#keystore)
+
+## Demo
+
+Try GlassTrail at [glasstrail.vercel.app](https://glasstrail.vercel.app/) with the demo account below. It's reseeded regularly with fresh sample data, so feel free to poke around.
+
+| Email               | Password |
+| ------------------- | -------- |
+| demo@glasstrail.app | Demo123  |
 
 ## Screenshots
 
 <table>
   <tr>
-    <td align="center"><strong>Feed</strong><br><img src="docs/screenshots/feed.jpg" alt="Feed" width="180"></td>
-    <td align="center"><strong>Statistics</strong><br><img src="docs/screenshots/statistics_cards.jpg" alt="Statistics cards" width="180"></td>
-    <td align="center"><strong>Pie Chart</strong><br><img src="docs/screenshots/statistics_piechart.jpg" alt="Pie chart" width="180"></td>
-    <td align="center"><strong>Drink Locations</strong><br><img src="docs/screenshots/map.jpg" alt="Drink locations" width="180"></td>
+    <td align="center"><strong>Feed</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/feed-dark.jpg">
+        <img src="landing/assets/screenshots/feed-light.jpg" alt="Feed" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Statistics</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/statistics-cards-dark.jpg">
+        <img src="landing/assets/screenshots/statistics-cards-light.jpg" alt="Statistics cards" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Pie Chart</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/statistics-piechart-dark.jpg">
+        <img src="landing/assets/screenshots/statistics-piechart-light.jpg" alt="Pie chart" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Drink Locations</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/statistics-map-dark.jpg">
+        <img src="landing/assets/screenshots/statistics-map-light.jpg" alt="Drink locations" width="180">
+      </picture>
+    </td>
   </tr>
   <tr>
-    <td align="center"><strong>Drink Gallery</strong><br><img src="docs/screenshots/gallery.jpg" alt="Drink gallery" width="180"></td>
-    <td align="center"><strong>Global Drinks</strong><br><img src="docs/screenshots/bar_global_drinks.jpg" alt="Global drinks" width="180"></td>
-    <td align="center"><strong>Custom Drinks</strong><br><img src="docs/screenshots/bar_own%20drinks.jpg" alt="Own drinks" width="180"></td>
-    <td align="center"><strong>Notifications</strong><br><img src="docs/screenshots/notifications.png" alt="Notifications" width="180"></td>
+    <td align="center"><strong>Drink Gallery</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/statistics-gallery-dark.jpg">
+        <img src="landing/assets/screenshots/statistics-gallery-light.jpg" alt="Drink gallery" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Global Drinks</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/bar-global-dark.jpg">
+        <img src="landing/assets/screenshots/bar-global-light.jpg" alt="Global drinks" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Custom Drinks</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/bar-own-dark.jpg">
+        <img src="landing/assets/screenshots/bar-own-light.jpg" alt="Own drinks" width="180">
+      </picture>
+    </td>
+    <td align="center"><strong>Notifications</strong><br>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="landing/assets/screenshots/notifications-dark.jpg">
+        <img src="landing/assets/screenshots/notifications-light.jpg" alt="Notifications" width="180">
+      </picture>
+    </td>
   </tr>
 </table>
 

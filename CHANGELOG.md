@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Full desktop mode: adaptive widescreen layouts with resizable master-detail views, a floating map detail panel, dialogs instead of sheets, and multi-pane statistics and bar screens
+- New Landing page for promotional purposes
 - Map toggles for cluster and photo and locate-me button
 - Backend setup guide, local Supabase config, and smoke-check script
 
 ### Fixed
 - Directly creating and logging of custom drinks with images is now more intuitive
+- Location was fetched twice during drink adding
 - Local Supabase db reset: unique migration versions and explicit API role grants
 
 ## [2.2.0] - 2026-07-11

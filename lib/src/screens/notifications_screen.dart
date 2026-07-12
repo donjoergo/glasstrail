@@ -20,6 +20,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isMarkingAllRead = false;
 
   String _targetRouteForNotification(AppNotification notification) {
+    // Route comes from server-provided metadata (untyped JSON), so validate
+    // it's a non-blank string before trusting it; fall back to profile as a
+    // safe default rather than crashing or navigating nowhere.
     final route = notification.metadata['route'];
     if (route is String && route.trim().isNotEmpty) {
       return AppRoutes.postAuthRoute(route.trim());
@@ -32,16 +35,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (notification.isUnread) {
       await controller.markNotificationsRead(<String>[notification.id]);
     }
+    // Refresh the data the notification points to (e.g. a friend request's
+    // current status) before navigating, so the destination screen doesn't
+    // briefly show stale state.
     await controller.refreshForNotification(notification);
     if (!mounted) {
       return;
     }
+    // Replace rather than push: the notifications list shouldn't remain on
+    // the back stack once the user has jumped to the notification's target.
     Navigator.of(
       context,
     ).pushReplacementNamed(_targetRouteForNotification(notification));
   }
 
   Future<void> _markAllNotificationsRead() async {
+    // Guard against re-entrancy if the user taps the button again before
+    // the first request completes (button is disabled, but be defensive).
     if (_isMarkingAllRead) {
       return;
     }
@@ -53,6 +63,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       await AppScope.controllerOf(context).markAllNotificationsRead();
     } finally {
+      // finally ensures the busy flag clears even if the request throws,
+      // so the button doesn't get stuck permanently disabled.
       if (mounted) {
         setState(() {
           _isMarkingAllRead = false;

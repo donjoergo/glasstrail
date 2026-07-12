@@ -58,3 +58,7 @@ supabase/.branches/
 .env
 .env.*
 !.env.example
+
+# Screenshot automation tooling (tool/screenshots/)
+tool/screenshots/node_modules/
+tool/screenshots/.env

@@ -37,6 +37,9 @@ class BootstrapCacheStore {
   static const _snapshotPath = 'bootstrap/snapshot.json';
 
   final CacheStoreBackend _backend;
+  // Serializes update() calls: without this, two concurrent read-modify-
+  // write cycles (e.g. an entry added while settings are also being saved)
+  // could interleave and one write would clobber the other's changes.
   Future<void> _writeQueue = Future<void>.value();
   BootstrapCacheState? _memoizedState;
 
@@ -49,6 +52,8 @@ class BootstrapCacheStore {
   }
 
   Future<BootstrapCacheState> readState() async {
+    // Startup reads this repeatedly (once per repository/service that
+    // consults the cache); memoize so only the first call touches disk.
     final memoized = _memoizedState;
     if (memoized != null) {
       return memoized;
@@ -69,6 +74,9 @@ class BootstrapCacheStore {
       final manifest = CacheManifest.fromJson(
         Map<String, dynamic>.from(jsonDecode(manifestJson) as Map),
       );
+      // A schema mismatch means the cached snapshot's JSON shape may not
+      // match what BootstrapSnapshot.fromJson expects on this app version;
+      // wipe rather than attempt a partial/corrupt read.
       if (manifest.schemaVersion != cacheSchemaVersion) {
         await purgeAll();
         return BootstrapCacheState.empty();
@@ -79,10 +87,19 @@ class BootstrapCacheStore {
       );
       return BootstrapCacheState(snapshot: snapshot, manifest: manifest);
     } catch (_) {
+      // Any parse failure (corrupt file, unexpected JSON shape, partial
+      // write from a crash mid-flush) is treated as "no cache" rather than
+      // propagated — the app can always refill from the network, but a
+      // thrown exception here would break bootstrap entirely.
       return BootstrapCacheState.empty();
     }
   }
 
+  // Snapshot is written before the manifest on purpose: each file is
+  // written atomically on its own, but the pair isn't transactional, so if
+  // the process dies between the two writes we want the manifest (which
+  // records "as of when" each domain was cached) to never claim freshness
+  // for data that didn't actually make it to disk.
   Future<void> writeState(BootstrapCacheState state) async {
     try {
       await _backend.writeTextAtomically(
@@ -102,6 +119,13 @@ class BootstrapCacheStore {
     }
   }
 
+  // Chained onto the tail of _writeQueue so this read-modify-write only
+  // starts once every prior queued update has finished, and re-reads state
+  // fresh (rather than reusing a caller-held copy) so it always transforms
+  // the latest persisted state, not one that a concurrent update may have
+  // already superseded. catchError keeps the queue alive after a failed
+  // update instead of leaving all future updates permanently blocked on a
+  // failed future.
   Future<void> update(
     BootstrapCacheState Function(BootstrapCacheState state) transform,
   ) {
@@ -118,6 +142,10 @@ class BootstrapCacheStore {
     await _backend.deleteDirectory('bootstrap');
   }
 
+  // Clears everything tied to a specific account (sign-out/account
+  // deletion) but deliberately leaves defaultCatalog cached: the drink
+  // catalog isn't user-scoped, changes rarely, and re-fetching it on every
+  // sign-out/sign-in would be wasted work.
   Future<void> purgeUserScope({String? userId}) {
     return update((state) {
       final snapshot = state.snapshot.copyWith(

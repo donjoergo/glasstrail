@@ -19,6 +19,10 @@ Future<String?> pickImageForUpload(
 }
 
 Future<PhotoPickSource?> _pickPhotoSource(BuildContext context) {
+  // Only Android needs an explicit camera-vs-gallery choice here: the
+  // underlying photo_service uses file_selector (which already shows the
+  // OS's own picker, including a camera option, on iOS/desktop/web), while
+  // Android's image_picker requires the source to be chosen up front.
   if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
     return Future<PhotoPickSource?>.value(PhotoPickSource.gallery);
   }

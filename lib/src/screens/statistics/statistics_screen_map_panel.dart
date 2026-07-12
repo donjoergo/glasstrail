@@ -60,6 +60,9 @@ class _StatisticsMapEntryPanel extends StatelessWidget {
     final materialL10n = MaterialLocalizations.of(context);
     final theme = Theme.of(context);
     final detail = selection.detail;
+    // Only show a back button when the detail was reached via a cluster's
+    // list (multiple markers) — a single-marker tap goes straight to detail
+    // with no list underneath to return to.
     final showBack = detail != null && selection.markers.length > 1;
 
     return Material(
@@ -153,6 +156,9 @@ class _StatisticsMapPanelList extends StatelessWidget {
 
     return ListView.builder(
       key: const Key('statistics-map-panel-list'),
+      // Paired with the enclosing Flexible's loose fit, shrinkWrap lets the
+      // floating panel hug short marker lists instead of always stretching
+      // to the max height the map view's PositionedDirectional allots it.
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
       itemCount: sortedMarkers.length,

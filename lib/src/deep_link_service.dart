@@ -16,6 +16,9 @@ class PlatformDeepLinkService extends DeepLinkService {
 
   @override
   Future<Uri?> getInitialUri() {
+    // app_links is a native-platform-channel plugin; on web the browser's
+    // own URL already is the deep link, so there's nothing for it to
+    // report and calling it would just throw.
     if (kIsWeb) {
       return Future<Uri?>.value();
     }
@@ -46,6 +49,12 @@ String? routeFromDeepLink(Uri? uri) {
     return null;
   }
 
+  // Links we generate ourselves (see friend_profile_links.dart) encode the
+  // route both as a `?route=` query param and as a `#fragment`, since the
+  // hosting page needs the query param server-side while a client-side
+  // router typically reads the fragment. Query param wins first because
+  // it's unambiguous; the fragment is the web SPA fallback; a bare path is
+  // the native deep-link / universal-link case.
   final queryRoute = _normalizedDeepLinkRoute(uri.queryParameters['route']);
   if (queryRoute != null) {
     return queryRoute;
@@ -68,6 +77,9 @@ String? _normalizedDeepLinkRoute(String? routeName) {
   }
   final normalized = AppRoutes.normalize(routeName.trim());
   if (AppRoutes.isFriendProfileRoute(normalized)) {
+    // Re-derive the canonical route from the extracted share code (instead
+    // of trusting `normalized` as-is) so a malformed or tampered-with
+    // share code in the link can't be forwarded into app navigation.
     final shareCode = AppRoutes.friendProfileShareCode(normalized);
     return shareCode == null ? null : AppRoutes.friendProfileRoute(shareCode);
   }
