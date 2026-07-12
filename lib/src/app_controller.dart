@@ -435,6 +435,20 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  bool hasGlobalDrinkOrderOverride(DrinkCategory category) {
+    return _settings.globalDrinkOrderOverrides.containsKey(category);
+  }
+
+  Future<bool> resetGlobalDrinkOrder(DrinkCategory category) async {
+    if (!hasGlobalDrinkOrderOverride(category)) {
+      return true;
+    }
+    final nextOverrides = _copyGlobalDrinkOrderOverrides()..remove(category);
+    return updateSettings(
+      _settings.copyWith(globalDrinkOrderOverrides: nextOverrides),
+    );
+  }
+
   Future<bool> hideGlobalDrink(String drinkId) async {
     if (!_defaultCatalog.any((drink) => drink.id == drinkId)) {
       return false;
@@ -2176,7 +2190,8 @@ class AppController extends ChangeNotifier {
   int _localizedDrinkComparer(DrinkDefinition left, DrinkDefinition right) {
     return left
         .displayName(_settings.localeCode)
-        .compareTo(right.displayName(_settings.localeCode));
+        .toLowerCase()
+        .compareTo(right.displayName(_settings.localeCode).toLowerCase());
   }
 
   Map<DrinkCategory, List<String>> _copyGlobalDrinkOrderOverrides() {
