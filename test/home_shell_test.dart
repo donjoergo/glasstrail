@@ -3015,6 +3015,65 @@ void main() {
     expect(resetBeerIds, initialBeerIds);
   });
 
+  testWidgets('pulls to refresh on the bar drink sorting tab', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-pull-refresh-sort@example.com',
+      password: 'password123',
+      displayName: 'Bar Pull Refresh Sort',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.fling(
+      find.byKey(const Key('bar-sort-list-view')),
+      const Offset(0, 300),
+      1000,
+    );
+    await tester.pump();
+    expect(find.byType(RefreshProgressIndicator), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byType(RefreshProgressIndicator), findsNothing);
+  });
+
+  testWidgets('pulls to refresh on the bar custom drinks tab', (tester) async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'bar-pull-refresh-custom@example.com',
+      password: 'password123',
+      displayName: 'Bar Pull Refresh Custom',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.bar,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('bar-custom-tab')));
+    await tester.pumpAndSettle();
+
+    await tester.fling(
+      find.byKey(const Key('bar-custom-list-view')),
+      const Offset(0, 300),
+      1000,
+    );
+    await tester.pump();
+    expect(find.byType(RefreshProgressIndicator), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byType(RefreshProgressIndicator), findsNothing);
+  });
+
   testWidgets(
     'reorders global drinks in bar and keeps that order in add drink',
     (tester) async {
