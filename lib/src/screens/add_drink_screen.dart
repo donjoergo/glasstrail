@@ -70,7 +70,12 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Re-check location on resume because the user may have granted/changed
     // location permission in system settings while the app was backgrounded.
-    if (state != AppLifecycleState.resumed || !_isLocationEnabled) {
+    // Skip the re-fetch when a location is already resolved: the image picker
+    // (and other pickers) briefly background the app and would otherwise
+    // trigger a redundant second lookup every time a photo is picked.
+    if (state != AppLifecycleState.resumed ||
+        !_isLocationEnabled ||
+        _location != null) {
       return;
     }
     _refreshLocation(force: true);
