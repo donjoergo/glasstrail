@@ -171,6 +171,9 @@ sequenceDiagram
 
 ## Development
 
+Backend setup (local Supabase stack, environment model, migrations, smoke
+check) is documented in [docs/backend_setup.md](docs/backend_setup.md).
+
 Install dependencies:
 
 ```bash
@@ -345,6 +348,10 @@ export GLASSTRAIL_SUPABASE_ANON_KEY=<anon key from `supabase status`>
 
 flutter test test/supabase_local_repository_test.dart
 ```
+
+`tool/supabase_smoke_check.dart` additionally smoke-checks a running backend
+(auth, RLS isolation, storage) over plain HTTP — see
+[docs/backend_setup.md](docs/backend_setup.md).
 
 ### Changelog
 

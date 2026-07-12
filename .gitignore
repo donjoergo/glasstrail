@@ -52,3 +52,8 @@ app.*.map.json
 .codex
 supabase/.temp/cli-latest
 supabase/.temp/linked-project.json
+
+# Local environment files; the placeholder-only example stays tracked
+.env
+.env.*
+!.env.example
