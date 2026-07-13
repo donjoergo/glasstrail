@@ -57,7 +57,7 @@ class _StatisticsHistoryPageState extends State<_StatisticsHistoryPage> {
                   // the currently selected chip visible even if its count is
                   // now zero (e.g. the last entry in that category was deleted),
                   // so the user isn't left with a filter they can't see or clear.
-                  children: DrinkCategory.values
+                  children: controller.orderedCategories
                       .where(
                         (category) =>
                             (controller.statistics.categoryCounts[category] ??

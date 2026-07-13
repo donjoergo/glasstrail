@@ -189,7 +189,7 @@ class _CustomDrinkDialogState extends State<CustomDrinkDialog> {
                   initialValue: _category,
                   isExpanded: true,
                   decoration: InputDecoration(labelText: l10n.category),
-                  items: DrinkCategory.values
+                  items: controller.orderedCategories
                       .map(
                         (category) => DropdownMenuItem<DrinkCategory>(
                           value: category,
