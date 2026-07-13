@@ -8,6 +8,7 @@ import '../app_breakpoints.dart';
 import '../app_routes.dart';
 import '../app_scope.dart';
 import '../models.dart';
+import '../widgets/home_navigation_rail.dart';
 import 'bar_screen.dart';
 import 'feed_screen.dart';
 import 'profile_screen.dart';
@@ -55,25 +56,8 @@ class _HomeShellState extends State<HomeShell> {
     await Navigator.of(context).pushNamed(AppRoutes.notifications);
   }
 
-  String _targetRouteForHomeIndex(BuildContext context, int index) {
-    final routeMemory = AppScope.routeMemoryOf(context).lastRoute;
-    // Statistics and Bar have their own internal sub-tabs; if the user was
-    // last on a specific sub-tab, tapping the nav item should return them
-    // there instead of always resetting to that section's default view.
-    return switch (index) {
-      0 => AppRoutes.feed,
-      1 =>
-        AppRoutes.isStatisticsRoute(routeMemory)
-            ? routeMemory
-            : AppRoutes.statistics,
-      2 => AppRoutes.isBarRoute(routeMemory) ? routeMemory : AppRoutes.bar,
-      3 => AppRoutes.profile,
-      _ => AppRoutes.feed,
-    };
-  }
-
   void _openHomeRoute(BuildContext context, int index) {
-    final targetRoute = _targetRouteForHomeIndex(context, index);
+    final targetRoute = HomeNavigationRail.targetRouteForIndex(context, index);
     final currentRoute = AppRoutes.homePrimaryRoute(_currentRouteName);
     // Compare by primary section, not exact route, so re-tapping the active
     // tab (which may resolve to a remembered sub-route) is a no-op instead
@@ -82,6 +66,14 @@ class _HomeShellState extends State<HomeShell> {
       return;
     }
     Navigator.of(context).pushReplacementNamed(targetRoute);
+  }
+
+  void _onRailDestinationSelected(BuildContext context, int index) {
+    if (index == HomeNavigationRail.addDrinkDestinationIndex) {
+      unawaited(_openAddDrink(context));
+      return;
+    }
+    _openHomeRoute(context, index);
   }
 
   void _updateHomeSubroute(String routeName) {
@@ -150,74 +142,31 @@ class _HomeShellState extends State<HomeShell> {
       height: 1,
       // letterSpacing: -0.4,
     );
-    final fab = FloatingActionButton.extended(
-      key: const Key('global-add-drink-fab'),
-      onPressed: () => _openAddDrink(context),
-      icon: const Icon(Icons.add_rounded),
-      label: Text(l10n.addDrink),
-    );
-
     if (isWide) {
       return Scaffold(
         appBar: AppBar(
           title: Text(titles[currentIndex], style: appBarTitleStyle),
           actions: appBarActions,
         ),
-        body: Stack(
+        body: Row(
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  key: const Key('home-shell-wide-rail-shell'),
-                  width: 112,
-                  margin: const EdgeInsets.all(16),
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  child: NavigationRail(
-                    selectedIndex: currentIndex,
-                    useIndicator: true,
-                    labelType: NavigationRailLabelType.all,
-                    onDestinationSelected: (index) =>
-                        _openHomeRoute(context, index),
-                    destinations: <NavigationRailDestination>[
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.rss_feed_outlined),
-                        selectedIcon: const Icon(Icons.rss_feed_rounded),
-                        label: Text(l10n.feed),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.bar_chart_outlined),
-                        selectedIcon: const Icon(Icons.bar_chart_rounded),
-                        label: Text(l10n.statistics),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.local_bar_outlined),
-                        selectedIcon: const Icon(Icons.local_bar_rounded),
-                        label: Text(l10n.bar),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.person_outline_rounded),
-                        selectedIcon: const Icon(Icons.person_rounded),
-                        label: Text(l10n.profile),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(child: currentPage),
-              ],
+            HomeNavigationRail(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (index) =>
+                  _onRailDestinationSelected(context, index),
             ),
-            PositionedDirectional(
-              // 160 clears the 112px-wide rail plus its 16px margins so the
-              // FAB doesn't overlap the rail when placed on the left for
-              // left-handed users.
-              start: isLeftHanded ? 160 : null,
-              end: isLeftHanded ? null : 32,
-              bottom: 32,
-              child: fab,
-            ),
+            Expanded(child: currentPage),
           ],
         ),
       );
     }
+
+    final fab = FloatingActionButton.extended(
+      key: const Key('global-add-drink-fab'),
+      onPressed: () => _openAddDrink(context),
+      icon: const Icon(Icons.add_rounded),
+      label: Text(l10n.addDrink),
+    );
 
     return Scaffold(
       appBar: AppBar(

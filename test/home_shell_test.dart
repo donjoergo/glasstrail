@@ -4380,7 +4380,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.tap(find.text('Add drink'));
       await tester.pumpAndSettle();
 
       // No mobile step chrome on desktop, and the right pane starts empty.
@@ -6505,6 +6505,143 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
   });
+
+  testWidgets(
+    'replaces the add-drink fab with a rail destination on wide screens',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1200, 1366));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'rail-add-drink@example.com',
+        password: 'password123',
+        displayName: 'Rail Add Drink',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('global-add-drink-fab')), findsNothing);
+      expect(
+        find.byKey(const Key('home-rail-add-drink-destination')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('opens the embedded add-drink screen from the rail on wide '
+      'screens', (tester) async {
+    _setSurfaceSize(tester, const Size(1200, 1366));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'rail-open-add-drink@example.com',
+      password: 'password123',
+      displayName: 'Rail Open Add Drink',
+    );
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add drink'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AddDrinkScreen), findsOneWidget);
+    expect(find.byType(NavigationRail), findsOneWidget);
+    final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
+    expect(rail.selectedIndex, 4);
+  });
+
+  testWidgets(
+    'switches tabs from the embedded add-drink screen without stacking '
+    'routes',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1200, 1366));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'rail-switch-add-drink@example.com',
+        password: 'password123',
+        displayName: 'Rail Switch Add Drink',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Add drink'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Statistics'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AddDrinkScreen), findsNothing);
+      expect(find.byType(BackButton), findsNothing);
+      final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+      expect(route?.settings.name, AppRoutes.statistics);
+    },
+  );
+
+  testWidgets(
+    'falls back to the full-screen add-drink flow when resized below the '
+    'expanded breakpoint',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1200, 1366));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'rail-resize-add-drink@example.com',
+        password: 'password123',
+        displayName: 'Rail Resize Add Drink',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Add drink'));
+      await tester.pumpAndSettle();
+
+      _setSurfaceSize(tester, const Size(400, 800));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(find.byType(AddDrinkScreen), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'renders dynamic size properties for the home shell app bar title',
