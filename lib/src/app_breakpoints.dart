@@ -25,6 +25,13 @@ class AppBreakpoints {
   static const double feedMasterPaneWidthExtraLarge = 560;
   static const double mapPanelWidth = 380;
   static const double barContentMaxWidth = 1200;
+  static const double addDrinkDesktopMaxWidth = 960;
+  // Wider tiers at the large/extra-large window sizes so the left picker
+  // pane has room for a 4- and then 5-column catalog grid instead of
+  // staying capped at the same density as a plain expanded window.
+  static const double addDrinkDesktopMaxWidthLarge = 1100;
+  static const double addDrinkDesktopMaxWidthExtraLarge = 1320;
+  static const double addDrinkDetailsPaneWidth = 340;
 
   static AppLayoutSize sizeOf(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;

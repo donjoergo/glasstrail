@@ -94,6 +94,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalog => 'Drink catalog';
 
   @override
+  String addDrinkStepIndicator(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get addDrinkDetailsStepTitle => 'Details';
+
+  @override
+  String get addDrinkChangeSelection => 'Change';
+
+  @override
+  String addDrinkSearchResultsCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count results',
+      one: '1 result',
+      zero: 'No results',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String createCustomDrinkWithQuery(String query) {
+    return 'Create custom drink \"$query\"';
+  }
+
+  @override
+  String get addDrinkPickToContinue => 'Pick a drink to continue';
+
+  @override
+  String get addDrinkCategoriesHeading => 'Categories';
+
+  @override
+  String addDrinkCategoryDrinkCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count drinks',
+      one: '1 drink',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get location => 'Location';
 
   @override
