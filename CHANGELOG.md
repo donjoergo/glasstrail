@@ -11,10 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Map toggles for cluster and photo and locate-me button
 - Reset a drink category's sort order back to alphabetical, and pull-to-refresh on the bar screen
 
+### Changed
+- Redesigned the add-drink screen with a guided mobile flow and a two-pane desktop layout
+
 ### Fixed
 - Directly creating and logging of custom drinks with images is now more intuitive
 - Drinks now sort alphabetically regardless of letter case
 - Location was fetched twice during drink adding
+- App could hang on startup on some Android devices
 
 ## [2.2.0] - 2026-07-11
 ### Added
