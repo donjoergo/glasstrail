@@ -2272,6 +2272,10 @@ class AppController extends ChangeNotifier {
     final known = DrinkCategory.values.toSet();
     final result = <DrinkCategory>[];
     for (final category in categories) {
+      // known.contains(category) is defensive: DrinkCategory is a closed
+      // enum, so no caller can construct an out-of-range value through this
+      // typed List<DrinkCategory> parameter today. Kept for safety in case
+      // that assumption changes.
       if (known.contains(category) && !result.contains(category)) {
         result.add(category);
       }

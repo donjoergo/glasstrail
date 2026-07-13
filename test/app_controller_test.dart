@@ -1621,7 +1621,7 @@ void main() {
     expect(availableCategoryOrder, permutation);
   });
 
-  test('reorderGlobalCategories drops unknown values and dedupes', () async {
+  test('reorderGlobalCategories dedupes repeated values', () async {
     final controller = await buildTestController();
     await controller.signUp(
       email: 'reorder-categories-sanitize@example.com',
@@ -1629,19 +1629,18 @@ void main() {
       displayName: 'Reorder Categories Sanitize',
     );
 
-    const bogusCategory = DrinkCategory.wine;
     final success = await controller.reorderGlobalCategories(<DrinkCategory>[
       DrinkCategory.cocktails,
       DrinkCategory.beer,
       DrinkCategory.cocktails,
-      bogusCategory,
+      DrinkCategory.wine,
     ]);
 
     expect(success, isTrue);
     expect(controller.settings.globalCategoryOrder, <DrinkCategory>[
       DrinkCategory.cocktails,
       DrinkCategory.beer,
-      bogusCategory,
+      DrinkCategory.wine,
     ]);
   });
 
