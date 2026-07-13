@@ -203,6 +203,11 @@
       }
     }
   },
+  "resetGlobalCategoryOrder": "Reset category order",
+  "resetGlobalCategoryOrderConfirmTitle": "Reset category order?",
+  "resetGlobalCategoryOrderConfirmBody": "Categories will be sorted back to their default order. You can still drag to reorder them afterwards.",
+  "expandCategory": "Expand category",
+  "collapseCategory": "Collapse category",
   "allGlobalDrinksHidden": "All global drinks in this category are hidden.",
   "backend": "Backend",
   "backendRemoteBody": "Supabase is configured and remote sync is active.",

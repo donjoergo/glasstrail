@@ -459,6 +459,23 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get resetGlobalCategoryOrder => 'Kategorie-Reihenfolge zurücksetzen';
+
+  @override
+  String get resetGlobalCategoryOrderConfirmTitle =>
+      'Kategorie-Reihenfolge zurücksetzen?';
+
+  @override
+  String get resetGlobalCategoryOrderConfirmBody =>
+      'Kategorien werden wieder in ihre Standardreihenfolge sortiert. Du kannst sie danach weiterhin per Ziehen neu anordnen.';
+
+  @override
+  String get expandCategory => 'Kategorie ausklappen';
+
+  @override
+  String get collapseCategory => 'Kategorie einklappen';
+
+  @override
   String get allGlobalDrinksHidden =>
       'Alle globalen Getränke dieser Kategorie sind ausgeblendet.';
 

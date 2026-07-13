@@ -456,6 +456,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get resetGlobalCategoryOrder => 'Reset category order';
+
+  @override
+  String get resetGlobalCategoryOrderConfirmTitle => 'Reset category order?';
+
+  @override
+  String get resetGlobalCategoryOrderConfirmBody =>
+      'Categories will be sorted back to their default order. You can still drag to reorder them afterwards.';
+
+  @override
+  String get expandCategory => 'Expand category';
+
+  @override
+  String get collapseCategory => 'Collapse category';
+
+  @override
   String get allGlobalDrinksHidden =>
       'All global drinks in this category are hidden.';
 
