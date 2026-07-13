@@ -85,6 +85,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addDrink => 'Getränk hinzufügen';
 
   @override
+  String get addDrinkNavLabel => 'Hinzufügen';
+
+  @override
   String get searchDrinks => 'Getränke suchen';
 
   @override

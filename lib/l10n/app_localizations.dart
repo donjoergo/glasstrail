@@ -248,6 +248,12 @@ abstract class AppLocalizations {
   /// **'Add drink'**
   String get addDrink;
 
+  /// No description provided for @addDrinkNavLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add drink'**
+  String get addDrinkNavLabel;
+
   /// No description provided for @searchDrinks.
   ///
   /// In en, this message translates to:
