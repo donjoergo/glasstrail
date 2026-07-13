@@ -40,6 +40,9 @@ extension AppLocalizationsX on AppLocalizations {
     AppThemePreference.dark => themeDark,
   };
 
+  // Unit symbols ("ml"/"oz") are identical across supported locales, so the
+  // raw enum name doubles as the display label without needing a
+  // localization entry.
   String unitLabel(AppUnit unit) => unit.name;
 
   String weekdayShortLabel(int weekday) => switch (weekday) {
@@ -50,6 +53,8 @@ extension AppLocalizationsX on AppLocalizations {
     DateTime.friday => weekdayFridayShort,
     DateTime.saturday => weekdaySaturdayShort,
     DateTime.sunday => weekdaySundayShort,
+    // DateTime.weekday is always 1-7, so this is unreachable in practice —
+    // kept as a safe default rather than throwing if that ever changes.
     _ => '',
   };
 

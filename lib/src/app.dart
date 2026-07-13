@@ -30,10 +30,16 @@ import 'screens/friend_stats_profile_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/notifications_screen.dart';
 import 'widgets/app_media.dart';
+import 'widgets/shell_embedded_screen.dart';
 
 const _appDisplayTitle = 'Glass Trail';
 const _brandIconAsset = 'assets/icon/app_icon.png';
 
+// Two-stage app widget: this stage owns the async bootstrap (controller
+// creation, route/locale memory, deep-link/push resolution) and shows a
+// splash screen while it runs, then hands off to GlassTrailApp once
+// everything the "real" app needs is ready. Keeping this separate avoids
+// building the full MaterialApp/router before the controller exists.
 class GlassTrailBootstrapApp extends StatefulWidget {
   const GlassTrailBootstrapApp({
     super.key,
@@ -67,6 +73,9 @@ class GlassTrailBootstrapApp extends StatefulWidget {
 class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
   late final Future<LocaleMemory> _localeMemoryFuture;
   late Future<_BootstrapData> _bootstrapFuture;
+  // Shown on the splash screen before locale memory has loaded; updated
+  // asynchronously by _primeBootstrapLocale so the splash text isn't stuck
+  // in the wrong language on repeat launches.
   String _bootstrapLocaleCode = AppLocaleCatalog.fallbackCode;
 
   @override
@@ -114,6 +123,11 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
     );
   }
 
+  // Fire-and-forget: updates the splash screen's locale as soon as it's
+  // known, independently of _loadBootstrapData (which also awaits locale
+  // memory but only resolves once the controller/session work is done too).
+  // Failures are swallowed since the splash text simply stays at the
+  // fallback locale.
   void _primeBootstrapLocale() {
     unawaited(() async {
       try {
@@ -138,6 +152,10 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
   ) async {
     final controller = await controllerFuture;
     final launchRoute = widget.initialRoute ?? _routeFromLaunchUri();
+    // Only consult the "app opened via push notification" signal if there's
+    // no explicit/web launch route — an explicit route always wins, and
+    // consumeInitialOpen() is one-shot so it must not be called (and
+    // discarded) when we're not going to use its result.
     final initialPushOpen = launchRoute == null
         ? await widget.pushNotificationService.consumeInitialOpen()
         : null;
@@ -155,9 +173,14 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
     final localeMemory = await localeMemoryFuture;
     var bootstrapLocaleCode = localeMemory.localeCode;
     if (controller.isAuthenticated) {
+      // Signed-in users' locale lives with their account settings (so it
+      // follows them across devices); resync the on-device memory to match
+      // in case it drifted (e.g. changed on another device).
       bootstrapLocaleCode = controller.settings.localeCode;
       await localeMemory.rememberLocale(bootstrapLocaleCode);
     } else if (controller.settings.localeCode != bootstrapLocaleCode) {
+      // Signed-out: the device-remembered locale is authoritative, so push
+      // it into the (default) settings the auth screens will read from.
       await controller.updateSettings(
         controller.settings.copyWith(localeCode: bootstrapLocaleCode),
       );
@@ -173,6 +196,9 @@ class _GlassTrailBootstrapAppState extends State<GlassTrailBootstrapApp> {
   }
 }
 
+// Web-only: lets a shared/bookmarked URL like "?route=/feed" deep-link
+// straight into a route on load, since the web build doesn't otherwise
+// parse the path into an app route.
 String? _routeFromLaunchUri() {
   if (!kIsWeb) {
     return null;
@@ -228,6 +254,12 @@ class _GlassTrailAppState extends State<GlassTrailApp>
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<Uri>? _deepLinkSubscription;
   StreamSubscription<PushNotificationOpen>? _notificationOpenSubscription;
+  // Guards the post-sign-up "import from BeerWithMe?" prompt so it can only
+  // be shown once the user has gone through an auth transition during this
+  // widget's lifetime (see build(), which flips this true whenever the
+  // controller is unauthenticated) — otherwise it could fire on an
+  // already-signed-in relaunch where the pending-prompt flag happens to be
+  // set from a previous session's state.
   bool _postSignUpPromptEligible = false;
 
   @override
@@ -263,6 +295,9 @@ class _GlassTrailAppState extends State<GlassTrailApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Only "resumed" matters here: revalidating on every lifecycle
+    // transition (inactive, paused, etc.) would fire network requests while
+    // the app isn't actually visible to the user.
     if (state == AppLifecycleState.resumed) {
       unawaited(widget.controller.revalidateHotDomainsOnResume());
       unawaited(_warmVisibleMedia());
@@ -298,9 +333,15 @@ class _GlassTrailAppState extends State<GlassTrailApp>
       if (navigator == null) {
         return;
       }
+      // Clear the entire navigation stack: a deep link or notification tap
+      // should take the user directly to the target screen, not stack it on
+      // top of whatever screens happened to be open already.
       navigator.pushNamedAndRemoveUntil(route, (_) => false);
     }
 
+    // The navigator may not exist yet if this fires before the first frame
+    // (e.g. a deep link delivered during startup); defer to after the frame
+    // so `_navigatorKey.currentState` is guaranteed to be attached.
     if (_navigatorKey.currentState == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => openRoute());
       return;
@@ -318,6 +359,9 @@ class _GlassTrailAppState extends State<GlassTrailApp>
     await _warmVisibleMedia();
   }
 
+  // Pre-fetches images likely to be shown immediately (feed, notifications,
+  // profile) into the media cache so the first frames after a cold start or
+  // resume don't show placeholders while each image loads individually.
   Future<void> _warmVisibleMedia() {
     return AppMediaResolver.warmImagePaths(
       _bootstrapMediaPaths(widget.controller),
@@ -350,6 +394,11 @@ class _GlassTrailAppState extends State<GlassTrailApp>
               name: routeName,
               arguments: settings.arguments,
             );
+            // Home-shell routes (feed/stats/bar/profile tabs) are all handled
+            // by one HomeShell widget that switches tabs internally, so the
+            // route transition itself must be instant — an animated page
+            // transition here would visibly double up with HomeShell's own
+            // tab-switch animation.
             if (AppRoutes.isHomeShellRoute(routeName)) {
               return PageRouteBuilder<void>(
                 settings: routeSettings,
@@ -570,6 +619,9 @@ class _BootstrapScreen extends StatelessWidget {
   }
 }
 
+// Keeps the browser chrome's theme-color (address bar / PWA title bar) in
+// sync with the app's actual rendered brightness, including when following
+// ThemeMode.system — a no-op on non-web platforms via BrowserThemeColorSync.
 Widget _buildBrowserThemeColorSync(
   BuildContext context,
   Widget? child,
@@ -608,6 +660,11 @@ class _BootstrapData {
   final String? initialRoute;
 }
 
+// Limited to a handful of items per source (roughly what fits on the first
+// screen) rather than everything loaded, since warming is meant to avoid
+// visible pop-in for what's immediately visible, not to prefetch the whole
+// dataset. Deduped via toSet() because the same image (e.g. the user's own
+// avatar) can appear as both an author image and a profile image.
 List<String> _bootstrapMediaPaths(AppController controller) {
   final paths = <String>[
     ?controller.currentUser?.profileImagePath,
@@ -668,8 +725,11 @@ class _AppRouteScreen extends StatelessWidget {
 
     if (AppRoutes.isFriendStatsProfileRoute(normalizedRoute)) {
       return _wrapAuthenticatedScreen(
-        FriendStatsProfileScreen(
-          friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
+        ShellEmbeddedScreen(
+          routeName: normalizedRoute,
+          child: FriendStatsProfileScreen(
+            friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
+          ),
         ),
         routeName: normalizedRoute,
       );
@@ -686,7 +746,10 @@ class _AppRouteScreen extends StatelessWidget {
     }
 
     return _wrapAuthenticatedScreen(switch (normalizedRoute) {
-      AppRoutes.addDrink => const AddDrinkScreen(),
+      AppRoutes.addDrink => const ShellEmbeddedScreen(
+        routeName: AppRoutes.addDrink,
+        child: AddDrinkScreen(),
+      ),
       AppRoutes.editProfile => const EditProfileScreen(),
       AppRoutes.notifications => const NotificationsScreen(),
       AppRoutes.auth => const HomeShell(routeName: AppRoutes.feed),
@@ -736,6 +799,10 @@ class _RouteRedirectScreenState extends State<_RouteRedirectScreen> {
   }
 }
 
+// Wraps authenticated screens to surface the "import from BeerWithMe?"
+// prompt exactly once, right after sign-up, without blocking navigation to
+// the target screen — the prompt is shown post-frame so the screen itself
+// renders first.
 class _AuthenticatedRoutePromptGate extends StatefulWidget {
   const _AuthenticatedRoutePromptGate({
     required this.controller,
@@ -769,6 +836,9 @@ class _AuthenticatedRoutePromptGateState
       return;
     }
     _checkedPendingPrompt = true;
+    // Skip the auth screen and explicit post-auth redirect targets: those
+    // are transient routes the user is bounced through, not places where an
+    // interruption like this prompt should appear.
     if (widget.routeName == AppRoutes.auth ||
         AppRoutes.isExplicitPostAuthRedirectRoute(widget.routeName)) {
       return;

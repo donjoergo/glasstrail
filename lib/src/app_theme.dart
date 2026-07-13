@@ -35,10 +35,20 @@ class AppTheme {
       theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.error) ??
       TextStyle(color: theme.colorScheme.error);
 
+  // Deliberately asymmetric: dark mode uses the surface color (matches the
+  // scaffold so the browser chrome blends in), while light mode uses the
+  // brand primary color (a plain white/surface chrome reads as unbranded/
+  // unfinished in a browser tab).
   static Color browserThemeColorForBrightness(Brightness brightness) =>
       brightness == Brightness.dark ? _darkSurface : _primary;
 
   static ThemeData get lightTheme {
+    // Start from Material 3's seed-generated scheme (for a harmonious,
+    // accessible base palette) but override specific roles with hand-picked
+    // brand colors — the generated tones alone didn't match the intended
+    // brand look, so this keeps M3's derived roles (surfaceContainerHighest
+    // etc. get further overridden below) while pinning the ones that
+    // matter most for identity.
     final scheme =
         ColorScheme.fromSeed(
           seedColor: _primary,
@@ -67,6 +77,10 @@ class AppTheme {
           seedColor: _primary,
           brightness: Brightness.dark,
         ).copyWith(
+          // Lighter/brighter than the brand _primary used in light mode:
+          // the brand green doesn't have enough contrast against the dark
+          // surface to remain legible/accessible for text and icons, so
+          // dark mode uses a lightened variant instead of reusing _primary.
           primary: const Color(0xFF82CCA5),
           secondary: const Color(0xFF91D6CF),
           tertiary: _tertiary,
@@ -97,6 +111,9 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       platform: defaultTargetPlatform,
+      // Forced explicitly rather than left to Material3 defaults: iOS/macOS
+      // otherwise get no visible ink splash, and this app wants the same
+      // tactile feedback across all platforms for a consistent feel.
       splashFactory: InkRipple.splashFactory,
       textTheme: textTheme,
       iconTheme: IconThemeData(color: scheme.onSurface),
@@ -194,8 +211,8 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: scheme.surfaceContainerHighest,
         disabledColor: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
-        selectedColor: scheme.primary.withValues(alpha: 0.18),
-        secondarySelectedColor: scheme.primary.withValues(alpha: 0.18),
+        selectedColor: scheme.primary.withValues(alpha: 0.28),
+        secondarySelectedColor: scheme.primary.withValues(alpha: 0.28),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         labelStyle: textTheme.labelLarge?.copyWith(color: scheme.onSurface),
         secondaryLabelStyle: textTheme.labelLarge?.copyWith(

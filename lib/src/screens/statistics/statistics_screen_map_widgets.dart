@@ -1,13 +1,8 @@
 part of '../statistics_screen.dart';
 
-String? _normalizedStatisticsText(String? value) {
-  final normalized = value?.trim();
-  if (normalized == null || normalized.isEmpty) {
-    return null;
-  }
-  return normalized;
-}
-
+// Category colors come from the theme and can be light or dark, so the
+// glyph/label color is derived per-marker (rather than fixed) to keep
+// contrast readable regardless of which category color is being drawn on.
 Color _statisticsMapMarkerForegroundColor(Color backgroundColor) {
   final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
   return brightness == Brightness.dark ? Colors.white : Colors.black87;
@@ -18,16 +13,18 @@ Future<void> _showStatisticsMapEntrySheet(
   _StatisticsMapMarkerData marker,
   Color accentColor,
 ) async {
-  await showModalBottomSheet<void>(
+  await showAdaptiveSheetOrDialog<void>(
     context: context,
     showDragHandle: true,
-    useSafeArea: true,
     isScrollControlled: true,
     builder: (_) =>
         _StatisticsMapEntrySheet(entry: marker.entry, accentColor: accentColor),
   );
 }
 
+// markerIndexes lets `markers`/`offsets` be a reordered or filtered view
+// while onMarkerTap still reports the index into the caller's original,
+// unfiltered marker list (rather than the position within this widget list).
 List<Widget> _statisticsMapMarkerWidgets({
   required List<_StatisticsMapMarkerData> markers,
   required List<int> markerIndexes,
@@ -106,14 +103,22 @@ List<Widget> _statisticsMapAttributionChildren(ThemeData theme) {
   ];
 }
 
+// Rendered instead of MapLibreMap on platforms where MapLibre isn't
+// supported (see runtime_platform.isMapLibrePlatformSupported), so users on
+// those platforms still get a usable, tappable overview of their entries'
+// relative locations rather than a blank/broken screen.
 class _StatisticsMapFallbackSurface extends StatelessWidget {
   const _StatisticsMapFallbackSurface({
     required this.markers,
     required this.colors,
+    required this.onMarkerTap,
+    this.onBackgroundTap,
   });
 
   final List<_StatisticsMapMarkerData> markers;
   final Map<DrinkCategory, Color> colors;
+  final Future<void> Function(_StatisticsMapMarkerData marker) onMarkerTap;
+  final VoidCallback? onBackgroundTap;
 
   @override
   Widget build(BuildContext context) {
@@ -132,43 +137,39 @@ class _StatisticsMapFallbackSurface extends StatelessWidget {
             )
             .toList(growable: false);
 
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[
-                theme.colorScheme.surfaceContainerHigh,
-                theme.colorScheme.surface,
-                theme.colorScheme.primaryContainer.withValues(alpha: 0.42),
+        return GestureDetector(
+          onTap: onBackgroundTap,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  theme.colorScheme.surfaceContainerHigh,
+                  theme.colorScheme.surface,
+                  theme.colorScheme.primaryContainer.withValues(alpha: 0.42),
+                ],
+              ),
+            ),
+            child: Stack(
+              children: <Widget>[
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _StatisticsMapFallbackPainter(theme: theme),
+                  ),
+                ),
+                ..._statisticsMapMarkerWidgets(
+                  markers: markers,
+                  markerIndexes: List<int>.generate(
+                    markers.length,
+                    (index) => index,
+                  ),
+                  offsets: offsets,
+                  colors: colors,
+                  onMarkerTap: (index, marker) => onMarkerTap(marker),
+                ),
               ],
             ),
-          ),
-          child: Stack(
-            children: <Widget>[
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _StatisticsMapFallbackPainter(theme: theme),
-                ),
-              ),
-              ..._statisticsMapMarkerWidgets(
-                markers: markers,
-                markerIndexes: List<int>.generate(
-                  markers.length,
-                  (index) => index,
-                ),
-                offsets: offsets,
-                colors: colors,
-                onMarkerTap: (index, marker) async {
-                  final backgroundColor = colors[marker.entry.category]!;
-                  await _showStatisticsMapEntrySheet(
-                    context,
-                    marker,
-                    backgroundColor,
-                  );
-                },
-              ),
-            ],
           ),
         );
       },
@@ -176,6 +177,9 @@ class _StatisticsMapFallbackSurface extends StatelessWidget {
   }
 }
 
+// Purely decorative stand-in "map" (wavy road-like curves plus a couple of
+// soft blobs) so the fallback surface still visually reads as a map-ish
+// backdrop, without depending on any real basemap tiles/imagery.
 class _StatisticsMapFallbackPainter extends CustomPainter {
   const _StatisticsMapFallbackPainter({required this.theme});
 
@@ -233,6 +237,9 @@ class _StatisticsMapFallbackPainter extends CustomPainter {
     );
   }
 
+  // The painted shapes are static/deterministic per size; only the theme's
+  // colors can meaningfully change the output, so repaint only on a color
+  // scheme change instead of every rebuild.
   @override
   bool shouldRepaint(covariant _StatisticsMapFallbackPainter oldDelegate) {
     return oldDelegate.theme.colorScheme != theme.colorScheme;
@@ -258,6 +265,121 @@ class _StatisticsMapAttributionCard extends StatelessWidget {
   }
 }
 
+class _StatisticsMapFilterBar extends StatelessWidget {
+  const _StatisticsMapFilterBar({
+    required this.clusterEnabled,
+    required this.photoOnly,
+    required this.onClusterEnabledChanged,
+    required this.onPhotoOnlyChanged,
+  });
+
+  final bool clusterEnabled;
+  final bool photoOnly;
+  final ValueChanged<bool> onClusterEnabledChanged;
+  final ValueChanged<bool> onPhotoOnlyChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return Material(
+      key: const Key('statistics-map-filter-bar'),
+      color: theme.colorScheme.surface.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(28),
+      elevation: 1,
+      // PointerInterceptor keeps hover/click events on the filter bar
+      // instead of the MapLibre platform view underneath, so the browser
+      // cursor and taps behave correctly over it.
+      child: PointerInterceptor(
+        child: Padding(
+          // Chips already carry 10/8 horizontal/vertical padding from the
+          // chip theme; add 6/8 here so the edge-to-chip gap is 16 on
+          // every side instead of 18 horizontal vs. 14 vertical.
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              FilterChip(
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                key: const Key('statistics-map-filter-cluster'),
+                selected: clusterEnabled,
+                showCheckmark: false,
+                side: _selectableChipBorder(theme, clusterEnabled),
+                labelStyle: _selectableChipLabelStyle(theme, clusterEnabled),
+                avatar: const Icon(Icons.blur_on_rounded, size: 18),
+                label: Text(l10n.statisticsMapClusterFilterLabel),
+                onSelected: onClusterEnabledChanged,
+              ),
+              FilterChip(
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                key: const Key('statistics-map-filter-photo-only'),
+                selected: photoOnly,
+                showCheckmark: false,
+                side: _selectableChipBorder(theme, photoOnly),
+                labelStyle: _selectableChipLabelStyle(theme, photoOnly),
+                avatar: const Icon(Icons.photo_camera_rounded, size: 18),
+                label: Text(l10n.statisticsMapPhotoFilterLabel),
+                onSelected: onPhotoOnlyChanged,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatisticsMapLocateButton extends StatelessWidget {
+  const _StatisticsMapLocateButton({
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return Tooltip(
+      message: l10n.statisticsMapLocateMeTooltip,
+      child: Material(
+        key: const Key('statistics-map-locate-button'),
+        color: theme.colorScheme.surface.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(24),
+        elevation: 1,
+        child: InkWell(
+          key: const Key('statistics-map-locate-button-inkwell'),
+          borderRadius: BorderRadius.circular(24),
+          onTap: isLoading ? null : onPressed,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    Icons.my_location,
+                    size: 20,
+                    color: theme.colorScheme.primary,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Widget equivalent of the pin sprite rasterized for the native MapLibre
+// layers in _statisticsMapMarkerSpriteBytes — kept as a real widget here
+// (rather than reusing the rasterized PNG) because the fallback surface has
+// no MapLibre image registry to upload sprites into.
 class _StatisticsMapMarker extends StatelessWidget {
   const _StatisticsMapMarker({
     required this.entry,
@@ -328,143 +450,44 @@ class _StatisticsMapEntrySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = AppScope.controllerOf(context);
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final localeCode = controller.settings.localeCode;
-    final unit = controller.settings.unit;
-    final drinkName = controller.localizedEntryDrinkName(
-      entry,
-      localeCode: localeCode,
+    final content = DrinkEntryDetailContent(
+      entry: entry,
+      accentColor: accentColor,
     );
-    final categoryLabel = <String>[
-      l10n.categoryLabel(entry.category),
-      if (entry.shouldShowAlcoholFreeMarker) l10n.alcoholFree,
-    ].join(' • ');
-    final timeLabel = DateFormat.yMMMd(
-      localeCode,
-    ).add_Hm().format(entry.consumedAt);
-    final volumeLabel = entry.volumeMl == null
-        ? null
-        : unit.formatVolume(entry.volumeMl);
-    final locationAddress = _normalizedStatisticsText(entry.locationAddress);
-    final comment = _normalizedStatisticsText(entry.comment);
-    final imagePath = _normalizedStatisticsText(entry.imagePath);
+
+    if (AppBreakpoints.isExpanded(context)) {
+      // Dialog presentation: no drag handle exists here, so provide a
+      // close button and breathing room at the top instead.
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: <Widget>[
+                IconButton(
+                  key: const Key('statistics-map-dialog-close'),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              child: content,
+            ),
+          ),
+        ],
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      child: SingleChildScrollView(
-        child: Column(
-          key: Key('statistics-map-sheet-${entry.id}'),
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: accentColor.withValues(alpha: 0.16),
-                  foregroundColor: accentColor,
-                  child: Icon(entry.category.icon),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        drinkName,
-                        key: Key('statistics-map-sheet-name-${entry.id}'),
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        categoryLabel,
-                        key: Key('statistics-map-sheet-category-${entry.id}'),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        timeLabel,
-                        key: Key('statistics-map-sheet-time-${entry.id}'),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (volumeLabel != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      volumeLabel,
-                      key: Key('statistics-map-sheet-volume-${entry.id}'),
-                    ),
-                  ),
-              ],
-            ),
-            if (locationAddress != null) ...<Widget>[
-              const SizedBox(height: 18),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Icon(
-                    Icons.location_on_outlined,
-                    size: 18,
-                    color: accentColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      locationAddress,
-                      key: Key('statistics-map-sheet-location-${entry.id}'),
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (comment != null) ...<Widget>[
-              const SizedBox(height: 18),
-              Text(
-                l10n.comment,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                comment,
-                key: Key('statistics-map-sheet-comment-${entry.id}'),
-              ),
-            ],
-            if (imagePath != null) ...<Widget>[
-              const SizedBox(height: 18),
-              AppPhotoPreview(
-                key: Key('statistics-map-sheet-image-${entry.id}'),
-                imagePath: imagePath,
-                cropPortraitToSquare: true,
-                enableFullscreenOnTap: true,
-              ),
-            ],
-          ],
-        ),
-      ),
+      child: SingleChildScrollView(child: content),
     );
   }
 }

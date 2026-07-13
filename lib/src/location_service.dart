@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -48,6 +49,10 @@ class PlatformLocationService extends LocationService {
       }
 
       var permission = await Geolocator.checkPermission();
+      // Only prompt when the permission is a plain "denied" — requesting
+      // again when it's already "deniedForever" would just re-trigger the
+      // OS dialog needlessly (it won't ask twice on some platforms) instead
+      // of directing the user to app settings.
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
@@ -58,6 +63,9 @@ class PlatformLocationService extends LocationService {
       }
 
       final accuracyStatus = await _readLocationAccuracy();
+      // High accuracy is requested explicitly because "approximate" location
+      // (iOS 14+ / Android precise-location toggle) yields addresses that
+      // are too imprecise for reverse geocoding to a street-level result.
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -76,6 +84,12 @@ class PlatformLocationService extends LocationService {
           ),
         ),
       );
+      // geolocator/geocoding can throw any of these depending on platform
+      // (desktop/web without location support, missing native
+      // implementation, OS-level permission/service errors) — logging a
+      // drink should never fail just because location couldn't be
+      // captured, so every failure mode degrades to "no location" instead
+      // of propagating.
     } on LocationServiceDisabledException {
       return const LocationFetchResult();
     } on PermissionDeniedException {
@@ -120,28 +134,33 @@ class PlatformLocationService extends LocationService {
     required String localeCode,
   }) async {
     try {
-      await setLocaleIdentifier(_localeIdentifier(localeCode));
-    } on MissingPluginException {
-      return null;
-    } on PlatformException {
-      return null;
-    } on UnsupportedError {
-      return null;
-    }
-
-    try {
-      final placemarks = await placemarkFromCoordinates(latitude, longitude);
+      // The geocoding plugin needs a full locale identifier (e.g. "de_DE"),
+      // not just the app's short language code, to return
+      // localized/correctly formatted placemark fields.
+      final locale = _localeIdentifier(localeCode);
+      final parts = locale.split('_');
+      final dartLocale = parts.length == 2
+          ? Locale(parts[0], parts[1])
+          : Locale(parts[0]);
+      final geocoding = Geocoding(locale: dartLocale);
+      final placemarks = await geocoding.placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
       if (placemarks.isEmpty) {
         return null;
       }
       return _formatPlacemark(placemarks.first);
-    } on NoResultFoundException {
-      return null;
     } on MissingPluginException {
       return null;
     } on PlatformException {
       return null;
     } on UnsupportedError {
+      return null;
+    } on Exception {
+      // Catches NoResultFoundException and other geocoding-specific
+      // failures without depending on the package's exception types, which
+      // vary by platform and aren't all publicly exported.
       return null;
     }
   }
@@ -154,6 +173,11 @@ class PlatformLocationService extends LocationService {
   }
 
   String? _formatPlacemark(Placemark placemark) {
+    // Different platforms/regions populate different placemark fields for
+    // the "street" concept (thoroughfare is the standard field, but it's
+    // often empty on some platforms where `street` or even the generic
+    // `name` is what's actually filled in), so each is tried in order of
+    // reliability.
     final streetName = _firstNonEmpty(<String?>[
       placemark.thoroughfare,
       placemark.street,

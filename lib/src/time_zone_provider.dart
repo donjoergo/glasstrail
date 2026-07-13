@@ -14,6 +14,10 @@ class PlatformTimeZoneProvider implements TimeZoneProvider {
           .trim();
       return identifier.isEmpty ? null : identifier;
     } catch (_) {
+      // flutter_timezone relies on a native platform channel that can be
+      // unavailable (web, unsupported platform) or fail unexpectedly on
+      // some devices; returning null lets callers fall back to the
+      // device's default/system timezone instead of crashing.
       return null;
     }
   }

@@ -7,9 +7,16 @@ import 'package:image_picker/image_picker.dart'
     show CameraDevice, ImagePicker, ImageSource;
 import 'package:path_provider/path_provider.dart';
 
+// Below this fraction of transparent pixels, PNG's lossless-but-larger
+// output isn't worth it — the transparency is likely just anti-aliasing
+// noise around edges rather than a meaningful transparent region, so it's
+// flattened to JPEG instead for a much smaller upload.
 const double _marginalTransparencyRatio = 0.02;
 
 enum ImageUploadPreset {
+  // Avatars are shown small everywhere, so they're capped tighter and
+  // compressed harder than feed photos, which need to hold up at
+  // near-fullscreen viewing sizes.
   profile(maxWidth: 640, maxHeight: 640, jpegQuality: 80),
   feed(maxWidth: 1600, maxHeight: 1600, jpegQuality: 78);
 
@@ -50,6 +57,9 @@ class FileSelectorPhotoService extends PhotoService {
 
     final compressed = await compressImageForUpload(image, preset: preset);
     if (kIsWeb) {
+      // Web has no writable filesystem to stash a temp file in, so the
+      // compressed image is carried around as a data: URL instead; see
+      // AppMediaResolver, which knows how to decode this shape.
       return UriData.fromBytes(
         compressed.bytes,
         mimeType: compressed.mimeType,
@@ -59,6 +69,9 @@ class FileSelectorPhotoService extends PhotoService {
   }
 
   Future<XFile?> _pickSourceImage(PhotoPickSource source) {
+    // Android is the only platform where camera-vs-gallery needs to be
+    // requested explicitly via image_picker; elsewhere file_selector's
+    // native picker already covers both (see photo_pick_flow.dart).
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return ImagePicker().pickImage(
         source: switch (source) {
@@ -112,6 +125,11 @@ Future<CompressedUploadImage> compressImageForUpload(
   required ImageUploadPreset preset,
 }) async {
   final bytes = await image.readAsBytes();
+  // Decoding/resizing/re-encoding a full-resolution camera photo is CPU
+  // heavy enough to visibly stall the UI thread, so it runs in a
+  // background isolate via compute(). Only primitive/serializable data can
+  // cross the isolate boundary, hence passing a plain Map instead of the
+  // richer XFile/preset objects.
   final payload = await compute<Map<String, Object?>, Map<String, Object?>>(
     _compressImageForUploadInBackground,
     <String, Object?>{
@@ -142,6 +160,9 @@ CompressedUploadImage compressImageBytesForUpload({
     decoded = null;
   }
   if (decoded == null) {
+    // Format the `image` package can't decode (e.g. HEIC on some
+    // platforms, or an unusual format) — better to upload the original
+    // bytes as-is than to block the user from attaching a photo at all.
     return _fallbackCompressedImage(
       bytes: bytes,
       sourceName: sourceName,
@@ -149,6 +170,10 @@ CompressedUploadImage compressImageBytesForUpload({
     );
   }
 
+  // Camera photos often carry an EXIF orientation flag rather than being
+  // physically rotated; baking it in up front ensures the pixel data
+  // itself is upright before resizing/stripping EXIF (which would
+  // otherwise discard the orientation info the photo relied on).
   final oriented = img.bakeOrientation(decoded);
   final resized = _resizeWithinBounds(
     oriented,
@@ -156,6 +181,9 @@ CompressedUploadImage compressImageBytesForUpload({
     maxHeight: preset.maxHeight,
   );
   final transparency = _transparencyStats(resized);
+  // Strip metadata (EXIF/ICC/text) after resizing so it doesn't need to be
+  // carried through the resize step, and importantly before upload so GPS
+  // coordinates and similar embedded metadata never leave the device.
   _stripMetadata(resized);
 
   final jpegImage = transparency.hasTransparency
@@ -173,6 +201,9 @@ CompressedUploadImage compressImageBytesForUpload({
     return jpeg;
   }
 
+  // Encoded eagerly even though it may be discarded below (when
+  // transparency is only marginal) — the ratio to decide between them
+  // isn't known to be "worth it" until compared against the threshold.
   final png = CompressedUploadImage(
     bytes: Uint8List.fromList(img.encodePng(resized)),
     mimeType: 'image/png',
@@ -231,6 +262,9 @@ void _stripMetadata(img.Image image) {
 }
 
 img.Image _flattenToOpaque(img.Image image) {
+  // JPEG has no alpha channel, so transparent pixels are composited onto a
+  // white background before encoding rather than being silently dropped
+  // (which would leave black/undefined pixels where transparency was).
   final flattened = img.Image(
     width: image.width,
     height: image.height,

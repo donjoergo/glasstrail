@@ -19,11 +19,17 @@ String decodeImportFileContents(List<int> bytes) {
   try {
     return _stripLeadingBom(utf8.decode(bytes));
   } on FormatException {
+    // Some export tools (older backups, Windows-authored files) write
+    // Latin-1/Windows-1252 rather than UTF-8; falling back here means an
+    // import doesn't fail outright just because of encoding, only if the
+    // JSON itself is actually malformed.
     return _stripLeadingBom(latin1.decode(bytes));
   }
 }
 
 String _stripLeadingBom(String value) {
+  // Some editors/tools prepend a UTF-8 byte-order-mark; left in place it
+  // would break JSON parsing since it isn't valid at the start of a `{`.
   if (value.startsWith('\uFEFF')) {
     return value.substring(1);
   }

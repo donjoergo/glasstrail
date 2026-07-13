@@ -60,8 +60,14 @@ enum AppBusyAction {
   removeFriend,
 }
 
+// Volumes round-trip through storage/import as doubles, so exact equality
+// would spuriously fail; this tolerance is well below any meaningful serving
+// size difference.
 const double _drinkEntryDefaultVolumeToleranceMl = 0.01;
 
+// Used to decide whether an entry's volume was left at the drink's default
+// (and should follow when the drink is swapped) or was manually customized
+// by the user (and should be preserved as-is).
 bool _matchesDrinkDefaultVolume(double? volumeMl, double? defaultVolumeMl) {
   if (volumeMl == null || defaultVolumeMl == null) {
     return volumeMl == null && defaultVolumeMl == null;
@@ -70,6 +76,10 @@ bool _matchesDrinkDefaultVolume(double? volumeMl, double? defaultVolumeMl) {
       _drinkEntryDefaultVolumeToleranceMl;
 }
 
+// Flash messages are stored as a kind (+ optional data) rather than a
+// pre-localized string so that the locale in effect at *display* time is
+// used, not the locale at the moment the action completed (which matters if
+// the user changes language before the message is shown).
 class _FlashMessage {
   const _FlashMessage.simple(this.kind)
     : rawMessage = null,
@@ -114,6 +124,9 @@ class BeerWithMeImportProgress {
       return 0;
     }
     final value = processedCount / totalCount;
+    // Clamp defensively: a progress indicator fed a value outside [0, 1]
+    // throws in Flutter, and processedCount/totalCount could theoretically
+    // drift outside that range if row counts are ever inconsistent.
     if (value < 0) {
       return 0;
     }
@@ -148,6 +161,10 @@ class AppController extends ChangeNotifier {
   bool _isLoadingMoreFeedPosts = false;
   List<FriendConnection> _friendConnections = const <FriendConnection>[];
   List<AppNotification> _notifications = const <AppNotification>[];
+  // Patches read state onto notification snapshots coming from the realtime
+  // stream/repository. Needed because a mark-as-read call can complete (and
+  // update this map) before the backend's own notification stream catches
+  // up, which would otherwise flash the notification back to "unread".
   final Map<String, DateTime> _notificationReadOverrides = <String, DateTime>{};
   bool _isBusy = false;
   AppBusyAction? _busyAction;
@@ -161,6 +178,11 @@ class AppController extends ChangeNotifier {
   String? _registeredPushTokenUserId;
   Future<void>? _bootstrapReconciliationFuture;
   Future<void>? _resumeRevalidationFuture;
+  // Bumped on every sign-in/sign-out/account-deletion. Long-running async
+  // reconciliation/refresh work captures the epoch at start and checks it
+  // after each await so a stale operation from a previous session can't
+  // clobber state after the user has already switched accounts or signed
+  // out.
   int _authSessionEpoch = 0;
 
   static Future<AppController> bootstrap({
@@ -200,6 +222,20 @@ class AppController extends ChangeNotifier {
     ..._defaultCatalog,
     ..._customDrinks,
   ]);
+  DrinkDefinition? drinkById(String id) {
+    for (final drink in _defaultCatalog) {
+      if (drink.id == id) {
+        return drink;
+      }
+    }
+    for (final drink in _customDrinks) {
+      if (drink.id == id) {
+        return drink;
+      }
+    }
+    return null;
+  }
+
   List<DrinkEntry> get entries => List.unmodifiable(_entries);
   List<FeedDrinkPost> get feedPosts => List.unmodifiable(_feedPosts);
   bool get hasMoreFeedPosts => _hasMoreFeedPosts;
@@ -239,6 +275,9 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    // Cancellation is fire-and-forget: dispose() must return synchronously,
+    // and nothing is listening for these subscriptions to finish tearing
+    // down anyway.
     unawaited(_notificationSubscription?.cancel());
     unawaited(_pushTokenSubscription?.cancel());
     super.dispose();
@@ -396,6 +435,20 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  bool hasGlobalDrinkOrderOverride(DrinkCategory category) {
+    return _settings.globalDrinkOrderOverrides.containsKey(category);
+  }
+
+  Future<bool> resetGlobalDrinkOrder(DrinkCategory category) async {
+    if (!hasGlobalDrinkOrderOverride(category)) {
+      return true;
+    }
+    final nextOverrides = _copyGlobalDrinkOrderOverrides()..remove(category);
+    return updateSettings(
+      _settings.copyWith(globalDrinkOrderOverrides: nextOverrides),
+    );
+  }
+
   Future<bool> hideGlobalDrink(String drinkId) async {
     if (!_defaultCatalog.any((drink) => drink.id == drinkId)) {
       return false;
@@ -512,6 +565,10 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  // When a user swaps the drink on an existing entry, we only want the
+  // volume to follow the new drink's default if it wasn't already
+  // customized away from the old drink's default. Otherwise a hand-edited
+  // volume would silently get overwritten by the replacement's default.
   double? resolveUpdatedDrinkEntryVolume({
     required DrinkEntry entry,
     required DrinkDefinition replacementDrink,
@@ -563,6 +620,10 @@ class AppController extends ChangeNotifier {
     String? profileImagePath,
   }) async {
     return _guardFor(AppBusyAction.signUp, () async {
+      // Bump the epoch and drop the previous account's push token before
+      // creating the new session, so any in-flight reconciliation/refresh
+      // from the old session is recognized as stale and the old token isn't
+      // left registered against a signed-out device.
       _markAuthSessionTransition();
       await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signUp(
@@ -589,6 +650,9 @@ class AppController extends ChangeNotifier {
       await _unregisterPushTokenBestEffort();
       _currentUser = await _repository.signIn(email: email, password: password);
       _notificationReadOverrides.clear();
+      // Force-refresh (unlike signUp, whose account is brand new and can't
+      // have stale cached data) since the local cache may still hold another
+      // account's data from a previous session on this device.
       await _reloadUserScope(forceRefresh: true);
       _subscribeToNotifications();
       await _registerPushTokenBestEffort();
@@ -639,7 +703,12 @@ class AppController extends ChangeNotifier {
       await _repository.deleteAccount(user);
       _cancelPushTokenSubscription();
       _cancelNotificationSubscription();
+      // Suppress any flash message queued before deletion completed (e.g. a
+      // stale "profile updated" toast) since the account no longer exists.
       _flashMessage = null;
+      // Preserve the locale across the reset to defaults: the device's
+      // language choice isn't tied to the deleted account and shouldn't
+      // revert just because the account is gone.
       _clearAuthenticatedState(
         clearRegisteredPushToken: true,
         resetSettingsToDefaultsPreservingLocale: true,
@@ -674,6 +743,9 @@ class AppController extends ChangeNotifier {
       );
     });
   }
+
+  DrinkDefinition? _lastSavedCustomDrink;
+  DrinkDefinition? get lastSavedCustomDrink => _lastSavedCustomDrink;
 
   Future<bool> saveCustomDrink({
     String? drinkId,
@@ -711,6 +783,7 @@ class AppController extends ChangeNotifier {
       }
       next.sort((left, right) => left.name.compareTo(right.name));
       _customDrinks = next;
+      _lastSavedCustomDrink = drink;
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.customDrinkSaved,
       );
@@ -807,6 +880,9 @@ class AppController extends ChangeNotifier {
 
     try {
       final entries = <DrinkEntry>[..._entries];
+      // Pre-seed the dedupe set from entries already imported in a previous
+      // run so re-importing the same export (or resuming after a partial/
+      // cancelled import) skips rows instead of creating duplicate entries.
       final knownImportIds = _entries
           .where(
             (entry) =>
@@ -838,6 +914,9 @@ class AppController extends ChangeNotifier {
       }
 
       for (final row in exportFile.rows) {
+        // Checked once per row (rather than only before the loop) so a
+        // cancellation request raised mid-import takes effect promptly
+        // instead of after the entire (potentially large) file is processed.
         if (_cancelBeerWithMeImportRequested) {
           wasCancelled = true;
           break;
@@ -917,6 +996,10 @@ class AppController extends ChangeNotifier {
             knownImportIds.add(record.sourceId);
             importedCount++;
           } on AppException catch (error) {
+            // The repository/backend has no dedicated "duplicate" error
+            // code, only a message string, so duplicates raised server-side
+            // (e.g. a concurrent import on another device) are detected by
+            // comparing against the localized "already imported" message.
             final localizedMessage = _localizedRawMessage(error.message, l10n);
             if (localizedMessage == l10n.beerWithMeImportAlreadyImported) {
               skippedDuplicateCount++;
@@ -1195,6 +1278,9 @@ class AppController extends ChangeNotifier {
     }
 
     final readAt = DateTime.now();
+    // Applied optimistically before the network call so the UI reflects the
+    // read state instantly; also recorded so we can roll back precisely
+    // (only the notifications *this call* marked read) if the request fails.
     final optimisticReadAtById = <String, DateTime>{};
     var changed = false;
     _notifications = _notifications
@@ -1284,6 +1370,9 @@ class AppController extends ChangeNotifier {
     return (repository as CacheAwareAppRepository).loadCacheDebugReport();
   }
 
+  // Cache the in-flight future (rather than starting a fresh run each call)
+  // so multiple callers (e.g. widgets triggering this on build) share one
+  // reconciliation pass instead of racing duplicate network requests.
   Future<void> startBootstrapReconciliation() {
     return _bootstrapReconciliationFuture ??= _runBootstrapReconciliation()
         .whenComplete(() {
@@ -1291,6 +1380,8 @@ class AppController extends ChangeNotifier {
         });
   }
 
+  // Same dedupe rationale as startBootstrapReconciliation: app-resume can
+  // fire this from more than one lifecycle listener.
   Future<void> revalidateHotDomainsOnResume() {
     return _resumeRevalidationFuture ??= _runResumeRevalidation().whenComplete(
       () {
@@ -1299,6 +1390,11 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  // Runs once after a cold start with a locally-cached session: the cached
+  // user/session was trusted immediately so the UI can render without
+  // waiting on the network, and this reconciles it against the backend
+  // (session may have been revoked, profile may have changed elsewhere,
+  // etc.) and backfills any cache domains that were stale at bootstrap.
   Future<void> _runBootstrapReconciliation() async {
     if (!usesRemoteBackend) {
       return;
@@ -1348,9 +1444,16 @@ class AppController extends ChangeNotifier {
         }
       }
       notifyListeners();
-    } catch (_) {}
+    } catch (_) {
+      // Best-effort background reconciliation: on failure we just keep
+      // whatever state (cached or already-loaded) is current rather than
+      // surfacing an error, since the user isn't waiting on this.
+    }
   }
 
+  // Runs on app resume to refresh only the "hot" domains (see
+  // CachePolicy.isHotResumeDomain) that go stale quickly, e.g. notifications
+  // and feed — avoids a full reload on every foreground event.
   Future<void> _runResumeRevalidation() async {
     final user = _currentUser;
     if (user == null || !usesRemoteBackend) {
@@ -1387,6 +1490,10 @@ class AppController extends ChangeNotifier {
   }) async {
     final report = await loadCacheDebugReport();
     if (report == null) {
+      // No cache debug report means the repository isn't cache-aware (or
+      // the cache is empty/unavailable) — fail open by treating everything
+      // as stale so we don't silently skip a domain we have no visibility
+      // into.
       final domains = <CacheDomain>{
         CacheDomain.defaultCatalog,
         CacheDomain.settings,
@@ -1432,6 +1539,10 @@ class AppController extends ChangeNotifier {
     if (defaultCatalogFuture != null) {
       _defaultCatalog = await defaultCatalogFuture;
     }
+    // Re-check after every await in this method: the auth session can
+    // change (sign-out, account switch) while a network request is
+    // in-flight, and applying a fetch result for a session that's no longer
+    // current would corrupt the state of whatever session replaced it.
     if (!_isCurrentRefreshContext(user, authSessionEpoch)) {
       return;
     }
@@ -1546,6 +1657,9 @@ class AppController extends ChangeNotifier {
       return false;
     }
 
+    // Guard against the count going negative: it's derived client-side from
+    // a possibly-stale cached count, so a concurrent cheers change elsewhere
+    // could otherwise push it below zero before the server confirms.
     final optimisticPost = currentPost.copyWith(
       cheersCount: currentPost.cheersCount + 1,
       hasCurrentUserCheered: true,
@@ -1568,6 +1682,9 @@ class AppController extends ChangeNotifier {
       );
       return true;
     } catch (_) {
+      // Roll back to the pre-optimistic snapshot captured above, not just
+      // an inverse toggle, so the count is exactly right even if other
+      // updates interleaved with this one.
       _replaceFeedPost(currentPost);
       _flashMessage = const _FlashMessage.simple(
         _FlashMessageKind.genericError,
@@ -1674,6 +1791,9 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
+    // Kicked off in parallel: the default catalog fetch doesn't depend on
+    // an authenticated session, so there's no reason to serialize it behind
+    // session restoration on cold start.
     final defaultCatalogFuture = _repository.loadDefaultCatalog();
     final currentUserFuture = _repository.restoreSession();
 
@@ -2070,7 +2190,8 @@ class AppController extends ChangeNotifier {
   int _localizedDrinkComparer(DrinkDefinition left, DrinkDefinition right) {
     return left
         .displayName(_settings.localeCode)
-        .compareTo(right.displayName(_settings.localeCode));
+        .toLowerCase()
+        .compareTo(right.displayName(_settings.localeCode).toLowerCase());
   }
 
   Map<DrinkCategory, List<String>> _copyGlobalDrinkOrderOverrides() {
@@ -2083,6 +2204,10 @@ class AppController extends ChangeNotifier {
   List<DrinkDefinition> _sortedCustomDrinks() =>
       _customDrinks.toList(growable: false)..sort(_localizedDrinkComparer);
 
+  // Reconciles a caller-supplied drink order against the drinks that are
+  // actually visible: drops ids that are no longer valid/visible (stale UI
+  // state) and appends any visible drink missing from the list (e.g. a
+  // newly added custom drink) at the end rather than dropping it silently.
   List<String> _sanitizeOrderOverrideIds(
     List<String> orderedDrinkIds, {
     required Set<String> allowedIds,
@@ -2112,6 +2237,11 @@ class AppController extends ChangeNotifier {
     return _guardInternal(body, busyAction: action);
   }
 
+  // Central chokepoint for busy-state + error handling around user-triggered
+  // actions: AppException carries a backend-provided message (mapped to a
+  // localized string later via _localizedRawMessage), while anything else
+  // is treated as unexpected and shown as a generic error so raw
+  // exceptions/stack traces never leak into the UI.
   Future<bool> _guardInternal(
     Future<void> Function() action, {
     AppBusyAction? busyAction,
@@ -2161,6 +2291,11 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  // The repository layer throws fixed English messages (it has no access to
+  // the active locale), so this maps each known message to its localized
+  // string here. Unrecognized messages fall through unchanged rather than
+  // failing, since the repository may raise a message we haven't
+  // special-cased yet.
   String _localizedRawMessage(String message, AppLocalizations l10n) {
     return switch (message) {
       'An account with that email already exists.' => l10n.accountAlreadyExists,

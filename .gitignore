@@ -52,3 +52,7 @@ app.*.map.json
 .codex
 supabase/.temp/cli-latest
 supabase/.temp/linked-project.json
+
+# Screenshot automation tooling (tool/screenshots/)
+tool/screenshots/node_modules/
+tool/screenshots/.env

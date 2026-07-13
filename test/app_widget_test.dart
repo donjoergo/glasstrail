@@ -100,6 +100,11 @@ Finder _profileScrollable() => find.descendant(
   matching: find.byType(Scrollable),
 );
 
+void _setSurfaceSize(WidgetTester tester, Size size) {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1.0;
+}
+
 Future<void> _scrollProfileTargetIntoView(
   WidgetTester tester,
   Finder target,
@@ -2122,6 +2127,205 @@ void main() {
     );
     expect(find.text('Stats Tile Addressee'), findsOneWidget);
     expect(find.byKey(const Key('stats-overview-panel')), findsOneWidget);
+    expect(find.byType(NavigationRail), findsNothing);
+  });
+
+  testWidgets('embeds the friend stats profile with the rail on wide screens', (
+    tester,
+  ) async {
+    _setSurfaceSize(tester, const Size(1200, 1366));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'friend-stats-wide-requester@example.com',
+      password: 'password123',
+      displayName: 'Stats Wide Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'friend-stats-wide-addressee@example.com',
+      password: 'password123',
+      displayName: 'Stats Wide Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final addresseeConnections = await repository.loadFriendConnections(
+      addressee.id,
+    );
+    await repository.acceptFriendRequest(
+      userId: addressee.id,
+      relationshipId: addresseeConnections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'friend-stats-wide-requester@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final friend = controller.friends.single;
+    final tile = find.byKey(ValueKey<String>('friend-${friend.id}'));
+    await _scrollProfileTargetIntoView(tester, tile);
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('friend-stats-profile-screen')),
+      findsOneWidget,
+    );
+    expect(find.byType(NavigationRail), findsOneWidget);
+    final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
+    expect(rail.selectedIndex, isNull);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('friend-stats-profile-screen')), findsNothing);
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.profile);
+  });
+
+  testWidgets('switches tabs from the embedded friend profile without stacking '
+      'routes', (tester) async {
+    _setSurfaceSize(tester, const Size(1200, 1366));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'friend-stats-switch-requester@example.com',
+      password: 'password123',
+      displayName: 'Stats Switch Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'friend-stats-switch-addressee@example.com',
+      password: 'password123',
+      displayName: 'Stats Switch Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final addresseeConnections = await repository.loadFriendConnections(
+      addressee.id,
+    );
+    await repository.acceptFriendRequest(
+      userId: addressee.id,
+      relationshipId: addresseeConnections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'friend-stats-switch-requester@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.profile,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final friend = controller.friends.single;
+    final tile = find.byKey(ValueKey<String>('friend-${friend.id}'));
+    await _scrollProfileTargetIntoView(tester, tile);
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Feed'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('friend-stats-profile-screen')), findsNothing);
+    expect(find.byType(BackButton), findsNothing);
+    final route = ModalRoute.of(tester.element(find.byType(HomeShell)));
+    expect(route?.settings.name, AppRoutes.feed);
+  });
+
+  testWidgets('restores the friend stats profile embedded in the shell on wide '
+      'screens', (tester) async {
+    _setSurfaceSize(tester, const Size(1200, 1366));
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAppRepository(preferences);
+    final requester = await repository.signUp(
+      email: 'friend-stats-restore-requester@example.com',
+      password: 'password123',
+      displayName: 'Stats Restore Requester',
+    );
+    await repository.signOut();
+    final addressee = await repository.signUp(
+      email: 'friend-stats-restore-addressee@example.com',
+      password: 'password123',
+      displayName: 'Stats Restore Addressee',
+    );
+    final addresseeProfile = await repository.getOwnFriendProfile(addressee.id);
+    await repository.sendFriendRequestToProfile(
+      userId: requester.id,
+      shareCode: addresseeProfile.profileShareCode!,
+    );
+    final addresseeConnections = await repository.loadFriendConnections(
+      addressee.id,
+    );
+    await repository.acceptFriendRequest(
+      userId: addressee.id,
+      relationshipId: addresseeConnections.single.id,
+    );
+    await repository.signOut();
+    await repository.signIn(
+      email: 'friend-stats-restore-requester@example.com',
+      password: 'password123',
+    );
+    final controller = await AppController.bootstrapWithRepository(repository);
+
+    await tester.pumpWidget(
+      GlassTrailApp(
+        controller: controller,
+        photoService: const TestPhotoService(),
+        initialRoute: AppRoutes.friendStatsProfileRoute(addressee.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('friend-stats-profile-screen')),
+      findsOneWidget,
+    );
+    expect(find.byType(NavigationRail), findsOneWidget);
+    final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
+    expect(rail.selectedIndex, isNull);
   });
 
   testWidgets('shows a notice when a friend does not share stats', (

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:glasstrail/src/models.dart';
 import 'package:glasstrail/src/screens/statistics_screen.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 
 DrinkEntry _entry({
   required String id,
   required DrinkCategory category,
   required double latitude,
   required double longitude,
+  String? imagePath,
 }) {
   return DrinkEntry(
     id: id,
@@ -18,6 +20,7 @@ DrinkEntry _entry({
     consumedAt: DateTime.utc(2026, 1, 1),
     locationLatitude: latitude,
     locationLongitude: longitude,
+    imagePath: imagePath,
   );
 }
 
@@ -201,6 +204,76 @@ void main() {
     expect(indexes, const <int>[3]);
   });
 
+  test('cluster leaf indexes collect markers within the base radius', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[
+        Offset(100, 100),
+        Offset(110, 100),
+        Offset(100, 130),
+        Offset(400, 400),
+      ],
+      clusterOffset: const Offset(100, 100),
+      expectedCount: 3,
+    );
+
+    expect(indexes.toSet(), <int>{0, 1, 2});
+  });
+
+  test('cluster leaf indexes expand the radius until the count is met', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[
+        Offset(100, 100),
+        Offset(140, 100),
+        Offset(170, 100), // 70px away — needs the 1.5x expansion.
+        Offset(500, 500),
+      ],
+      clusterOffset: const Offset(100, 100),
+      expectedCount: 3,
+      baseRadius: 52,
+    );
+
+    expect(indexes.toSet(), <int>{0, 1, 2});
+  });
+
+  test('cluster leaf indexes trim to the nearest markers when over count', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[
+        Offset(100, 140), // 40px away.
+        Offset(100, 110), // 10px away.
+        Offset(100, 120), // 20px away.
+      ],
+      clusterOffset: const Offset(100, 100),
+      expectedCount: 2,
+    );
+
+    expect(indexes.toSet(), <int>{1, 2});
+  });
+
+  test('cluster leaf indexes return partial matches at the radius cap', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[
+        Offset(100, 100),
+        Offset(600, 600),
+        Offset(700, 700),
+      ],
+      clusterOffset: const Offset(100, 100),
+      expectedCount: 3,
+      baseRadius: 52,
+    );
+
+    expect(indexes, <int>[0]);
+  });
+
+  test('cluster leaf indexes handle empty offsets', () {
+    final indexes = statisticsMapClusterLeafIndexes(
+      offsets: const <Offset>[],
+      clusterOffset: Offset.zero,
+      expectedCount: 2,
+    );
+
+    expect(indexes, isEmpty);
+  });
+
   test('cluster count layer properties keep the label centered', () {
     final properties = statisticsMapClusterCountLayerProperties(
       labelColor: Colors.white,
@@ -218,5 +291,74 @@ void main() {
     expect(properties.containsKey('text-halo-color'), isFalse);
     expect(properties['text-allow-overlap'], isTrue);
     expect(properties['text-ignore-placement'], isTrue);
+  });
+
+  test('photo-only filter keeps only entries with a non-empty imagePath', () {
+    final entries = <DrinkEntry>[
+      _entry(
+        id: 'with-photo',
+        category: DrinkCategory.beer,
+        latitude: 52.52,
+        longitude: 13.405,
+        imagePath: '/tmp/beer.jpg',
+      ),
+      _entry(
+        id: 'blank-photo',
+        category: DrinkCategory.beer,
+        latitude: 52.52,
+        longitude: 13.405,
+        imagePath: '   ',
+      ),
+      _entry(
+        id: 'no-photo',
+        category: DrinkCategory.wine,
+        latitude: 48.1372,
+        longitude: 11.5756,
+      ),
+    ];
+
+    final filtered = statisticsMapEntriesForFilters(
+      entries: entries,
+      photoOnly: true,
+    );
+
+    expect(filtered.map((entry) => entry.id), <String>['with-photo']);
+  });
+
+  test('photo-only filter disabled returns entries unchanged', () {
+    final entries = <DrinkEntry>[
+      _entry(
+        id: 'no-photo',
+        category: DrinkCategory.wine,
+        latitude: 48.1372,
+        longitude: 11.5756,
+      ),
+    ];
+
+    final filtered = statisticsMapEntriesForFilters(
+      entries: entries,
+      photoOnly: false,
+    );
+
+    expect(filtered, same(entries));
+  });
+
+  test('self-location GeoJSON encodes a single point in lon/lat order', () {
+    final geoJson = statisticsMapSelfLocationGeoJson(
+      const maplibre.LatLng(52.52, 13.405),
+    );
+
+    final features = geoJson['features']! as List<Object?>;
+    expect(features, hasLength(1));
+
+    final feature = features.single! as Map<String, Object?>;
+    expect(feature['type'], 'Feature');
+
+    final geometry = feature['geometry']! as Map<String, Object?>;
+    expect(geometry['type'], 'Point');
+    final coordinates = (geometry['coordinates']! as List<Object?>)
+        .cast<double>();
+    expect(coordinates[0], closeTo(13.405, 0.0000001));
+    expect(coordinates[1], closeTo(52.52, 0.0000001));
   });
 }

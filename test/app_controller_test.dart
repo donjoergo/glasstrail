@@ -1501,6 +1501,48 @@ void main() {
     expect(updatedBeerIds, reorderedIds);
   });
 
+  test('resets a category order override back to alphabetical', () async {
+    final controller = await buildTestController();
+
+    await controller.signUp(
+      email: 'reset-order@example.com',
+      password: 'password123',
+      displayName: 'Reset Order Example',
+    );
+
+    final initialBeerIds = controller.availableDrinks
+        .where(
+          (drink) => !drink.isCustom && drink.category == DrinkCategory.beer,
+        )
+        .map((drink) => drink.id)
+        .toList(growable: false);
+    final reorderedIds = <String>[
+      initialBeerIds[1],
+      initialBeerIds[0],
+      ...initialBeerIds.skip(2),
+    ];
+
+    expect(controller.hasGlobalDrinkOrderOverride(DrinkCategory.beer), isFalse);
+
+    await controller.reorderGlobalDrinks(
+      category: DrinkCategory.beer,
+      orderedDrinkIds: reorderedIds,
+    );
+    expect(controller.hasGlobalDrinkOrderOverride(DrinkCategory.beer), isTrue);
+
+    final success = await controller.resetGlobalDrinkOrder(DrinkCategory.beer);
+
+    expect(success, isTrue);
+    expect(controller.hasGlobalDrinkOrderOverride(DrinkCategory.beer), isFalse);
+    final resetBeerIds = controller.availableDrinks
+        .where(
+          (drink) => !drink.isCustom && drink.category == DrinkCategory.beer,
+        )
+        .map((drink) => drink.id)
+        .toList(growable: false);
+    expect(resetBeerIds, initialBeerIds);
+  });
+
   test(
     'reorders custom drinks together with global drinks inside a category',
     () async {
@@ -1553,6 +1595,33 @@ void main() {
     },
   );
 
+  test('sorts drinks alphabetically case-insensitively', () async {
+    final controller = await buildTestController();
+
+    await controller.signUp(
+      email: 'case-insensitive-sort@example.com',
+      password: 'password123',
+      displayName: 'Case Insensitive Sort',
+    );
+    await controller.saveCustomDrink(
+      name: 'banana fizz',
+      category: DrinkCategory.cocktails,
+      volumeMl: 200,
+    );
+    await controller.saveCustomDrink(
+      name: 'Apple Crush',
+      category: DrinkCategory.cocktails,
+      volumeMl: 200,
+    );
+
+    final customNames = controller
+        .customDrinksForCategory(DrinkCategory.cocktails)
+        .map((drink) => drink.name)
+        .toList(growable: false);
+
+    expect(customNames, <String>['Apple Crush', 'banana fizz']);
+  });
+
   test(
     'removes a custom drink photo when saving an existing custom drink',
     () async {
@@ -1590,6 +1659,58 @@ void main() {
         controller.takeFlashMessage(german),
         'Eigenes Getränk gespeichert.',
       );
+    },
+  );
+
+  test(
+    'exposes the saved drink via lastSavedCustomDrink after creating one',
+    () async {
+      final controller = await buildTestController();
+
+      await controller.signUp(
+        email: 'last-saved-custom-drink@example.com',
+        password: 'password123',
+        displayName: 'Last Saved Custom Drink',
+      );
+
+      final success = await controller.saveCustomDrink(
+        name: 'Porch Lager',
+        category: DrinkCategory.beer,
+        volumeMl: 500,
+        imagePath: '/tmp/porch-lager.png',
+      );
+
+      expect(success, isTrue);
+      final saved = controller.lastSavedCustomDrink;
+      expect(saved, isNotNull);
+      expect(saved!.name, 'Porch Lager');
+      expect(saved.imagePath, '/tmp/porch-lager.png');
+      expect(saved.id, controller.customDrinks.single.id);
+    },
+  );
+
+  test(
+    'looks up drinks by id across the default catalog and custom drinks',
+    () async {
+      final controller = await buildTestController();
+
+      await controller.signUp(
+        email: 'drink-by-id@example.com',
+        password: 'password123',
+        displayName: 'Drink By Id',
+      );
+      await controller.saveCustomDrink(
+        name: 'Garden Spritz',
+        category: DrinkCategory.cocktails,
+        volumeMl: 250,
+        imagePath: '/tmp/garden-spritz.png',
+      );
+      final customDrink = controller.customDrinks.single;
+      final defaultDrink = controller.defaultCatalog.first;
+
+      expect(controller.drinkById(defaultDrink.id), defaultDrink);
+      expect(controller.drinkById(customDrink.id), customDrink);
+      expect(controller.drinkById('does-not-exist'), isNull);
     },
   );
 

@@ -266,6 +266,54 @@ abstract class AppLocalizations {
   /// **'Drink catalog'**
   String get catalog;
 
+  /// No description provided for @addDrinkStepIndicator.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String addDrinkStepIndicator(int current, int total);
+
+  /// No description provided for @addDrinkDetailsStepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get addDrinkDetailsStepTitle;
+
+  /// No description provided for @addDrinkChangeSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get addDrinkChangeSelection;
+
+  /// No description provided for @addDrinkSearchResultsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No results} =1{1 result} other{{count} results}}'**
+  String addDrinkSearchResultsCount(num count);
+
+  /// No description provided for @createCustomDrinkWithQuery.
+  ///
+  /// In en, this message translates to:
+  /// **'Create custom drink \"{query}\"'**
+  String createCustomDrinkWithQuery(String query);
+
+  /// No description provided for @addDrinkPickToContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a drink to continue'**
+  String get addDrinkPickToContinue;
+
+  /// No description provided for @addDrinkCategoriesHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get addDrinkCategoriesHeading;
+
+  /// No description provided for @addDrinkCategoryDrinkCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 drink} other{{count} drinks}}'**
+  String addDrinkCategoryDrinkCount(num count);
+
   /// No description provided for @location.
   ///
   /// In en, this message translates to:
@@ -686,6 +734,60 @@ abstract class AppLocalizations {
   /// **'Enable location while logging drinks so they can appear here on the map.'**
   String get statisticsMapEmptyBody;
 
+  /// No description provided for @statisticsMapClusterFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster'**
+  String get statisticsMapClusterFilterLabel;
+
+  /// Title of the map overlay panel listing the drinks inside a tapped cluster
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 drink here} other{{count} drinks here}}'**
+  String statisticsMapClusterTitle(num count);
+
+  /// No description provided for @statisticsMapLocateMeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show my location'**
+  String get statisticsMapLocateMeTooltip;
+
+  /// No description provided for @statisticsMapPhotoFilterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'With photo'**
+  String get statisticsMapPhotoFilterLabel;
+
+  /// No description provided for @feedDetailEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No drink selected'**
+  String get feedDetailEmptyTitle;
+
+  /// No description provided for @feedDetailEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a drink from the feed to see its details here.'**
+  String get feedDetailEmptyBody;
+
+  /// No description provided for @historyDetailEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No entry selected'**
+  String get historyDetailEmptyTitle;
+
+  /// No description provided for @historyDetailEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an entry from the history to see its details here.'**
+  String get historyDetailEmptyBody;
+
+  /// No description provided for @statisticsDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get statisticsDashboard;
+
   /// No description provided for @statisticsGalleryEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -769,6 +871,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show'**
   String get showDrink;
+
+  /// No description provided for @resetCategoryOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset order'**
+  String get resetCategoryOrder;
+
+  /// No description provided for @resetCategoryOrderConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset order?'**
+  String get resetCategoryOrderConfirmTitle;
+
+  /// No description provided for @resetCategoryOrderConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{category} drinks will be sorted alphabetically again. You can still drag to reorder them afterwards.'**
+  String resetCategoryOrderConfirmBody(String category);
 
   /// No description provided for @allGlobalDrinksHidden.
   ///

@@ -94,6 +94,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalog => 'Drink catalog';
 
   @override
+  String addDrinkStepIndicator(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get addDrinkDetailsStepTitle => 'Details';
+
+  @override
+  String get addDrinkChangeSelection => 'Change';
+
+  @override
+  String addDrinkSearchResultsCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count results',
+      one: '1 result',
+      zero: 'No results',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String createCustomDrinkWithQuery(String query) {
+    return 'Create custom drink \"$query\"';
+  }
+
+  @override
+  String get addDrinkPickToContinue => 'Pick a drink to continue';
+
+  @override
+  String get addDrinkCategoriesHeading => 'Categories';
+
+  @override
+  String addDrinkCategoryDrinkCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count drinks',
+      one: '1 drink',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get location => 'Location';
 
   @override
@@ -319,6 +364,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enable location while logging drinks so they can appear here on the map.';
 
   @override
+  String get statisticsMapClusterFilterLabel => 'Cluster';
+
+  @override
+  String statisticsMapClusterTitle(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count drinks here',
+      one: '1 drink here',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statisticsMapLocateMeTooltip => 'Show my location';
+
+  @override
+  String get statisticsMapPhotoFilterLabel => 'With photo';
+
+  @override
+  String get feedDetailEmptyTitle => 'No drink selected';
+
+  @override
+  String get feedDetailEmptyBody =>
+      'Select a drink from the feed to see its details here.';
+
+  @override
+  String get historyDetailEmptyTitle => 'No entry selected';
+
+  @override
+  String get historyDetailEmptyBody =>
+      'Select an entry from the history to see its details here.';
+
+  @override
+  String get statisticsDashboard => 'Dashboard';
+
+  @override
   String get statisticsGalleryEmptyTitle => 'No drink photos yet';
 
   @override
@@ -361,6 +443,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get showDrink => 'Show';
+
+  @override
+  String get resetCategoryOrder => 'Reset order';
+
+  @override
+  String get resetCategoryOrderConfirmTitle => 'Reset order?';
+
+  @override
+  String resetCategoryOrderConfirmBody(String category) {
+    return '$category drinks will be sorted alphabetically again. You can still drag to reorder them afterwards.';
+  }
 
   @override
   String get allGlobalDrinksHidden =>

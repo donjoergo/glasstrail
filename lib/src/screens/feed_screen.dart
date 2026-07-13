@@ -17,10 +17,17 @@ import '../models.dart';
 import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../stats_calculator.dart';
+import '../app_breakpoints.dart';
+import '../widgets/app_constrained_content.dart';
 import '../widgets/app_empty_state_card.dart';
+import '../widgets/drink_entry_detail_content.dart';
+import '../widgets/resizable_master_detail.dart';
+import '../widgets/statistics_overview_content.dart';
 import '../widgets/app_media.dart';
 import '../widgets/drink_picker_catalog.dart';
 
+// Lets integration tests / manual QA force the "what's new" card to appear
+// without needing to actually bump the app version and reinstall.
 @visibleForTesting
 bool debugForceUpdateNotice = const bool.fromEnvironment(
   'FORCE_UPDATE_NOTICE',
@@ -43,7 +50,11 @@ class _FeedScreenState extends State<FeedScreen> {
 
   _UpdateNoticeData? _updateNotice;
   bool _isHandlingUpdateNotice = false;
+  String? _selectedEntryId;
 
+  // On mobile, keep the user inside the app with an in-app browser tab;
+  // on desktop/web there's no equivalent in-app view, so hand off to the
+  // system browser instead.
   LaunchMode get _changelogLaunchMode {
     return switch (defaultTargetPlatform) {
       TargetPlatform.android ||
@@ -59,6 +70,8 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
+    // depth != 0 means the notification bubbled up from a nested scrollable
+    // (e.g. a photo carousel inside a card) rather than the feed itself.
     if (!mounted ||
         notification.depth != 0 ||
         notification is! ScrollUpdateNotification) {
@@ -69,15 +82,20 @@ class _FeedScreenState extends State<FeedScreen> {
         axisDirection != AxisDirection.up) {
       return false;
     }
+    // Only trigger on forward scroll (positive delta), not on bounce-back
+    // or scroll-up, to avoid firing a load every time the user scrolls up.
     final scrollDelta = notification.scrollDelta;
     if (scrollDelta == null || scrollDelta <= 0) {
       return false;
     }
     final metrics = notification.metrics;
+    // Start prefetching the next page while there's still ~2 viewports of
+    // content left, so the list doesn't visibly stall waiting for the load.
     if (metrics.extentAfter > metrics.viewportDimension * 2) {
       return false;
     }
     final controller = AppScope.controllerOf(context);
+    // Avoid firing overlapping load requests from repeated scroll events.
     if (!controller.hasMoreFeedPosts || controller.isLoadingMoreFeedPosts) {
       return false;
     }
@@ -111,6 +129,9 @@ class _FeedScreenState extends State<FeedScreen> {
       final lastAcknowledgedRelease = preferences.getString(
         _lastAcknowledgedReleaseKey,
       );
+      // First launch ever (no stored release): silently record the current
+      // release rather than showing a notice, since there's nothing to
+      // "update" from — the user just installed it.
       if (lastAcknowledgedRelease == null) {
         await preferences.setString(_lastAcknowledgedReleaseKey, releaseId);
         return;
@@ -125,6 +146,8 @@ class _FeedScreenState extends State<FeedScreen> {
           version: version,
         );
       });
+      // Package info / prefs lookups are best-effort UX polish, not
+      // essential; swallow failures so a broken plugin never blocks the feed.
     } catch (_) {}
   }
 
@@ -145,6 +168,8 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Future<void> _acknowledgeUpdateNotice({required bool openChangelog}) async {
     final notice = _updateNotice;
+    // Guard against double taps on close/"what's new" while the previous
+    // tap's launchUrl/prefs write is still in flight.
     if (notice == null || _isHandlingUpdateNotice) {
       return;
     }
@@ -162,6 +187,9 @@ class _FeedScreenState extends State<FeedScreen> {
           mode: _changelogLaunchMode,
           browserConfiguration: const BrowserConfiguration(showTitle: true),
         );
+        // If the browser failed to open, don't mark the release as
+        // acknowledged — leave the card up so the user can retry, rather
+        // than silently losing access to the changelog.
         if (!launched) {
           if (mounted) {
             ScaffoldMessenger.of(
@@ -203,87 +231,321 @@ class _FeedScreenState extends State<FeedScreen> {
     final posts = controller.feedPosts;
     final stats = controller.statistics;
     final locale = controller.settings.localeCode;
+    final isLarge = AppBreakpoints.isLarge(context);
 
-    return RefreshIndicator(
+    final feedList = RefreshIndicator(
       key: const Key('feed-refresh-indicator'),
       onRefresh: _refresh,
       child: NotificationListener<ScrollNotification>(
         onNotification: _handleScrollNotification,
-        child: CustomScrollView(
-          key: const Key('feed-list-view'),
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: <Widget>[
-            if (_updateNotice case final notice?) ...<Widget>[
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _FeedUpdateCard(
-                    version: notice.version,
-                    isBusy: _isHandlingUpdateNotice,
-                    onClose: () =>
-                        _acknowledgeUpdateNotice(openChangelog: false),
-                    onOpenChangelog: () =>
-                        _acknowledgeUpdateNotice(openChangelog: true),
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            ],
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                _updateNotice == null ? 20 : 0,
-                20,
-                0,
-              ),
-              sliver: SliverToBoxAdapter(child: _FeedStreakCard(stats: stats)),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            if (posts.isEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverToBoxAdapter(
-                  child: AppEmptyStateCard(
-                    key: const Key('feed-empty-state'),
-                    icon: Icons.hourglass_empty_rounded,
-                    title: l10n.noEntries,
-                    body: l10n.startLogging,
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final post = posts[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _DrinkEntryCard(
-                        post: post,
-                        drinkName: controller.localizedFeedPostDrinkName(post),
-                        locale: locale,
-                        unit: controller.settings.unit,
-                        categoryLabel: l10n.categoryLabel(post.entry.category),
-                      ),
-                    );
-                  }, childCount: posts.length),
-                ),
-              ),
-            if (controller.isLoadingMoreFeedPosts)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: Center(
-                    child: SizedBox.square(
-                      key: Key('feed-loading-more'),
-                      dimension: 28,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+        // Feed cards want more breathing room than the shared form width
+        // (640), so override the default max width here.
+        child: AppConstrainedContent(
+          maxWidth: 720,
+          child: CustomScrollView(
+            key: const Key('feed-list-view'),
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: <Widget>[
+              if (_updateNotice case final notice?) ...<Widget>[
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: _FeedUpdateCard(
+                      version: notice.version,
+                      isBusy: _isHandlingUpdateNotice,
+                      onClose: () =>
+                          _acknowledgeUpdateNotice(openChangelog: false),
+                      onOpenChangelog: () =>
+                          _acknowledgeUpdateNotice(openChangelog: true),
                     ),
                   ),
                 ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  _updateNotice == null ? 20 : 0,
+                  20,
+                  0,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: _FeedStreakCard(stats: stats),
+                ),
               ),
-            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              if (posts.isEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverToBoxAdapter(
+                    child: AppEmptyStateCard(
+                      key: const Key('feed-empty-state'),
+                      icon: Icons.hourglass_empty_rounded,
+                      title: l10n.noEntries,
+                      body: l10n.startLogging,
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final post = posts[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _DrinkEntryCard(
+                          post: post,
+                          drinkName: controller.localizedFeedPostDrinkName(
+                            post,
+                          ),
+                          locale: locale,
+                          unit: controller.settings.unit,
+                          categoryLabel: l10n.categoryLabel(
+                            post.entry.category,
+                          ),
+                          // Tap-to-select only applies in the master-detail split;
+                          // on narrow layouts the card's own menu and cheers
+                          // button already expose every action, so a tap has
+                          // nothing to do.
+                          isSelected:
+                              isLarge && _selectedEntryId == post.entry.id,
+                          onTap: isLarge
+                              ? () {
+                                  setState(() {
+                                    _selectedEntryId = post.entry.id;
+                                  });
+                                }
+                              : null,
+                        ),
+                      );
+                    }, childCount: posts.length),
+                  ),
+                ),
+              if (controller.isLoadingMoreFeedPosts)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Center(
+                      child: SizedBox.square(
+                        key: Key('feed-loading-more'),
+                        dimension: 28,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 120)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!isLarge) {
+      return feedList;
+    }
+
+    return ResizableMasterDetail(
+      defaultMasterWidth: AppBreakpoints.isExtraLarge(context)
+          ? AppBreakpoints.feedMasterPaneWidthExtraLarge
+          : AppBreakpoints.feedMasterPaneWidth,
+      dividerKey: const Key('feed-split-divider'),
+      master: feedList,
+      detail: _FeedDetailPane(
+        selectedEntryId: _selectedEntryId,
+        locale: locale,
+      ),
+    );
+  }
+}
+
+class _FeedDetailPane extends StatelessWidget {
+  const _FeedDetailPane({required this.selectedEntryId, required this.locale});
+
+  final String? selectedEntryId;
+  final String locale;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.controllerOf(context);
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    // Selection is tracked by entry id rather than list index, so it
+    // survives refreshes/re-sorts; if the entry has since disappeared
+    // (deleted, or not yet paged in) this falls through to the empty
+    // state below instead of crashing.
+    FeedDrinkPost? post;
+    if (selectedEntryId != null) {
+      final postIndex = controller.feedPosts.indexWhere(
+        (candidate) => candidate.entry.id == selectedEntryId,
+      );
+      if (postIndex != -1) {
+        post = controller.feedPosts[postIndex];
+      }
+    }
+
+    if (post == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: AppEmptyStateCard(
+              key: const Key('feed-detail-empty-state'),
+              icon: Icons.local_bar_outlined,
+              title: l10n.feedDetailEmptyTitle,
+              body: l10n.feedDetailEmptyBody,
+              compact: true,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final entry = post.entry;
+    final accentColor = statisticsCategoryColors(theme)[entry.category]!;
+    final drinkName = controller.localizedFeedPostDrinkName(post);
+    final categoryLabel = l10n.categoryLabel(entry.category);
+    final unit = controller.settings.unit;
+    final cheersPending = controller.isFeedEntryCheersPending(entry.id);
+    // Cheers are one-way (see the cheers-one-way migration) — once given,
+    // they can't be retracted, so the button is disabled after cheering
+    // rather than toggling.
+    final cheersEnabled =
+        !post.isOwnEntry && !cheersPending && !post.hasCurrentUserCheered;
+    final resolvedPost = post;
+
+    return SingleChildScrollView(
+      key: const Key('feed-detail-pane'),
+      padding: const EdgeInsets.fromLTRB(4, 20, 20, 120),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                AppAvatar(
+                  imagePath: post.authorImagePath,
+                  radius: 20,
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.12,
+                  ),
+                  fallback: Text(
+                    post.authorInitials,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    post.authorDisplayName,
+                    key: Key('feed-detail-author-${entry.id}'),
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            DrinkEntryDetailContent(
+              entry: entry,
+              accentColor: accentColor,
+              keyPrefix: 'feed-detail',
+            ),
+            const SizedBox(height: 12),
+            Divider(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+            if (post.isOwnEntry)
+              Row(
+                children: <Widget>[
+                  TextButton.icon(
+                    key: Key('feed-detail-edit-${entry.id}'),
+                    onPressed: controller.isBusy
+                        ? null
+                        : () {
+                            showDialog<void>(
+                              context: context,
+                              builder: (_) => _EditDrinkEntryDialog(
+                                entry: entry,
+                                drinkName: drinkName,
+                                categoryLabel: categoryLabel,
+                                locale: locale,
+                                unit: unit,
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.edit_rounded, size: 18),
+                    label: Text(l10n.editEntry),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    key: Key('feed-detail-delete-${entry.id}'),
+                    onPressed: controller.isBusy
+                        ? null
+                        : () {
+                            showDialog<void>(
+                              context: context,
+                              builder: (_) => _DeleteDrinkEntryDialog(
+                                entry: entry,
+                                parentContext: context,
+                              ),
+                            );
+                          },
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                    ),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: Text(l10n.deleteEntry),
+                  ),
+                ],
+              )
+            else
+              Row(
+                children: <Widget>[
+                  TextButton.icon(
+                    key: Key('feed-detail-cheers-${entry.id}'),
+                    onPressed: cheersEnabled
+                        ? () =>
+                              unawaited(controller.cheerFeedEntry(resolvedPost))
+                        : null,
+                    icon: cheersPending
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            post.hasCurrentUserCheered
+                                ? Icons.sports_bar_rounded
+                                : Icons.sports_bar_outlined,
+                            size: 18,
+                          ),
+                    label: Text(l10n.feedCheersAction),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${post.cheersCount}',
+                    key: Key('feed-detail-cheers-count-${entry.id}'),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: post.hasCurrentUserCheered
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -589,6 +851,8 @@ class _DrinkEntryCard extends StatelessWidget {
     required this.locale,
     required this.unit,
     required this.categoryLabel,
+    this.isSelected = false,
+    this.onTap,
   });
 
   final FeedDrinkPost post;
@@ -596,6 +860,8 @@ class _DrinkEntryCard extends StatelessWidget {
   final String locale;
   final AppUnit unit;
   final String categoryLabel;
+  final bool isSelected;
+  final VoidCallback? onTap;
 
   DrinkEntry get entry => post.entry;
 
@@ -675,6 +941,9 @@ class _DrinkEntryCard extends StatelessWidget {
     final controller = AppScope.controllerOf(context);
     final l10n = AppLocalizations.of(context);
     final cheersPending = controller.isFeedEntryCheersPending(entry.id);
+    // Can't cheers your own post; disable mid-request to prevent duplicate
+    // cheers from rapid taps, and after cheering since cheers are one-way
+    // (see the cheers-one-way migration) and can't be retracted.
     final cheersEnabled =
         !post.isOwnEntry && !cheersPending && !post.hasCurrentUserCheered;
     final timeLabel = DateFormat.yMMMd(
@@ -686,11 +955,15 @@ class _DrinkEntryCard extends StatelessWidget {
       timeLabel,
     ].join(' • ');
     final locationAddress = _normalizedLocationAddress(entry.locationAddress);
-    return Container(
+    final drinkImagePath = controller.drinkById(entry.drinkId)?.imagePath;
+    final card = Container(
       key: Key('feed-post-${entry.id}'),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
+        border: isSelected
+            ? Border.all(color: theme.colorScheme.primary, width: 2)
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -726,10 +999,15 @@ class _DrinkEntryCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Row(
                             children: <Widget>[
-                              Icon(
-                                entry.category.icon,
-                                size: 16,
-                                color: theme.colorScheme.onSurfaceVariant,
+                              AppAvatar(
+                                imagePath: drinkImagePath,
+                                radius: 8,
+                                backgroundColor: Colors.transparent,
+                                fallback: Icon(
+                                  entry.category.icon,
+                                  size: 16,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
                               const SizedBox(width: 4),
                               Expanded(
@@ -895,6 +1173,19 @@ class _DrinkEntryCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap == null) {
+      return card;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: card,
+      ),
+    );
   }
 
   String? _normalizedLocationAddress(String? value) {
@@ -993,6 +1284,9 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
       return;
     }
     setState(() {
+      // If the user picked the same drink the entry already has, treat that
+      // as "no change" (null) rather than storing a redundant replacement —
+      // keeps _save from sending an unnecessary drink-change update.
       _replacementDrink = selectedDrink.id == widget.entry.drinkId
           ? null
           : selectedDrink;
@@ -1027,6 +1321,9 @@ class _EditDrinkEntryDialogState extends State<_EditDrinkEntryDialog> {
   }
 
   double? _effectiveVolumeMl(AppController controller) {
+    // Keep the entry's original (possibly custom) volume unless the drink
+    // type actually changed; only then ask the controller to resolve a
+    // sensible volume for the new drink (it may have its own default).
     return _replacementDrink == null
         ? widget.entry.volumeMl
         : controller.resolveUpdatedDrinkEntryVolume(
@@ -1215,6 +1512,8 @@ class _DeleteDrinkEntryDialogState extends State<_DeleteDrinkEntryDialog> {
     final controller = AppScope.controllerOf(context);
     final success = await controller.deleteDrinkEntry(widget.entry);
     final message = controller.takeFlashMessage(l10n);
+    // Show on the feed screen behind this dialog since the dialog is about
+    // to close and its own ScaffoldMessenger wouldn't survive the pop.
     if (message != null && widget.parentContext.mounted) {
       ScaffoldMessenger.of(
         widget.parentContext,

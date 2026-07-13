@@ -28,6 +28,45 @@
   "searchDrinks": "Search drinks",
   "recentDrinks": "Recent drinks",
   "catalog": "Drink catalog",
+  "addDrinkStepIndicator": "Step {current} of {total}",
+  "@addDrinkStepIndicator": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "addDrinkDetailsStepTitle": "Details",
+  "addDrinkChangeSelection": "Change",
+  "addDrinkSearchResultsCount": "{count, plural, =0{No results} =1{1 result} other{{count} results}}",
+  "@addDrinkSearchResultsCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "createCustomDrinkWithQuery": "Create custom drink \"{query}\"",
+  "@createCustomDrinkWithQuery": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "addDrinkPickToContinue": "Pick a drink to continue",
+  "addDrinkCategoriesHeading": "Categories",
+  "addDrinkCategoryDrinkCount": "{count, plural, =1{1 drink} other{{count} drinks}}",
+  "@addDrinkCategoryDrinkCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
   "location": "Location",
   "saveLocationForEntry": "Save location for this entry",
   "locationLoading": "Looking up your current location…",
@@ -123,6 +162,23 @@
   "history": "History",
   "statisticsMapEmptyTitle": "No drinks with location yet",
   "statisticsMapEmptyBody": "Enable location while logging drinks so they can appear here on the map.",
+  "statisticsMapClusterFilterLabel": "Cluster",
+  "statisticsMapClusterTitle": "{count, plural, =1{1 drink here} other{{count} drinks here}}",
+  "statisticsMapLocateMeTooltip": "Show my location",
+  "statisticsMapPhotoFilterLabel": "With photo",
+  "@statisticsMapClusterTitle": {
+    "description": "Title of the map overlay panel listing the drinks inside a tapped cluster",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "feedDetailEmptyTitle": "No drink selected",
+  "feedDetailEmptyBody": "Select a drink from the feed to see its details here.",
+  "historyDetailEmptyTitle": "No entry selected",
+  "historyDetailEmptyBody": "Select an entry from the history to see its details here.",
+  "statisticsDashboard": "Dashboard",
   "statisticsGalleryEmptyTitle": "No drink photos yet",
   "statisticsGalleryEmptyBody": "Photos from logged drinks will appear here automatically.",
   "totalDrinks": "Total drinks",
@@ -137,6 +193,16 @@
   "showCategory": "Show category",
   "hideDrink": "Hide",
   "showDrink": "Show",
+  "resetCategoryOrder": "Reset order",
+  "resetCategoryOrderConfirmTitle": "Reset order?",
+  "resetCategoryOrderConfirmBody": "{category} drinks will be sorted alphabetically again. You can still drag to reorder them afterwards.",
+  "@resetCategoryOrderConfirmBody": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
   "allGlobalDrinksHidden": "All global drinks in this category are hidden.",
   "backend": "Backend",
   "backendRemoteBody": "Supabase is configured and remote sync is active.",
