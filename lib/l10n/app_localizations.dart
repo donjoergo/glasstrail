@@ -266,6 +266,54 @@ abstract class AppLocalizations {
   /// **'Drink catalog'**
   String get catalog;
 
+  /// No description provided for @addDrinkStepIndicator.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String addDrinkStepIndicator(int current, int total);
+
+  /// No description provided for @addDrinkDetailsStepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get addDrinkDetailsStepTitle;
+
+  /// No description provided for @addDrinkChangeSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get addDrinkChangeSelection;
+
+  /// No description provided for @addDrinkSearchResultsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No results} =1{1 result} other{{count} results}}'**
+  String addDrinkSearchResultsCount(num count);
+
+  /// No description provided for @createCustomDrinkWithQuery.
+  ///
+  /// In en, this message translates to:
+  /// **'Create custom drink \"{query}\"'**
+  String createCustomDrinkWithQuery(String query);
+
+  /// No description provided for @addDrinkPickToContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a drink to continue'**
+  String get addDrinkPickToContinue;
+
+  /// No description provided for @addDrinkCategoriesHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get addDrinkCategoriesHeading;
+
+  /// No description provided for @addDrinkCategoryDrinkCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 drink} other{{count} drinks}}'**
+  String addDrinkCategoryDrinkCount(num count);
+
   /// No description provided for @location.
   ///
   /// In en, this message translates to:

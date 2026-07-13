@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
+import '../app_breakpoints.dart';
 import '../app_theme.dart';
 import '../app_controller.dart';
 import '../app_scope.dart';
@@ -12,8 +13,13 @@ import '../photo_pick_flow.dart';
 import '../photo_service.dart';
 import '../widgets/app_constrained_content.dart';
 import '../widgets/app_media.dart';
+import '../widgets/drink_category_grid.dart';
 import '../widgets/drink_picker_catalog.dart';
 import 'custom_drink_dialog.dart';
+
+/// Which screen the mobile add-drink wizard is showing. Desktop ignores
+/// this entirely and always shows the two-pane layout.
+enum _AddDrinkStep { category, drinksInCategory, details }
 
 class AddDrinkScreen extends StatefulWidget {
   const AddDrinkScreen({super.key});
@@ -39,6 +45,10 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
       LocationAccuracyStatus.unknown;
   bool _startedInitialLocationLookup = false;
   int _locationRequestVersion = 0;
+
+  _AddDrinkStep _mobileStep = _AddDrinkStep.category;
+  DrinkCategory? _selectedCategoryStep;
+  bool _reachedDetailsViaShortcut = false;
 
   @override
   void initState() {
@@ -116,16 +126,18 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
     }
     // Creating a custom drink implies the user wants to log it now, so
     // auto-select it and carry over the photo they attached during
-    // creation instead of making them pick the drink and photo again.
+    // creation instead of making them pick the drink and photo again. This
+    // is a shortcut path (skips the mobile "drinks in category" step) just
+    // like picking a recent or search result.
     if (createdDrink != null) {
-      _selectDrink(createdDrink);
+      _selectDrink(createdDrink, viaShortcut: true);
       setState(() {
         _imagePath = createdDrink.imagePath;
       });
     }
   }
 
-  void _selectDrink(DrinkDefinition drink) {
+  void _selectDrink(DrinkDefinition drink, {bool viaShortcut = false}) {
     final unit = AppScope.controllerOf(context).settings.unit;
     setState(() {
       _selectedDrink = drink;
@@ -133,6 +145,29 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
       // field to the new drink's default instead of keeping a stale value.
       _volumeEditedManually = false;
       _volumeController.text = unit.formatVolumeInput(drink.volumeMl);
+      // Every selection path lands on the details step/pane, including a
+      // desktop-only selection — this keeps a later resize to mobile width
+      // showing the already-selected drink's details instead of resetting
+      // to the category step.
+      _mobileStep = _AddDrinkStep.details;
+      _reachedDetailsViaShortcut = viaShortcut;
+    });
+  }
+
+  void _openCategoryStep(DrinkCategory category) {
+    setState(() {
+      _selectedCategoryStep = category;
+      _mobileStep = _AddDrinkStep.drinksInCategory;
+    });
+  }
+
+  void _backToCategoryStep() {
+    if (_mobileStep == _AddDrinkStep.category) {
+      return;
+    }
+    setState(() {
+      _mobileStep = _AddDrinkStep.category;
+      _selectedCategoryStep = null;
     });
   }
 
@@ -256,242 +291,462 @@ class _AddDrinkScreenState extends State<AddDrinkScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isExpanded = AppBreakpoints.isExpanded(context);
+
+    return PopScope(
+      canPop: isExpanded || _mobileStep == _AddDrinkStep.category,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        _backToCategoryStep();
+      },
+      child: Scaffold(
+        appBar: _buildAppBar(context, l10n, isExpanded),
+        body: isExpanded
+            ? _buildDesktopBody(context)
+            : _buildMobileBody(context),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    AppLocalizations l10n,
+    bool isExpanded,
+  ) {
+    if (isExpanded) {
+      return AppBar(title: Text(l10n.addDrink));
+    }
+
+    final (title, stepLabel, showBack) = switch (_mobileStep) {
+      _AddDrinkStep.category => (
+        l10n.addDrink,
+        l10n.addDrinkStepIndicator(1, 3),
+        false,
+      ),
+      _AddDrinkStep.drinksInCategory => (
+        l10n.categoryLabel(_selectedCategoryStep!),
+        l10n.addDrinkStepIndicator(2, 3),
+        true,
+      ),
+      _AddDrinkStep.details => (
+        l10n.addDrinkDetailsStepTitle,
+        _reachedDetailsViaShortcut
+            ? l10n.addDrinkStepIndicator(2, 2)
+            : l10n.addDrinkStepIndicator(3, 3),
+        true,
+      ),
+    };
+
+    final theme = Theme.of(context);
+    return AppBar(
+      leading: showBack
+          ? IconButton(
+              key: const Key('add-drink-back-button'),
+              icon: const Icon(Icons.arrow_back),
+              onPressed: _backToCategoryStep,
+            )
+          : null,
+      title: Row(
+        children: <Widget>[
+          Expanded(child: Text(title)),
+          Text(
+            stepLabel,
+            key: const Key('add-drink-step-indicator'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileBody(BuildContext context) {
+    final controller = AppScope.controllerOf(context);
+    final localeCode = controller.settings.localeCode;
+    final unit = controller.settings.unit;
+    final isBusy = controller.isBusy;
+
+    switch (_mobileStep) {
+      case _AddDrinkStep.category:
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+          child: DrinkPickerCatalog(
+            availableDrinks: controller.availableDrinks,
+            recentDrinks: controller.recentDrinks,
+            localeCode: localeCode,
+            unit: unit,
+            selectedDrink: _selectedDrink,
+            enabled: !isBusy,
+            mode: DrinkCatalogMode.categoryTiles,
+            onSelectCategory: _openCategoryStep,
+            onCreateCustomDrink: _openCustomDrinkDialog,
+            onSelect: (drink) => _selectDrink(drink, viaShortcut: true),
+          ),
+        );
+      case _AddDrinkStep.drinksInCategory:
+        final category = _selectedCategoryStep!;
+        final drinks = controller.availableDrinks
+            .where((drink) => drink.category == category)
+            .toList(growable: false);
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+          child: DrinkCategoryGrid(
+            category: category,
+            drinks: drinks,
+            localeCode: localeCode,
+            unit: unit,
+            selectedDrink: _selectedDrink,
+            enabled: !isBusy,
+            onSelect: _selectDrink,
+          ),
+        );
+      case _AddDrinkStep.details:
+        // The Save button is pinned outside the scroll area so it's always
+        // reachable without scrolling past the rest of the form, matching
+        // the mockup's always-visible Save button.
+        return Column(
+          children: <Widget>[
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                child: _buildDetailsForm(
+                  context,
+                  showChangeButton: true,
+                  onChange: _backToCategoryStep,
+                  includeSaveButton: false,
+                ),
+              ),
+            ),
+            // Solid background (rather than letting the page background
+            // show through) so the sticky button visually separates from
+            // whatever scrollable content ends up behind it.
+            Container(
+              color: Theme.of(context).colorScheme.surface,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  child: _buildSaveButton(context),
+                ),
+              ),
+            ),
+          ],
+        );
+    }
+  }
+
+  Widget _buildDesktopBody(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final controller = AppScope.controllerOf(context);
+    final localeCode = controller.settings.localeCode;
+    final unit = controller.settings.unit;
+    final isBusy = controller.isBusy;
+    final maxWidth = AppBreakpoints.isExtraLarge(context)
+        ? AppBreakpoints.addDrinkDesktopMaxWidthExtraLarge
+        : AppBreakpoints.isLarge(context)
+        ? AppBreakpoints.addDrinkDesktopMaxWidthLarge
+        : AppBreakpoints.addDrinkDesktopMaxWidth;
+
+    return AppConstrainedContent(
+      maxWidth: maxWidth,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+              child: DrinkPickerCatalog(
+                availableDrinks: controller.availableDrinks,
+                recentDrinks: controller.recentDrinks,
+                localeCode: localeCode,
+                unit: unit,
+                selectedDrink: _selectedDrink,
+                enabled: !isBusy,
+                onCreateCustomDrink: _openCustomDrinkDialog,
+                onSelect: _selectDrink,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: AppBreakpoints.addDrinkDetailsPaneWidth,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+              color: theme.colorScheme.surfaceContainerLow,
+              child: _selectedDrink == null
+                  ? _buildEmptyDetailsState(context, l10n)
+                  : _buildDetailsForm(context, showChangeButton: false),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyDetailsState(BuildContext context, AppLocalizations l10n) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Column(
+        children: <Widget>[
+          Icon(
+            Icons.local_bar_outlined,
+            size: 40,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.addDrinkPickToContinue,
+            key: const Key('add-drink-empty-details-state'),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsForm(
+    BuildContext context, {
+    required bool showChangeButton,
+    VoidCallback? onChange,
+    bool includeSaveButton = true,
+  }) {
+    final l10n = AppLocalizations.of(context);
     final controller = AppScope.controllerOf(context);
     final theme = Theme.of(context);
     final localeCode = controller.settings.localeCode;
     final unit = controller.settings.unit;
     final isBusy = controller.isBusy;
-    final isSavingDrink = controller.isBusyFor(AppBusyAction.addDrinkEntry);
+    final selectedDrink = _selectedDrink!;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.addDrink)),
-      body: AppConstrainedContent(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-          children: <Widget>[
-            Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  DrinkPickerCatalog(
-                    availableDrinks: controller.availableDrinks,
-                    recentDrinks: controller.recentDrinks,
-                    localeCode: localeCode,
-                    unit: unit,
-                    selectedDrink: _selectedDrink,
-                    enabled: !isBusy,
-                    collapseAfterSelect: true,
-                    onCreateCustomDrink: _openCustomDrinkDialog,
-                    onSelect: _selectDrink,
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        selectedDrink.displayName(localeCode),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(l10n.drinkDefinitionMetadata(selectedDrink, unit)),
+                    ],
                   ),
-                  if (_selectedDrink != null) ...<Widget>[
-                    const SizedBox(height: 24),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            _selectedDrink!.displayName(localeCode),
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            l10n.drinkDefinitionMetadata(_selectedDrink!, unit),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      key: const Key('drink-volume-field'),
-                      controller: _volumeController,
-                      enabled: !isBusy,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: '${l10n.volume} (${l10n.unitLabel(unit)})',
-                      ),
-                      onChanged: (_) {
-                        _volumeEditedManually = true;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: Text(
-                                  l10n.location,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              Switch.adaptive(
-                                key: const Key('drink-location-toggle'),
-                                value: _isLocationEnabled,
-                                onChanged: isBusy ? null : _setLocationEnabled,
-                              ),
-                            ],
-                          ),
-                          Text(
-                            l10n.saveLocationForEntry,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Icon(
-                                Icons.location_on_outlined,
-                                size: 18,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  key: const Key('drink-location-value'),
-                                  _locationText(l10n),
-                                  style: theme.textTheme.bodyMedium,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (_showsApproximateLocationWarning) ...<Widget>[
-                            const SizedBox(height: 12),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.tertiary.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    l10n.locationApproximateWarning,
-                                    key: const Key(
-                                      'drink-location-approximate-warning',
-                                    ),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextButton.icon(
-                                    key: const Key(
-                                      'drink-location-open-settings-button',
-                                    ),
-                                    onPressed: _openLocationSettings,
-                                    icon: const Icon(Icons.settings_outlined),
-                                    label: Text(l10n.openAppSettings),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
+                ),
+                if (showChangeButton)
+                  TextButton(
+                    key: const Key('add-drink-change-selection-button'),
+                    onPressed: isBusy ? null : onChange,
+                    child: Text(l10n.addDrinkChangeSelection),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            key: const Key('drink-volume-field'),
+            controller: _volumeController,
+            enabled: !isBusy,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: '${l10n.volume} (${l10n.unitLabel(unit)})',
+            ),
+            onChanged: (_) {
+              _volumeEditedManually = true;
+            },
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        l10n.location,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      key: const Key('drink-comment-field'),
-                      controller: _commentController,
-                      enabled: !isBusy,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        labelText: '${l10n.comment} (${l10n.optional})',
+                    Switch.adaptive(
+                      key: const Key('drink-location-toggle'),
+                      value: _isLocationEnabled,
+                      onChanged: isBusy ? null : _setLocationEnabled,
+                    ),
+                  ],
+                ),
+                Text(
+                  l10n.saveLocationForEntry,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        key: const Key('drink-location-value'),
+                        _locationText(l10n),
+                        style: theme.textTheme.bodyMedium,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                  ],
+                ),
+                if (_showsApproximateLocationWarning) ...<Widget>[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.tertiary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        FilledButton.tonalIcon(
-                          onPressed: isBusy ? null : _pickPhoto,
-                          icon: const Icon(Icons.photo_library_outlined),
-                          label: Text(
-                            _imagePath == null
-                                ? l10n.pickPhoto
-                                : l10n.changePhoto,
+                        Text(
+                          l10n.locationApproximateWarning,
+                          key: const Key('drink-location-approximate-warning'),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
-                        if (_imagePath != null)
-                          OutlinedButton.icon(
-                            style: AppTheme.destructiveOutlinedButtonStyle(
-                              theme.colorScheme,
-                            ),
-                            onPressed: isBusy
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _imagePath = null;
-                                    });
-                                  },
-                            icon: const Icon(Icons.close_rounded),
-                            label: Text(l10n.removePhoto),
-                          ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          key: const Key('drink-location-open-settings-button'),
+                          onPressed: _openLocationSettings,
+                          icon: const Icon(Icons.settings_outlined),
+                          label: Text(l10n.openAppSettings),
+                        ),
                       ],
-                    ),
-                    if (_imagePath != null) ...<Widget>[
-                      const SizedBox(height: 12),
-                      AppPhotoPreview(
-                        key: const Key('add-drink-image-preview'),
-                        imagePath: _imagePath,
-                        cropPortraitToSquare: true,
-                      ),
-                    ],
-                  ],
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      key: const Key('confirm-drink-button'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(56),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      onPressed: isBusy ? null : _save,
-                      child: isSavingDrink
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(l10n.confirmDrink),
                     ),
                   ),
                 ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            key: const Key('drink-comment-field'),
+            controller: _commentController,
+            enabled: !isBusy,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(
+              labelText: '${l10n.comment} (${l10n.optional})',
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: <Widget>[
+              FilledButton.tonalIcon(
+                onPressed: isBusy ? null : _pickPhoto,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: Text(
+                  _imagePath == null ? l10n.pickPhoto : l10n.changePhoto,
+                ),
               ),
+              if (_imagePath != null)
+                OutlinedButton.icon(
+                  style: AppTheme.destructiveOutlinedButtonStyle(
+                    theme.colorScheme,
+                  ),
+                  onPressed: isBusy
+                      ? null
+                      : () {
+                          setState(() {
+                            _imagePath = null;
+                          });
+                        },
+                  icon: const Icon(Icons.close_rounded),
+                  label: Text(l10n.removePhoto),
+                ),
+            ],
+          ),
+          if (_imagePath != null) ...<Widget>[
+            const SizedBox(height: 12),
+            AppPhotoPreview(
+              key: const Key('add-drink-image-preview'),
+              imagePath: _imagePath,
+              cropPortraitToSquare: true,
             ),
           ],
+          if (includeSaveButton) ...<Widget>[
+            const SizedBox(height: 24),
+            _buildSaveButton(context),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
+    final isBusy = controller.isBusy;
+    final isSavingDrink = controller.isBusyFor(AppBusyAction.addDrinkEntry);
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        key: const Key('confirm-drink-button'),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(56),
+          padding: const EdgeInsets.symmetric(vertical: 16),
         ),
+        onPressed: isBusy ? null : _save,
+        child: isSavingDrink
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Text(l10n.confirmDrink),
       ),
     );
   }

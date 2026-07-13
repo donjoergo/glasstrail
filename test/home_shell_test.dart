@@ -240,6 +240,17 @@ void _setSurfaceSize(WidgetTester tester, Size size) {
   tester.view.devicePixelRatio = 1.0;
 }
 
+/// Whether [a] comes before [b] in a multi-column grid's reading order (row
+/// by row, then left to right within a row) rather than assuming a
+/// single-column list where a lower position always means a strictly
+/// greater `dy`.
+bool _isBeforeInGridReadingOrder(Offset a, Offset b) {
+  if (a.dy != b.dy) {
+    return a.dy < b.dy;
+  }
+  return a.dx < b.dx;
+}
+
 Finder _statisticsMapMarker(String entryId) {
   return find.byKey(Key('statistics-map-marker-$entryId'));
 }
@@ -1733,11 +1744,9 @@ void main() {
 
     await tester.tap(find.byKey(const Key('global-add-drink-fab')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, 'Pils'));
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView), const Offset(0, -1400));
+    await tester.tap(find.text('Pils'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('confirm-drink-button')));
     await tester.pump();
@@ -1795,14 +1804,14 @@ void main() {
 
     expect(find.text('330 ml'), findsNothing);
 
-    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
     await tester.pumpAndSettle();
 
     expect(find.text('11.2 oz'), findsWidgets);
 
-    final pilsTile = find.widgetWithText(ListTile, 'Pils');
-    await tester.ensureVisible(pilsTile);
-    await tester.tap(pilsTile);
+    final pilsCard = find.text('Pils');
+    await tester.ensureVisible(pilsCard);
+    await tester.tap(pilsCard);
     await tester.pumpAndSettle();
 
     expect(find.text('Volume (oz)'), findsOneWidget);
@@ -1812,8 +1821,6 @@ void main() {
     );
     expect(volumeField.controller?.text, '11.2');
 
-    await tester.drag(find.byType(ListView), const Offset(0, -1400));
-    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('confirm-drink-button')));
     await tester.pumpAndSettle();
 
@@ -1855,16 +1862,14 @@ void main() {
 
     await tester.tap(find.byKey(const Key('global-add-drink-fab')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, 'Pils'));
+    await tester.tap(find.text('Pils'));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('drink-location-toggle')), findsOneWidget);
     expect(find.text('Alexanderplatz 1, 10178 Berlin'), findsOneWidget);
 
-    await tester.drag(find.byType(ListView), const Offset(0, -1400));
-    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('confirm-drink-button')));
     await tester.pumpAndSettle();
 
@@ -1906,17 +1911,9 @@ void main() {
 
     await tester.tap(find.byKey(const Key('global-add-drink-fab')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, 'Pils'));
-    await tester.pumpAndSettle();
-    final addDrinkListView = find
-        .descendant(
-          of: find.byType(AddDrinkScreen),
-          matching: find.byType(ListView),
-        )
-        .first;
-    await tester.drag(addDrinkListView, const Offset(0, -500));
+    await tester.tap(find.text('Pils'));
     await tester.pumpAndSettle();
     final locationToggle = find.byKey(const Key('drink-location-toggle'));
     await tester.ensureVisible(locationToggle);
@@ -1926,8 +1923,6 @@ void main() {
     expect(find.byKey(const Key('drink-location-value')), findsOneWidget);
     expect(find.text('Location disabled for this entry.'), findsOneWidget);
 
-    await tester.drag(find.byType(ListView), const Offset(0, -1400));
-    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('confirm-drink-button')));
     await tester.pumpAndSettle();
 
@@ -1973,21 +1968,22 @@ void main() {
 
     await tester.tap(find.byKey(const Key('global-add-drink-fab')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, 'Pils'));
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView), const Offset(0, -1400));
+    await tester.tap(find.text('Pils'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const Key('drink-location-approximate-warning')),
-      findsOneWidget,
+    final approximateWarning = find.byKey(
+      const Key('drink-location-approximate-warning'),
     );
+    await tester.ensureVisible(approximateWarning);
+    expect(approximateWarning, findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const Key('drink-location-open-settings-button')),
+    final openSettingsButton = find.byKey(
+      const Key('drink-location-open-settings-button'),
     );
+    await tester.ensureVisible(openSettingsButton);
+    await tester.tap(openSettingsButton);
     await tester.pumpAndSettle();
 
     expect(locationService.openAppSettingsCalls, 1);
@@ -2865,9 +2861,9 @@ void main() {
         find.byKey(const Key('recent-drink-icon-beer-pils')),
         findsNothing,
       );
-      await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+      await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
+      expect(find.text('Pils'), findsNothing);
       Navigator.of(tester.element(find.byType(AddDrinkScreen))).pop();
       await tester.pumpAndSettle();
 
@@ -2880,9 +2876,9 @@ void main() {
         find.byKey(const Key('recent-drink-icon-beer-pils')),
         findsOneWidget,
       );
-      await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+      await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(ListTile, 'Pils'), findsOneWidget);
+      expect(find.text('Pils'), findsOneWidget);
     },
   );
 
@@ -2919,7 +2915,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('global-add-drink-fab')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('drink-category-title-beer')), findsNothing);
+    expect(find.byKey(const Key('drink-category-tile-beer')), findsNothing);
     Navigator.of(tester.element(find.byType(AddDrinkScreen))).pop();
     await tester.pumpAndSettle();
 
@@ -2933,7 +2929,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('global-add-drink-fab')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('drink-category-title-beer')), findsOneWidget);
+    expect(find.byKey(const Key('drink-category-tile-beer')), findsOneWidget);
   });
 
   testWidgets('reset order button is disabled until a category is reordered', (
@@ -3127,16 +3123,12 @@ void main() {
 
       await tester.tap(find.byKey(const Key('global-add-drink-fab')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+      await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
       await tester.pumpAndSettle();
 
-      final hellesTileTop = tester.getTopLeft(
-        find.widgetWithText(ListTile, 'Helles'),
-      );
-      final pilsTileTop = tester.getTopLeft(
-        find.widgetWithText(ListTile, 'Pils'),
-      );
-      expect(hellesTileTop.dy, lessThan(pilsTileTop.dy));
+      final hellesTileTop = tester.getTopLeft(find.text('Helles'));
+      final pilsTileTop = tester.getTopLeft(find.text('Pils'));
+      expect(_isBeforeInGridReadingOrder(hellesTileTop, pilsTileTop), isTrue);
     },
   );
 
@@ -3200,16 +3192,12 @@ void main() {
 
       await tester.tap(find.byKey(const Key('global-add-drink-fab')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('drink-category-title-cocktails')));
+      await tester.tap(find.byKey(const Key('drink-category-tile-cocktails')));
       await tester.pumpAndSettle();
 
-      final customTileTop = tester.getTopLeft(
-        find.widgetWithText(ListTile, 'Zulu Tonic'),
-      );
-      final mojitoTileTop = tester.getTopLeft(
-        find.widgetWithText(ListTile, 'Mojito'),
-      );
-      expect(customTileTop.dy, lessThan(mojitoTileTop.dy));
+      final customTileTop = tester.getTopLeft(find.text('Zulu Tonic'));
+      final mojitoTileTop = tester.getTopLeft(find.text('Mojito'));
+      expect(_isBeforeInGridReadingOrder(customTileTop, mojitoTileTop), isTrue);
     },
   );
 
@@ -3238,11 +3226,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('global-add-drink-fab')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+    await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
     await tester.pumpAndSettle();
-    final pilsTile = find.widgetWithText(ListTile, 'Pils');
-    await tester.ensureVisible(pilsTile);
-    await tester.tap(pilsTile);
+    final pilsCard = find.text('Pils');
+    await tester.ensureVisible(pilsCard);
+    await tester.tap(pilsCard);
     await tester.pumpAndSettle();
     await _tapPhotoAction(tester, find.text('Pick photo'));
 
@@ -3377,11 +3365,11 @@ void main() {
       await tester.tap(find.byKey(const Key('global-add-drink-fab')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('drink-category-title-cocktails')));
+      await tester.tap(find.byKey(const Key('drink-category-tile-cocktails')));
       await tester.pumpAndSettle();
-      final gardenSpritzTile = find.widgetWithText(ListTile, 'Garden Spritz');
-      await tester.ensureVisible(gardenSpritzTile);
-      await tester.tap(gardenSpritzTile);
+      final gardenSpritzCard = find.text('Garden Spritz');
+      await tester.ensureVisible(gardenSpritzCard);
+      await tester.tap(gardenSpritzCard);
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('add-drink-image-preview')), findsNothing);
@@ -4232,7 +4220,7 @@ void main() {
     await tester.enterText(find.byKey(const Key('drink-search-field')), 'red');
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('drink-category-title-beer')), findsNothing);
+    expect(find.byKey(const Key('drink-category-tile-beer')), findsNothing);
     expect(find.text('Red Wine'), findsOneWidget);
     expect(find.byKey(const Key('drink-search-clear-button')), findsOneWidget);
 
@@ -4243,13 +4231,14 @@ void main() {
       find.byKey(const Key('drink-search-field')),
     );
     expect(searchField.controller?.text, isEmpty);
-    expect(find.byKey(const Key('drink-category-title-beer')), findsOneWidget);
+    expect(find.byKey(const Key('drink-category-tile-beer')), findsOneWidget);
     expect(find.text('Red Wine'), findsNothing);
     expect(find.byKey(const Key('drink-search-clear-button')), findsNothing);
   });
 
   testWidgets(
-    'keeps add-drink categories collapsed and closes them after selection',
+    'walks the add-drink category, drink, and details steps and always '
+    'backs out to the category step',
     (tester) async {
       tester.view.physicalSize = const Size(430, 1000);
       tester.view.devicePixelRatio = 1.0;
@@ -4260,9 +4249,9 @@ void main() {
 
       final controller = await buildTestController();
       await controller.signUp(
-        email: 'accordion@example.com',
+        email: 'wizard-steps@example.com',
         password: 'password123',
-        displayName: 'Accordion Example',
+        displayName: 'Wizard Steps Example',
       );
 
       await tester.pumpWidget(
@@ -4276,27 +4265,147 @@ void main() {
       await tester.tap(find.byKey(const Key('global-add-drink-fab')));
       await tester.pumpAndSettle();
 
+      // Step 1 shows only category tiles, no individual drinks yet.
       expect(find.text('Pils'), findsNothing);
       expect(find.text('Red Wine'), findsNothing);
+      expect(find.byKey(const Key('drink-category-tile-beer')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('drink-category-title-beer')));
+      await tester.tap(find.byKey(const Key('drink-category-tile-beer')));
       await tester.pumpAndSettle();
 
-      final pilsTile = find.widgetWithText(ListTile, 'Pils');
-      expect(pilsTile, findsOneWidget);
-      expect(find.widgetWithText(ListTile, 'Red Wine'), findsNothing);
+      // Step 2 shows only the chosen category's drinks.
+      expect(find.text('Pils'), findsOneWidget);
+      expect(find.text('Red Wine'), findsNothing);
 
-      await tester.tap(pilsTile);
+      await tester.tap(find.text('Pils'));
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
+      // Step 3: the picker is gone, details fields are shown. The summary
+      // card still shows the drink's name, so check the picker card key
+      // instead of the (now ambiguous) drink name text.
+      expect(find.byKey(const Key('drink-card-beer-pils')), findsNothing);
       expect(find.byKey(const Key('drink-volume-field')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('drink-category-title-wine')));
+      await tester.tap(find.byKey(const Key('add-drink-back-button')));
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(ListTile, 'Pils'), findsNothing);
-      expect(find.widgetWithText(ListTile, 'Red Wine'), findsOneWidget);
+      // Back always returns to step 1 (category tiles), not step 2.
+      expect(find.byKey(const Key('drink-category-tile-beer')), findsOneWidget);
+      expect(find.text('Pils'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('drink-category-tile-wine')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Red Wine'), findsOneWidget);
+      expect(find.text('Pils'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'jumps straight to details when picking a search result, skipping the '
+    'category step',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'wizard-shortcut@example.com',
+        password: 'password123',
+        displayName: 'Wizard Shortcut Example',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('add-drink-step-indicator')))
+            .data,
+        'Step 1 of 3',
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('drink-search-field')),
+        'Pils',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('drink-search-result-beer-pils')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('drink-volume-field')), findsOneWidget);
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('add-drink-step-indicator')))
+            .data,
+        'Step 2 of 2',
+      );
+    },
+  );
+
+  testWidgets(
+    'shows a two-pane layout with a live-updating details panel on desktop '
+    'widths',
+    (tester) async {
+      _setSurfaceSize(tester, const Size(1000, 900));
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'desktop-add-drink@example.com',
+        password: 'password123',
+        displayName: 'Desktop Add Drink',
+      );
+
+      await tester.pumpWidget(
+        GlassTrailApp(
+          controller: controller,
+          photoService: const TestPhotoService(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('global-add-drink-fab')));
+      await tester.pumpAndSettle();
+
+      // No mobile step chrome on desktop, and the right pane starts empty.
+      expect(find.byKey(const Key('add-drink-step-indicator')), findsNothing);
+      expect(
+        find.byKey(const Key('add-drink-empty-details-state')),
+        findsOneWidget,
+      );
+
+      final pilsCard = find.byKey(const Key('drink-card-beer-pils'));
+      await tester.ensureVisible(pilsCard);
+      await tester.tap(pilsCard);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('add-drink-empty-details-state')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('drink-volume-field')), findsOneWidget);
+      // The desktop right pane has nothing to navigate away from, so it
+      // doesn't show the mobile "Change" action.
+      expect(
+        find.byKey(const Key('add-drink-change-selection-button')),
+        findsNothing,
+      );
     },
   );
 
@@ -4342,12 +4451,14 @@ void main() {
     await tester.tap(find.widgetWithText(ChoiceChip, 'Pils'));
     await tester.pumpAndSettle();
 
-    final recentDrinkChip = tester.widget<ChoiceChip>(
-      find.widgetWithText(ChoiceChip, 'Pils'),
-    );
-    expect(recentDrinkChip.selected, isTrue);
-    expect(recentDrinkChip.showCheckmark, isFalse);
+    // Tapping a recent chip is a shortcut straight to the details step.
+    expect(find.text('Pils'), findsOneWidget);
+    expect(find.byKey(const Key('drink-volume-field')), findsOneWidget);
 
+    // Back from details returns to the category step first (per the
+    // "always back to step 1" rule), then a second back leaves the screen.
+    await tester.tap(find.byKey(const Key('add-drink-back-button')));
+    await tester.pumpAndSettle();
     await tester.pageBack();
     await tester.pumpAndSettle();
 
