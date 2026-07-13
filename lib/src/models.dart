@@ -1183,6 +1183,7 @@ class UserSettings {
     required this.shareStatsWithFriends,
     this.hiddenGlobalDrinkIds = const <String>[],
     this.hiddenGlobalDrinkCategories = const <DrinkCategory>[],
+    this.globalCategoryOrder = const <DrinkCategory>[],
     this.globalDrinkOrderOverrides = const <DrinkCategory, List<String>>{},
   });
 
@@ -1195,6 +1196,7 @@ class UserSettings {
       shareStatsWithFriends: true,
       hiddenGlobalDrinkIds: <String>[],
       hiddenGlobalDrinkCategories: <DrinkCategory>[],
+      globalCategoryOrder: <DrinkCategory>[],
       globalDrinkOrderOverrides: <DrinkCategory, List<String>>{},
     );
   }
@@ -1206,6 +1208,7 @@ class UserSettings {
   final bool shareStatsWithFriends;
   final List<String> hiddenGlobalDrinkIds;
   final List<DrinkCategory> hiddenGlobalDrinkCategories;
+  final List<DrinkCategory> globalCategoryOrder;
   final Map<DrinkCategory, List<String>> globalDrinkOrderOverrides;
 
   UserSettings copyWith({
@@ -1216,6 +1219,7 @@ class UserSettings {
     bool? shareStatsWithFriends,
     List<String>? hiddenGlobalDrinkIds,
     List<DrinkCategory>? hiddenGlobalDrinkCategories,
+    List<DrinkCategory>? globalCategoryOrder,
     Map<DrinkCategory, List<String>>? globalDrinkOrderOverrides,
   }) {
     return UserSettings(
@@ -1228,6 +1232,7 @@ class UserSettings {
       hiddenGlobalDrinkIds: hiddenGlobalDrinkIds ?? this.hiddenGlobalDrinkIds,
       hiddenGlobalDrinkCategories:
           hiddenGlobalDrinkCategories ?? this.hiddenGlobalDrinkCategories,
+      globalCategoryOrder: globalCategoryOrder ?? this.globalCategoryOrder,
       globalDrinkOrderOverrides:
           globalDrinkOrderOverrides ?? this.globalDrinkOrderOverrides,
     );
@@ -1242,6 +1247,9 @@ class UserSettings {
       'shareStatsWithFriends': shareStatsWithFriends,
       'hiddenGlobalDrinkIds': hiddenGlobalDrinkIds.toList(growable: false),
       'hiddenGlobalDrinkCategories': hiddenGlobalDrinkCategories
+          .map((category) => category.storageValue)
+          .toList(growable: false),
+      'globalCategoryOrder': globalCategoryOrder
           .map((category) => category.storageValue)
           .toList(growable: false),
       'globalDrinkOrderOverrides': <String, List<String>>{
@@ -1273,6 +1281,11 @@ class UserSettings {
         json,
         'hiddenGlobalDrinkCategories',
         'hidden_global_drink_categories',
+      ),
+      globalCategoryOrder: _readDrinkCategoryList(
+        json,
+        'globalCategoryOrder',
+        'global_category_order',
       ),
       globalDrinkOrderOverrides: _readDrinkOrderOverrides(
         json,

@@ -63,6 +63,60 @@ void main() {
 
       expect(settings.shareStatsWithFriends, isTrue);
     });
+
+    test('defaults globalCategoryOrder to an empty list', () {
+      final settings = UserSettings.defaults();
+
+      expect(settings.globalCategoryOrder, isEmpty);
+    });
+
+    test('round-trips globalCategoryOrder through toJson/fromJson', () {
+      const settings = UserSettings(
+        themePreference: AppThemePreference.system,
+        localeCode: 'en',
+        unit: AppUnit.ml,
+        handedness: AppHandedness.right,
+        shareStatsWithFriends: true,
+        globalCategoryOrder: <DrinkCategory>[
+          DrinkCategory.wine,
+          DrinkCategory.beer,
+        ],
+      );
+
+      final restored = UserSettings.fromJson(settings.toJson());
+
+      expect(settings.toJson()['globalCategoryOrder'], <String>[
+        'wine',
+        'beer',
+      ]);
+      expect(restored.globalCategoryOrder, <DrinkCategory>[
+        DrinkCategory.wine,
+        DrinkCategory.beer,
+      ]);
+    });
+
+    test(
+      'globalCategoryOrder from JSON ignores unknown categories and dedupes',
+      () {
+        final settings = UserSettings.fromJson(<String, dynamic>{
+          'theme_preference': 'system',
+          'locale_code': 'en',
+          'unit': 'ml',
+          'handedness': 'right',
+          'global_category_order': <String>[
+            'wine',
+            'not-a-real-category',
+            'wine',
+            'beer',
+          ],
+        });
+
+        expect(settings.globalCategoryOrder, <DrinkCategory>[
+          DrinkCategory.wine,
+          DrinkCategory.beer,
+        ]);
+      },
+    );
   });
 
   group('AppUser', () {
