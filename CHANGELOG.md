@@ -7,12 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Full desktop mode: adaptive widescreen layouts with resizable master-detail views, a floating map detail panel, dialogs instead of sheets, and multi-pane statistics and bar screens
+- Redesigned the add-drink screen with a guided mobile flow and a two-pane desktop layout
 - New Landing page for promotional purposes
 - Map toggles for cluster and photo and locate-me button
 - Reset a drink category's sort order back to alphabetical, and pull-to-refresh on the bar screen
-
-### Changed
-- Redesigned the add-drink screen with a guided mobile flow and a two-pane desktop layout
 
 ### Fixed
 - Directly creating and logging of custom drinks with images is now more intuitive
