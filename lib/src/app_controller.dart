@@ -303,7 +303,7 @@ class AppController extends ChangeNotifier {
 
   List<DrinkDefinition> get availableDrinks {
     final drinks = <DrinkDefinition>[];
-    for (final category in DrinkCategory.values) {
+    for (final category in orderedCategories) {
       drinks.addAll(sortableDrinksForCategory(category));
     }
     return drinks;
@@ -446,6 +446,44 @@ class AppController extends ChangeNotifier {
     final nextOverrides = _copyGlobalDrinkOrderOverrides()..remove(category);
     return updateSettings(
       _settings.copyWith(globalDrinkOrderOverrides: nextOverrides),
+    );
+  }
+
+  List<DrinkCategory> get orderedCategories {
+    final known = DrinkCategory.values.toSet();
+    final ordered = <DrinkCategory>[];
+    for (final category in _settings.globalCategoryOrder) {
+      if (known.contains(category) && !ordered.contains(category)) {
+        ordered.add(category);
+      }
+    }
+    for (final category in DrinkCategory.values) {
+      if (!ordered.contains(category)) {
+        ordered.add(category);
+      }
+    }
+    return ordered;
+  }
+
+  Future<bool> reorderGlobalCategories(
+    List<DrinkCategory> orderedCategories,
+  ) async {
+    final sanitized = _sanitizeCategoryOrder(orderedCategories);
+    if (listEquals(sanitized, this.orderedCategories)) {
+      return true;
+    }
+    return updateSettings(_settings.copyWith(globalCategoryOrder: sanitized));
+  }
+
+  bool get hasGlobalCategoryOrderOverride =>
+      _settings.globalCategoryOrder.isNotEmpty;
+
+  Future<bool> resetGlobalCategoryOrder() async {
+    if (_settings.globalCategoryOrder.isEmpty) {
+      return true;
+    }
+    return updateSettings(
+      _settings.copyWith(globalCategoryOrder: const <DrinkCategory>[]),
     );
   }
 
@@ -2221,6 +2259,21 @@ class AppController extends ChangeNotifier {
     for (final id in allowedIds) {
       if (!result.contains(id)) {
         result.add(id);
+      }
+    }
+    return result;
+  }
+
+  // Reconciles a caller-supplied category order against the known
+  // categories: drops unknown values and dedupes, keeping the first
+  // occurrence. Unlike `_sanitizeOrderOverrideIds`, it does not append
+  // missing categories — that is `orderedCategories`'s job.
+  List<DrinkCategory> _sanitizeCategoryOrder(List<DrinkCategory> categories) {
+    final known = DrinkCategory.values.toSet();
+    final result = <DrinkCategory>[];
+    for (final category in categories) {
+      if (known.contains(category) && !result.contains(category)) {
+        result.add(category);
       }
     }
     return result;
