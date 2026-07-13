@@ -30,6 +30,7 @@ import 'screens/friend_stats_profile_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/notifications_screen.dart';
 import 'widgets/app_media.dart';
+import 'widgets/shell_embedded_screen.dart';
 
 const _appDisplayTitle = 'Glass Trail';
 const _brandIconAsset = 'assets/icon/app_icon.png';
@@ -724,8 +725,11 @@ class _AppRouteScreen extends StatelessWidget {
 
     if (AppRoutes.isFriendStatsProfileRoute(normalizedRoute)) {
       return _wrapAuthenticatedScreen(
-        FriendStatsProfileScreen(
-          friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
+        ShellEmbeddedScreen(
+          routeName: normalizedRoute,
+          child: FriendStatsProfileScreen(
+            friendUserId: AppRoutes.friendStatsProfileUserId(normalizedRoute)!,
+          ),
         ),
         routeName: normalizedRoute,
       );
@@ -742,7 +746,10 @@ class _AppRouteScreen extends StatelessWidget {
     }
 
     return _wrapAuthenticatedScreen(switch (normalizedRoute) {
-      AppRoutes.addDrink => const AddDrinkScreen(),
+      AppRoutes.addDrink => const ShellEmbeddedScreen(
+        routeName: AppRoutes.addDrink,
+        child: AddDrinkScreen(),
+      ),
       AppRoutes.editProfile => const EditProfileScreen(),
       AppRoutes.notifications => const NotificationsScreen(),
       AppRoutes.auth => const HomeShell(routeName: AppRoutes.feed),
