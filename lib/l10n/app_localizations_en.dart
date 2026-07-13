@@ -85,6 +85,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addDrink => 'Add drink';
 
   @override
+  String get addDrinkNavLabel => 'Add drink';
+
+  @override
   String get searchDrinks => 'Search drinks';
 
   @override

@@ -78,7 +78,7 @@ class HomeNavigationRail extends StatelessWidget {
               key: Key('home-rail-add-drink-destination'),
             ),
             selectedIcon: const Icon(Icons.add_circle_rounded),
-            label: Text(l10n.addDrink),
+            label: Text(l10n.addDrinkNavLabel),
           ),
         ],
       ),
