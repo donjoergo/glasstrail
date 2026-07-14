@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GlassTrail — Track every drink</title>
+<meta name="theme-color" content="#F6F7F4">
 <meta name="description" content="GlassTrail is the easiest way to log what you drink, see your habits in beautiful stats, and stay connected with friends along the way.">
 <link rel="canonical" href="https://glasstrail-landing.vercel.app/">
 <link rel="icon" href="assets/app-icon.png">
@@ -30,6 +31,8 @@
   if (t !== 'light' && t !== 'dark') t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
   if (l !== 'en' && l !== 'de') l = ((navigator.language || 'en').toLowerCase().indexOf('de') === 0) ? 'de' : 'en';
   document.documentElement.setAttribute('data-theme', t);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t === 'dark' ? '#0D1210' : '#F6F7F4';
   document.documentElement.setAttribute('data-lang', l);
   document.documentElement.setAttribute('lang', l);
 })();
@@ -62,9 +65,9 @@ html[data-lang="en"] .lang-btn-en, html[data-lang="de"] .lang-btn-de { backgroun
 @media (max-width: 700px) {
   .img-col-first { order: 2 !important; }
 }
+.hero-ctas a { flex: 1 1 auto !important; text-align: center !important; }
 @media (max-width: 560px) {
   .nav-controls { width: 100% !important; justify-content: center !important; }
-  .hero-ctas a { flex: 1 1 auto !important; text-align: center !important; }
   .footer-row { flex-direction: column !important; align-items: center !important; text-align: center !important; gap: 20px !important; }
   .footer-brand { flex-direction: column !important; text-align: center !important; gap: 8px !important; }
   .footer-brand span { margin-left: 0 !important; }
@@ -137,6 +140,19 @@ html[data-lang="en"] .lang-btn-en, html[data-lang="de"] .lang-btn-de { backgroun
         <a href="https://github.com/donjoergo/glasstrail/releases" target="_blank" rel="noopener" style="background: var(--btn2-bg); color: var(--primary); font-weight: 700; font-size: 16px; padding: 14px 28px; border-radius: 16px; display: inline-block; border: 1px solid var(--border);">
           <span class="i18n-en">Get it on Android</span><span class="i18n-de">Für Android herunterladen</span>
         </a>
+      </div>
+      <div style="margin-top: 16px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; flex-direction: column; gap: 8px; font-size: 15px;">
+        <span style="font-weight: 600; color: var(--muted);"><span class="i18n-en">Demo account:</span><span class="i18n-de">Demo‑Konto:</span></span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: var(--muted);"><span class="i18n-en">Username:</span><span class="i18n-de">Benutzername:</span></span>
+          <span style="font-weight: 600; color: var(--text);">demo@glasstrail.app</span>
+          <button onclick="copyCredential('demo@glasstrail.app', this)" style="cursor: pointer; background: var(--btn2-bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 13px; font-weight: 600; color: var(--muted);">📋</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: var(--muted);"><span class="i18n-en">Password:</span><span class="i18n-de">Passwort:</span></span>
+          <span style="font-weight: 600; color: var(--text);">Demo123</span>
+          <button onclick="copyCredential('Demo123', this)" style="cursor: pointer; background: var(--btn2-bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 13px; font-weight: 600; color: var(--muted);">📋</button>
+        </div>
       </div>
     </div>
     <div style="position: relative; height: clamp(280px, 50vw, 380px); display: flex; align-items: center; justify-content: center;">
@@ -416,8 +432,17 @@ html[data-lang="en"] .lang-btn-en, html[data-lang="de"] .lang-btn-de { backgroun
 </div>
 
 <script>
+function copyCredential(text, btn) {
+  navigator.clipboard.writeText(text).then(function () {
+    var lang = document.documentElement.getAttribute('data-lang');
+    btn.textContent = lang === 'de' ? '\u2713 Kopiert' : '\u2713 Copied';
+    setTimeout(function () { btn.textContent = '\u{1F4CB}'; }, 1500);
+  }).catch(function () {});
+}
 function setTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t === 'dark' ? '#0D1210' : '#F6F7F4';
   try { localStorage.setItem('gt-theme', t); } catch (e) {}
 }
 function toggleTheme() {
