@@ -70,7 +70,13 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/app_icon.png
+    - google_fonts/Manrope-ExtraLight.ttf
+    - google_fonts/Manrope-Light.ttf
     - google_fonts/Manrope-Regular.ttf
+    - google_fonts/Manrope-Medium.ttf
+    - google_fonts/Manrope-SemiBold.ttf
+    - google_fonts/Manrope-Bold.ttf
+    - google_fonts/Manrope-ExtraBold.ttf
   fonts:
     - family: ProfileEmoji
       fonts:
