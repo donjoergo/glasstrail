@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 
 import '../app_breakpoints.dart';
+import '../app_scope.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
 import 'adaptive_modal.dart';
@@ -168,6 +169,7 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final controller = AppScope.controllerOf(context);
     final search = _searchController.text.trim().toLowerCase();
     final isSearchActive = search.isNotEmpty;
     final filteredDrinks = widget.availableDrinks
@@ -254,11 +256,12 @@ class _DrinkPickerCatalogState extends State<DrinkPickerCatalog> {
           if (widget.mode == DrinkCatalogMode.categoryTiles)
             _CategoryTileGrid(
               grouped: grouped,
+              orderedCategories: controller.orderedCategories,
               enabled: widget.enabled,
               onSelectCategory: widget.onSelectCategory!,
             )
           else
-            ...DrinkCategory.values.map(
+            ...controller.orderedCategories.map(
               (category) => _DrinkCategorySection(
                 category: category,
                 label: l10n.categoryLabel(category),
@@ -465,11 +468,13 @@ class _DrinkSearchResults extends StatelessWidget {
 class _CategoryTileGrid extends StatelessWidget {
   const _CategoryTileGrid({
     required this.grouped,
+    required this.orderedCategories,
     required this.enabled,
     required this.onSelectCategory,
   });
 
   final Map<DrinkCategory, List<DrinkDefinition>> grouped;
+  final List<DrinkCategory> orderedCategories;
   final bool enabled;
   final ValueChanged<DrinkCategory> onSelectCategory;
 
@@ -477,7 +482,7 @@ class _CategoryTileGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final categories = DrinkCategory.values
+    final categories = orderedCategories
         .where((category) => grouped[category]!.isNotEmpty)
         .toList(growable: false);
 

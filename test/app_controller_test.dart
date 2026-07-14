@@ -1544,6 +1544,169 @@ void main() {
   });
 
   test(
+    'orderedCategories returns enum order when no override is set',
+    () async {
+      final controller = await buildTestController();
+
+      expect(controller.orderedCategories, DrinkCategory.values);
+    },
+  );
+
+  test(
+    'orderedCategories returns the stored order for a full permutation',
+    () async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'ordered-categories-full@example.com',
+        password: 'password123',
+        displayName: 'Ordered Categories Full',
+      );
+
+      final permutation = DrinkCategory.values.reversed.toList(growable: false);
+      final success = await controller.reorderGlobalCategories(permutation);
+
+      expect(success, isTrue);
+      expect(controller.orderedCategories, permutation);
+    },
+  );
+
+  test(
+    'orderedCategories appends categories missing from a partial stored list',
+    () async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'ordered-categories-partial@example.com',
+        password: 'password123',
+        displayName: 'Ordered Categories Partial',
+      );
+
+      final partial = <DrinkCategory>[
+        DrinkCategory.cocktails,
+        DrinkCategory.beer,
+      ];
+      await controller.reorderGlobalCategories(partial);
+
+      final expected = <DrinkCategory>[
+        DrinkCategory.cocktails,
+        DrinkCategory.beer,
+        ...DrinkCategory.values.where(
+          (category) => !partial.contains(category),
+        ),
+      ];
+      expect(controller.orderedCategories, expected);
+    },
+  );
+
+  test('reorderGlobalCategories updates orderedCategories and cascades into '
+      'availableDrinks category grouping order', () async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'reorder-categories@example.com',
+      password: 'password123',
+      displayName: 'Reorder Categories',
+    );
+
+    final permutation = DrinkCategory.values.reversed.toList(growable: false);
+    final success = await controller.reorderGlobalCategories(permutation);
+
+    expect(success, isTrue);
+    expect(controller.orderedCategories, permutation);
+
+    final availableCategoryOrder = <DrinkCategory>[];
+    for (final drink in controller.availableDrinks) {
+      if (!availableCategoryOrder.contains(drink.category)) {
+        availableCategoryOrder.add(drink.category);
+      }
+    }
+    expect(availableCategoryOrder, permutation);
+  });
+
+  test('reorderGlobalCategories dedupes repeated values', () async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'reorder-categories-sanitize@example.com',
+      password: 'password123',
+      displayName: 'Reorder Categories Sanitize',
+    );
+
+    final success = await controller.reorderGlobalCategories(<DrinkCategory>[
+      DrinkCategory.cocktails,
+      DrinkCategory.beer,
+      DrinkCategory.cocktails,
+      DrinkCategory.wine,
+    ]);
+
+    expect(success, isTrue);
+    expect(controller.settings.globalCategoryOrder, <DrinkCategory>[
+      DrinkCategory.cocktails,
+      DrinkCategory.beer,
+      DrinkCategory.wine,
+    ]);
+  });
+
+  test(
+    'reorderGlobalCategories is a no-op when given the current order',
+    () async {
+      final controller = await buildTestController();
+      await controller.signUp(
+        email: 'reorder-categories-noop@example.com',
+        password: 'password123',
+        displayName: 'Reorder Categories Noop',
+      );
+
+      final before = controller.settings;
+      final success = await controller.reorderGlobalCategories(
+        controller.orderedCategories,
+      );
+
+      expect(success, isTrue);
+      expect(identical(controller.settings, before), isTrue);
+    },
+  );
+
+  test('hasGlobalCategoryOrderOverride reflects override state', () async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'has-category-override@example.com',
+      password: 'password123',
+      displayName: 'Has Category Override',
+    );
+
+    expect(controller.hasGlobalCategoryOrderOverride, isFalse);
+
+    await controller.reorderGlobalCategories(
+      DrinkCategory.values.reversed.toList(growable: false),
+    );
+
+    expect(controller.hasGlobalCategoryOrderOverride, isTrue);
+  });
+
+  test('resetGlobalCategoryOrder clears the override and no-ops when already '
+      'empty', () async {
+    final controller = await buildTestController();
+    await controller.signUp(
+      email: 'reset-category-order@example.com',
+      password: 'password123',
+      displayName: 'Reset Category Order',
+    );
+
+    final noopSuccess = await controller.resetGlobalCategoryOrder();
+    expect(noopSuccess, isTrue);
+    expect(controller.hasGlobalCategoryOrderOverride, isFalse);
+
+    await controller.reorderGlobalCategories(
+      DrinkCategory.values.reversed.toList(growable: false),
+    );
+    expect(controller.hasGlobalCategoryOrderOverride, isTrue);
+
+    final success = await controller.resetGlobalCategoryOrder();
+
+    expect(success, isTrue);
+    expect(controller.hasGlobalCategoryOrderOverride, isFalse);
+    expect(controller.orderedCategories, DrinkCategory.values);
+  });
+
+  test(
     'reorders custom drinks together with global drinks inside a category',
     () async {
       final controller = await buildTestController();

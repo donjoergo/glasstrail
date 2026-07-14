@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:glasstrail/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
+import '../app_scope.dart';
 import '../l10n_extensions.dart';
 import '../models.dart';
 import '../stats_calculator.dart';
@@ -35,6 +36,7 @@ class StatisticsOverviewContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
     final colors = statisticsCategoryColors(theme);
 
     return Column(
@@ -75,7 +77,7 @@ class StatisticsOverviewContent extends StatelessWidget {
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
-                children: DrinkCategory.values
+                children: controller.orderedCategories
                     .map((category) {
                       final count = stats.categoryCounts[category] ?? 0;
                       return StatisticsLegendChip(
@@ -103,8 +105,9 @@ class StatisticsOverviewContent extends StatelessWidget {
   ) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final controller = AppScope.controllerOf(context);
 
-    return DrinkCategory.values
+    return controller.orderedCategories
         .map((category) {
           final count = stats.categoryCounts[category] ?? 0;
           return PieChartSectionData(

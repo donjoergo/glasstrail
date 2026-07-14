@@ -1100,6 +1100,9 @@ class SupabaseAppRepository implements AppRepository {
               for (final entry in settings.globalDrinkOrderOverrides.entries)
                 entry.key.storageValue: entry.value.toList(growable: false),
             },
+            'global_category_order': settings.globalCategoryOrder
+                .map((category) => category.storageValue)
+                .toList(growable: false),
           }, onConflict: 'user_id')
           .select()
           .single();
@@ -1189,6 +1192,7 @@ class SupabaseAppRepository implements AppRepository {
             'share_stats_with_friends': true,
             'hidden_global_drink_ids': const <String>[],
             'global_drink_order_overrides': const <String, List<String>>{},
+            'global_category_order': const <String>[],
           },
           onConflict: 'user_id',
           ignoreDuplicates: true,

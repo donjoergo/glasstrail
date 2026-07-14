@@ -890,6 +890,36 @@ abstract class AppLocalizations {
   /// **'{category} drinks will be sorted alphabetically again. You can still drag to reorder them afterwards.'**
   String resetCategoryOrderConfirmBody(String category);
 
+  /// No description provided for @resetGlobalCategoryOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset category order'**
+  String get resetGlobalCategoryOrder;
+
+  /// No description provided for @resetGlobalCategoryOrderConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset category order?'**
+  String get resetGlobalCategoryOrderConfirmTitle;
+
+  /// No description provided for @resetGlobalCategoryOrderConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories will be sorted back to their default order. You can still drag to reorder them afterwards.'**
+  String get resetGlobalCategoryOrderConfirmBody;
+
+  /// No description provided for @expandCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand category'**
+  String get expandCategory;
+
+  /// No description provided for @collapseCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse category'**
+  String get collapseCategory;
+
   /// No description provided for @allGlobalDrinksHidden.
   ///
   /// In en, this message translates to:
