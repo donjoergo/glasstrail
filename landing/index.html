@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GlassTrail — Track every drink</title>
+<meta name="theme-color" content="#F6F7F4">
 <meta name="description" content="GlassTrail is the easiest way to log what you drink, see your habits in beautiful stats, and stay connected with friends along the way.">
 <link rel="canonical" href="https://glasstrail-landing.vercel.app/">
 <link rel="icon" href="assets/app-icon.png">
@@ -30,6 +31,8 @@
   if (t !== 'light' && t !== 'dark') t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
   if (l !== 'en' && l !== 'de') l = ((navigator.language || 'en').toLowerCase().indexOf('de') === 0) ? 'de' : 'en';
   document.documentElement.setAttribute('data-theme', t);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t === 'dark' ? '#0D1210' : '#F6F7F4';
   document.documentElement.setAttribute('data-lang', l);
   document.documentElement.setAttribute('lang', l);
 })();
@@ -418,6 +421,8 @@ html[data-lang="en"] .lang-btn-en, html[data-lang="de"] .lang-btn-de { backgroun
 <script>
 function setTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t === 'dark' ? '#0D1210' : '#F6F7F4';
   try { localStorage.setItem('gt-theme', t); } catch (e) {}
 }
 function toggleTheme() {
