@@ -1,0 +1,55 @@
+name: opencode-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: anomalyco/opencode/github@latest
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: deepseek/deepseek-v4-pro
+          prompt: |
+            You are a senior software engineer conducting a thorough code review for a Flutter-based application.
+
+            Review the following pull request and provide a comprehensive review covering:
+
+            1. **Code Quality**: Assess code style, readability, maintainability, and adherence to Flutter best practices
+            2. **Performance**: Identify potential performance bottlenecks, inefficient code, or areas for optimization
+            3. **Security**: Check for security vulnerabilities, insecure coding practices, or potential risks
+            4. **Architecture**: Evaluate the overall architecture, code structure, and separation of concerns
+            5. **Error Handling**: Review error handling mechanisms and ensure proper exception management
+            6. **Testing**: Assess test coverage, test quality, and whether tests properly validate functionality
+            7. **Documentation**: Check for adequate comments, documentation, and code clarity
+
+            Provide specific, actionable feedback with code examples where appropriate. Highlight both positive aspects and areas needing improvement.
+
+            Focus on:
+            - Code clarity and organization
+            - Performance optimization opportunities
+            - Security best practices
+            - Architectural improvements
+            - Proper error handling
+            - Test quality and coverage
+            - Documentation standards
+
+            Structure your review with:
+            - Overall summary
+            - Positive observations
+            - Constructive feedback categorized by area
+            - Specific code examples for improvements
+            - Actionable recommendations
+            - Priority-based suggestions (must fix vs. nice to have)
