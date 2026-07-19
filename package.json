@@ -1,0 +1,12 @@
+{
+  "name": "glasstrail-landing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GlassTrail landing page with Vercel Speed Insights",
+  "scripts": {
+    "build": "echo 'Static site - no build needed'"
+  },
+  "dependencies": {
+    "@vercel/speed-insights": "^1.1.0"
+  }
+}
